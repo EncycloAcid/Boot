@@ -57,7 +57,6 @@ class Autopilot(
             EventKind.BotWave -> 0
             EventKind.RegulatorInquiry -> if (s.cash > 3_000_000) 0 else 1
             is EventKind.ViralMoment -> 0
-            EventKind.BurnoutWarning -> 0
             is EventKind.ComboProblem -> if (s.cash > s.comboFixCost(k.combo) * 4) 0 else 1
             EventKind.EcosystemAntitrust -> 0
             EventKind.Convention -> when {
@@ -71,7 +70,7 @@ class Autopilot(
 
     private fun resolvePivot(s: GameState) {
         val offer = s.pendingPivot ?: return
-        val mode = if (s.founder.energy > 55 && s.trailingProfit(weeks = 13) > 0) PivotMode.EXPAND else PivotMode.PIVOT
+        val mode = if (s.trailingProfit(weeks = 13) > 0) PivotMode.EXPAND else PivotMode.PIVOT
         val options = lanePreference.filter { it !in s.lanes }.toMutableList()
         offer.suggestedLane?.let { suggested ->
             if (options.remove(suggested)) options.add(0, suggested)
@@ -101,7 +100,6 @@ class Autopilot(
 
     private fun manage(s: GameState) {
         if (s.crunch) attempt { s.setCrunch(false) }
-        if (s.founder.energy < 35 && !s.founder.isOnVacation) s.takeVacation()
         if (s.ipoBlocker == null) {
             attempt { s.goPublic() }
             return

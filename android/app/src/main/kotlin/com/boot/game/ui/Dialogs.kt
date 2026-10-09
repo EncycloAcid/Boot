@@ -302,7 +302,6 @@ private val EndingKind.emoji: String
         EndingKind.IPO -> "🔔"
         EndingKind.ACQUIRED -> "🤝"
         EndingKind.INDIE -> "🏠"
-        EndingKind.BURNOUT -> "🕯️"
         EndingKind.BANKRUPT -> "💸"
         EndingKind.OUSTED -> "🚪"
     }

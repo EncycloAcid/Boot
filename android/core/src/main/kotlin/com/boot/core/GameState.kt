@@ -211,6 +211,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         for (e in staff) {
             if (e.lane != lane) continue
             s.output += e.output(lane)
+            s.teamOutput += e.output(lane)
             s.headcount += 1
             skillSum += e.skill
             designSum += e.design
@@ -224,12 +225,11 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
                 else -> {}
             }
         }
-        if (!founder.isOnVacation) {
+        run {
             val share = founder.attentionShare(lane, lanes)
-            val energy = 0.4 + 0.6 * founder.energy / 100
             val bonus = founder.skillBonus(lane)
             val freelance = if (founder.freelancing) 0.35 else 1.0
-            s.output += (4 + bonus) * energy * share * freelance
+            s.output += (4 + bonus) * share * freelance
             s.marketing += 1 * share
             if (lane == Lane.AI) s.research += (3 + bonus) * share
             skillSum += (5 + bonus) * share

@@ -95,11 +95,11 @@ class SimulationTest {
 
     @Test
     fun advanceBlocksOnDecisions() {
-        val s = newGame(Lane.WEBSITES, 3)
-        s.enqueue(EventKind.BurnoutWarning)
+        val s = newGame(Lane.GAMES, 3)
+        s.enqueue(EventKind.Convention)
         val e = assertFailsWith<GameException> { s.advance() }
         assertEquals(GameException.Kind.DECISION_PENDING, e.kind)
-        s.choose(1)
+        s.choose(2)
         s.advance()
     }
 
@@ -139,12 +139,29 @@ class SimulationTest {
     }
 
     @Test
-    fun crunchingOnEmptyBurnsOut() {
+    fun savesFromBeforeEnergyWasRemovedStillLoad() {
+        val s = newGame(Lane.GAMES, 6)
+        repeat(3) { s.advance() }
+        val old = s.encode()
+            .replaceFirst("\"founder\":{", "\"founder\":{\"energy\":42.0,\"vacationWeeksLeft\":1,")
+            .replaceFirst("\"stats\":{", "\"stats\":{\"vacations\":2,\"warnedBurnout\":true,")
+        assertTrue("energy" in old && "warnedBurnout" in old)
+        val loaded = GameState.decode(old)
+        assertEquals(s.week, loaded.week)
+        assertEquals(s.founder.name, loaded.founder.name)
+    }
+
+    @Test
+    fun crunchNeedsATeamAndOnlyStretchesIt() {
         val s = newGame(Lane.GAMES, 5)
-        s.founder.energy = 2.0
+        assertFailsWith<GameException> { s.setCrunch(true) }
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        val normal = s.context(Lane.GAMES).workOutput
         s.setCrunch(true)
-        s.advance()
-        assertEquals(EndingKind.BURNOUT, s.ending?.kind)
+        val crunching = s.context(Lane.GAMES).workOutput
+        val team = s.staffing(Lane.GAMES).teamOutput
+        assertTrue(team > 0)
+        assertEquals(normal + 0.4 * team * s.context(Lane.GAMES).mods.output, crunching, 1e-9)
     }
 }
 

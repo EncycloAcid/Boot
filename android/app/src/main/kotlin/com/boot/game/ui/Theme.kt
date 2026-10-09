@@ -105,6 +105,9 @@ data class GameColors(
     val separator: Color,
     /** Tab bar and floating chrome. */
     val bar: Color,
+    /** Game development points, as they pop off the desks. */
+    val design: Color,
+    val tech: Color,
 ) {
     fun lane(lane: Lane): Color = lanes.getValue(lane)
 
@@ -135,6 +138,8 @@ private val LightGame = GameColors(
     fill = Color(0xFFF2F2F7),
     separator = Color(0xFFC6C6C8),
     bar = Color(0xF7F9F9FB),
+    design = Color(0xFF2F7BF6),
+    tech = Color(0xFFFF7A1A),
 )
 
 private val DarkGame = GameColors(
@@ -156,6 +161,8 @@ private val DarkGame = GameColors(
     fill = Color(0xFF2C2C2E),
     separator = Color(0xFF38383A),
     bar = Color(0xF2161618),
+    design = Color(0xFF4C93FF),
+    tech = Color(0xFFFF9F45),
 )
 
 val LocalGameColors = staticCompositionLocalOf { LightGame }

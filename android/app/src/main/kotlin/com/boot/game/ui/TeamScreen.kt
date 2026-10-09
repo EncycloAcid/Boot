@@ -42,52 +42,46 @@ import com.boot.core.hire
 import com.boot.core.setCrunch
 import com.boot.core.setFocus
 import com.boot.core.setFreelancing
-import com.boot.core.takeVacation
 import com.boot.game.GameStore
 import java.util.Locale
 
 @Composable
-fun PeopleScreen(store: GameStore, state: GameState) {
+fun TeamScreen(store: GameStore, state: GameState) {
     ScreenColumn {
+        item { ScreenHeader("Team", "${state.staff.size + 1} people · ${state.payroll.perWeek()} payroll") }
+        item { TeamSection(store, state) }
+        item { HiringSection(store, state) }
+        item { OfficeSection(store, state) }
         item { FounderSection(store, state) }
         if (state.lanes.size > 1) item { AttentionSection(store, state) }
-        item { OfficeSection(store, state) }
-        item { HiringSection(store, state) }
-        item { TeamSection(store, state) }
     }
 }
 
 @Composable
 private fun FounderSection(store: GameStore, state: GameState) {
-    val colors = gameColors
     val f = state.founder
     GroupedSection("You, ${f.name}") {
-        CardBlock { Meter("Energy", f.energy / 100, if (f.energy < 25) colors.bad else colors.good, "${f.energy.toInt()}/100") }
-        state.lanes.forEach { lane ->
-            RowDivider()
+        state.lanes.forEachIndexed { i, lane ->
+            if (i > 0) RowDivider()
             ValueRow("${lane.title} experience", String.format(Locale.US, "+%.1f output", f.skillBonus(lane)))
         }
         RowDivider()
-        ToggleRow("Crunch mode", state.crunch, "+40% output company-wide, worse polish. Morale and energy fall fast.") { on ->
+        ToggleRow(
+            "Crunch mode", state.crunch,
+            if (state.staff.isEmpty()) "Needs a team. It's just you for now." else "The team works overtime: +40% of their output, more bugs, worse polish. Morale falls fast.",
+        ) { on ->
             store.perform { setCrunch(on) }
         }
         RowDivider()
         ToggleRow("Freelance gigs", f.freelancing, "${f.freelanceIncome(state.week).perWeek()} to cover rent. The company gets a third of you.") { on ->
             store.perform { setFreelancing(on) }
         }
-        RowDivider()
-        ListRow(
-            if (f.isOnVacation) "On vacation" else "Take two weeks off",
-            subtitle = if (f.isOnVacation) "${Format.weeks(f.vacationWeeksLeft)} left. Nothing moves without you." else "Restores energy. The company gets none of you meanwhile.",
-            onClick = if (f.isOnVacation) null else ({ store.perform { takeVacation() } }),
-            chevron = !f.isOnVacation,
-        )
     }
 }
 
 @Composable
 private fun AttentionSection(store: GameStore, state: GameState) {
-    GroupedSection("Attention", footer = "Running more than one lane drains your energy every week.") {
+    GroupedSection("Attention", footer = "Your own output is split between your lanes.") {
         CardBlock {
             state.lanes.forEach { lane ->
                 CommitSlider(
@@ -177,8 +171,8 @@ private fun TeamSection(store: GameStore, state: GameState) {
     var training by remember { mutableStateOf<Employee?>(null) }
     val canTrain = Research.TRAINING in state.researched
     GroupedSection(
-        "Team",
-        footer = "${state.payroll.perWeek()} payroll · ${state.headquarters.name} (${state.headquarters.rent.perWeek()} rent)",
+        "Staff",
+        footer = if (canTrain) "Tap the cap to send someone on a course." else "Research a training program to raise people's skills.",
     ) {
         if (state.staff.isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
         state.staff.forEachIndexed { i, e ->

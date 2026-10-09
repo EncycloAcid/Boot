@@ -37,10 +37,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -93,12 +95,23 @@ fun NewGameScreen(store: GameStore) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 start = 16.dp, end = 16.dp,
-                top = padding.calculateTopPadding() + 28.dp,
+                top = padding.calculateTopPadding() + 16.dp,
                 bottom = padding.calculateBottomPadding() + 16.dp,
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                // Where it all starts: the apartment, with a poster of whatever you pick.
+                val preview = remember(lane) { GameState.create("Garage Labs", "You", lane, 1) }
+                OfficeScene(
+                    preview, playing = false,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(170.dp)
+                        .clip(RoundedCornerShape(28.dp)),
+                )
+            }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Boot", style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.primary)
@@ -109,7 +122,7 @@ fun NewGameScreen(store: GameStore) {
                     Hint(
                         "Mid-game, the Pivot Point forces a second lane. Every pairing unlocks its own crossover. " +
                             "Hardware, software and services together make an ecosystem company. " +
-                            "IPO, sell, stay indie or burn out: the ending reflects how you got there.",
+                            "IPO, sell, stay indie or go bust: the ending reflects how you got there.",
                     )
                 }
             }

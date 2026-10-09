@@ -15,6 +15,7 @@ private fun GameState.require(lane: Lane) {
 
 fun GameState.setCrunch(on: Boolean) {
     requireLive()
+    if (on && staff.isEmpty()) throw notAvailable("Crunch needs a team. It's just you.")
     crunch = on
     addLog(
         if (on) "Crunch mode. Everyone's staying late." else "Crunch is over. People go home at a normal hour.",
@@ -33,13 +34,6 @@ fun GameState.setFreelancing(on: Boolean) {
             "No more side gigs. You're back on the company full time."
         },
     )
-}
-
-fun GameState.takeVacation() {
-    if (founder.isOnVacation) return
-    founder.vacationWeeksLeft = 2
-    stats.vacations += 1
-    addLog("You're taking two weeks off. Nothing moves without you.")
 }
 
 fun GameState.setFocus(lane: Lane, weight: Double) {

@@ -37,8 +37,6 @@ sealed interface EventKind {
     @Serializable @SerialName("viralMoment")
     data class ViralMoment(val lane: Lane) : EventKind
 
-    @Serializable @SerialName("burnoutWarning")
-    data object BurnoutWarning : EventKind
 
     @Serializable @SerialName("comboProblem")
     data class ComboProblem(val combo: Combo) : EventKind
@@ -176,14 +174,6 @@ private fun GameState.describe(kind: EventKind): Description? = when (kind) {
         "Nobody planned it, but everybody's talking about it.",
         listOf(choice("Ride the wave", "A free boost.")),
         kind.lane,
-    )
-    EventKind.BurnoutWarning -> Description(
-        "You're running on fumes",
-        "Your energy is at ${founder.energy.toInt()}. If it hits zero, it's over.",
-        listOf(
-            choice("Take two weeks off", "Nothing moves without you, but you'll recover."),
-            choice("Push through", "Keep going."),
-        ),
     )
     is EventKind.ComboProblem -> {
         val combo = kind.combo
@@ -386,8 +376,6 @@ private fun GameState.resolve(kind: EventKind, choice: Int) {
             addLog("You rode the viral wave in ${kind.lane.title}.", LogTone.GOOD)
         }
 
-        EventKind.BurnoutWarning -> if (choice == 0) takeVacation()
-
         is EventKind.ComboProblem -> {
             val c = crossover(kind.combo) ?: return
             c.incidents += 1
@@ -516,8 +504,8 @@ private fun GameState.rideOut(combo: Combo) {
             addLog("A player got one of your NPCs to say something unforgivable. It's the top post everywhere.", LogTone.BAD)
         }
         Combo.GAMES_WEBSITES -> {
-            founder.energy = max(0.0, founder.energy - 15)
-            addLog("Agency deadline and launch week landed on the same night. You covered both.", LogTone.BAD)
+            for (e in staff) e.morale = max(0.0, e.morale - 0.1)
+            addLog("Agency deadline and launch week landed on the same night. Everyone covered both, and everyone's fried.", LogTone.BAD)
         }
         Combo.GAMES_HARDWARE -> {
             games?.let { it.fanTrust = it.fanTrust.nudged(-0.15, 0.3, 1.2) }

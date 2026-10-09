@@ -10,13 +10,16 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import com.boot.core.Autopilot
 import com.boot.core.Combo
@@ -83,20 +86,19 @@ class GameFlowTest {
         roots[roots.fetchSemanticsNodes().size - 1].save(name)
     }
 
-    /** Scroll a button into view clear of the floating time toolbar, then tap it. */
+    /** Scroll a button into view, then tap it. */
     private fun tapInList(text: String) {
-        val bounds = compose.onNodeWithText(text).performScrollTo().fetchSemanticsNode().boundsInRoot
-        val height = compose.onRoot().fetchSemanticsNode().size.height
-        if (bounds.bottom > height * 0.72f) {
-            compose.onAllNodes(hasScrollAction()).onFirst().performTouchInput { swipeUp(startY = centerY, endY = centerY - height * 0.3f) }
-            compose.waitForIdle()
-        }
-        compose.onNodeWithText(text).performClick()
+        compose.onNodeWithText(text).performScrollTo().performClick()
         compose.waitForIdle()
     }
 
     private fun tab(label: String) {
-        compose.onNodeWithText(label).performClick()
+        compose.onNode(hasText(label) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)).performClick()
+        compose.waitForIdle()
+    }
+
+    private fun scrollToTop() {
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToIndex(0)
         compose.waitForIdle()
     }
 
@@ -112,13 +114,14 @@ class GameFlowTest {
         compose.onNodeWithText("Games").performClick()
         compose.onNodeWithText("Start your game studio").performClick()
 
-        compose.onNodeWithText("Your lanes", ignoreCase = true).assertExists()
+        compose.onNodeWithText("The studio is free").assertExists()
         assertEquals(listOf(Lane.GAMES), store.state!!.lanes)
-        screen("02-dashboard")
+        screen("02-office")
 
         tab("Lanes")
         screen("03-studio")
-        tapInList("Design a new game")
+        tab("Office")
+        tapInList("Develop a new game")
         compose.waitForIdle()
         overlay("15-designer-concept")
         compose.onNodeWithText("Next").performClick()
@@ -134,10 +137,28 @@ class GameFlowTest {
         compose.waitForIdle()
         assertNotNull(store.state!!.games!!.project)
         assertFalse(store.designing)
-        compose.onNodeWithText("Next week").performClick()
+        compose.onNodeWithContentDescription("Next week").performClick()
         compose.waitForIdle()
         assertEquals(1, store.state!!.week)
+        scrollToTop()
         screen("19-in-development")
+    }
+
+    @Test
+    fun playRunsTheClockUntilSomethingNeedsYou() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Clockwork", "Sol", Lane.WEBSITES, seed = 8)
+            store.speed = Speed.FASTEST
+        }
+        compose.onNodeWithContentDescription("Play").performClick()
+        // The test clock runs the game until it stops by itself: an event, the overdraft, or the end.
+        compose.waitForIdle()
+        val s = store.state!!
+        assertFalse(store.playing)
+        assertTrue("week ${s.week}", s.week >= 1)
+        assertTrue(s.needsDecision || s.isOver || s.cash < 0)
+        overlay("24-stopped-for-you")
     }
 
     @Test
@@ -201,6 +222,7 @@ class GameFlowTest {
         // Settle whatever else is queued so the tabs are visible.
         compose.runOnIdle { store.perform { while (events.isNotEmpty()) choose(0) } }
         tab("Company")
+        screen("25-company-overview")
         compose.onNodeWithText("Combos").performClick()
         compose.waitForIdle()
         compose.onAllNodesWithText("Trending Hub").onFirst().assertExists()
@@ -208,10 +230,10 @@ class GameFlowTest {
         compose.onNodeWithText("Money & Board").performClick()
         compose.waitForIdle()
         screen("07-money")
-        tab("People")
-        screen("06-people")
-        tab("Home")
-        screen("08-dashboard-two-lanes")
+        tab("Team")
+        screen("06-team")
+        tab("Office")
+        screen("08-office-two-lanes")
     }
 
     @Test
@@ -281,8 +303,8 @@ class GameFlowTest {
             store.perform { repeat(60) { if (!isOver && pendingPivot == null) pilot.playWeek(this) } }
             store.perform { while (events.isNotEmpty()) choose(0) }
         }
-        compose.onNodeWithText("Your lanes", ignoreCase = true).assertExists()
-        screen("13-dashboard-dark")
+        compose.onNodeWithText("Your business", ignoreCase = true).assertExists()
+        screen("13-office-dark")
         tab("Lanes")
         screen("14-hardware-dark")
     }

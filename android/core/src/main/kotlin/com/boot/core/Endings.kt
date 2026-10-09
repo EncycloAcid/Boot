@@ -6,14 +6,13 @@ import kotlin.math.max
 /** There's no single win condition. The ending reflects how you got there. */
 @Serializable
 enum class EndingKind {
-    IPO, ACQUIRED, INDIE, BURNOUT, BANKRUPT, OUSTED;
+    IPO, ACQUIRED, INDIE, BANKRUPT, OUSTED;
 
     val title: String
         get() = when (this) {
             IPO -> "IPO"
             ACQUIRED -> "Acquired"
             INDIE -> "Stayed Independent"
-            BURNOUT -> "Burnout"
             BANKRUPT -> "Bankrupt"
             OUSTED -> "Ousted"
         }
@@ -58,9 +57,7 @@ class Stats {
     var ecosystemWeeks = 0
     var ecosystemPressure = 0.0
     var ecosystemOpened = false
-    var vacations = 0
     var crunchWeeks = 0
-    var warnedBurnout = false
     val erasSeen = mutableListOf(Era.BOOTSTRAP_YEARS)
 }
 
@@ -92,7 +89,6 @@ internal fun GameState.end(kind: EndingKind, price: Double? = null, buyer: Strin
     val takeHome = when (kind) {
         EndingKind.IPO, EndingKind.ACQUIRED -> value * equity
         EndingKind.INDIE -> valuation * equity
-        EndingKind.BURNOUT -> max(0.0, valuation * equity * 0.5)
         EndingKind.BANKRUPT -> 0.0
         EndingKind.OUSTED -> valuation * equity * 0.6
     }
@@ -129,7 +125,6 @@ private fun GameState.endingTitle(kind: EndingKind, buyer: String?): String {
             titan -> "The Independent Empire"
             else -> "Still Indie"
         }
-        EndingKind.BURNOUT -> if (valuation > 1_000_000) "The Company Outlived You" else "Burnout"
         EndingKind.BANKRUPT -> if (Lane.AI in lanes) "Burned the Compute Budget" else "Out of Runway"
         EndingKind.OUSTED -> "Fired From Your Own Company"
     }
@@ -145,7 +140,6 @@ private fun GameState.endingSummary(kind: EndingKind, value: Double, buyer: Stri
         EndingKind.INDIE ->
             "Fifteen years in, $companyName is still yours${if (venture.isBacked) ", more or less" else ""}. " +
                 "Worth ${money(valuation)} and answering to ${if (venture.board == null) "nobody" else "a board"}."
-        EndingKind.BURNOUT -> "Your energy hit zero. You stepped away from $companyName with nothing left to give."
         EndingKind.BANKRUPT ->
             "$companyName couldn't make payroll for two months straight. The lights went out in ${GameClock.label(week)}."
         EndingKind.OUSTED -> "The board lost confidence and replaced you as CEO of the company you started."
@@ -163,7 +157,6 @@ private fun GameState.endingStory(): List<String> {
         val why = when (p.trigger) {
             PivotTrigger.BUYOUT_OFFER -> "a buyout offer"
             PivotTrigger.MARKET_CRASH -> "a market crash"
-            PivotTrigger.BURNOUT -> "burnout"
             PivotTrigger.VIRAL_ACCIDENT -> "an accidental viral hit"
         }
         val how = if (p.mode == PivotMode.PIVOT) {

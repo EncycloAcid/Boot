@@ -36,7 +36,8 @@ data class LaneContext(
     /** Era, rivals and modifiers rolled into one demand number. */
     val marketDemand: Double get() = era.demand(lane) * competition * mods.demand
 
-    val workOutput: Double get() = staffing.output * mods.output * (if (crunch) 1.4 else 1.0)
+    /** Crunch stretches the team, not the founder, who already gives everything. */
+    val workOutput: Double get() = (staffing.output + (if (crunch) 0.4 * staffing.teamOutput else 0.0)) * mods.output
 
     /** How much of this week's work turns into polish. */
     val polishEfficiency: Double get() = if (crunch) 0.6 else 1.0

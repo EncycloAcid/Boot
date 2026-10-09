@@ -1,20 +1,21 @@
 package com.boot.game.ui
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.game.GameStore
 
-/** Money, the board and the combos, behind one segmented control. */
+/** The company as a whole: an overview, money and the board, and the combos. */
 @Composable
 fun CompanyScreen(store: GameStore, state: GameState) {
-    Column {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-            Segmented(listOf(0, 1), store.companyPage, { if (it == 0) "Money & Board" else "Combos" }) { store.companyPage = it }
+    val pages = listOf("Overview", "Money & Board", "Combos")
+    ScreenColumn {
+        item { ScreenHeader("Company", "You own ${Format.percent(state.venture.founderEquity)} of ${state.companyName}") }
+        item { Segmented(pages.indices.toList(), store.companyPage, { pages[it] }) { store.companyPage = it } }
+        when (store.companyPage) {
+            0 -> overviewItems(store, state)
+            1 -> moneyItems(store, state)
+            else -> combosItems(store, state)
         }
-        if (store.companyPage == 0) MoneyScreen(store, state) else CombosScreen(store, state)
     }
 }

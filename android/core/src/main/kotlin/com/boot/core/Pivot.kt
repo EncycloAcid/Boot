@@ -8,13 +8,12 @@ import kotlin.math.roundToLong
 /** What forces the mid-game choice. */
 @Serializable
 enum class PivotTrigger {
-    BUYOUT_OFFER, MARKET_CRASH, BURNOUT, VIRAL_ACCIDENT;
+    BUYOUT_OFFER, MARKET_CRASH, VIRAL_ACCIDENT;
 
     val title: String
         get() = when (this) {
             BUYOUT_OFFER -> "A buyout offer"
             MARKET_CRASH -> "Your market crashed"
-            BURNOUT -> "Burnout"
             VIRAL_ACCIDENT -> "Viral by accident"
         }
 
@@ -23,7 +22,6 @@ enum class PivotTrigger {
         get() = when (this) {
             BUYOUT_OFFER -> 1.3
             MARKET_CRASH -> 0.65
-            BURNOUT -> 0.9
             VIRAL_ACCIDENT -> 1.1
         }
 }
@@ -62,7 +60,6 @@ const val EXPANSION_STREAK_NEEDED = 12
 internal fun GameState.checkPivotPoint() {
     if (pivot != null || pendingPivot != null || week < PIVOT_WINDOW.first) return
     var trigger: PivotTrigger? = when {
-        founder.energy < 30 -> PivotTrigger.BURNOUT
         world.era.demand(startingLane) <= 0.85 -> PivotTrigger.MARKET_CRASH
         valuation >= 300_000 && rng.chance(0.03) -> PivotTrigger.BUYOUT_OFFER
         rng.chance(0.02) -> PivotTrigger.VIRAL_ACCIDENT
@@ -97,14 +94,6 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
             headline = "${world.era.title} has gutted the ${lane.title.lowercase()} market.",
             body = "Demand in your lane has collapsed. The business would only fetch about ${money(price)} right now, " +
                 "but staying put means riding out the slump. Time to pick a second lane.",
-            salePrice = price,
-        )
-        PivotTrigger.BURNOUT -> PivotOffer(
-            t, week,
-            headline = "You can't keep doing this.",
-            body = "Your energy is at ${founder.energy.toInt()}. Something has to change: sell the $business " +
-                "(about ${money(price)}) and start fresh, or expand and hope new work rekindles the spark. " +
-                "Pivoting gives you a second wind; expanding asks for more of what you don't have.",
             salePrice = price,
         )
         PivotTrigger.VIRAL_ACCIDENT -> {
@@ -177,7 +166,6 @@ fun GameState.resolvePivot(lane: Lane, mode: PivotMode, fundWithVenture: Boolean
             closeLane(from)
             openLane(lane)
             for (e in staff) if (e.lane == from || e.lane == null) e.lane = lane
-            if (offer.trigger == PivotTrigger.BURNOUT) founder.energy = min(100.0, founder.energy + 40)
             val detail = if (followers == 0) "" else " $followers of your people came with you."
             addLog("You sold the ${from.businessName.lowercase()} for ${money(offer.salePrice)} and went all in on ${lane.title}.$detail", LogTone.MILESTONE)
             if (stayed > 0) addLog("$stayed staff stayed on with the buyer.")
@@ -185,7 +173,6 @@ fun GameState.resolvePivot(lane: Lane, mode: PivotMode, fundWithVenture: Boolean
         PivotMode.EXPAND -> {
             spend(lane.setupCost, lane)
             openLane(lane)
-            if (offer.trigger == PivotTrigger.BURNOUT) founder.energy = max(5.0, founder.energy - 10)
             addLog("You kept the ${from.businessName.lowercase()} and expanded into ${lane.title}. Two lanes, one you.", LogTone.MILESTONE)
         }
     }

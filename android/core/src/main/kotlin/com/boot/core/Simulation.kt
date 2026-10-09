@@ -44,7 +44,7 @@ fun GameState.advance() {
 
     updateCrossovers(fx)
 
-    if (founder.freelancing && !founder.isOnVacation) {
+    if (founder.freelancing) {
         val gig = founder.freelanceIncome(week)
         cash += gig
         recordRevenue(gig, null)
@@ -54,7 +54,7 @@ fun GameState.advance() {
     stats.peakValuation = max(stats.peakValuation, valuation)
     ledger.last().cash = cash
 
-    updateFounder(fx)
+    updateFounder()
     updateStaff(fx)
     reputation.weeklyDrift()
     if (week % 4 == 0) refreshTalentPool()
@@ -186,12 +186,6 @@ private fun GameState.rollWorldEvents() {
         }
         enqueue(EventKind.Buyout(bidder, Math.round(valuation * rng.range(1.1, 1.6)).toDouble()))
     }
-    if (founder.energy < 20 && !stats.warnedBurnout) {
-        stats.warnedBurnout = true
-        enqueue(EventKind.BurnoutWarning)
-    } else if (founder.energy > 40) {
-        stats.warnedBurnout = false
-    }
 }
 
 private fun GameState.hasLiveProduct(lane: Lane): Boolean = when (lane) {
@@ -233,24 +227,8 @@ private fun GameState.updateCrossovers(fx: ComboEffects) {
 
 // People
 
-private fun GameState.updateFounder(fx: ComboEffects) {
-    if (founder.isOnVacation) {
-        founder.vacationWeeksLeft -= 1
-        founder.energy = min(100.0, founder.energy + 12)
-        return
-    }
-    var delta = 0.6
-    if (crunch) {
-        delta -= 3.5
-        stats.crunchWeeks += 1
-    }
-    delta -= 1.6 * max(0, lanes.size - 1)
-    delta -= fx.energyDrain
-    if (founder.freelancing) delta -= 0.4
-    venture.board?.let { if (it.confidence < 0.4) delta -= 0.8 }
-    if (runwayWeeks < 8) delta -= 0.8
-    if (staff.size > 30) delta -= 0.4
-    founder.energy = (founder.energy + delta).clamped(0.0, 100.0)
+private fun GameState.updateFounder() {
+    if (crunch) stats.crunchWeeks += 1
     for (lane in lanes) {
         founder.experience[lane] = (founder.experience[lane] ?: 0.0) + founder.attentionShare(lane, lanes)
     }
@@ -301,10 +279,6 @@ private fun GameState.checkEndings() {
         }
     } else {
         stats.weeksInRed = 0
-    }
-    if (founder.energy <= 0) {
-        end(EndingKind.BURNOUT)
-        return
     }
     if (week >= GameState.LENGTH_WEEKS) end(EndingKind.INDIE)
 }

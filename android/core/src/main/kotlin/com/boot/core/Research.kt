@@ -161,7 +161,7 @@ fun GameState.researchTopic(topic: Topic) {
 
 /** Research points earned this week. */
 internal fun GameState.weeklyResearch(gameWork: Double): Double {
-    var rp = if (founder.isOnVacation) 0.0 else 0.5 + founder.skillBonus(lanes.firstOrNull() ?: startingLane) * 0.1
+    var rp = 0.5 + founder.skillBonus(lanes.firstOrNull() ?: startingLane) * 0.1
     for (e in staff) rp += e.research * 0.04 * e.moraleFactor
     rp += gameWork * 0.07
     if (Research.RD_LAB in researched) rp *= 1.5

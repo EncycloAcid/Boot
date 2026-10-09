@@ -20,6 +20,7 @@ fun NewsScreen(state: GameState) {
     var filter by rememberSaveable { mutableStateOf<Lane?>(null) }
     val entries = state.log.asReversed().filter { filter == null || it.lane == filter }.take(200)
     ScreenColumn {
+        item { ScreenHeader("News") }
         item {
             LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { FilterChip(selected = filter == null, onClick = { filter = null }, label = { Text("Everything") }) }

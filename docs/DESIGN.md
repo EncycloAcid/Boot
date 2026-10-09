@@ -1,24 +1,23 @@
 # Boot: Design
 
-A company management game for Android and macOS. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point forces you to take on a second lane. Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, burn out, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
+A company management game for Android and macOS. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point forces you to take on a second lane. Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
 
-This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers, except for the studio update (the Games studio, research, offices and training), which so far exists only in the Kotlin version. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
+This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers, except for the studio update (the Games studio, research, offices and training) and the removal of founder energy, which so far exist only in the Kotlin version. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
 
 ## Core loop
 
 - Time moves in **weeks**. A full game is 15 years (780 weeks).
-- Each week you make decisions (hire, assign, start projects, set dials), then advance. Advancing stops whenever a decision needs you: an event, a board demand, or the Pivot Point.
+- On Android the clock runs by itself once you press play, at three speeds, and stops whenever something needs you: an event, a board demand, the Pivot Point, reviews coming in, a game ready to ship, or the account going red. You can also step one week at a time.
 - Money in comes from your lanes. Money out is lane costs, payroll and rent.
 - **Offices** have desks: cramped apartment (2), coworking desks (6), studio floor (16), downtown office (45), campus. Every hire needs a desk; moving up costs money and raises rent. Squeeze in more people than desks (after a merger, say) and morale drops every week until you move.
 - Eight straight weeks with negative cash is bankruptcy.
 
 ### You, the founder
 
-- **Energy** (0 to 100). Crunch, running several lanes, an unhappy board, a short runway and a big org all drain it. Two weeks of vacation restores it, but the company gets none of your time while you're away. At zero, the game ends in burnout.
 - **Attention.** With more than one lane, you split your own output between them with focus sliders.
 - **Experience.** Weeks spent in a lane make you better at it (up to +4 output). This is the "skills" you keep when you pivot.
 - **Freelancing.** You can take outside gigs to cover rent. Steady money, but the company only gets about a third of you.
-- **Crunch** is company-wide: +40% output, worse polish, and morale and energy fall fast.
+- **Crunch** stretches the team, not you: +40% of your staff's output, more bugs, worse polish, and morale falls fast. It needs at least one hire.
 
 ### People
 
@@ -102,7 +101,6 @@ Between year 2 and year 4, something forces a choice:
 | --- | --- | --- |
 | Buyout offer | Your business is worth something and a rival bids | Sells for 1.3× value; you can also sell the whole company and walk away |
 | Market crash | The current era has gutted your lane | Sells for 0.65× value |
-| Burnout | Your energy is below 30 | Pivoting gives you a second wind; expanding costs you more |
 | Viral by accident | Random | Suggests a lane; picking it comes with a head start |
 
 You pick a second lane and how to take it on:
@@ -151,7 +149,6 @@ Every pairing of two lanes (15 in all) unlocks a crossover product only that com
 | IPO | From year 5, a business worth $500M (excluding cash) with $50M annual revenue, and the board's sign-off | The Ecosystem IPO, IPO Whale-Funded, The Compute IPO, Bootstrapped to the Bell |
 | Acquired | Accept a buyout | The Quick Exit (before the Pivot Point), Absorbed by a rival |
 | Stayed independent | Reach year 15 | Still Indie, The Lifestyle Business, The Independent Empire, Private and Thriving, Zombie Unicorn |
-| Burnout | Energy hits zero | The Company Outlived You |
 | Bankrupt | Eight weeks in the red | Burned the Compute Budget |
 | Ousted | Board confidence hits zero | Fired From Your Own Company |
 
@@ -161,7 +158,7 @@ The ending screen tells the story of your run: where you started, what forced th
 
 - Multiple concurrent products per lane (a second app, two games in parallel).
 - Rival companies as full simulations, plus acquisitions you make yourself.
-- Art, sound and an illustrated office view.
-- The studio update in the Swift (macOS and terminal) version.
+- Art and sound. (The office is drawn in code: desks, people and rooms per office tier.)
+- The studio update, the running clock and the removal of energy in the Swift (macOS and terminal) version.
 - Steam-style achievements per ending variant.
 - Proper tuning passes with real playtesters; the current numbers come from autopilot runs.

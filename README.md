@@ -1,8 +1,10 @@
 # Boot
 
-A company management game for Android and macOS. You start solo in a cramped apartment and build a company in one of six lanes: **Games, Websites, Apps, Social Media, Hardware or AI**. Each lane plays like a different management game. Mid-game, the **Pivot Point** forces you to expand into a second lane or pivot into it. Lane pairings unlock crossover products and their own problems. Eras, rivals and a reputation that follows you everywhere shape the run, and the ending (IPO, acquisition, staying indie, burnout, bankruptcy or getting fired by your own board) reflects how you got there.
+A company management game for Android and macOS. You start solo in a cramped apartment and build a company in one of six lanes: **Games, Websites, Apps, Social Media, Hardware or AI**. Each lane plays like a different management game. Mid-game, the **Pivot Point** forces you to expand into a second lane or pivot into it. Lane pairings unlock crossover products and their own problems. Eras, rivals and a reputation that follows you everywhere shape the run, and the ending (IPO, acquisition, staying indie, bankruptcy or getting fired by your own board) reflects how you got there.
 
 The full design is in [docs/DESIGN.md](docs/DESIGN.md).
+
+**New in 0.4 (Android):** a new UI built around your office. The home screen is an illustrated office that grows from the apartment to the campus, with everyone at their desks and design, tech and bug points floating off them each week. Time now runs by itself, Game Dev Tycoon style: press play, pick 1×, 2× or 3×, and the clock stops on its own when something needs you (an event, reviews, a game ready to ship, an overdraft). Founder energy, vacations and the burnout ending are gone; crunch now stretches your team rather than you.
 
 **New in 0.3 (Android):** the Games lane is now a full game studio sim in the spirit of Game Dev Tycoon. Pick a topic, genre, audience, platforms and size; split each of the three development stages across focus areas; watch design and tech points, bugs and hype build up; then read four outlets' reviews and a game report that teaches you what works. A research tree (spent with research points your team generates) unlocks bigger games, sequels, marketing, custom engines and company and lane upgrades. Offices have desks, staff can be trained, and contracts, publisher deals, trends and a yearly convention fill the calendar. The macOS and terminal versions don't have this update yet.
 
@@ -12,7 +14,7 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 The Android game lives in [`android/`](android): a Kotlin port of the simulation plus a Jetpack Compose phone UI. It needs Android 8.0 (API 26) or later.
 
-The look is iOS structure with Material 3 Expressive character. From iOS it takes grouped backgrounds, inset grouped lists with hairline separators, large titles that collapse as you scroll, the iOS system colors, form rows and bottom sheets for decisions. From [Material 3 Expressive](https://m3.material.io/blog/building-with-m3-expressive) it takes the expressive motion scheme (springs everywhere), lane badges that morph into each lane's Material shape when picked, buttons that change shape when pressed, connected button groups as segmented controls, wavy progress for work in flight, a shape-morphing loading indicator for AI training runs, emphasized type for the big numbers, and a floating toolbar for time. Light and dark themes are both supported.
+The look is iOS structure with Material 3 Expressive character. From iOS it takes grouped backgrounds, inset grouped lists with hairline separators, the iOS system colors, form rows and bottom sheets for decisions. From [Material 3 Expressive](https://m3.material.io/blog/building-with-m3-expressive) it takes the expressive motion scheme (springs everywhere), lane badges that morph into each lane's Material shape when picked, buttons that change shape when pressed (the play button morphs as time runs), connected button groups as segmented controls, wavy progress for work in flight, a shape-morphing loading indicator for AI training runs, and emphasized type for the big numbers. Light and dark themes are both supported; in dark mode the office is on the night shift.
 
 Open the `android/` folder in Android Studio and press Run, or from a terminal with the Android SDK installed (JDK 21):
 
@@ -27,7 +29,7 @@ cd android
 
 The build uses Android Gradle Plugin 9, compileSdk 37 and Material 3 1.5 (beta), which is where the Expressive components ship. The release build is signed with the debug key so it installs out of the box; swap in your own signing config before publishing to Google Play. The game autosaves after every action and picks up where you left off.
 
-On a phone the five tabs along the bottom are Home, Lanes, Research, People and Company (money, investors and combos); News sits in the top bar. Saves from 0.1 and 0.2 don't carry over to 0.3; the game starts fresh. The floating toolbar above the tabs shows your cash and advances time by a week, a month or a quarter, stopping whenever a decision needs you.
+The status bar at the top shows your company, the date, cash and weekly profit, research points, and fans (or reputation), next to the clock: speed, a one-week step and play/pause. The five tabs along the bottom are Office, Lanes, Research, Team and Company (overview, money and board, combos); News is in the ⋯ menu and under the office. Leaving the app pauses the game. Saves from 0.1 and 0.2 don't load in 0.3 or later; most 0.3 saves carry over to 0.4.
 
 ### On a Mac
 

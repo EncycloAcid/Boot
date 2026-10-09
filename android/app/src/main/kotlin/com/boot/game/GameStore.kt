@@ -19,20 +19,35 @@ import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.random.Random
 
-enum class Tab { HOME, LANES, RESEARCH, PEOPLE, COMPANY, NEWS }
+enum class Tab { OFFICE, LANES, RESEARCH, TEAM, COMPANY, NEWS }
 
-/** Owns the running game, routes player actions into it, and autosaves. */
+/** How fast the calendar runs while playing: milliseconds per week. */
+enum class Speed(val label: String, val millis: Long) {
+    NORMAL("1×", 1_100),
+    FAST("2×", 500),
+    FASTEST("3×", 200),
+}
+
+/** Owns the running game, routes player actions into it, runs the clock, and autosaves. */
 class GameStore(app: Application) : AndroidViewModel(app) {
     private val saveFile = File(app.filesDir, "autosave.json")
 
     /** Replaced with a fresh copy after every action, so Compose always sees the change. */
     var state by mutableStateOf<GameState?>(null)
         private set
+
+    /** The encoding of [state], reused as the starting point of the next copy and as the save. */
+    private var json: String? = null
+
     var error by mutableStateOf<String?>(null)
-    var tab by mutableStateOf(Tab.HOME)
+
+    /** Why the clock stopped by itself, shown once. */
+    var notice by mutableStateOf<String?>(null)
+
+    var tab by mutableStateOf(Tab.OFFICE)
     var lane by mutableStateOf<Lane?>(null)
 
-    /** Company tab page: 0 money and board, 1 combos. */
+    /** Company tab page: 0 overview, 1 money and board, 2 combos. */
     var companyPage by mutableIntStateOf(0)
 
     /** The game designer is open, optionally seeded (a sequel). */
@@ -41,6 +56,11 @@ class GameStore(app: Application) : AndroidViewModel(app) {
 
     /** A released game whose report is open. */
     var openRelease by mutableStateOf<Int?>(null)
+
+    /** The calendar runs by itself while this is on, like Game Dev Tycoon. */
+    var playing by mutableStateOf(false)
+        private set
+    var speed by mutableStateOf(Speed.NORMAL)
 
     /** Latest JSON to write; an empty string means delete the save. Writes happen off the main thread, in order. */
     private val pendingSave = MutableStateFlow<String?>(null)
@@ -52,24 +72,33 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    val canAdvance: Boolean get() = state?.let { !it.isOver && !it.needsDecision } ?: false
+    /** Nothing is waiting on the player: no decision, no unread reviews, no ending. */
+    val canAdvance: Boolean
+        get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
+
+    /** A full-screen page that holds the clock while it's open. */
+    val holdsClock: Boolean get() = designing || openRelease != null
 
     fun newGame(company: String, founder: String, lane: Lane, seed: Long = Random.nextLong()) {
         val s = GameState.create(company, founder, lane, seed)
         state = s
-        tab = Tab.HOME
+        playing = false
+        tab = Tab.OFFICE
         this.lane = lane
         save(s)
     }
 
     fun abandon() {
+        playing = false
         state = null
+        json = null
         pendingSave.value = ""
     }
 
     /** Run an action against a copy of the game. On failure the game is left untouched and the reason is shown. */
     fun perform(action: GameState.() -> Unit) {
-        val next = state?.copy() ?: return
+        val current = state ?: return
+        val next = GameState.decode(json ?: current.encode())
         try {
             next.action()
         } catch (e: GameException) {
@@ -82,7 +111,45 @@ class GameStore(app: Application) : AndroidViewModel(app) {
 
     fun advance(weeks: Int) = perform { this.advance(weeks) }
 
+    fun play() {
+        if (canAdvance && !holdsClock) playing = true
+    }
+
+    fun pause() {
+        playing = false
+    }
+
+    fun togglePlay() = if (playing) pause() else play()
+
+    /**
+     * One beat of the clock: a week passes. Stops by itself when something needs the player:
+     * a decision, reviews, a game ready to ship, or the bank account going red.
+     */
+    fun tick() {
+        val before = state ?: return
+        if (!canAdvance || holdsClock) {
+            playing = false
+            return
+        }
+        val wasReady = before.games?.project?.isReady == true
+        val wasSolvent = before.cash >= 0
+        advance(1)
+        val now = state ?: return
+        val project = now.games?.project
+        val reason = when {
+            !canAdvance -> ""
+            !wasReady && project?.isReady == true -> "${project.title} is ready to ship. Release it, or keep polishing."
+            wasSolvent && now.cash < 0 -> "You're overdrawn. Eight weeks in the red and it's over."
+            else -> null
+        }
+        if (reason != null) {
+            playing = false
+            if (reason.isNotEmpty()) notice = reason
+        }
+    }
+
     fun designGame(seed: GameConcept? = null) {
+        pause()
         draft = seed
         designing = true
     }
@@ -93,7 +160,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     }
 
     private fun save(s: GameState) {
-        pendingSave.value = s.encode()
+        val encoded = s.encode()
+        json = encoded
+        pendingSave.value = encoded
     }
 
     private fun write(json: String) {

@@ -162,8 +162,8 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
             }
             Meter("Development", p.completion, wavy = !p.isReady)
             TileRow {
-                PointTile("Design", p.design, p.lastDesign, colors.lane(Lane.WEBSITES), state.week, Modifier.weight(1f))
-                PointTile("Tech", p.tech, p.lastTech, colors.lane(Lane.SOCIAL), state.week, Modifier.weight(1f))
+                PointTile("Design", p.design, p.lastDesign, colors.design, state.week, Modifier.weight(1f))
+                PointTile("Tech", p.tech, p.lastTech, colors.tech, state.week, Modifier.weight(1f))
                 PointTile("Bugs", p.bugs, p.lastBugs, colors.bad, state.week, Modifier.weight(1f))
             }
             if (p.isReady) Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)

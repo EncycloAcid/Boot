@@ -30,10 +30,10 @@ import com.boot.core.isEcosystem
 import com.boot.core.raiseRound
 import com.boot.core.roundOffer
 import com.boot.game.GameStore
+import androidx.compose.foundation.lazy.LazyListScope
 
-@Composable
-fun MoneyScreen(store: GameStore, state: GameState) {
-    ScreenColumn {
+fun LazyListScope.moneyItems(store: GameStore, state: GameState) {
+    run {
         item { OwnershipSection(store, state) }
         item { BoardSection(state) }
         item { ExpansionSection(store, state) }
@@ -138,7 +138,7 @@ private fun ExpansionSection(store: GameStore, state: GameState) {
             title = "Expand into ${lane.title}?",
             text = "Setup costs ${Format.money(lane.setupCost)}" +
                 (if (useVenture) ", funded by a new venture round." else ".") +
-                " Another lane splits your attention and drains your energy faster.",
+                " Another lane splits your attention.",
             confirm = "Expand",
             onConfirm = { store.perform { expand(lane, useVenture) } },
             onDismiss = { confirm = null },

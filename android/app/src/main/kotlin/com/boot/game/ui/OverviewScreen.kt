@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,29 +46,16 @@ import com.boot.core.Lane
 import com.boot.core.expansionBlocker
 import com.boot.core.isEcosystem
 import com.boot.game.GameStore
-import com.boot.game.Tab
 import kotlin.math.abs
 
-@Composable
-fun DashboardScreen(store: GameStore, state: GameState) {
-    ScreenColumn {
-        item { Hero(state) }
-        item { QuickStats(state) }
-        item { LanesSection(store, state) }
-        item { RevenueSection(state) }
-        item { EraSection(state) }
-        item { ReputationSection(state) }
-        item {
-            GroupedSection("Latest") {
-                state.log.takeLast(6).asReversed().forEachIndexed { i, entry ->
-                    if (i > 0) RowDivider(36.dp)
-                    LogRow(entry)
-                }
-                RowDivider()
-                ListRow("All news", chevron = true, onClick = { store.tab = Tab.NEWS })
-            }
-        }
-    }
+/** The company at a glance: what it's worth, how it's doing, and the world around it. */
+fun LazyListScope.overviewItems(store: GameStore, state: GameState) {
+    item { Hero(state) }
+    item { QuickStats(state) }
+    item { LanesSection(store, state) }
+    item { RevenueSection(state) }
+    item { EraSection(state) }
+    item { ReputationSection(state) }
 }
 
 /** The expressive hero: the number that matters most, on a slowly turning cookie shape. */
@@ -131,14 +119,18 @@ private fun QuickStats(state: GameState) {
                 "Reputation", "${state.reputation.score.toInt()}", Modifier.weight(1f),
                 if (state.reputation.scars.isEmpty()) "Clean" else "${state.reputation.scars.size} scar(s)",
             )
+            val runway = state.runwayWeeks
             StatTile(
-                "Energy", "${state.founder.energy.toInt()}", Modifier.weight(1f),
+                "Runway",
                 when {
-                    state.founder.isOnVacation -> "On vacation"
-                    state.crunch -> "Crunching"
-                    else -> "Founder"
+                    !runway.isFinite() -> "∞"
+                    runway > 260 -> "5+ yrs"
+                    runway >= 52 -> String.format(java.util.Locale.US, "%.1f yrs", runway / 52)
+                    else -> "${runway.toInt()} wks"
                 },
-                if (state.founder.energy < 25) colors.bad else Color.Unspecified,
+                Modifier.weight(1f),
+                if (!runway.isFinite()) "Profitable" else "at this burn",
+                if (runway < 8) colors.bad else Color.Unspecified,
             )
             StatTile("Team", "${state.staff.size + 1}", Modifier.weight(1f), state.headquarters.name)
         }
@@ -150,7 +142,7 @@ private fun LanesSection(store: GameStore, state: GameState) {
     val colors = gameColors
     val footer = when {
         state.pivot == null -> "The Pivot Point arrives between year 2 and year 4."
-        state.expansionBlocker == null -> "Every lane is profitable. You can expand from the Company tab."
+        state.expansionBlocker == null -> "Every lane is profitable. You can expand under Money."
         else -> null
     }
     GroupedSection("Your lanes", footer = footer) {

@@ -25,10 +25,10 @@ import com.boot.core.GameState
 import com.boot.core.buildCrossover
 import com.boot.core.setIntensity
 import com.boot.game.GameStore
+import androidx.compose.foundation.lazy.LazyListScope
 
-@Composable
-fun CombosScreen(store: GameStore, state: GameState) {
-    ScreenColumn {
+fun LazyListScope.combosItems(store: GameStore, state: GameState) {
+    run {
         item {
             Text(
                 "Every pairing of lanes unlocks a crossover product only that combination gets, along with a problem unique to it.",

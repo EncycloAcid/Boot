@@ -83,9 +83,6 @@ data class Candidate(
 
 @Serializable
 class Founder(val name: String) {
-    /** 0...100. Hits zero and the game ends in burnout. */
-    var energy = 100.0
-
     /** Weeks of hands-on experience per lane. This is the "skills" you keep when you pivot. */
     val experience: MutableMap<Lane, Double> = mutableMapOf()
 
@@ -94,9 +91,6 @@ class Founder(val name: String) {
 
     /** Taking outside gigs to pay rent. Steady money, but the company gets a fraction of you. */
     var freelancing = false
-    var vacationWeeksLeft = 0
-
-    val isOnVacation: Boolean get() = vacationWeeksLeft > 0
 
     /** Weekly income from freelance gigs. Grows with experience. */
     fun freelanceIncome(week: Int): Double = 700.0 + 120.0 * min(10, week / 52)
@@ -120,6 +114,8 @@ data class Staffing(
     var research: Double = 0.0,
     var headcount: Int = 0,
     var averageSkill: Double = 5.0,
+    /** Output from employees alone, the part crunch can stretch. */
+    var teamOutput: Double = 0.0,
     /** Team design and tech talent, 1...10, for making games. */
     var avgDesign: Double = 5.0,
     var avgTech: Double = 5.0,

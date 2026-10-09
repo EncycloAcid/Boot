@@ -181,7 +181,6 @@ internal class ComboEffects {
     val mods = mutableMapOf<Lane, LaneModifiers>()
     var revenue = 0.0
     var cost = 0.0
-    var energyDrain = 0.0
     var moraleDrain = 0.0
     var webWariness = 0.0
 
@@ -224,7 +223,7 @@ internal fun Crossover.applyTo(fx: ComboEffects, state: GameState) {
         Combo.AI_GAMES -> fx.mod(Lane.GAMES) { quality += 8 * i; demand *= 1 + 0.2 * i }
         Combo.GAMES_WEBSITES -> {
             fx.mod(Lane.WEBSITES) { demand *= 1 + 0.5 * i }
-            fx.energyDrain += 1.0 * i
+            fx.moraleDrain += 0.008 * i
         }
         Combo.GAMES_HARDWARE -> {
             val fans = min(1.0, (state.games?.fans ?: 0.0) / 200_000)
