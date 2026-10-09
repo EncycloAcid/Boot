@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A rising bar chart breaking out of a box: a company booting up. Safe zone is the middle 66dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineJoin="round"
+        android:pathData="M34,46 L34,74 L74,74 L74,46" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M40,62h7v8h-7z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M50.5,52h7v18h-7z" />
+    <path
+        android:fillColor="#FFFFC94D"
+        android:pathData="M61,40h7v30h-7z" />
+    <path
+        android:fillColor="#FFFFC94D"
+        android:pathData="M64.5,28 L72,38 L57,38 Z" />
+</vector>

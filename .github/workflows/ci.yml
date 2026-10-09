@@ -27,3 +27,31 @@ jobs:
         run: swift test
       - name: Autopilot balance run
         run: swift run boot-cli balance 8
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Robolectric's Android 15+ images need JDK 21.
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Simulation tests
+        run: ./gradlew :core:test
+      - name: UI tests, lint and APKs
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+      - name: Autopilot balance run
+        run: ./gradlew :core:balance -Pruns=8
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: boot-android
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/screenshots/

@@ -1,0 +1,390 @@
+package com.boot.core
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlin.math.max
+import kotlin.math.roundToInt
+import kotlin.random.Random
+
+/** Why an action was refused. The message is written for the player. */
+class GameException(val kind: Kind, message: String) : Exception(message) {
+    enum class Kind { INVALID, BUSY, INSUFFICIENT_FUNDS, NOT_AVAILABLE, DECISION_PENDING, GAME_OVER }
+}
+
+internal fun invalid(m: String) = GameException(GameException.Kind.INVALID, m)
+internal fun busy(m: String) = GameException(GameException.Kind.BUSY, m)
+internal fun insufficientFunds(m: String) = GameException(GameException.Kind.INSUFFICIENT_FUNDS, m)
+internal fun notAvailable(m: String) = GameException(GameException.Kind.NOT_AVAILABLE, m)
+internal fun decisionPending() = GameException(GameException.Kind.DECISION_PENDING, "A decision is waiting on you first.")
+internal fun gameOver() = GameException(GameException.Kind.GAME_OVER, "The game is over.")
+
+/** One week of the books. */
+@Serializable
+class WeekLedger(
+    val week: Int,
+    val revenue: MutableMap<Lane, Double> = mutableMapOf(),
+    val costs: MutableMap<Lane, Double> = mutableMapOf(),
+    /** Rent, crossover programs and anything not tied to one lane. */
+    var overhead: Double = 0.0,
+    var otherRevenue: Double = 0.0,
+    var cash: Double = 0.0,
+) {
+    val totalRevenue: Double get() = revenue.values.sum() + otherRevenue
+    val totalCosts: Double get() = costs.values.sum() + overhead
+    val profit: Double get() = totalRevenue - totalCosts
+
+    fun profit(lane: Lane): Double = (revenue[lane] ?: 0.0) - (costs[lane] ?: 0.0)
+}
+
+data class Headquarters(val name: String, val rent: Double) {
+    companion object {
+        fun forHeadcount(n: Int): Headquarters = when {
+            n <= 2 -> Headquarters("Cramped apartment", 600.0)
+            n <= 8 -> Headquarters("Coworking desks", 2_500.0)
+            n <= 25 -> Headquarters("Converted warehouse office", 9_000.0)
+            n <= 80 -> Headquarters("Downtown floor", 35_000.0)
+            else -> Headquarters("Campus", 120_000.0)
+        }
+    }
+}
+
+@Serializable
+class GameState internal constructor(val seed: Long, val startingLane: Lane) {
+    companion object {
+        /** Fifteen years. */
+        const val LENGTH_WEEKS = 780
+        const val STARTING_CASH = 25_000.0
+
+        private val json = Json {
+            encodeDefaults = true
+            ignoreUnknownKeys = true
+            allowSpecialFloatingPointValues = true
+        }
+
+        /** Start a new company. Hardware and AI need a seed round from day one. */
+        fun create(companyName: String, founderName: String, lane: Lane, seed: Long = Random.nextLong()): GameState {
+            val s = GameState(seed, lane)
+            s.companyName = companyName
+            s.founder = Founder(founderName)
+            s.world.rivals += World.makeRivals()
+            s.world.eraLength = s.rng.int(70, 110)
+            s.ledger = listOf(WeekLedger(0, cash = s.cash))
+            s.openLane(lane)
+            s.refreshTalentPool()
+            s.addLog("Day one. A laptop, a cramped apartment, and ${money(s.cash)} in savings.", LogTone.MILESTONE)
+            if (lane.isCapitalIntensive) {
+                s.ventureForLane(lane).getOrNull()?.let { round ->
+                    s.takeRound(round)
+                    s.addLog("${lane.title} eats money. You raised a ${money(round.amount)} seed round and gained a board.")
+                }
+            }
+            return s
+        }
+
+        fun decode(text: String): GameState = json.decodeFromString(serializer(), text)
+    }
+
+    fun encode(): String = json.encodeToString(serializer(), this)
+
+    /** An independent copy. Actions on it never touch this state. */
+    fun copy(): GameState = decode(encode())
+
+    var companyName = ""
+        internal set
+    var founder = Founder("")
+        internal set
+    internal var rng = SeededRNG.fromSeed(seed)
+    var week = 0
+        internal set
+    var lanes: List<Lane> = emptyList()
+        internal set
+
+    var games: GamesStudio? = null
+        internal set
+    var web: WebAgency? = null
+        internal set
+    var apps: AppStudio? = null
+        internal set
+    var social: SocialPlatform? = null
+        internal set
+    var hardware: HardwareLab? = null
+        internal set
+    var ai: AILab? = null
+        internal set
+
+    var staff: List<Employee> = emptyList()
+        internal set
+    var candidates: List<Candidate> = emptyList()
+        internal set
+    var cash = STARTING_CASH
+        internal set
+    var crunch = false
+        internal set
+    val reputation = Reputation()
+    val world = World()
+    val venture = Venture()
+    var crossovers: List<Crossover> = emptyList()
+        internal set
+    var pivot: PivotRecord? = null
+        internal set
+    var pendingPivot: PivotOffer? = null
+        internal set
+    var expansions: List<ExpansionRecord> = emptyList()
+        internal set
+    var events: List<PendingEvent> = emptyList()
+        internal set
+    var log: List<LogEntry> = emptyList()
+        internal set
+    var ledger: List<WeekLedger> = emptyList()
+        internal set
+    val stats = Stats()
+    var ending: EndingReport? = null
+        internal set
+    internal var idCounter = 1
+
+    // Queries
+
+    val isOver: Boolean get() = ending != null
+    val needsDecision: Boolean get() = events.isNotEmpty() || pendingPivot != null
+    val dateLabel: String get() = GameClock.label(week)
+    val headquarters: Headquarters get() = Headquarters.forHeadcount(staff.size)
+    val payroll: Double get() = staff.sumOf { it.salary }
+
+    fun crossover(combo: Combo): Crossover? = crossovers.firstOrNull { it.combo == combo }
+
+    /** Combos you could build with your current lanes, built or not. */
+    val availableCombos: List<Combo> get() = Combo.available(lanes)
+
+    private fun window(weeks: Int, offset: Int): List<WeekLedger> {
+        val end = max(0, ledger.size - offset)
+        val start = max(0, end - weeks)
+        return ledger.subList(start, end)
+    }
+
+    fun trailingRevenue(lane: Lane? = null, weeks: Int, offset: Int = 0): Double =
+        window(weeks, offset).sumOf { w -> if (lane == null) w.totalRevenue else w.revenue[lane] ?: 0.0 }
+
+    fun trailingProfit(lane: Lane? = null, weeks: Int): Double =
+        window(weeks, 0).sumOf { w -> if (lane == null) w.profit else w.profit(lane) }
+
+    /** Average weekly spend over the last month. */
+    val weeklyBurn: Double
+        get() {
+            val w = window(4, 0)
+            if (w.isEmpty()) return payroll + headquarters.rent
+            return w.sumOf { it.totalCosts } / w.size
+        }
+
+    /** Weeks until the money runs out at the current net burn. Infinite when profitable. */
+    val runwayWeeks: Double
+        get() {
+            // Before the first week closes, assume you're burning payroll and rent.
+            val net = if (ledger.size > 1) trailingProfit(weeks = 4) / 4 else -(payroll + headquarters.rent)
+            if (net >= 0) return Double.POSITIVE_INFINITY
+            return max(0.0, cash) / -net
+        }
+
+    fun laneValue(lane: Lane): Double {
+        // Blend the trailing year with the latest quarter so one launch spike doesn't dominate.
+        val annual = 0.75 * trailingRevenue(lane, 52) + trailingRevenue(lane, 13)
+        val assets = when (lane) {
+            Lane.GAMES -> games?.assetValue
+            Lane.WEBSITES -> web?.assetValue
+            Lane.APPS -> apps?.assetValue
+            Lane.SOCIAL -> social?.assetValue
+            Lane.HARDWARE -> hardware?.assetValue
+            Lane.AI -> ai?.assetValue
+        } ?: 0.0
+        return max(0.0, annual * lane.revenueMultiple * world.era.investorAppetite) + assets
+    }
+
+    /** What the businesses are worth, excluding cash in the bank. */
+    val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0)
+
+    /** Enterprise value plus cash. What a buyer or the market would pay. */
+    val valuation: Double get() = enterpriseValue + max(0.0, cash)
+
+    fun staff(lane: Lane): List<Employee> = staff.filter { it.lane == lane }
+
+    fun staffing(lane: Lane): Staffing {
+        val s = Staffing()
+        var skillSum = 0.0
+        var weight = 0.0
+        for (e in staff) {
+            if (e.lane != lane) continue
+            s.output += e.output(lane)
+            s.headcount += 1
+            skillSum += e.skill
+            weight += 1
+            val points = e.skill * e.moraleFactor
+            when (e.role) {
+                Role.MARKETER -> s.marketing += points
+                Role.OPERATOR -> s.operations += points
+                Role.RESEARCHER -> s.research += points
+                else -> {}
+            }
+        }
+        if (!founder.isOnVacation) {
+            val share = founder.attentionShare(lane, lanes)
+            val energy = 0.4 + 0.6 * founder.energy / 100
+            val bonus = founder.skillBonus(lane)
+            val freelance = if (founder.freelancing) 0.35 else 1.0
+            s.output += (4 + bonus) * energy * share * freelance
+            s.marketing += 1 * share
+            if (lane == Lane.AI) s.research += (3 + bonus) * share
+            skillSum += (5 + bonus) * share
+            weight += share
+        }
+        s.averageSkill = if (weight > 0) skillSum / weight else 5.0
+        return s
+    }
+
+    internal fun context(lane: Lane, effects: ComboEffects? = null): LaneContext {
+        val mods = effects?.mods?.get(lane)?.copy() ?: LaneModifiers()
+        if (isEcosystem) {
+            mods.demand *= if (stats.ecosystemOpened) 1.08 else 1.15
+            if (lane == Lane.APPS) mods.churn *= 0.9
+        }
+        return LaneContext(
+            week = week, staffing = staffing(lane), mods = mods,
+            reception = reputation.launchReception(lane), era = world.era,
+            competition = world.competition(lane), crunch = crunch, lane = lane,
+        )
+    }
+
+    /** Weekly compute bill for a training run of this size, at today's GPU prices. */
+    fun trainingWeeklyCost(size: TrainingSize): Double =
+        ai?.weeklyComputeCost(size.computeUnits, context(Lane.AI)) ?: 0.0
+
+    /** One line per lane for dashboards. */
+    fun statusLine(lane: Lane): String = when (lane) {
+        Lane.GAMES -> games?.statusLine
+        Lane.WEBSITES -> web?.statusLine
+        Lane.APPS -> apps?.statusLine
+        Lane.SOCIAL -> social?.statusLine
+        Lane.HARDWARE -> hardware?.statusLine
+        Lane.AI -> ai?.statusLine
+    } ?: ""
+
+    // Bookkeeping
+
+    internal fun nextId(): Int = idCounter++
+
+    internal fun addLog(text: String, tone: LogTone = LogTone.NEUTRAL, lane: Lane? = null) {
+        val entry = LogEntry(nextId(), week, text, tone, lane)
+        log = if (log.size >= 500) log.drop(log.size - 499) + entry else log + entry
+    }
+
+    /** Book a one-off cost against this week. */
+    internal fun recordCost(amount: Double, lane: Lane?) {
+        val w = ledger.lastOrNull() ?: return
+        if (lane != null) w.costs[lane] = (w.costs[lane] ?: 0.0) + amount else w.overhead += amount
+    }
+
+    internal fun recordRevenue(amount: Double, lane: Lane?) {
+        val w = ledger.lastOrNull() ?: return
+        if (lane != null) w.revenue[lane] = (w.revenue[lane] ?: 0.0) + amount else w.otherRevenue += amount
+        stats.totalRevenue += amount
+    }
+
+    internal fun spend(amount: Double, lane: Lane?) {
+        cash -= amount
+        recordCost(amount, lane)
+    }
+
+    internal fun takeRound(offer: RoundOffer) {
+        venture.take(offer, week)
+        cash += offer.amount
+        addLog(
+            "Closed a ${money(offer.amount)} ${offer.name} at a ${money(offer.preMoney)} pre-money valuation. " +
+                "You now own ${Format.percent(venture.founderEquity)}.",
+            LogTone.MILESTONE,
+        )
+    }
+
+    internal fun openLane(lane: Lane) {
+        if (lane in lanes) return
+        lanes = lanes + lane
+        founder.focus[lane] = 1.0
+        when (lane) {
+            Lane.GAMES -> games = GamesStudio()
+            Lane.WEBSITES -> web = WebAgency()
+            Lane.APPS -> apps = AppStudio(rng.pick(Names.apps), AppMonetization.ADS)
+            Lane.SOCIAL -> social = SocialPlatform(rng.pick(Names.socials), rng.range(0.55, 1.35))
+            Lane.HARDWARE -> hardware = HardwareLab()
+            Lane.AI -> ai = AILab()
+        }
+        for (combo in Combo.available(lanes)) {
+            if (crossover(combo) != null) continue
+            crossovers = crossovers + Crossover(combo, buildWeeksLeft = combo.buildWeeks)
+            addLog("New combo unlocked: ${combo.product}. ${combo.pitch}", LogTone.GOOD)
+        }
+    }
+
+    internal fun closeLane(lane: Lane) {
+        lanes = lanes - lane
+        founder.focus.remove(lane)
+        when (lane) {
+            Lane.GAMES -> games = null
+            Lane.WEBSITES -> web = null
+            Lane.APPS -> apps = null
+            Lane.SOCIAL -> social = null
+            Lane.HARDWARE -> hardware = null
+            Lane.AI -> ai = null
+        }
+        crossovers = crossovers.filterNot { it.combo.involves(lane) }
+    }
+
+    // Talent
+
+    internal fun makeCandidate(role: Role? = null): Candidate {
+        val r = role ?: pickRole()
+        val skill = rng.normal(5.0, 1.8).roundToInt().clamped(1, 10)
+        var salary = r.baseSalary * (0.5 + skill * 0.1) * rng.range(0.9, 1.15)
+        if (r == Role.RESEARCHER && world.era == Era.AI_GOLD_RUSH) salary *= 1.6
+        var contested: String? = null
+        var expires = week + 6
+        val rival = rng.pick(world.rivals)
+        if (rng.chance(0.15 + 0.3 * rival.aggression * (if (skill >= 7) 1.0 else 0.4))) {
+            contested = rival.name
+            salary *= 1.2
+            expires = week + 2
+        }
+        return Candidate(
+            id = nextId(), name = "${rng.pick(Names.first)} ${rng.pick(Names.last)}", role = r,
+            skill = skill, askingSalary = salary.roundToInt().toDouble(), contestedBy = contested, expiresWeek = expires,
+        )
+    }
+
+    private fun pickRole(): Role {
+        // The talent pool leans toward what your lanes need.
+        val lane = rng.pick(lanes.ifEmpty { listOf(startingLane) })
+        val roles = Role.entries
+        var roll = rng.unit() * roles.sumOf { lane.weight(it) }
+        for (role in roles) {
+            roll -= lane.weight(role)
+            if (roll <= 0) return role
+        }
+        return Role.ENGINEER
+    }
+
+    internal fun refreshTalentPool() {
+        for (c in candidates) {
+            if (c.expiresWeek < week && c.contestedBy != null) addLog("${c.name} signed with ${c.contestedBy}.")
+        }
+        candidates = candidates.filter { it.expiresWeek >= week }
+        while (candidates.size < 5) candidates = candidates + makeCandidate()
+    }
+
+    internal fun hireDirect(c: Candidate, lane: Lane? = null): Employee {
+        val e = Employee(
+            id = c.id, name = c.name, role = c.role, skill = c.skill, salary = c.askingSalary,
+            morale = 0.75, lane = lane ?: bestLane(c.role), hiredWeek = week,
+        )
+        staff = staff + e
+        stats.peakHeadcount = max(stats.peakHeadcount, staff.size)
+        return e
+    }
+
+    internal fun bestLane(role: Role): Lane? = lanes.maxByOrNull { it.weight(role) }
+}

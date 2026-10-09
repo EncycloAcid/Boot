@@ -1,8 +1,8 @@
 # Boot: Design
 
-A macOS management game. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point forces you to take on a second lane. Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, burn out, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
+A company management game for Android and macOS. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point forces you to take on a second lane. Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, burn out, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
 
-This document describes the design as it is implemented in `Sources/BootCore`. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
+This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
 
 ## Core loop
 
