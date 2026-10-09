@@ -6,7 +6,8 @@ import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -65,7 +66,11 @@ class GameFlowTest {
 
     private fun screen(name: String) = compose.onRoot().save(name)
 
-    private fun dialog(name: String) = compose.onNode(isDialog()).save(name)
+    /** The topmost window: a sheet or full-screen page above the game. */
+    private fun overlay(name: String) {
+        val roots = compose.onAllNodes(isRoot())
+        roots[roots.fetchSemanticsNodes().size - 1].save(name)
+    }
 
     private fun tab(label: String) {
         compose.onNodeWithText(label).performClick()
@@ -84,7 +89,7 @@ class GameFlowTest {
         compose.onNodeWithText("Games").performClick()
         compose.onNodeWithText("Start your game studio").performClick()
 
-        compose.onNodeWithText("Your lanes").assertExists()
+        compose.onNodeWithText("Your lanes", ignoreCase = true).assertExists()
         assertEquals(listOf(Lane.GAMES), store.state!!.lanes)
         screen("02-dashboard")
 
@@ -106,7 +111,7 @@ class GameFlowTest {
             store.perform { while (pendingPivot == null && !isOver) pilot.playWeek(this) }
         }
         assertNotNull(store.state!!.pendingPivot)
-        dialog("04-pivot-point")
+        overlay("04-pivot-point")
 
         compose.onNodeWithTag("pivot-lane-SOCIAL").performClick()
         compose.onNodeWithText("Expand into Social Media").performClick()
@@ -120,7 +125,7 @@ class GameFlowTest {
         // Settle whatever else is queued so the tabs are visible.
         compose.runOnIdle { store.perform { while (events.isNotEmpty()) choose(0) } }
         tab("Combos")
-        compose.onNodeWithText("Trending Hub").assertExists()
+        compose.onAllNodesWithText("Trending Hub").onFirst().assertExists()
         screen("05-combos")
         tab("People")
         screen("06-people")
@@ -164,7 +169,7 @@ class GameFlowTest {
         }
         val event = store.state!!.events.first()
         assertTrue(!store.canAdvance)
-        dialog("11-event")
+        overlay("11-event")
         compose.onNodeWithText(event.choices.first().label).performClick()
         compose.waitForIdle()
         assertTrue(store.state!!.events.none { it.id == event.id })
@@ -180,11 +185,27 @@ class GameFlowTest {
         val ending = store.state!!.ending!!
         assertTrue(ending.kind in EndingKind.entries)
         compose.onNodeWithText(ending.title).assertExists()
-        dialog("12-ending")
+        overlay("12-ending")
         compose.onNodeWithText("New game").performClick()
         compose.waitForIdle()
         assertNull(store.state)
         compose.onNodeWithText("Start your", substring = true).assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun darkModeUsesTheDarkPalette() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Night Shift", "Umi", Lane.HARDWARE, seed = 4)
+            val pilot = Autopilot()
+            store.perform { repeat(60) { if (!isOver && pendingPivot == null) pilot.playWeek(this) } }
+            store.perform { while (events.isNotEmpty()) choose(0) }
+        }
+        compose.onNodeWithText("Your lanes", ignoreCase = true).assertExists()
+        screen("13-dashboard-dark")
+        tab("Lanes")
+        screen("14-hardware-dark")
     }
 
     @Test

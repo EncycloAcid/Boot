@@ -10,7 +10,9 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 The Android game lives in [`android/`](android): a Kotlin port of the simulation plus a Jetpack Compose phone UI. It needs Android 8.0 (API 26) or later.
 
-Open the `android/` folder in Android Studio and press Run, or from a terminal with the Android SDK installed (JDK 17+, JDK 21 for the UI tests):
+The look is iOS structure with Material 3 Expressive character. From iOS it takes grouped backgrounds, inset grouped lists with hairline separators, large titles that collapse as you scroll, the iOS system colors, form rows and bottom sheets for decisions. From [Material 3 Expressive](https://m3.material.io/blog/building-with-m3-expressive) it takes the expressive motion scheme (springs everywhere), lane badges that morph into each lane's Material shape when picked, buttons that change shape when pressed, connected button groups as segmented controls, wavy progress for work in flight, a shape-morphing loading indicator for AI training runs, emphasized type for the big numbers, and a floating toolbar for time. Light and dark themes are both supported.
+
+Open the `android/` folder in Android Studio and press Run, or from a terminal with the Android SDK installed (JDK 21):
 
 ```sh
 cd android
@@ -21,9 +23,9 @@ cd android
 ./gradlew :core:balance -Pruns=20    # autopilot balance report
 ```
 
-The release build is signed with the debug key so it installs out of the box; swap in your own signing config before publishing to Google Play. The game autosaves after every action and picks up where you left off.
+The build uses Android Gradle Plugin 9, compileSdk 37 and Material 3 1.5 (beta), which is where the Expressive components ship. The release build is signed with the debug key so it installs out of the box; swap in your own signing config before publishing to Google Play. The game autosaves after every action and picks up where you left off.
 
-On a phone the five tabs along the bottom are Home, Lanes, People, Combos and Money; News sits in the top bar. The bar above the tabs shows your cash and advances time by a week, a month or a quarter, stopping whenever a decision needs you.
+On a phone the five tabs along the bottom are Home, Lanes, People, Combos and Money; News sits in the top bar. The floating toolbar above the tabs shows your cash and advances time by a week, a month or a quarter, stopping whenever a decision needs you.
 
 ### On a Mac
 

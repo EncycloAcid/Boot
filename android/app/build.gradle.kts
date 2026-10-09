@@ -1,21 +1,18 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.boot.game"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.boot.game"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     buildTypes {
@@ -44,10 +41,6 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
-}
-
 dependencies {
     implementation(project(":core"))
     implementation(libs.androidx.core.ktx)
@@ -58,6 +51,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.graphics.shapes)
     implementation(libs.compose.material.icons)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

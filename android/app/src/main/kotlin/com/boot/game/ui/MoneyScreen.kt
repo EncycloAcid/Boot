@@ -1,16 +1,11 @@
 package com.boot.game.ui
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,7 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.boot.core.Combo
@@ -40,94 +34,103 @@ import com.boot.game.GameStore
 @Composable
 fun MoneyScreen(store: GameStore, state: GameState) {
     ScreenColumn {
-        item { OwnershipCard(store, state) }
-        item { BoardCard(state) }
-        item { ExpansionCard(store, state) }
-        item { ExitCard(store, state) }
+        item { OwnershipSection(store, state) }
+        item { BoardSection(state) }
+        item { ExpansionSection(store, state) }
+        item { ExitSection(store, state) }
     }
 }
 
 @Composable
-private fun OwnershipCard(store: GameStore, state: GameState) {
+private fun OwnershipSection(store: GameStore, state: GameState) {
     val v = state.venture
-    Section("Ownership") {
-        KeyValue("You own", Format.percent(v.founderEquity))
-        KeyValue("Raised", Format.money(v.raised))
+    val offer = state.roundOffer()
+    GroupedSection(
+        "Ownership",
+        footer = offer.fold({ "Money comes with a board that sets growth targets and can overrule or fire you." }, { it.message }),
+    ) {
+        ValueRow("You own", Format.percent(v.founderEquity))
+        RowDivider()
+        ValueRow("Raised", Format.money(v.raised))
         v.rounds.forEach { r ->
-            KeyValue("${r.name}, ${GameClock.label(r.week)}", "${Format.money(r.amount)} at ${Format.money(r.preMoney)} pre")
+            RowDivider()
+            ListRow(r.name, subtitle = GameClock.label(r.week), value = Format.money(r.amount), valueDetail = "at ${Format.money(r.preMoney)} pre")
         }
-        HorizontalDivider()
-        val offer = state.roundOffer()
         offer.onSuccess { o ->
-            Text(
-                "Investors would put in ${Format.money(o.amount)} for ${Format.percent(o.dilution)} of the company.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Button(onClick = { store.perform { raiseRound() } }) { Text("Raise a ${o.name}") }
-            Hint("Money comes with a board that sets growth targets and can overrule or fire you.")
+            RowDivider()
+            CardBlock(spacing = 10.dp) {
+                Text(
+                    "Investors would put in ${Format.money(o.amount)} for ${Format.percent(o.dilution)} of the company.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                PrimaryButton("Raise a ${o.name}", { store.perform { raiseRound() } }, Modifier.fillMaxWidth())
+            }
         }
-        offer.onFailure { Hint(it.message ?: "") }
     }
 }
 
 @Composable
-private fun BoardCard(state: GameState) {
+private fun BoardSection(state: GameState) {
     val colors = gameColors
-    Section("Board") {
-        val b = state.venture.board
+    val b = state.venture.board
+    GroupedSection(
+        "Board",
+        footer = if (b == null) "No board. Nobody can overrule you." else "Below 40% they start overruling you. At zero they replace you.",
+    ) {
         if (b == null) {
-            Hint("No board. Nobody can overrule you.")
+            ValueRow("Board seats", "None")
         } else {
-            Meter("Confidence", b.confidence, if (b.confidence < 0.4) colors.bad else colors.good)
-            KeyValue("Growth target", "${Format.percent(b.growthTarget)} per quarter")
-            b.lastGrowth?.let { KeyValue("Last quarter", Format.percent(it), if (it >= b.growthTarget) colors.good else colors.bad) }
-            KeyValue("Grace quarters left", "${b.graceQuarters}")
-            KeyValue("Demands met / defied", "${b.demandsMet} / ${b.demandsDefied}")
-            Hint("Below 40% they start overruling you. At zero they replace you.")
+            CardBlock { Meter("Confidence", b.confidence, if (b.confidence < 0.4) colors.bad else colors.good) }
+            RowDivider()
+            ValueRow("Growth target", "${Format.percent(b.growthTarget)} per quarter")
+            b.lastGrowth?.let {
+                RowDivider()
+                ValueRow("Last quarter", Format.percent(it), if (it >= b.growthTarget) colors.good else colors.bad)
+            }
+            RowDivider()
+            ValueRow("Grace quarters left", "${b.graceQuarters}")
+            RowDivider()
+            ValueRow("Demands met / defied", "${b.demandsMet} / ${b.demandsDefied}")
         }
     }
 }
 
 @Composable
-private fun ExpansionCard(store: GameStore, state: GameState) {
+private fun ExpansionSection(store: GameStore, state: GameState) {
     var useVenture by rememberSaveable { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<Lane?>(null) }
     val colors = gameColors
-    Section("Expansion") {
-        val blocker = state.expansionBlocker
+    val blocker = state.expansionBlocker
+    GroupedSection(
+        "Expansion",
+        footer = "Ecosystem company: Hardware + software (Apps or Games) + services (AI, Social or Websites). Hold it for a year.",
+    ) {
         if (blocker != null) {
-            Hint(blocker)
+            CardBlock { Hint(blocker) }
         } else {
-            Text(
-                "Pick another lane. Hardware, software and services together make an ecosystem company.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Fund it with venture money", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                Switch(checked = useVenture, onCheckedChange = { useVenture = it })
-            }
+            ToggleRow("Fund it with venture money", useVenture, "A round brings a board that can overrule you.") { useVenture = it }
             Lane.entries.filter { it !in state.lanes }.forEach { lane ->
+                RowDivider(68.dp)
                 val combos = state.lanes.mapNotNull { Combo.between(it, lane)?.product }
                 ActionRow(
-                    title = "${lane.emoji} ${lane.title}",
+                    title = lane.title,
                     detail = "Setup ${Format.money(lane.setupCost)}" +
                         (if (lane.isCapitalIntensive) " · needs ${Format.money(lane.selfFundThreshold)} or VC" else "") +
                         (if (combos.isEmpty()) "" else " · unlocks ${combos.joinToString(", ")}"),
                     action = "Expand",
+                    leading = { LaneBadge(lane, 40.dp) },
                 ) { confirm = lane }
             }
         }
         if (state.isEcosystem) {
-            HorizontalDivider()
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.EmojiEvents, null, tint = colors.milestone)
-                Spacer(Modifier.width(8.dp))
-                Text("Ecosystem company", color = colors.milestone, style = MaterialTheme.typography.titleSmall)
-            }
-            Meter("Profitable ecosystem weeks", state.stats.ecosystemWeeks / 52.0, colors.milestone, "${state.stats.ecosystemWeeks}/52")
-            Hint("Holding it for a full year is the prestige goal. Antitrust pressure builds the whole time.")
-        } else if (Lane.HARDWARE in state.lanes || state.lanes.size >= 2) {
-            Hint("Ecosystem company: Hardware + software (Apps or Games) + services (AI, Social or Websites).")
+            RowDivider()
+            ListRow(
+                "Ecosystem company",
+                subtitle = "Antitrust pressure builds the whole time you hold it.",
+                leading = { Icon(Icons.Filled.EmojiEvents, null, tint = colors.milestone, modifier = Modifier.size(28.dp)) },
+                value = "${state.stats.ecosystemWeeks}/52",
+                valueColor = colors.milestone,
+            )
         }
     }
     confirm?.let { lane ->
@@ -144,21 +147,16 @@ private fun ExpansionCard(store: GameStore, state: GameState) {
 }
 
 @Composable
-private fun ExitCard(store: GameStore, state: GameState) {
+private fun ExitSection(store: GameStore, state: GameState) {
     var confirm by remember { mutableStateOf(false) }
-    Section("Exit") {
-        KeyValue("Business value (ex-cash)", Format.money(state.enterpriseValue))
-        Meter("Toward an IPO valuation", state.enterpriseValue / IPO_VALUATION, caption = Format.money(IPO_VALUATION))
-        val annual = state.trailingRevenue(weeks = 52)
-        Meter("Toward IPO revenue", annual / IPO_ANNUAL_REVENUE, caption = "${Format.money(annual)} of ${Format.money(IPO_ANNUAL_REVENUE)}")
-        val blocker = state.ipoBlocker
-        if (blocker != null) {
-            Hint(blocker)
-        } else {
-            Button(onClick = { confirm = true }, modifier = Modifier.fillMaxWidth()) { Text("Go public") }
-            Hint("This ends the game.")
+    val blocker = state.ipoBlocker
+    GroupedSection("Exit", footer = blocker ?: "Going public ends the game. Or stay private: reach year 15 and you stay independent.") {
+        CardBlock {
+            Meter("Toward an IPO valuation", state.enterpriseValue / IPO_VALUATION, caption = "${Format.money(state.enterpriseValue)} of ${Format.money(IPO_VALUATION)}")
+            val annual = state.trailingRevenue(weeks = 52)
+            Meter("Toward IPO revenue", annual / IPO_ANNUAL_REVENUE, caption = "${Format.money(annual)} of ${Format.money(IPO_ANNUAL_REVENUE)}")
+            if (blocker == null) PrimaryButton("Go public", { confirm = true }, Modifier.fillMaxWidth())
         }
-        Hint("Or stay private: reach year 15 and you stay independent. Buyout offers can end things sooner.")
     }
     if (confirm) {
         ConfirmDialog(

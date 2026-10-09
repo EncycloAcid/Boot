@@ -1,42 +1,66 @@
 package com.boot.game.ui
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.Combo
+import com.boot.core.EndingKind
+import com.boot.core.EventChoice
 import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.GameState
@@ -50,44 +74,71 @@ import com.boot.core.pivotChoices
 import com.boot.core.resolvePivot
 import com.boot.game.GameStore
 
-private val blocking = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
 private val fullScreen = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false)
 
-/** A decision that blocks the calendar until you answer it. */
+/**
+ * A decision that blocks the calendar, as an iOS-style action sheet: it rises from the bottom and
+ * can't be swiped away until you pick. The first choice is the filled button.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun EventDialog(store: GameStore, state: GameState) {
+fun EventSheet(store: GameStore, state: GameState) {
     val e = state.events.first()
-    Dialog(onDismissRequest = {}, properties = blocking) {
-        Card(shape = RoundedCornerShape(24.dp)) {
+    // A fresh sheet per event, so each one rises on its own.
+    key(e.id) {
+        val sheet = rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+            confirmValueChange = { it != SheetValue.Hidden },
+        )
+        ModalBottomSheet(
+            onDismissRequest = {},
+            sheetState = sheet,
+            sheetGesturesEnabled = false,
+            containerColor = gameColors.grouped,
+            properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false, shouldDismissOnClickOutside = false),
+        ) {
             Column(
                 Modifier
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
+                    .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
+                    .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 e.lane?.let { lane ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        LaneBadge(lane, 28)
+                        LaneBadge(lane, 32.dp)
                         Spacer(Modifier.width(8.dp))
-                        Hint(lane.businessName)
+                        Hint(lane.businessName.uppercase())
                     }
                 }
-                Text(e.title, style = MaterialTheme.typography.headlineSmall)
-                Text(e.body, style = MaterialTheme.typography.bodyMedium)
-                e.choices.forEachIndexed { i, choice ->
-                    OutlinedCard(onClick = { store.perform { choose(i) } }, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(14.dp)) {
-                            Text(choice.label, style = MaterialTheme.typography.titleSmall)
-                            Hint(choice.detail)
-                        }
-                    }
-                }
+                Text(e.title, style = MaterialTheme.typography.headlineMediumEmphasized)
+                Text(e.body, style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.size(4.dp))
+                e.choices.forEachIndexed { i, choice -> ChoiceButton(choice, primary = i == 0) { store.perform { choose(i) } } }
             }
         }
     }
 }
 
-/** The mid-game choice: pick a second lane, then expand into it or pivot into it. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ChoiceButton(choice: EventChoice, primary: Boolean, onClick: () -> Unit) {
+    val content: @Composable () -> Unit = {
+        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(choice.label, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+            Text(choice.detail, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+        }
+    }
+    val modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp)
+    if (primary) {
+        Button(onClick = onClick, shapes = ButtonDefaults.shapes(), modifier = modifier) { content() }
+    } else {
+        FilledTonalButton(onClick = onClick, shapes = ButtonDefaults.shapes(), modifier = modifier) { content() }
+    }
+}
+
+/** The mid-game choice, as a full-screen page: pick a second lane, then expand into it or pivot into it. */
 @Composable
 fun PivotDialog(store: GameStore, state: GameState) {
     val offer = state.pendingPivot ?: return
@@ -98,58 +149,57 @@ fun PivotDialog(store: GameStore, state: GameState) {
     var confirmSale by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = {}, properties = fullScreen) {
-        Surface(Modifier.fillMaxSize()) {
+        Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Column(
                     Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
-                    Text(
-                        "THE PIVOT POINT · ${offer.trigger.title.uppercase()}",
-                        style = MaterialTheme.typography.labelLarge, color = colors.milestone, fontWeight = FontWeight.Bold,
-                    )
-                    Text(offer.headline, style = MaterialTheme.typography.headlineSmall)
-                    Text(offer.body, style = MaterialTheme.typography.bodyMedium)
-
-                    Text("Pick a second lane", style = MaterialTheme.typography.titleMedium)
-                    state.pivotChoices.forEach { l ->
-                        PivotLaneCard(state, l, selected = l == lane, suggested = l == offer.suggestedLane) { lane = l }
+                    Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "THE PIVOT POINT · ${offer.trigger.title.uppercase()}",
+                            style = MaterialTheme.typography.labelLarge, color = colors.milestone, fontWeight = FontWeight.Bold,
+                        )
+                        Text(offer.headline, style = MaterialTheme.typography.headlineLarge)
+                        Text(offer.body, style = MaterialTheme.typography.bodyLarge)
                     }
-
-                    Text("How do you take it on?", style = MaterialTheme.typography.titleMedium)
-                    Segmented(PivotMode.entries, mode, { it.title }) { mode = it }
-                    Hint(
-                        when (mode) {
+                    GroupedSection("Pick a second lane") {
+                        state.pivotChoices.forEachIndexed { i, l ->
+                            if (i > 0) RowDivider(68.dp)
+                            PivotLaneRow(state, l, selected = l == lane, suggested = l == offer.suggestedLane) { lane = l }
+                        }
+                    }
+                    GroupedSection(
+                        "How do you take it on?",
+                        footer = when (mode) {
                             PivotMode.PIVOT ->
                                 "${mode.summary} The ${state.startingLane.businessName.lowercase()} sells for " +
                                     "${Format.money(offer.salePrice)}. People whose skills carry over come with you."
                             PivotMode.EXPAND -> "${mode.summary} Setup costs ${Format.money(lane?.setupCost ?: 0.0)}."
                         },
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Fund it with venture money", style = MaterialTheme.typography.bodyLarge)
-                            Hint("Hardware and AI need millions. A round brings a board that can overrule you.")
+                    ) {
+                        CardBlock { Segmented(PivotMode.entries, mode, { it.title }) { mode = it } }
+                        RowDivider()
+                        ToggleRow("Fund it with venture money", useVenture, "Hardware and AI need millions. A round brings a board.") {
+                            useVenture = it
                         }
-                        Switch(checked = useVenture, onCheckedChange = { useVenture = it })
                     }
                 }
-                HorizontalDivider()
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                HorizontalDivider(thickness = 0.5.dp, color = colors.separator)
+                Column(Modifier.background(colors.bar).padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     val blocker = lane?.let { state.pivotBlocker(it, mode, useVenture) }
                     if (blocker != null) Hint(blocker, colors.bad)
-                    Button(
-                        onClick = { lane?.let { l -> store.perform { resolvePivot(l, mode, useVenture) } } },
+                    PrimaryButton(
+                        "${mode.title} into ${lane?.title ?: "…"}",
+                        { lane?.let { l -> store.perform { resolvePivot(l, mode, useVenture) } } },
+                        Modifier.fillMaxWidth(),
                         enabled = lane != null && blocker == null,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("${mode.title} into ${lane?.title ?: "…"}") }
+                    )
                     if (offer.trigger == PivotTrigger.BUYOUT_OFFER) {
-                        TextButton(onClick = { confirmSale = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Sell the whole company and walk away", color = colors.bad)
-                        }
+                        PlainButton("Sell the whole company and walk away", { confirmSale = true }, Modifier.fillMaxWidth(), colors.bad)
                     }
                 }
             }
@@ -159,6 +209,7 @@ fun PivotDialog(store: GameStore, state: GameState) {
                 title = "Sell everything?",
                 text = "${offer.bidder ?: "The buyer"} takes the whole company. The game ends here.",
                 confirm = "Sell",
+                destructive = true,
                 onConfirm = { store.perform { acceptPivotBuyout() } },
                 onDismiss = { confirmSale = false },
             )
@@ -167,65 +218,91 @@ fun PivotDialog(store: GameStore, state: GameState) {
 }
 
 @Composable
-private fun PivotLaneCard(state: GameState, lane: Lane, selected: Boolean, suggested: Boolean, onClick: () -> Unit) {
+private fun PivotLaneRow(state: GameState, lane: Lane, selected: Boolean, suggested: Boolean, onClick: () -> Unit) {
     val colors = gameColors
-    val accent = colors.lane(lane)
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("pivot-lane-${lane.name}"),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) accent.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) accent else MaterialTheme.colorScheme.outlineVariant),
-    ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            LaneBadge(lane, 36)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(lane.title, style = MaterialTheme.typography.titleSmall)
-                    if (suggested) Pill("head start", colors.good)
-                    if (lane.isCapitalIntensive) Pill("VC", colors.warn)
-                }
-                Combo.between(state.startingLane, lane)?.let { Hint("Unlocks ${it.product}: ${it.pitch}") }
-            }
+    val combo = Combo.between(state.startingLane, lane)
+    Box(Modifier.testTag("pivot-lane-${lane.name}")) {
+        ListRow(
+            lane.title + (if (suggested) " · head start" else "") + (if (lane.isCapitalIntensive) " · VC" else ""),
+            subtitle = combo?.let { "Unlocks ${it.product}: ${it.pitch}" },
+            leading = { LaneBadge(lane, 40.dp, selected = selected, morph = true) },
+            onClick = onClick,
+        ) {
+            if (selected) Icon(Icons.Filled.CheckCircle, null, tint = colors.lane(lane), modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
 
-/** The story of your run. */
+/** The story of your run, with an expressive burst behind the verdict. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun EndingDialog(store: GameStore, state: GameState) {
     val e = state.ending ?: return
+    val colors = gameColors
+    val spin = rememberInfiniteTransition(label = "ending")
+    val angle by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(24_000, easing = LinearEasing), RepeatMode.Restart), label = "angle")
+    val good = e.kind == EndingKind.IPO || e.kind == EndingKind.ACQUIRED || e.kind == EndingKind.INDIE
+    val accent = if (good) MaterialTheme.colorScheme.primary else colors.bad
     Dialog(onDismissRequest = {}, properties = fullScreen) {
-        Surface(Modifier.fillMaxSize()) {
+        Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Column(
                     Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
-                    Text(e.kind.title.uppercase(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(e.title, style = MaterialTheme.typography.displaySmall)
-                    Text(e.summary, style = MaterialTheme.typography.titleMedium)
-                    HorizontalDivider()
-                    e.story.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                    HorizontalDivider()
-                    TileRow {
-                        StatTile("Final valuation", Format.money(e.valuation), Modifier.weight(1f))
-                        StatTile("You walk away with", Format.money(e.founderTakeHome), Modifier.weight(1f))
+                    Column(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Box(
+                                Modifier
+                                    .size(132.dp)
+                                    .rotate(angle)
+                                    .clip((if (good) MaterialShapes.SoftBurst else MaterialShapes.Cookie9Sided).toShape())
+                                    .background(accent.copy(alpha = 0.18f)),
+                            )
+                            Text(e.kind.emoji, style = MaterialTheme.typography.displaySmall)
+                        }
+                        Spacer(Modifier.size(12.dp))
+                        Text(e.kind.title.uppercase(), style = MaterialTheme.typography.labelLarge, color = accent, fontWeight = FontWeight.Bold)
+                        Text(e.title, style = MaterialTheme.typography.displaySmallEmphasized, textAlign = TextAlign.Center)
+                        Spacer(Modifier.size(6.dp))
+                        Text(e.summary, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 8.dp))
                     }
-                    TileRow {
-                        StatTile("Ended", GameClock.label(e.week), Modifier.weight(1f))
-                        StatTile("Prestige", if (e.ecosystem) "Ecosystem" else "—", Modifier.weight(1f))
+                    GroupedSection(null) {
+                        Column(Modifier.padding(8.dp)) {
+                            TileRow {
+                                StatTile("Final valuation", Format.money(e.valuation), Modifier.weight(1f))
+                                StatTile("You walk away with", Format.money(e.founderTakeHome), Modifier.weight(1f))
+                            }
+                        }
+                        RowDivider()
+                        ValueRow("Ended", GameClock.label(e.week))
+                        RowDivider()
+                        ValueRow("Prestige", if (e.ecosystem) "Ecosystem company" else "—", if (e.ecosystem) colors.milestone else Color.Unspecified)
+                    }
+                    GroupedSection("The story") {
+                        e.story.forEachIndexed { i, line ->
+                            if (i > 0) RowDivider()
+                            Text(line, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+                        }
                     }
                 }
-                Button(onClick = { store.abandon() }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("New game") }
+                Box(Modifier.background(colors.bar).padding(16.dp)) {
+                    PrimaryButton("New game", { store.abandon() }, Modifier.fillMaxWidth())
+                }
             }
         }
     }
 }
+
+private val EndingKind.emoji: String
+    get() = when (this) {
+        EndingKind.IPO -> "🔔"
+        EndingKind.ACQUIRED -> "🤝"
+        EndingKind.INDIE -> "🏠"
+        EndingKind.BURNOUT -> "🕯️"
+        EndingKind.BANKRUPT -> "💸"
+        EndingKind.OUSTED -> "🚪"
+    }
