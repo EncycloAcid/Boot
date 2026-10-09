@@ -99,6 +99,7 @@ private fun Hero(state: GameState) {
                 Spacer(Modifier.size(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HeroChip("You own ${Format.percent(state.venture.founderEquity)}", MaterialTheme.colorScheme.onPrimaryContainer)
+                    HeroChip("${state.researchPoints.toInt()} RP", MaterialTheme.colorScheme.onPrimaryContainer)
                     HeroChip(
                         "${Format.signedMoney(weeklyProfit)}/wk",
                         if (weeklyProfit >= 0) colors.good else colors.bad,
@@ -149,7 +150,7 @@ private fun LanesSection(store: GameStore, state: GameState) {
     val colors = gameColors
     val footer = when {
         state.pivot == null -> "The Pivot Point arrives between year 2 and year 4."
-        state.expansionBlocker == null -> "Every lane is profitable. You can expand from Money & Board."
+        state.expansionBlocker == null -> "Every lane is profitable. You can expand from the Company tab."
         else -> null
     }
     GroupedSection("Your lanes", footer = footer) {

@@ -41,7 +41,6 @@ import com.boot.core.DeviceSpec
 import com.boot.core.DeviceTier
 import com.boot.core.Format
 import com.boot.core.GameClock
-import com.boot.core.GameScope
 import com.boot.core.GameState
 import com.boot.core.HardwareLab
 import com.boot.core.Lane
@@ -50,11 +49,9 @@ import com.boot.core.TrainingSize
 import com.boot.core.UpdateStyle
 import com.boot.core.acceptContract
 import com.boot.core.buyGPUs
-import com.boot.core.cancelGame
 import com.boot.core.declineContract
 import com.boot.core.gpuCost
 import com.boot.core.launchDevice
-import com.boot.core.launchGame
 import com.boot.core.orderUnits
 import com.boot.core.setAIFocus
 import com.boot.core.setAdLoad
@@ -63,7 +60,6 @@ import com.boot.core.setMonetization
 import com.boot.core.setScopePolicy
 import com.boot.core.setUpdateStyle
 import com.boot.core.startDevice
-import com.boot.core.startGame
 import com.boot.core.startTraining
 import com.boot.game.GameStore
 
@@ -76,7 +72,7 @@ fun LanesScreen(store: GameStore, state: GameState) {
         }
         item { LaneHero(state, lane) }
         when (lane) {
-            Lane.GAMES -> gamesItems(store, state)
+            Lane.GAMES -> studioItems(store, state)
             Lane.WEBSITES -> webItems(store, state)
             Lane.APPS -> appsItems(store, state)
             Lane.SOCIAL -> socialItems(store, state)
@@ -96,7 +92,10 @@ private fun LaneHero(state: GameState, lane: Lane) {
             Spacer(Modifier.width(14.dp))
             Column {
                 Text(lane.businessName, style = MaterialTheme.typography.headlineSmall)
-                Text(lane.pitch, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    lane.pitch, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
             }
         }
         Column(Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -112,72 +111,6 @@ private fun LaneHero(state: GameState, lane: Lane) {
                 StatTile(
                     "Market", Format.percent(state.world.era.demand(lane) * state.world.competition(lane)), Modifier.weight(1f),
                     state.world.rival(lane)?.let { "vs ${it.name}" },
-                )
-            }
-        }
-    }
-}
-
-// Games
-
-private fun LazyListScope.gamesItems(store: GameStore, state: GameState) {
-    val g = state.games ?: return
-    item {
-        val p = g.project
-        if (p != null) {
-            GroupedSection("In development", footer = if (p.isReady) "Content complete. Launch now, or keep polishing for a better review." else null) {
-                CardBlock {
-                    Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized)
-                    Hint("${p.scope.title} · ${p.weeksInDev} weeks in · ${p.scope.weeklyBudget.perWeek()} budget")
-                    Meter("Content", p.completion, wavy = !p.isReady)
-                    Meter("Polish", (p.polish / (p.scope.work * 1.5)).coerceAtMost(1.0), gameColors.milestone)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        PrimaryButton("Launch ${p.title}", { store.perform { launchGame() } }, enabled = p.isReady)
-                        PlainButton("Cancel", { store.perform { cancelGame() } }, color = gameColors.bad)
-                    }
-                }
-            }
-        } else {
-            GroupedSection("Start a game", footer = "Bigger games take longer and cost more each week, and land harder either way.") {
-                GameScope.entries.forEachIndexed { i, scope ->
-                    if (i > 0) RowDivider()
-                    ActionRow(scope.title, "${scope.work.toInt()} work · ${scope.weeklyBudget.perWeek()} budget", "Start") {
-                        store.perform { startGame(scope) }
-                    }
-                }
-            }
-        }
-    }
-    item {
-        GroupedSection("Fanbase", footer = "Flops knock fan trust down and only hits bring it back. The fanbase never forgets.") {
-            ValueRow("Fans", Format.count(g.fans))
-            RowDivider()
-            CardBlock {
-                Meter(
-                    "Fan trust", g.fanTrust / 1.2, if (g.fanTrust < 0.7) gameColors.warn else gameColors.good,
-                    String.format(java.util.Locale.US, "%.2f", g.fanTrust),
-                )
-            }
-            RowDivider()
-            ValueRow("Hits", "${g.hits}")
-            RowDivider()
-            ValueRow("Flops", "${g.flops}")
-        }
-    }
-    item {
-        GroupedSection("Releases") {
-            if (g.releases.isEmpty()) CardBlock { Hint("No games shipped yet.") }
-            g.releases.forEachIndexed { i, r ->
-                if (i > 0) RowDivider()
-                ListRow(
-                    r.title,
-                    subtitle = "${r.verdict} · review ${r.review} · ${Format.money(r.lifetimeSales)} lifetime",
-                    value = r.weeklySales.perWeek(),
-                    valueColor = when {
-                        r.review >= 85 -> gameColors.good
-                        r.review < 55 -> gameColors.bad
-                        else -> Color.Unspecified
-                    },
                 )
             }
         }

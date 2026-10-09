@@ -131,8 +131,8 @@ class HardwareLab {
     }
 
     /** Book factory capacity. Paid on order, delivered after the lead time. */
-    internal fun book(model: String, units: Int, week: Int) {
-        val arrival = max(week, productionHaltedUntil) + LEAD_TIME_WEEKS
+    internal fun book(model: String, units: Int, week: Int, leadTime: Int = LEAD_TIME_WEEKS) {
+        val arrival = max(week, productionHaltedUntil) + leadTime
         orders += ProductionOrder(nextId, model, units, arrival)
         nextId += 1
     }
@@ -210,7 +210,7 @@ class HardwareLab {
         }
 
         // Recalls: the battery issue that costs you a quarter.
-        val defectRisk = (1 - m.quality / 100).pow(2) * 0.006
+        val defectRisk = (1 - m.quality / 100).pow(2) * 0.006 * ctx.mods.risk
         if (m.unitsSold > 1_000 && ctx.week >= productionHaltedUntil && rng.chance(defectRisk)) {
             report.add(Incident.Event(EventKind.Recall(m.name, m.unitsSold, m.spec.price)))
         }

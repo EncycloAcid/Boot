@@ -69,7 +69,7 @@ private fun CrossoverSection(store: GameStore, c: Crossover) {
                 }
                 c.isBuilding -> Meter(
                     "Building", 1 - c.buildWeeksLeft.toDouble() / combo.buildWeeks,
-                    caption = "${c.buildWeeksLeft} weeks left", wavy = true,
+                    caption = "${Format.weeks(c.buildWeeksLeft)} left", wavy = true,
                 )
                 else -> Row(verticalAlignment = Alignment.CenterVertically) {
                     PrimaryButton("Build for ${Format.money(combo.buildCost)}", { store.perform { buildCrossover(combo) } })

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,12 @@ import com.boot.core.Employee
 import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.Research
+import com.boot.core.freeDesks
+import com.boot.core.moveOffice
+import com.boot.core.train
+import com.boot.core.trainingBlocker
+import com.boot.core.trainingCost
 import com.boot.core.assign
 import com.boot.core.fire
 import com.boot.core.hire
@@ -44,6 +51,7 @@ fun PeopleScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { FounderSection(store, state) }
         if (state.lanes.size > 1) item { AttentionSection(store, state) }
+        item { OfficeSection(store, state) }
         item { HiringSection(store, state) }
         item { TeamSection(store, state) }
     }
@@ -70,7 +78,7 @@ private fun FounderSection(store: GameStore, state: GameState) {
         RowDivider()
         ListRow(
             if (f.isOnVacation) "On vacation" else "Take two weeks off",
-            subtitle = if (f.isOnVacation) "${f.vacationWeeksLeft} weeks left. Nothing moves without you." else "Restores energy. The company gets none of you meanwhile.",
+            subtitle = if (f.isOnVacation) "${Format.weeks(f.vacationWeeksLeft)} left. Nothing moves without you." else "Restores energy. The company gets none of you meanwhile.",
             onClick = if (f.isOnVacation) null else ({ store.perform { takeVacation() } }),
             chevron = !f.isOnVacation,
         )
@@ -92,13 +100,47 @@ private fun AttentionSection(store: GameStore, state: GameState) {
 }
 
 @Composable
+private fun OfficeSection(store: GameStore, state: GameState) {
+    var confirm by remember { mutableStateOf(false) }
+    val next = state.office.next
+    GroupedSection(
+        "Office",
+        footer = if (state.staff.size > state.office.desks) "It's crowded in here. Morale drops every week until you move." else "Every hire needs a desk. Move up to grow.",
+    ) {
+        ValueRow(state.office.title, "${state.staff.size}/${state.office.desks} desks")
+        RowDivider()
+        ValueRow("Rent", state.office.rent.perWeek())
+        if (next != null) {
+            RowDivider()
+            ActionRow("Move to a ${next.title.lowercase()}", "${next.desks} desks · ${next.rent.perWeek()} rent", Format.money(next.moveCost), enabled = state.cash >= next.moveCost) {
+                confirm = true
+            }
+        }
+    }
+    if (confirm && next != null) {
+        ConfirmDialog(
+            title = "Move to a ${next.title.lowercase()}?",
+            text = "Moving costs ${Format.money(next.moveCost)} and rent goes up to ${next.rent.perWeek()}.",
+            confirm = "Move",
+            onConfirm = { store.perform { moveOffice() } },
+            onDismiss = { confirm = false },
+        )
+    }
+}
+
+@Composable
 private fun HiringSection(store: GameStore, state: GameState) {
-    GroupedSection("Hiring", footer = "Rivals compete for the same people. Contested candidates vanish fast. Recruiting costs two weeks' salary.") {
+    GroupedSection(
+        "Hiring",
+        footer = (if (state.freeDesks <= 0) "No free desks. Move to a bigger office to hire. " else "") +
+            "Rivals compete for the same people. Contested candidates vanish fast. Recruiting costs two weeks' salary.",
+    ) {
         state.candidates.forEachIndexed { i, c ->
             if (i > 0) RowDivider(68.dp)
             ListRow(
                 c.name,
-                subtitle = "${c.role.title} · skill ${c.skill} · ${c.askingSalary.perWeek()}" + (c.contestedBy?.let { "\n$it is circling" } ?: ""),
+                subtitle = "${c.role.title} · skill ${c.skill} · ${c.askingSalary.perWeek()}\nDesign ${c.design} · Tech ${c.tech} · Research ${c.research}" +
+                    (c.contestedBy?.let { "\n$it is circling" } ?: ""),
                 leading = { Initials(c.name, c.contestedBy != null) },
             ) {
                 if (state.lanes.size == 1) {
@@ -132,6 +174,8 @@ private fun Initials(name: String, contested: Boolean) {
 @Composable
 private fun TeamSection(store: GameStore, state: GameState) {
     var firing by remember { mutableStateOf<Employee?>(null) }
+    var training by remember { mutableStateOf<Employee?>(null) }
+    val canTrain = Research.TRAINING in state.researched
     GroupedSection(
         "Team",
         footer = "${state.payroll.perWeek()} payroll · ${state.headquarters.name} (${state.headquarters.rent.perWeek()} rent)",
@@ -139,8 +183,24 @@ private fun TeamSection(store: GameStore, state: GameState) {
         if (state.staff.isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
         state.staff.forEachIndexed { i, e ->
             if (i > 0) RowDivider(68.dp)
-            EmployeeRow(e, state.lanes, onAssign = { lane -> store.perform { assign(e.id, lane) } }, onFire = { firing = e })
+            EmployeeRow(
+                e, state.lanes,
+                onAssign = { lane -> store.perform { assign(e.id, lane) } },
+                onFire = { firing = e },
+                onTrain = if (canTrain) ({ training = e }) else null,
+            )
         }
+    }
+    training?.let { e ->
+        val (rp, cost) = state.trainingCost(e)
+        val blocker = state.trainingBlocker(e)
+        ConfirmDialog(
+            title = "Train ${e.name}?",
+            text = blocker ?: "A course costs $rp RP and ${Format.money(cost)}. Skill goes up by one, and so does their pay.",
+            confirm = if (blocker == null) "Train" else "OK",
+            onConfirm = { if (blocker == null) store.perform { train(e.id) } },
+            onDismiss = { training = null },
+        )
     }
     firing?.let { e ->
         ConfirmDialog(
@@ -155,13 +215,14 @@ private fun TeamSection(store: GameStore, state: GameState) {
 }
 
 @Composable
-private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Unit, onFire: () -> Unit) {
+private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Unit, onFire: () -> Unit, onTrain: (() -> Unit)?) {
     val colors = gameColors
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Initials(e.name, false)
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(e.name, style = MaterialTheme.typography.bodyLarge)
             Text("${e.role.title} · skill ${e.skill} · ${e.salary.perWeek()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Design ${e.design} · Tech ${e.tech} · Research ${e.research}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Box(
                 Modifier
                     .padding(top = 6.dp)
@@ -179,6 +240,9 @@ private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Uni
             }
         }
         MenuButton(e.lane?.short ?: "Unassigned", listOf<Lane?>(null) + lanes, { it?.businessName ?: "Unassigned" }, onPick = onAssign)
+        if (onTrain != null) {
+            IconButton(onClick = onTrain) { Icon(Icons.Filled.School, "Train ${e.name}", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
         IconButton(onClick = onFire) { Icon(Icons.Filled.PersonRemove, "Let ${e.name} go", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }

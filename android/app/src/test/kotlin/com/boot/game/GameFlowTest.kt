@@ -14,15 +14,26 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.test.performScrollToNode
 import com.boot.core.Autopilot
 import com.boot.core.Combo
 import com.boot.core.EndingKind
+import com.boot.core.GameConcept
+import com.boot.core.GameSize
+import com.boot.core.Genre
 import com.boot.core.Lane
+import com.boot.core.Platform
+import com.boot.core.Topic
+import com.boot.core.advance
+import com.boot.core.startGame
 import com.boot.core.choose
 import com.boot.game.ui.BootApp
 import com.boot.game.ui.BootTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -72,6 +83,18 @@ class GameFlowTest {
         roots[roots.fetchSemanticsNodes().size - 1].save(name)
     }
 
+    /** Scroll a button into view clear of the floating time toolbar, then tap it. */
+    private fun tapInList(text: String) {
+        val bounds = compose.onNodeWithText(text).performScrollTo().fetchSemanticsNode().boundsInRoot
+        val height = compose.onRoot().fetchSemanticsNode().size.height
+        if (bounds.bottom > height * 0.72f) {
+            compose.onAllNodes(hasScrollAction()).onFirst().performTouchInput { swipeUp(startY = centerY, endY = centerY - height * 0.3f) }
+            compose.waitForIdle()
+        }
+        compose.onNodeWithText(text).performClick()
+        compose.waitForIdle()
+    }
+
     private fun tab(label: String) {
         compose.onNodeWithText(label).performClick()
         compose.waitForIdle()
@@ -94,12 +117,65 @@ class GameFlowTest {
         screen("02-dashboard")
 
         tab("Lanes")
-        compose.onAllNodesWithText("Start")[0].performClick()
+        screen("03-studio")
+        tapInList("Design a new game")
+        compose.waitForIdle()
+        overlay("15-designer-concept")
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        overlay("16-designer-platform")
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        overlay("17-designer-focus")
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        overlay("18-designer-summary")
+        compose.onNodeWithText("Start development").performClick()
+        compose.waitForIdle()
         assertNotNull(store.state!!.games!!.project)
+        assertFalse(store.designing)
         compose.onNodeWithText("Next week").performClick()
         compose.waitForIdle()
         assertEquals(1, store.state!!.week)
-        screen("03-games-lane")
+        screen("19-in-development")
+    }
+
+    @Test
+    fun shipAGameReadTheReviewsAndTheReport() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Lantern Works", "Ivy", Lane.GAMES, seed = 21)
+            store.perform {
+                startGame(GameConcept("Moss Knight", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL))
+                while (games!!.project?.isReady != true || games!!.project!!.bugs > 2) {
+                    advance()
+                    while (needsDecision) choose(events[0].choices.size - 1)
+                }
+            }
+            store.openLane(Lane.GAMES)
+        }
+        screen("20-ready-to-ship")
+        tapInList("Release Moss Knight")
+        compose.waitForIdle()
+        val release = store.state!!.games!!.releases.single()
+        assertEquals(release.id, store.state!!.games!!.unseenReview)
+        compose.onNodeWithText("THE REVIEWS ARE IN").assertExists()
+        overlay("21-reviews")
+        compose.onNodeWithText("Game report").performClick()
+        compose.waitForIdle()
+        assertNull(store.state!!.games!!.unseenReview)
+        assertEquals(release.id, store.openRelease)
+        overlay("22-game-report")
+    }
+
+    @Test
+    fun researchTabShowsTheTree() {
+        launch()
+        compose.runOnIdle { store.newGame("Lab Rats", "Cy", Lane.GAMES, seed = 22) }
+        tab("Research")
+        compose.onNodeWithText("Research points").assertExists()
+        compose.onNodeWithText("Medium games").assertExists()
+        screen("23-research")
     }
 
     @Test
@@ -124,13 +200,16 @@ class GameFlowTest {
 
         // Settle whatever else is queued so the tabs are visible.
         compose.runOnIdle { store.perform { while (events.isNotEmpty()) choose(0) } }
-        tab("Combos")
+        tab("Company")
+        compose.onNodeWithText("Combos").performClick()
+        compose.waitForIdle()
         compose.onAllNodesWithText("Trending Hub").onFirst().assertExists()
         screen("05-combos")
+        compose.onNodeWithText("Money & Board").performClick()
+        compose.waitForIdle()
+        screen("07-money")
         tab("People")
         screen("06-people")
-        tab("Money")
-        screen("07-money")
         tab("Home")
         screen("08-dashboard-two-lanes")
     }

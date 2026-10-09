@@ -2,13 +2,14 @@
 
 A company management game for Android and macOS. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point forces you to take on a second lane. Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, burn out, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
 
-This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
+This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers, except for the studio update (the Games studio, research, offices and training), which so far exists only in the Kotlin version. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
 
 ## Core loop
 
 - Time moves in **weeks**. A full game is 15 years (780 weeks).
 - Each week you make decisions (hire, assign, start projects, set dials), then advance. Advancing stops whenever a decision needs you: an event, a board demand, or the Pivot Point.
-- Money in comes from your lanes. Money out is lane costs, payroll and rent. Rent grows with headcount: cramped apartment, coworking desks, warehouse office, downtown floor, campus.
+- Money in comes from your lanes. Money out is lane costs, payroll and rent.
+- **Offices** have desks: cramped apartment (2), coworking desks (6), studio floor (16), downtown office (45), campus. Every hire needs a desk; moving up costs money and raises rent. Squeeze in more people than desks (after a merger, say) and morale drops every week until you move.
 - Eight straight weeks with negative cash is bankruptcy.
 
 ### You, the founder
@@ -23,14 +24,24 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 
 - Five roles: engineer, designer, researcher, marketer, operations. Each lane weights roles differently (AI wants researchers; games want designers; social platforms need operations for moderation).
 - Each person has a skill (1 to 10), a salary and morale. Low morale cuts output and makes people quit.
+- Besides skill, everyone has **design, tech and research** talents, weighted by role. Design and tech drive game development; research generates research points.
+- **Training** (once researched) sends someone on a course for research points and cash: skill and talents go up by one, and so does their pay.
 - **Rivals compete for talent.** Some candidates are contested by a rival studio and disappear in two weeks. Rivals also try to poach your best people; you can counter-offer or let them go, which makes that rival stronger.
 
 ## The six lanes
 
-### Games: hit-driven and volatile
-- Projects come in three scopes (small, mid-size, blockbuster) with very different work and budgets.
-- Content progress and **polish** are tracked separately. You can launch once the content is done, or keep polishing for a better review.
-- The **review score** drives a launch-week spike (cubic in the review), which then decays fast.
+### Games: a Game Dev Tycoon style studio
+- **Design a game.** Pick a topic (37, ten to start, more from research), one genre or two (action, adventure, RPG, simulation, strategy, casual), an audience (young, everyone, mature, once researched), one or more platforms and a size (small, then medium, large and AAA through research). Topic and genre, genre and platform, and topic and audience each fit great, okay or badly.
+- **Three stages, nine focus areas.** Engine, gameplay and story/quests; then dialogues, level design and AI; then world design, graphics and sound. You split each stage's effort with sliders, and each genre rewards a different split.
+- **Points.** Every week the team produces **design** and **tech** points, weighted by their talents, the genre's preferred design/tech ratio and the engine. Work also creates **bugs**. Once the content is done the team fixes bugs and adds **polish**. Crunch speeds things up but makes more bugs.
+- **Hype** builds during development, at the yearly convention and from marketing campaigns (once researched): a press release, an ad campaign or a TV blitz.
+- **Reviews.** Four outlets (Pixel Gazette, GameSpotty, Critical Hit, The Loading Screen) each score the game out of 10. Scores compare the game against your own best so far, so you have to keep getting better to keep scoring well, the way Game Dev Tycoon does.
+- **Sales** follow the score, hype, fans and how many players own the platforms you picked, with a weekly sales chart that decays after launch. Platforms come and go by year, each with a licence fee, a player base and a market share curve; late in the game you can build your own handheld.
+- **Game reports** after each launch reveal what worked (fits, focus splits, the design/tech ratio) and store it in a notebook the game designer reads from, so you learn the rules by playing.
+- **Engines.** Engine research items (2D/3D graphics, sound, AI, physics, multiplayer, open world and more) can be built into a custom engine for RP and cash; better engines make every game's points go further.
+- **Contracts and publishers.** Contract jobs for other companies pay cash and a few research points if you deliver on time. Publisher deals pay half an advance up front for a game to spec, with the rest only if it scores well enough.
+- **Sequels** (once researched) keep the topic and genre, start with hype from the original and sell better if it scored 7 or more. A sequel within a year of the original is marked down as rushed, and repeating your last topic and genre without calling it a sequel is marked down too.
+- **Trends** come and go (a genre or topic everyone wants), and a **yearly convention** asks whether to book a small booth, a big booth or a keynote, or skip it.
 - **Fans** amplify future launches. **Fan trust** drops with every flop and only hits bring it back: the fanbase never forgets.
 
 ### Websites: an agency sim
@@ -64,6 +75,15 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - Products: consumer chatbot, developer API or enterprise tools. GPUs can be rented (price swings with the era) or bought.
 - Regulators show up the moment you get big. Rival labs poach researchers aggressively.
 - The highest ceiling in the game and the fastest way to go broke.
+
+## Research
+
+Your team generates **research points (RP)** every week: researchers and research talent count most, game development adds some, and an R&D lab adds half again. RP buy items from one tree:
+
+- **Studio:** target audience, marketing campaigns, sequels, custom engines, medium/large/AAA games, multi-genre and multi-platform releases, and new topics.
+- **Engine:** features that become parts of custom engines (graphics generations, sound, save systems, AI, physics, multiplayer, online services, cross-play, procedural generation, open world, photoreal rendering and so on).
+- **Company:** a training program and an R&D lab.
+- **Lanes:** three upgrades for each other lane (site templates and your own CMS for websites, push notifications and A/B testing for apps, spam filters and recommendations for social, supply chain deals and battery safety for hardware, efficient training and safety evals for AI).
 
 ## Capital-intensive lanes and investors
 
@@ -141,6 +161,7 @@ The ending screen tells the story of your run: where you started, what forced th
 
 - Multiple concurrent products per lane (a second app, two games in parallel).
 - Rival companies as full simulations, plus acquisitions you make yourself.
-- Art, sound and the apartment-to-campus office view.
+- Art, sound and an illustrated office view.
+- The studio update in the Swift (macOS and terminal) version.
 - Steam-style achievements per ending variant.
 - Proper tuning passes with real playtesters; the current numbers come from autopilot runs.

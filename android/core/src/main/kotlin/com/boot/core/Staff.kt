@@ -29,19 +29,37 @@ enum class Role {
         }
 }
 
+/** Design, tech and research talent follow from a role: designers design, engineers build. */
+internal fun roleDesign(role: Role, skill: Int) = (skill + when (role) {
+    Role.DESIGNER -> 2; Role.MARKETER -> 0; Role.ENGINEER -> -2; Role.RESEARCHER -> -1; Role.OPERATOR -> -2
+}).clamped(1, 10)
+
+internal fun roleTech(role: Role, skill: Int) = (skill + when (role) {
+    Role.ENGINEER -> 2; Role.RESEARCHER -> 1; Role.DESIGNER -> -2; Role.MARKETER -> -3; Role.OPERATOR -> -1
+}).clamped(1, 10)
+
+internal fun roleResearch(role: Role, skill: Int) = (skill + when (role) {
+    Role.RESEARCHER -> 3; Role.ENGINEER -> 0; Role.DESIGNER -> -1; Role.MARKETER -> -3; Role.OPERATOR -> -3
+}).clamped(1, 10)
+
 @Serializable
 data class Employee(
     val id: Int,
     val name: String,
     val role: Role,
     /** 1...10 */
-    val skill: Int,
+    var skill: Int,
     /** Weekly. */
     var salary: Double,
     /** 0...1. Low morale cuts output and makes people quit. */
     var morale: Double,
     var lane: Lane?,
     val hiredWeek: Int,
+    /** Game Dev Tycoon style talents, 1...10. */
+    var design: Int = roleDesign(role, skill),
+    var tech: Int = roleTech(role, skill),
+    var research: Int = roleResearch(role, skill),
+    var lastTrainedWeek: Int = -1_000,
 ) {
     internal val moraleFactor: Double get() = 0.5 + 0.5 * morale
 
@@ -58,6 +76,9 @@ data class Candidate(
     /** A rival studio is circling. If you don't hire soon, they're gone. */
     val contestedBy: String?,
     val expiresWeek: Int,
+    val design: Int = roleDesign(role, skill),
+    val tech: Int = roleTech(role, skill),
+    val research: Int = roleResearch(role, skill),
 )
 
 @Serializable
@@ -99,6 +120,9 @@ data class Staffing(
     var research: Double = 0.0,
     var headcount: Int = 0,
     var averageSkill: Double = 5.0,
+    /** Team design and tech talent, 1...10, for making games. */
+    var avgDesign: Double = 5.0,
+    var avgTech: Double = 5.0,
 )
 
 internal object Names {

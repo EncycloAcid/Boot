@@ -16,6 +16,10 @@ data class LaneModifiers(
     var computeCost: Double = 1.0,
     /** Additive weekly toxicity on a social platform. */
     var toxicity: Double = 0.0,
+    /** Multiplier on bad luck: recalls, regulator attention. */
+    var risk: Double = 1.0,
+    /** Multiplier on capability gained per training run. */
+    var gain: Double = 1.0,
 )
 
 /** Everything a lane needs to simulate one week. */
@@ -53,6 +57,7 @@ sealed interface Incident {
     data class Scar(val kind: ScarKind, val severity: Double, val note: String) : Incident
     data class Event(val kind: EventKind) : Incident
     data class Stat(val key: StatKey) : Incident
+    data class Research(val points: Double) : Incident
 }
 
 enum class StatKey { HIT, FLOP, RECALL, SCANDAL, RELEASE, SOLD_OUT, OVERSTOCK }

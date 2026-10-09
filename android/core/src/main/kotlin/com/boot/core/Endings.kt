@@ -184,6 +184,15 @@ private fun GameState.endingStory(): List<String> {
         story += "You built an ecosystem company, but never held it long enough to make it count."
     }
 
+    games?.let { g ->
+        g.bestGame?.let { best ->
+            val score = String.format(java.util.Locale.US, "%.1f", best.score)
+            story += "You shipped ${plural(g.releases.size, "game")}. The best was ${best.title}, ${Format.a(best.concept.topic.title.lowercase())} " +
+                "${best.concept.genreLower} game that scored $score/10."
+        }
+    }
+    if (researched.isNotEmpty()) story += "Your labs researched ${plural(researched.size, "breakthrough")}."
+
     val built = crossovers.filter { it.built }.map { it.combo.product }
     if (built.isNotEmpty()) story += "Crossovers: ${built.joinToString(", ")}."
 

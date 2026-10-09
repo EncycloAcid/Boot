@@ -62,6 +62,7 @@ fun GameState.rename(name: String) {
 fun GameState.hire(candidateId: Int, lane: Lane? = null) {
     requireLive()
     val c = candidates.firstOrNull { it.id == candidateId } ?: throw invalid("That candidate took another job.")
+    if (freeDesks <= 0) throw notAvailable("No free desks in the ${office.title.lowercase()}. Move somewhere bigger first.")
     val fee = c.askingSalary * 2
     if (cash < fee) throw insufficientFunds("Recruiting costs ${money(fee)}.")
     candidates = candidates - c
@@ -84,28 +85,6 @@ fun GameState.assign(employeeId: Int, lane: Lane?) {
     val e = staff.firstOrNull { it.id == employeeId } ?: throw invalid("No such employee.")
     if (lane != null && lane !in lanes) throw notAvailable("You don't run ${lane.title}.")
     e.lane = lane
-}
-
-// Games
-
-fun GameState.startGame(scope: GameScope) {
-    require(Lane.GAMES)
-    val g = games!!
-    g.startProject(scope, rng)
-    addLog("Started development on ${g.project!!.title}, a ${scope.title.lowercase()} game.", LogTone.NEUTRAL, Lane.GAMES)
-}
-
-fun GameState.cancelGame() {
-    require(Lane.GAMES)
-    val p = games?.project ?: throw invalid("Nothing in development.")
-    games!!.cancelProject()
-    addLog("Cancelled ${p.title} after ${p.weeksInDev} weeks.", LogTone.BAD, Lane.GAMES)
-}
-
-fun GameState.launchGame() {
-    require(Lane.GAMES)
-    val report = games!!.launch(context(Lane.GAMES), rng)
-    handle(report.incidents, Lane.GAMES)
 }
 
 // Websites
@@ -171,10 +150,10 @@ fun GameState.orderUnits(units: Int) {
     val h = hardware!!
     val (model, cost) = h.quote(units)
     if (cash < cost) throw insufficientFunds("$units units cost ${money(cost)} up front. You have ${money(cash)}.")
-    h.book(model, units, week)
+    h.book(model, units, week, factoryLeadTime)
     spend(cost, Lane.HARDWARE)
     addLog(
-        "Booked $units units of the $model for ${money(cost)}. They arrive in ${HardwareLab.LEAD_TIME_WEEKS} weeks.",
+        "Booked $units units of the $model for ${money(cost)}. They arrive in $factoryLeadTime weeks.",
         LogTone.NEUTRAL, Lane.HARDWARE,
     )
 }

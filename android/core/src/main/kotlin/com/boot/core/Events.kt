@@ -45,6 +45,9 @@ sealed interface EventKind {
 
     @Serializable @SerialName("ecosystemAntitrust")
     data object EcosystemAntitrust : EventKind
+
+    @Serializable @SerialName("convention")
+    data object Convention : EventKind
 }
 
 @Serializable
@@ -191,6 +194,22 @@ private fun GameState.describe(kind: EventKind): Description? = when (kind) {
                 choice("Dial it back", "${money(comboFixCost(combo))} and lower ${combo.dial.lowercase()}."),
                 choice("Ride it out", rideOutDetail(combo)),
             ),
+        )
+    }
+    EventKind.Convention -> {
+        val project = games?.project
+        val about = project?.let { "Show off ${it.title} and build hype before launch." } ?: "You've nothing in development, but fans still want to meet you."
+        val keynote = (games?.fans ?: 0.0) >= 100_000
+        Description(
+            "BootCon is next week",
+            "The biggest games convention of the year. $about",
+            listOfNotNull(
+                choice("Small booth", "${money(15_000.0)}. A little hype, a few new fans."),
+                choice("Big booth", "${money(120_000.0)}. Real hype, lots of new fans."),
+                if (keynote) choice("Keynote stage", "${money(600_000.0)}. Everyone's watching.") else null,
+                choice("Skip it", "Save the money."),
+            ),
+            Lane.GAMES,
         )
     }
     EventKind.EcosystemAntitrust -> Description(
@@ -381,6 +400,25 @@ private fun GameState.resolve(kind: EventKind, choice: Int) {
                 c.pressure = 0.2
                 rideOut(kind.combo)
             }
+        }
+
+        EventKind.Convention -> {
+            val g = games ?: return
+            val keynote = g.fans >= 100_000
+            val options = listOfNotNull(Triple(15_000.0, 8.0, 0.02), Triple(120_000.0, 20.0, 0.05), if (keynote) Triple(600_000.0, 35.0, 0.1) else null)
+            val pick = options.getOrNull(choice) ?: run {
+                addLog("You skipped BootCon this year.", LogTone.NEUTRAL, Lane.GAMES)
+                return
+            }
+            val (cost, hype, fanGain) = pick
+            spend(cost, Lane.GAMES)
+            g.project?.let { it.hype = minOf(100.0, it.hype + hype) }
+            g.fans += max(500.0, g.fans * fanGain)
+            if (choice == 2) reputation.adjust(2.0)
+            addLog(
+                "BootCon went well. " + (g.project?.let { "Hype for ${it.title} is up. " } ?: "") + "New fans signed up.",
+                LogTone.GOOD, Lane.GAMES,
+            )
         }
 
         EventKind.EcosystemAntitrust -> {

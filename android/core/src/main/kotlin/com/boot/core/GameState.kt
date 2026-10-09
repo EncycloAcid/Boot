@@ -36,17 +36,7 @@ class WeekLedger(
     fun profit(lane: Lane): Double = (revenue[lane] ?: 0.0) - (costs[lane] ?: 0.0)
 }
 
-data class Headquarters(val name: String, val rent: Double) {
-    companion object {
-        fun forHeadcount(n: Int): Headquarters = when {
-            n <= 2 -> Headquarters("Cramped apartment", 600.0)
-            n <= 8 -> Headquarters("Coworking desks", 2_500.0)
-            n <= 25 -> Headquarters("Converted warehouse office", 9_000.0)
-            n <= 80 -> Headquarters("Downtown floor", 35_000.0)
-            else -> Headquarters("Campus", 120_000.0)
-        }
-    }
-}
+data class Headquarters(val name: String, val rent: Double)
 
 @Serializable
 class GameState internal constructor(val seed: Long, val startingLane: Lane) {
@@ -140,6 +130,12 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     val stats = Stats()
     var ending: EndingReport? = null
         internal set
+    var office = Office.APARTMENT
+        internal set
+    var researchPoints = 0.0
+        internal set
+    var researched: Set<Research> = emptySet()
+        internal set
     internal var idCounter = 1
 
     // Queries
@@ -147,7 +143,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     val isOver: Boolean get() = ending != null
     val needsDecision: Boolean get() = events.isNotEmpty() || pendingPivot != null
     val dateLabel: String get() = GameClock.label(week)
-    val headquarters: Headquarters get() = Headquarters.forHeadcount(staff.size)
+    val headquarters: Headquarters get() = Headquarters(office.title, office.rent)
     val payroll: Double get() = staff.sumOf { it.salary }
 
     fun crossover(combo: Combo): Crossover? = crossovers.firstOrNull { it.combo == combo }
@@ -209,12 +205,16 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     fun staffing(lane: Lane): Staffing {
         val s = Staffing()
         var skillSum = 0.0
+        var designSum = 0.0
+        var techSum = 0.0
         var weight = 0.0
         for (e in staff) {
             if (e.lane != lane) continue
             s.output += e.output(lane)
             s.headcount += 1
             skillSum += e.skill
+            designSum += e.design
+            techSum += e.tech
             weight += 1
             val points = e.skill * e.moraleFactor
             when (e.role) {
@@ -233,14 +233,19 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             s.marketing += 1 * share
             if (lane == Lane.AI) s.research += (3 + bonus) * share
             skillSum += (5 + bonus) * share
+            designSum += (5 + bonus) * share
+            techSum += (5 + bonus * 0.8) * share
             weight += share
         }
         s.averageSkill = if (weight > 0) skillSum / weight else 5.0
+        s.avgDesign = if (weight > 0) designSum / weight else 5.0
+        s.avgTech = if (weight > 0) techSum / weight else 5.0
         return s
     }
 
     internal fun context(lane: Lane, effects: ComboEffects? = null): LaneContext {
         val mods = effects?.mods?.get(lane)?.copy() ?: LaneModifiers()
+        applyResearch(lane, mods)
         if (isEcosystem) {
             mods.demand *= if (stats.ecosystemOpened) 1.08 else 1.15
             if (lane == Lane.APPS) mods.churn *= 0.9
@@ -350,9 +355,12 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             salary *= 1.2
             expires = week + 2
         }
+        // Talents scatter a little around what the role suggests.
+        fun jitter(v: Int) = (v + rng.int(-1, 1)).clamped(1, 10)
         return Candidate(
             id = nextId(), name = "${rng.pick(Names.first)} ${rng.pick(Names.last)}", role = r,
             skill = skill, askingSalary = salary.roundToInt().toDouble(), contestedBy = contested, expiresWeek = expires,
+            design = jitter(roleDesign(r, skill)), tech = jitter(roleTech(r, skill)), research = jitter(roleResearch(r, skill)),
         )
     }
 
@@ -380,6 +388,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         val e = Employee(
             id = c.id, name = c.name, role = c.role, skill = c.skill, salary = c.askingSalary,
             morale = 0.75, lane = lane ?: bestLane(c.role), hiredWeek = week,
+            design = c.design, tech = c.tech, research = c.research,
         )
         staff = staff + e
         stats.peakHeadcount = max(stats.peakHeadcount, staff.size)

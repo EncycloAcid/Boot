@@ -60,6 +60,11 @@ class Autopilot(
             EventKind.BurnoutWarning -> 0
             is EventKind.ComboProblem -> if (s.cash > s.comboFixCost(k.combo) * 4) 0 else 1
             EventKind.EcosystemAntitrust -> 0
+            EventKind.Convention -> when {
+                s.games?.project != null && s.cash > 2_000_000 -> 1
+                s.cash > 200_000 -> 0
+                else -> e.choices.lastIndex
+            }
         }
         attempt { s.choose(choice) }
     }
@@ -134,6 +139,8 @@ class Autopilot(
             }
         }
 
+        research(s)
+        if (s.freeDesks <= 0) s.office.next?.let { if (s.cash > it.moveCost * 4 + 26 * s.weeklyBurn) attempt { s.moveOffice() } }
         hire(s)
     }
 
@@ -161,20 +168,88 @@ class Autopilot(
 
     private fun manageGames(s: GameState) {
         val g = s.games ?: return
+        g.unseenReview?.let { s.acknowledgeReview() }
         val p = g.project
         if (p != null) {
-            if (p.isReady && (p.polish >= p.scope.work * 1.3 || p.weeksInDev > 40 || s.runwayWeeks < 10)) {
-                attempt { s.launchGame() }
+            // Market a game that's worth it, then ship once the bugs are mostly gone.
+            if (Research.MARKETING in s.researched) {
+                for (c in Campaign.entries) if (c !in p.campaigns && s.cash > c.cost * 25) attempt { s.buyCampaign(c) }
             }
+            val polished = p.bugs < p.work * 0.08 || p.weeksInDev > p.work / 2 + 30
+            if (p.isReady && (polished || s.runwayWeeks < 10)) attempt { s.launchGame() }
             return
         }
-        val output = s.staffing(Lane.GAMES).output
-        val scope = when {
-            output > 80 && s.cash > 5_000_000 -> GameScope.LARGE
-            output > 14 && s.cash > 200_000 -> GameScope.MEDIUM
-            else -> GameScope.SMALL
+        if (g.contract != null) return
+        if (Research.CUSTOM_ENGINES in s.researched && g.engineBuild == null) {
+            val (features, cost, _) = s.engineQuote()
+            if (features.sumOf { it.engineLevel } >= g.engines.maxOf { it.level } + 4 && s.cash > cost * 6) attempt { s.buildEngine() }
         }
-        attempt { s.startGame(scope) }
+        val concept = bestConcept(s, g)
+        if (concept == null || s.conceptBlocker(concept) != null || (s.runwayWeeks < 12 && g.contractOffers.isNotEmpty())) {
+            g.contractOffers.firstOrNull()?.let { attempt { s.takeGameContract(it.id) } }
+            return
+        }
+        attempt { s.startGame(concept, idealFocus(concept)) }
+    }
+
+    /** A decent concept: the best known combo, the biggest affordable size, the widest reach. */
+    private fun bestConcept(s: GameState, g: GamesStudio): GameConcept? {
+        val genre = Genre.entries.maxBy { genre ->
+            g.topics.maxOf { t -> (g.knownFit(t, genre)?.multiplier ?: 0.98) - if (g.releases.firstOrNull()?.concept?.genre == genre) 0.2 else 0.0 }
+        }
+        val last = g.releases.firstOrNull()?.concept
+        val topic = g.topics.filter { last == null || it != last.topic }.ifEmpty { g.topics }
+            .maxBy { (g.knownFit(it, genre)?.multiplier ?: 0.98) + it.ordinal * 0.0001 }
+        val sizes = s.unlockedSizes.filter { s.gameTeam >= it.minTeam }
+        val size = sizes.lastOrNull { s.cash > it.weeklyBudget * s.estimatedWeeks(it) * 2.5 + 20_000 } ?: GameSize.SMALL
+        val onSale = s.platformsOnSale.filter { it.fit(genre) != Fit.BAD || it == Platform.PC }
+        val maxPlatforms = if (Research.MULTI_PLATFORM in s.researched) 3 else 1
+        val platforms = onSale.sortedByDescending { s.platformPlayers(it) * it.spend }
+            .filter { it.fee < s.cash * 0.05 || it.fee == 0.0 }
+            .take(maxPlatforms).ifEmpty { listOf(Platform.PC) }
+        val audience = if (Research.TARGET_AUDIENCE in s.researched) {
+            Audience.entries.maxBy { topic.fit(it).multiplier }
+        } else {
+            Audience.EVERYONE
+        }
+        return GameConcept(
+            title = g.suggestTitle(s.rng), topic = topic, genre = genre, audience = audience, platforms = platforms,
+            size = size, engineId = g.engines.maxBy { it.level }.id,
+        )
+    }
+
+    /** An experienced designer's instinct: close to the genre's ideal, not perfect. */
+    private fun idealFocus(c: GameConcept): List<MutableList<Double>> = List(3) { stage ->
+        FocusArea.forStage(stage).map { c.idealShare(it) * 0.8 + 0.2 / 3 }.toMutableList()
+    }
+
+    private fun research(s: GameState) {
+        val g = s.games
+        if (g != null) {
+            // A new topic now and then keeps games fresh.
+            val topic = Topic.entries.filter { it !in g.topics }.minByOrNull { it.researchCost }
+            if (topic != null && g.topics.size < 14 && s.researchPoints >= topic.researchCost + 10) attempt { s.researchTopic(topic) }
+        }
+        val priority = buildList {
+            if (g != null) {
+                addAll(
+                    listOf(
+                        Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.CUSTOM_ENGINES,
+                        Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.GRAPHICS_3D_V1,
+                        Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
+                        Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.OPEN_WORLD, Research.GRAPHICS_3D_V3,
+                        Research.AAA_GAMES, Research.SPATIAL_AUDIO, Research.GRAPHICS_3D_V4, Research.CROSS_PLAY, Research.NEURAL_NPCS,
+                        Research.PHOTOREAL,
+                    ),
+                )
+            }
+            for (lane in s.lanes) addAll(Research.entries.filter { it.lane == lane })
+            add(Research.TRAINING)
+            add(Research.RD_LAB)
+        }
+        priority.firstOrNull { it !in s.researched }?.let { next ->
+            if (s.researchBlocker(next) == null && s.cash > next.cash * 5) attempt { s.research(next) }
+        }
     }
 
     private fun manageWeb(s: GameState) {

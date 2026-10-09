@@ -35,6 +35,9 @@ fun GameState.advance() {
         cash -= lanePayroll
     }
 
+    studioWeek()
+    researchPoints += weeklyResearch(games?.lastWork ?: 0.0)
+
     // Unassigned staff still get paid.
     val idle = staff.filter { it.lane == null }.sumOf { it.salary }
     spend(idle + headquarters.rent, null)
@@ -88,6 +91,7 @@ internal fun GameState.handle(incidents: List<Incident>, lane: Lane?) {
             is Incident.Reputation -> reputation.adjust(incident.delta)
             is Incident.Scar -> reputation.scar(incident.kind, incident.severity, week, incident.note)
             is Incident.Event -> enqueue(incident.kind)
+            is Incident.Research -> researchPoints += incident.points
             is Incident.Stat -> when (incident.key) {
                 StatKey.HIT -> stats.hits += 1
                 StatKey.FLOP -> stats.flops += 1
@@ -146,6 +150,28 @@ private fun GameState.updateRivals() {
             enqueue(EventKind.Poach(best.id, r.name))
         }
     }
+}
+
+/** Trends, the yearly convention and new offers for a game studio. */
+private fun GameState.studioWeek() {
+    val g = games ?: return
+    val t = g.trend
+    if (t == null || week >= t.until) {
+        val next = when (world.era) {
+            Era.AI_GOLD_RUSH -> Trend(topic = rng.pick(listOf(Topic.ARTIFICIAL_INTELLIGENCE, Topic.ROBOTS, Topic.CYBERPUNK)), until = 0)
+            Era.VR_HYPE_CYCLE -> Trend(genre = Genre.ACTION, until = 0)
+            Era.RETRO_REVIVAL -> Trend(genre = Genre.CASUAL, until = 0)
+            Era.CREATOR_ECONOMY -> Trend(topic = rng.pick(listOf(Topic.MUSIC, Topic.FASHION, Topic.COOKING)), until = 0)
+            Era.PRIVACY_PANIC -> Trend(topic = rng.pick(listOf(Topic.HACKING, Topic.SPY)), until = 0)
+            Era.CRYPTO_WINTER -> Trend(topic = Topic.BUSINESS, until = 0)
+            else -> if (rng.chance(0.6)) Trend(topic = rng.pick(Topic.entries), until = 0) else Trend(genre = rng.pick(Genre.entries), until = 0)
+        }.copy(until = week + rng.int(40, 70))
+        if (next.title != t?.title) addLog("Trend: gamers can't get enough of ${next.title.lowercase()} games.", LogTone.NEUTRAL, Lane.GAMES)
+        g.trend = next
+    }
+    if (GameClock.weekOfYear(week) == 26) enqueue(EventKind.Convention)
+    val output = staffing(Lane.GAMES).output
+    g.refreshOffers(week, output, rng, unlockedSizes, Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE })
 }
 
 private fun GameState.rollWorldEvents() {
@@ -238,6 +264,7 @@ private fun GameState.updateStaff(fx: ComboEffects) {
         if (crunch) m -= 0.025
         if (cash < 0) m -= 0.03
         if (e.lane == Lane.WEBSITES) m -= fx.moraleDrain
+        if (staff.size > office.desks) m -= 0.02
         e.morale = m.clamped(0.0, 1.0)
         if (e.morale < 0.3 && rng.chance(0.04)) quitters += e
     }

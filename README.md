@@ -4,6 +4,8 @@ A company management game for Android and macOS. You start solo in a cramped apa
 
 The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
+**New in 0.3 (Android):** the Games lane is now a full game studio sim in the spirit of Game Dev Tycoon. Pick a topic, genre, audience, platforms and size; split each of the three development stages across focus areas; watch design and tech points, bugs and hype build up; then read four outlets' reviews and a game report that teaches you what works. A research tree (spent with research points your team generates) unlocks bigger games, sequels, marketing, custom engines and company and lane upgrades. Offices have desks, staff can be trained, and contracts, publisher deals, trends and a yearly convention fill the calendar. The macOS and terminal versions don't have this update yet.
+
 ## Play it
 
 ### On Android
@@ -25,7 +27,7 @@ cd android
 
 The build uses Android Gradle Plugin 9, compileSdk 37 and Material 3 1.5 (beta), which is where the Expressive components ship. The release build is signed with the debug key so it installs out of the box; swap in your own signing config before publishing to Google Play. The game autosaves after every action and picks up where you left off.
 
-On a phone the five tabs along the bottom are Home, Lanes, People, Combos and Money; News sits in the top bar. The floating toolbar above the tabs shows your cash and advances time by a week, a month or a quarter, stopping whenever a decision needs you.
+On a phone the five tabs along the bottom are Home, Lanes, Research, People and Company (money, investors and combos); News sits in the top bar. Saves from 0.1 and 0.2 don't carry over to 0.3; the game starts fresh. The floating toolbar above the tabs shows your cash and advances time by a week, a month or a quarter, stopping whenever a decision needs you.
 
 ### On a Mac
 

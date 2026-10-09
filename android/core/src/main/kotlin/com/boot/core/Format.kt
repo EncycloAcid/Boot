@@ -6,6 +6,13 @@ import kotlin.math.abs
 object Format {
     private fun f(pattern: String, v: Double) = String.format(Locale.US, pattern, v)
 
+    /** "1 week", "3 weeks". */
+    fun weeks(n: Int): String = if (n == 1) "1 week" else "$n weeks"
+
+    /** "a space game", "an ocean game", "a AAA game" (said "triple-A"). */
+    fun a(phrase: String): String =
+        (if (phrase.firstOrNull()?.lowercaseChar() in "aeiou".toList() && !phrase.startsWith("AAA")) "an " else "a ") + phrase
+
     fun money(v: Double): String {
         val sign = if (v < 0) "-" else ""
         val a = abs(v)

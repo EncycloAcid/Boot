@@ -25,7 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.SkipNext
@@ -82,17 +82,17 @@ private data class TabSpec(val tab: Tab, val label: String, val icon: ImageVecto
 private val tabs = listOf(
     TabSpec(Tab.HOME, "Home", Icons.Filled.Dashboard),
     TabSpec(Tab.LANES, "Lanes", Icons.Filled.Work),
+    TabSpec(Tab.RESEARCH, "Research", Icons.Filled.Science),
     TabSpec(Tab.PEOPLE, "People", Icons.Filled.Groups),
-    TabSpec(Tab.COMBOS, "Combos", Icons.Filled.Hub),
-    TabSpec(Tab.MONEY, "Money", Icons.Filled.AccountBalance),
+    TabSpec(Tab.COMPANY, "Company", Icons.Filled.AccountBalance),
 )
 
 private fun GameState.title(tab: Tab): String = when (tab) {
     Tab.HOME -> companyName
     Tab.LANES -> "Lanes"
     Tab.PEOPLE -> "People"
-    Tab.COMBOS -> "Combos"
-    Tab.MONEY -> "Money & Board"
+    Tab.RESEARCH -> "Research"
+    Tab.COMPANY -> "Company"
     Tab.NEWS -> "News"
 }
 
@@ -172,8 +172,8 @@ private fun GameScreen(store: GameStore, state: GameState) {
                     Tab.HOME -> DashboardScreen(store, state)
                     Tab.LANES -> LanesScreen(store, state)
                     Tab.PEOPLE -> PeopleScreen(store, state)
-                    Tab.COMBOS -> CombosScreen(store, state)
-                    Tab.MONEY -> MoneyScreen(store, state)
+                    Tab.RESEARCH -> ResearchScreen(store, state)
+                    Tab.COMPANY -> CompanyScreen(store, state)
                     Tab.NEWS -> NewsScreen(state)
                 }
             }
@@ -191,6 +191,9 @@ private fun GameScreen(store: GameStore, state: GameState) {
         state.isOver -> EndingDialog(store, state)
         state.pendingPivot != null -> PivotDialog(store, state)
         state.events.isNotEmpty() -> EventSheet(store, state)
+        state.games?.unseenReview != null -> ReviewSheet(store, state, state.games!!.unseenReview!!)
+        store.designing && state.games != null -> GameDesigner(store, state)
+        store.openRelease != null -> ReleaseSheet(store, state, store.openRelease!!)
     }
 
     if (confirmAbandon) {
@@ -253,8 +256,9 @@ private fun TimeToolbar(store: GameStore, state: GameState, modifier: Modifier) 
                 Text(
                     when {
                         !runway.isFinite() -> "Profitable"
-                        runway > 260 -> "5+ yrs runway"
-                        else -> "${runway.toInt()} wks runway"
+                        runway > 260 -> "5+ yrs left"
+                        runway >= 52 -> String.format(java.util.Locale.US, "%.1f yrs left", runway / 52)
+                        else -> "${runway.toInt()} wks left"
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (runway < 8) colors.bad else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -278,7 +282,7 @@ private fun TimeToolbar(store: GameStore, state: GameState, modifier: Modifier) 
                 modifier = Modifier.heightIn(min = 48.dp),
             ) {
                 Icon(Icons.Filled.SkipNext, null, Modifier.padding(end = 4.dp))
-                Text("Next week", maxLines = 1)
+                Text("Next week", maxLines = 1, softWrap = false)
             }
         }
     }

@@ -10,6 +10,24 @@ import kotlin.test.assertTrue
 
 private fun newGame(lane: Lane, seed: Long) = GameState.create("T", "F", lane, seed)
 
+private fun smallGame(s: GameState, topic: Topic = Topic.FANTASY, genre: Genre = Genre.RPG) =
+    GameConcept("Test Quest", topic, genre, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+
+/** Make a game start to finish with the given focus, returning its average score. */
+private fun makeGame(s: GameState, concept: GameConcept, focus: List<MutableList<Double>>, polishWeeks: Int = 4): Double {
+    s.startGame(concept, focus)
+    while (s.games!!.project?.isReady != true) {
+        s.advance()
+        while (s.needsDecision) s.choose(s.events[0].choices.size - 1)
+    }
+    repeat(polishWeeks) {
+        s.advance()
+        while (s.needsDecision) s.choose(s.events[0].choices.size - 1)
+    }
+    s.launchGame()
+    return s.games!!.releases[0].score
+}
+
 class SetupTest {
     @Test
     fun cheapLanesStartSoloAndUnfunded() {
@@ -105,7 +123,7 @@ class SimulationTest {
     fun copyIsIndependent() {
         val s = newGame(Lane.GAMES, 12)
         val copy = s.copy()
-        copy.startGame(GameScope.SMALL)
+        copy.startGame(smallGame(copy))
         copy.advance()
         assertNull(s.games?.project)
         assertEquals(0, s.week)
@@ -134,16 +152,26 @@ class LaneTest {
     @Test
     fun gameReadinessAndLaunch() {
         val s = newGame(Lane.GAMES, 11)
-        s.startGame(GameScope.SMALL)
+        s.startGame(smallGame(s))
         assertFailsWith<GameException> { s.launchGame() }
         while (s.games?.project?.isReady != true) {
             s.advance()
             while (s.needsDecision) s.choose(0)
         }
+        val p = s.games!!.project!!
+        assertTrue(p.design > 0 && p.tech > 0 && p.bugs > 0)
         s.launchGame()
-        assertNull(s.games?.project)
-        assertEquals(1, s.games?.releases?.size)
+        val g = s.games!!
+        assertNull(g.project)
+        assertEquals(1, g.releases.size)
         assertEquals(1, s.stats.releases)
+        val r = g.releases[0]
+        assertEquals(4, r.reviews.size)
+        assertTrue(r.reviews.all { it.score in 1..10 && it.comment.isNotBlank() })
+        assertTrue(r.report.isNotEmpty())
+        assertEquals(r.id, g.unseenReview)
+        // The game report teaches you the combo you used.
+        assertEquals(r.concept.topic.fit(r.concept.genre), g.knownFit(r.concept.topic, r.concept.genre))
     }
 
     @Test
@@ -286,5 +314,168 @@ class ReputationTest {
         s.enqueue(EventKind.ComboProblem(Combo.APPS_GAMES))
         s.choose(1)
         assertTrue(s.reputation.has(ScarKind.PREDATORY_MONETIZATION))
+    }
+}
+
+class StudioTest {
+    private fun ideal(c: GameConcept) = List(3) { st -> FocusArea.forStage(st).map { c.idealShare(it) }.toMutableList() }
+    private fun worst(c: GameConcept) = List(3) { st ->
+        val areas = FocusArea.forStage(st)
+        val low = areas.minBy { c.idealShare(it) }
+        areas.map { if (it == low) 1.0 else 0.0 }.toMutableList()
+    }
+
+    @Test
+    fun greatCombosAndRightFocusReviewBetter() {
+        var good = 0.0
+        var bad = 0.0
+        for (seed in 1L..6L) {
+            val a = newGame(Lane.GAMES, seed)
+            a.cash = 1_000_000.0
+            val greatConcept = GameConcept("A", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+            good += makeGame(a, greatConcept, ideal(greatConcept))
+            val b = newGame(Lane.GAMES, seed)
+            b.cash = 1_000_000.0
+            val badConcept = GameConcept("B", Topic.FANTASY, Genre.SIMULATION, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+            bad += makeGame(b, badConcept, worst(badConcept))
+        }
+        assertTrue(good / 6 > bad / 6 + 1.5, "great combo ${good / 6} vs bad ${bad / 6}")
+    }
+
+    @Test
+    fun shippingBuggyGamesHurts() {
+        var polished = 0.0
+        var rushed = 0.0
+        for (seed in 1L..6L) {
+            val c = GameConcept("C", Topic.SPACE, Genre.STRATEGY, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+            val a = newGame(Lane.GAMES, seed).also { it.cash = 1_000_000.0 }
+            polished += makeGame(a, c, ideal(c), polishWeeks = 6)
+            val b = newGame(Lane.GAMES, seed).also { it.cash = 1_000_000.0 }
+            rushed += makeGame(b, c, ideal(c), polishWeeks = 0)
+        }
+        assertTrue(polished > rushed, "polished $polished vs rushed $rushed")
+    }
+
+    @Test
+    fun researchSpendsPointsAndUnlocks() {
+        val s = newGame(Lane.GAMES, 3)
+        assertNotNull(s.researchBlocker(Research.MEDIUM_GAMES))
+        assertFailsWith<GameException> { s.startGame(smallGame(s).copy(size = GameSize.MEDIUM)) }
+        s.researchPoints = 25.0
+        s.research(Research.MEDIUM_GAMES)
+        assertEquals(5.0, s.researchPoints, 0.001)
+        assertTrue(GameSize.MEDIUM in s.unlockedSizes)
+        assertNotNull(s.researchBlocker(Research.LARGE_GAMES))
+    }
+
+    @Test
+    fun researchPointsAccrueWhileYouWork() {
+        val s = newGame(Lane.GAMES, 4)
+        s.startGame(smallGame(s))
+        repeat(10) {
+            s.advance()
+            while (s.needsDecision) s.choose(s.events[0].choices.size - 1)
+        }
+        assertTrue(s.researchPoints > 5, "rp ${s.researchPoints}")
+    }
+
+    @Test
+    fun topicsMustBeResearched() {
+        val s = newGame(Lane.GAMES, 5)
+        assertNotNull(s.conceptBlocker(smallGame(s, Topic.ZOMBIES, Genre.ACTION)))
+        s.researchPoints = 50.0
+        s.researchTopic(Topic.ZOMBIES)
+        assertNull(s.conceptBlocker(smallGame(s, Topic.ZOMBIES, Genre.ACTION)))
+    }
+
+    @Test
+    fun customEnginesNeedResearchAndRaiseTheLevel() {
+        val s = newGame(Lane.GAMES, 6)
+        s.cash = 5_000_000.0
+        assertFailsWith<GameException> { s.buildEngine() }
+        s.researched = setOf(Research.CUSTOM_ENGINES, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.BASIC_AI)
+        s.buildEngine()
+        repeat(10) { if (!s.isOver) { s.advance(); while (s.needsDecision) s.choose(s.events[0].choices.size - 1) } }
+        assertEquals(3, s.games!!.engines.maxOf { it.level })
+    }
+
+    @Test
+    fun platformsComeAndGo() {
+        assertTrue(Platform.PLAYSYSTEM_5.isAvailable(0))
+        assertFalse(Platform.PLAYSYSTEM_5.isAvailable(400))
+        assertFalse(Platform.PLAYSYSTEM_6.isAvailable(0))
+        assertTrue(Platform.PLAYSYSTEM_6.isAvailable(400))
+        assertTrue(Platform.PC.isAvailable(700))
+    }
+
+    @Test
+    fun officesLimitHiring() {
+        val s = newGame(Lane.GAMES, 7)
+        s.cash = 1_000_000.0
+        repeat(Office.APARTMENT.desks) { s.hire(s.candidates.first().id, Lane.GAMES) }
+        assertFailsWith<GameException> { s.hire(s.candidates.first().id, Lane.GAMES) }
+        s.moveOffice()
+        assertEquals(Office.COWORKING, s.office)
+        s.hire(s.candidates.first().id, Lane.GAMES)
+    }
+
+    @Test
+    fun publisherDealsPayUpFront() {
+        val s = newGame(Lane.GAMES, 8)
+        s.cash = 1_000_000.0
+        val g = s.games!!
+        val deal = PublisherDeal(99, "Megapublish", Topic.SPACE, Genre.STRATEGY, Platform.PC, GameSize.SMALL, 5, 40_000.0, 0.35, 999)
+        g.dealOffers += deal
+        val before = s.cash
+        s.acceptDeal(deal.id)
+        assertEquals(before + 20_000.0, s.cash, 0.01)
+        assertEquals(deal, g.project?.deal)
+    }
+
+    @Test
+    fun contractWorkPays() {
+        val s = newGame(Lane.GAMES, 9)
+        val g = s.games!!
+        g.contractOffers += GameContract(77, "Test job", work = 10.0, pay = 9_000.0, weeksAllowed = 20, rp = 2.0, expiresWeek = 99)
+        s.takeGameContract(77)
+        var paid = false
+        repeat(12) {
+            if (g.contract == null) return@repeat
+            s.advance()
+            while (s.needsDecision) s.choose(s.events[0].choices.size - 1)
+        }
+        paid = g.contract == null && s.log.any { it.text.startsWith("Contract delivered") }
+        assertTrue(paid)
+    }
+
+    @Test
+    fun conventionComesOncAYear() {
+        val s = newGame(Lane.GAMES, 10)
+        s.cash = 1_000_000.0
+        var seen = 0
+        while (s.week < 60 && !s.isOver) {
+            s.advance()
+            while (s.needsDecision) {
+                if (s.events.firstOrNull()?.kind == EventKind.Convention) seen++
+                s.choose(0)
+            }
+        }
+        assertEquals(1, seen)
+    }
+
+    @Test
+    fun trainingRaisesSkill() {
+        val s = newGame(Lane.GAMES, 12)
+        s.cash = 1_000_000.0
+        s.hire(s.candidates.first().id, Lane.GAMES)
+        val e = s.staff.first()
+        val skill = e.skill
+        assertNotNull(s.trainingBlocker(e))
+        s.researched = setOf(Research.TRAINING)
+        s.researchPoints = 100.0
+        if (skill < 10) {
+            s.train(e.id)
+            assertEquals(skill + 1, s.staff.first().skill)
+        }
     }
 }

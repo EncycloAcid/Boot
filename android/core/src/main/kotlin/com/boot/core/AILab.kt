@@ -138,7 +138,7 @@ class AILab {
         report.expenses += (subscribers * 2.0 + apiVolume * 1.1) * ctx.mods.computeCost + enterpriseClients * 6_000.0
 
         val scale = subscribers / 1_000_000 + apiVolume / 100_000 + enterpriseClients / 40.0
-        regulatoryHeat = (regulatoryHeat + scale * 0.01 - 0.004).clamped(0.0, 1.0)
+        regulatoryHeat = (regulatoryHeat + scale * 0.01 * ctx.mods.risk - 0.004).clamped(0.0, 1.0)
         if (regulatoryHeat > 0.5 && rng.chance(0.02 * regulatoryHeat)) {
             report.add(Incident.Event(EventKind.RegulatorInquiry))
         }
@@ -149,7 +149,7 @@ class AILab {
         val researchFactor = (0.5 + ctx.staffing.research * 0.025).clamped(0.5, 2.0)
         val headroom = max(0.03, 1 - capability / run.size.ceiling)
         val roll = rng.normal(1.0, 0.55)
-        val gain = run.size.expectedGain * researchFactor * headroom * roll
+        val gain = run.size.expectedGain * researchFactor * headroom * roll * ctx.mods.gain
         if (roll < 0.15 || gain < 0.3) {
             failedRuns += 1
             report.log("${run.codename} finished training and it's... worse. The run was a write-off.", LogTone.BAD)
