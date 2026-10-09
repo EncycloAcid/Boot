@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (core, CLI and the SwiftUI app)
+        run: swift build
+      - name: Test
+        run: swift test
+      - name: Bundle Boot.app
+        run: scripts/make-app.sh
+
+  linux:
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+      - name: Autopilot balance run
+        run: swift run boot-cli balance 8
