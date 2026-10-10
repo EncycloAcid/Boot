@@ -55,6 +55,21 @@ internal fun techOutlet(lane: Lane?, rng: SeededRNG): String = when (lane) {
 
 internal fun GameState.businessOutlet(): String = rng.pick(listOf("Bloomberg", "Reuters", "The Wall Street Journal", "Financial Times", "CNBC"))
 
+/** What an era does to business, in a line: who's up, who's down. */
+internal fun GameState.eraEffects(era: Era): String {
+    val open = Lane.entries.filter { laneOpen(it) }
+    fun names(l: List<Lane>) = l.map { if (it == Lane.AI) "AI" else it.title.lowercase() }.let {
+        if (it.size <= 1) it.joinToString() else it.dropLast(1).joinToString(", ") + " and " + it.last()
+    }
+    val up = open.filter { era.demand(it) >= 1.05 }
+    val down = open.filter { era.demand(it) <= 0.95 }
+    val parts = listOfNotNull(
+        up.takeIf { it.isNotEmpty() }?.let { "Good for ${names(it)}" },
+        down.takeIf { it.isNotEmpty() }?.let { (if (up.isEmpty()) "Bad" else "bad") + " for ${names(it)}" },
+    )
+    return if (parts.isEmpty()) era.title else "${era.title}. " + parts.joinToString("; ") + "."
+}
+
 /** The world's news for the week: the era, the rumours, and the markets. */
 internal fun GameState.newsWeek() {
     val w = world
@@ -67,7 +82,7 @@ internal fun GameState.newsWeek() {
         }
         val recent = news.takeLast(30).map { it.headline }.toSet()
         pool.filter { it !in recent }.takeIf { it.isNotEmpty() }?.let {
-            publish(NewsDesk.INDUSTRY, rng.pick(listOf("The Economist", "Wired", "Bloomberg", "The Verge", "Financial Times")), rng.pick(it), w.era.title)
+            publish(NewsDesk.INDUSTRY, rng.pick(listOf("The Economist", "Wired", "Bloomberg", "The Verge", "Financial Times")), rng.pick(it), eraEffects(w.era))
         }
     }
     // Every quarter, the markets.

@@ -798,6 +798,19 @@ class GameFlowTest {
         compose.onNodeWithText("Industry").performClick()
         compose.waitForIdle()
         screen("68-news-industry")
+        // The desks scroll sideways; the last ones start off-screen.
+        val chips = compose.onNodeWithTag("desks")
+        chips.performScrollToNode(hasText("Markets"))
+        compose.onNodeWithText("Markets").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("The biggest companies", ignoreCase = true).assertExists()
+        screen("68b-news-markets")
+        chips.performScrollToNode(hasText("Front page"))
+        compose.onNodeWithText("Front page").performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToIndex(4)
+        compose.waitForIdle()
+        screen("68c-news-latest")
         compose.runOnIdle {
             store.companyPage = 0
             store.tab = Tab.COMPANY

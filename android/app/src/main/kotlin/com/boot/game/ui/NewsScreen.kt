@@ -1,6 +1,15 @@
 package com.boot.game.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -49,43 +58,30 @@ fun NewsScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { Masthead(state) }
         item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Page.entries.filter { it != Page.GAMES || state.games != null }) { p ->
-                    FilterChip(selected = page == p, onClick = { page = p }, label = { Text(p.title) })
-                }
-            }
+            ChipRow(Page.entries.filter { it != Page.GAMES || state.games != null }, page, { it.title }, tag = "desks") { page = it }
         }
         when (page) {
             Page.FRONT -> {
                 item { EraCard(state) }
-                val lead = stories.firstOrNull { it.lead && state.week - it.week <= 26 } ?: stories.firstOrNull()
+                // The lead: the biggest recent story, but not the era's own, which the card above already tells.
+                val eraStory = { s: NewsStory -> s.desk == NewsDesk.INDUSTRY && s.body == state.world.era.blurb }
+                val lead = stories.firstOrNull { it.lead && state.week - it.week <= 26 && !eraStory(it) }
+                    ?: stories.firstOrNull { !eraStory(it) }
                 if (lead != null) item { LeadStory(state, lead) }
-                val rest = stories.filter { it.id != lead?.id }.take(12)
+                val rest = stories.filter { it.id != lead?.id && !eraStory(it) }.take(12)
                 if (rest.isNotEmpty()) item { StoryList("Latest", state, rest) }
                 if (stories.isEmpty()) item { GroupedSection(null) { CardBlock { Hint("No news yet. The press hasn't noticed you.") } } }
             }
-            Page.YOU -> item {
-                val mine = stories.filter { it.desk == NewsDesk.YOU }
-                if (mine.isEmpty()) {
-                    GroupedSection("Your company") { CardBlock { Hint("Nobody's written about you yet. Ship something, raise money, make a splash.") } }
-                } else {
-                    StoryList("Your company in the press", state, mine.take(40))
-                }
-            }
-            Page.INDUSTRY -> item { DeskList("Industry", state, stories.filter { it.desk == NewsDesk.INDUSTRY }, "The era's trends, rivals' launches and the rumours.") }
-            Page.GAMES -> item { DeskList("Games", state, stories.filter { it.desk == NewsDesk.GAMES }, "Big releases, reviews, esports and the awards.") }
+            Page.YOU -> desk(state, stories.filter { it.desk == NewsDesk.YOU }, "Nobody's written about you yet. Ship something, raise money, make a splash.")
+            Page.INDUSTRY -> desk(state, stories.filter { it.desk == NewsDesk.INDUSTRY }, "The era's trends, rivals' launches and the rumours.")
+            Page.GAMES -> desk(state, stories.filter { it.desk == NewsDesk.GAMES }, "Big releases, reviews, esports and the awards.")
             Page.MARKETS -> {
-                item { DeskList("Markets", state, stories.filter { it.desk == NewsDesk.MARKETS }, "Every quarter: who's worth what.") }
                 item { MarketsBoard(state) }
+                desk(state, stories.filter { it.desk == NewsDesk.MARKETS }, "Every quarter: who's worth what.")
             }
             Page.LOG -> {
                 item {
-                    LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item { FilterChip(selected = filter == null, onClick = { filter = null }, label = { Text("Everything") }) }
-                        items(Lane.entries.filter { it in state.lanes }) { lane ->
-                            FilterChip(selected = filter == lane, onClick = { filter = lane }, label = { Text("${lane.emoji} ${lane.short}") })
-                        }
-                    }
+                    ChipRow(listOf<Lane?>(null) + Lane.entries.filter { it in state.lanes }, filter, { it?.let { l -> "${l.emoji} ${l.short}" } ?: "Everything" }) { filter = it }
                 }
                 item {
                     val entries = state.log.asReversed().filter { filter == null || it.lane == filter }.take(200)
@@ -99,6 +95,46 @@ fun NewsScreen(store: GameStore, state: GameState) {
                 }
             }
         }
+    }
+}
+
+/** A row of chips that scrolls edge to edge, past the screen's side margins. */
+@Composable
+private fun <T> ChipRow(options: List<T>, selected: T, label: (T) -> String, tag: String = "", onPick: (T) -> Unit) {
+    LazyRow(
+        modifier = Modifier.bleed(16.dp).testTag(tag),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(options) { o -> FilterChip(selected = o == selected, onClick = { onPick(o) }, label = { Text(label(o), maxLines = 1) }) }
+    }
+}
+
+/** Widen past the parent's horizontal padding, so a scrolling row runs to the screen's edges. */
+private fun Modifier.bleed(by: Dp): Modifier = layout { measurable, constraints ->
+    val px = by.roundToPx()
+    val placeable = measurable.measure(constraints.copy(minWidth = constraints.minWidth + 2 * px, maxWidth = constraints.maxWidth + 2 * px))
+    layout(placeable.width - 2 * px, placeable.height) { placeable.place(-px, 0) }
+}
+
+/** How long ago, in plain words, for grouping a desk's stories. */
+private fun ageGroup(weeksAgo: Int): String = when {
+    weeksAgo <= 0 -> "This week"
+    weeksAgo <= 4 -> "This month"
+    weeksAgo <= 13 -> "The last three months"
+    weeksAgo <= 52 -> "This past year"
+    else -> "Older"
+}
+
+/** One desk: its stories in sections by age, newest first. */
+private fun LazyListScope.desk(state: GameState, stories: List<NewsStory>, about: String) {
+    if (stories.isEmpty()) {
+        item { GroupedSection(null) { CardBlock { Hint("Nothing yet. $about") } } }
+        return
+    }
+    val groups = stories.take(60).groupBy { ageGroup(state.week - it.week) }.entries.toList()
+    groups.forEachIndexed { i, (title, list) ->
+        item(key = "desk-$title") { StoryList(title, state, list, footer = if (i == groups.lastIndex) about else null) }
     }
 }
 
@@ -134,15 +170,6 @@ private fun LeadStory(state: GameState, s: NewsStory) {
 }
 
 @Composable
-private fun DeskList(title: String, state: GameState, stories: List<NewsStory>, empty: String) {
-    if (stories.isEmpty()) {
-        GroupedSection(title) { CardBlock { Hint("Nothing yet. $empty") } }
-    } else {
-        StoryList(title, state, stories.take(40), footer = empty)
-    }
-}
-
-@Composable
 private fun StoryList(title: String, state: GameState, stories: List<NewsStory>, footer: String? = null) {
     GroupedSection(title, footer = footer) {
         stories.forEachIndexed { i, s ->
@@ -150,13 +177,14 @@ private fun StoryList(title: String, state: GameState, stories: List<NewsStory>,
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Byline(state, s)
                 Text(s.headline, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Serif, fontWeight = FontWeight.SemiBold)
-                if (s.body.isNotEmpty()) Text(s.body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // A run of stories with the same standfirst (the era's, say) only needs it once.
+                if (s.body.isNotEmpty() && s.body != stories.getOrNull(i - 1)?.body) Text(s.body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 }
 
-/** Outlet and when, coloured by the desk. */
+/** Outlet and when, coloured by the desk. The date only shows once it's more than a year ago. */
 @Composable
 private fun Byline(state: GameState, s: NewsStory) {
     val colors = gameColors
@@ -167,17 +195,24 @@ private fun Byline(state: GameState, s: NewsStory) {
         NewsDesk.MARKETS -> colors.good
     }
     val ago = state.week - s.week
+    val time = when {
+        ago <= 0 -> "This week"
+        ago == 1 -> "Last week"
+        ago <= 52 -> "${Format.weeks(ago)} ago"
+        else -> GameClock.label(s.week)
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(s.outlet.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = deskColor)
-        Spacer(Modifier.width(6.dp))
-        Text(
-            (if (ago <= 0) "this week" else "${Format.weeks(ago)} ago") + " · ${GameClock.label(s.week)}",
-            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         if (s.tone == LogTone.BAD) {
+            Box(Modifier.size(6.dp).background(colors.bad, CircleShape))
             Spacer(Modifier.width(6.dp))
-            Pill("Bad news", colors.bad)
         }
+        Text(
+            s.outlet.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = deskColor,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+        )
+        Text(
+            " · $time", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+        )
     }
 }
 
