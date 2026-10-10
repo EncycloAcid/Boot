@@ -192,6 +192,17 @@ class Autopilot(
             val promising = pitch.demo >= 2 && (pitch.lastScore ?: 6.5) >= 6.5 && known != Fit.BAD && known != Fit.OKAY
             if (promising && s.signBlocker(pitch.id) == null && s.cash > pitch.funding * 6 + 100_000) attempt { s.signPitch(pitch.id) }
         }
+        // Leagues for the competitive hits, with the prize pool their audience can justify.
+        for (r in s.leagueCandidates) if (s.leagueBlocker(r.id) == null && s.cash > r.leagueCost() * 5) attempt { s.startLeague(r.id) }
+        for (r in g.leagues) {
+            val owners = maxOf(r.unitsSold, r.live?.players ?: 0.0)
+            val prize = when {
+                owners > 5e6 && s.cash > 5e7 -> PrizePool.RECORD
+                owners > 1e6 && s.cash > 1e7 -> PrizePool.MAJOR
+                else -> PrizePool.MODEST
+            }
+            if (r.league!!.prize != prize) attempt { s.setPrizePool(r.id, prize) }
+        }
         // Keep live games fresh while they pay for it.
         for (r in g.liveGames) if (s.seasonBlocker(r.id) == null && s.cash > r.seasonCost() * 4) attempt { s.launchSeason(r.id) }
         // The second team makes smaller games alongside the main one.
@@ -296,7 +307,7 @@ class Autopilot(
                         Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS, Research.MERCHANDISE,
                         Research.EXPANSIONS, Research.PUBLISHING, Research.GRAPHICS_3D_V1, Research.REMASTERS,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
-                        Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.OPEN_WORLD,
+                        Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.ESPORTS, Research.OPEN_WORLD,
                         Research.GRAPHICS_3D_V3,
                         Research.AAA_GAMES, Research.SPATIAL_AUDIO, Research.GRAPHICS_3D_V4, Research.CROSS_PLAY, Research.NEURAL_NPCS,
                         Research.PHOTOREAL, Research.SECOND_TEAM,

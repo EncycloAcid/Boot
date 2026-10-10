@@ -65,6 +65,10 @@ enum class Research(
         "Live service games", "Ship medium and bigger games as live games: seasons of new content, in-game purchases, servers to run.",
         Kind.STUDIO, 70, requires = ONLINE_SERVICES,
     ),
+    ESPORTS(
+        "Esports", "Run a pro league for a competitive hit: sponsors pay for viewers, and a championship twice a year grows the audience.",
+        Kind.STUDIO, 60, requires = ONLINE_SERVICES,
+    ),
 
     // Company
     TRAINING("Training program", "Send people on courses to raise their skills.", Kind.COMPANY, 15),

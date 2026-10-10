@@ -947,3 +947,81 @@ class RemasterTest {
         assertEquals("That's already a remaster.", s.remasterBlocker(remaster.id))
     }
 }
+
+class EsportsTest {
+    /** A competitive hit on a multiplayer engine, with a big player base. */
+    private fun hit(seed: Long, units: Double = 2e6, genre: Genre = Genre.ACTION, score: Double = 8.5): Pair<GameState, GameRelease> {
+        val s = game(Lane.GAMES, seed)
+        s.cash = 1e9
+        s.researched = s.researched + Research.MULTIPLAYER + Research.ONLINE_SERVICES + Research.ESPORTS
+        val g = s.games!!
+        val engine = Engine(500, "Netcode", listOf(Research.MULTIPLAYER), s.week)
+        g.engines += engine
+        val base = s.fakeRelease(score, units = units, title = "Arena Kings", genre = genre)
+        val r = base.copy(concept = base.concept.copy(engineId = engine.id), weeklySales = 200_000.0)
+        g.releases[0] = r
+        return s to r
+    }
+
+    @Test
+    fun leaguesNeedACompetitiveHitOnAMultiplayerEngine() {
+        val (s, r) = hit(120)
+        assertNull(s.leagueBlocker(r.id))
+        assertEquals(listOf(r), s.leagueCandidates)
+        val (s2, rpg) = hit(121, genre = Genre.RPG)
+        assertEquals("Esports need an action or strategy game.", s2.leagueBlocker(rpg.id))
+        val (s3, weak) = hit(122, score = 7.0)
+        assertEquals("Only games that scored 7.5 or more draw a crowd.", s3.leagueBlocker(weak.id))
+        val (s4, small) = hit(123, units = 20_000.0)
+        assertTrue(s4.leagueBlocker(small.id)!!.startsWith("Needs 100k players."))
+        val (s5, offline) = hit(124)
+        s5.games!!.releases[0] = offline.copy(concept = offline.concept.copy(engineId = 0))
+        assertEquals("Arena Kings was built on an engine without multiplayer.", s5.leagueBlocker(offline.id))
+        val (s6, early) = hit(125)
+        s6.researched = s6.researched - Research.ESPORTS
+        assertEquals("Research esports first.", s6.leagueBlocker(early.id))
+    }
+
+    @Test
+    fun aLeaguePaysItsWayKeepsTheGameSellingAndHoldsAFinal() {
+        val (s, r) = hit(126)
+        val (control, plain) = hit(126)
+        val before = s.cash
+        s.startLeague(r.id)
+        assertEquals(before - r.leagueCost(), s.cash, 1.0)
+        val l = r.league!!
+        assertTrue(l.viewers > 50_000)
+        assertEquals("${r.title} already has a league.", s.leagueBlocker(r.id))
+        s.play(4)
+        control.play(4)
+        assertTrue(l.lastRevenue > l.lastCost)
+        assertTrue(r.weeklySales > plain.weeklySales)
+        s.setPrizePool(r.id, PrizePool.MAJOR)
+        val viewers = l.viewers
+        val cash = s.cash
+        s.play(FINAL_GAP)
+        assertEquals(1, l.finals)
+        assertEquals(1, s.stats.finals)
+        assertNotNull(l.lastChampion)
+        assertTrue(l.peakViewers > viewers)
+        assertTrue(s.cash < cash + 26 * l.lastRevenue)
+        assertTrue(Achievement.GRAND_FINAL in s.achievements)
+        s.endLeague(r.id)
+        assertTrue(l.closed)
+        assertTrue(s.games!!.leagues.isEmpty())
+    }
+
+    @Test
+    fun aBiggerPrizePoolWinsMoreViewers() {
+        fun after(prize: PrizePool): Double {
+            // Seeds without a scandal at the first final.
+            val (s, r) = hit(130)
+            s.startLeague(r.id)
+            s.setPrizePool(r.id, prize)
+            s.play(FINAL_GAP + 1)
+            return r.league!!.peakViewers
+        }
+        assertTrue(after(PrizePool.RECORD) > after(PrizePool.MAJOR))
+        assertTrue(after(PrizePool.MAJOR) > after(PrizePool.MODEST))
+    }
+}

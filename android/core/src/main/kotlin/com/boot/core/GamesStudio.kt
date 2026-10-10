@@ -132,6 +132,8 @@ data class GameRelease(
     var live: LiveService? = null,
     /** The indie who made it, when your label published it. */
     val developer: String? = null,
+    /** Its pro league, if it has one. */
+    var league: League? = null,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()

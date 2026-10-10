@@ -228,12 +228,11 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         FitText(label, MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
+        FitText(
             value,
-            style = MaterialTheme.typography.titleLargeEmphasized,
+            MaterialTheme.typography.titleLargeEmphasized,
             color = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurface else tint,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            min = 12.sp,
         )
         if (detail != null) {
             Text(

@@ -43,6 +43,8 @@ enum class Achievement(val title: String, val detail: String, val tier: Tier, in
     LIVE("Games as a Service", "Launch a live game.", Tier.BRONZE, { games?.releases?.any { it.live != null } == true }),
     SEASON_PASS("Season Pass", "Launch five seasons.", Tier.SILVER, { stats.seasons >= 5 }),
     MILLION_PLAYERS("Live and Thriving", "Have a million players in a live game.", Tier.GOLD, { games?.releases?.any { (it.live?.peakPlayers ?: 0.0) >= 1e6 } == true }),
+    GRAND_FINAL("Grand Final", "Hold an esports championship.", Tier.SILVER, { stats.finals >= 1 }),
+    PRIME_TIME("Prime Time", "Have a million people watching your league.", Tier.GOLD, { games?.releases?.any { (it.league?.peakViewers ?: 0.0) >= 1e6 } == true }),
 
     // Buying studios
     FIRST_STUDIO("Shopping Spree", "Buy a studio.", Tier.SILVER, { (games?.subsidiaries?.size ?: 0) >= 1 }),

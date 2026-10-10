@@ -113,6 +113,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
     item { ComingSoonCard(state, limit = 8) }
     if (g.franchises.isNotEmpty()) item { FranchisesSection(store, state, g) }
     if (g.releases.any { it.live?.closed == false }) item { LiveGamesSection(store, state, g) }
+    if (Research.ESPORTS in state.researched) item { EsportsSection(store, state, g) }
     item { ReleasesSection(store, g) }
     if (Research.REMASTERS in state.researched) item { RemastersSection(store, state, g) }
     if (Research.PUBLISHING in state.researched) item { LabelSection(store, state, g) }

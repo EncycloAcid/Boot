@@ -35,6 +35,8 @@ import com.boot.core.Research
 import com.boot.core.LiveService
 import com.boot.core.GameRelease
 import com.boot.core.GameState
+import com.boot.core.PrizePool
+import com.boot.core.Engine
 import com.boot.core.stayFocused
 import com.boot.core.Combo
 import com.boot.core.Difficulty
@@ -648,6 +650,53 @@ class GameFlowTest {
         compose.onNodeWithText("Start development").performClick()
         compose.waitForIdle()
         assertEquals("Moss Knight Remastered", store.state!!.games!!.project!!.title)
+    }
+
+    @Test
+    fun esportsLeagueForACompetitiveHit() {
+        val base = GameState.create("Arena Works", "Kim", Lane.GAMES, seed = 66)
+        val s = GameState.decode(
+            base.encode()
+                .replace(Regex("\"cash\":[-0-9.Ee+]+"), "\"cash\":5.0E7")
+                .replace(Regex("\"researchPoints\":[-0-9.Ee+]+"), "\"researchPoints\":100000.0"),
+        )
+        listOf(Research.MULTIPLAYER, Research.ONLINE_SERVICES, Research.ESPORTS).forEach { s.research(it) }
+        val g0 = s.games!!
+        g0.engines += Engine(500, "Netcode", listOf(Research.MULTIPLAYER), s.week)
+        val arena = GameConcept("Arena Kings", Topic.SPORTS, Genre.ACTION, platforms = listOf(Platform.PC), size = GameSize.LARGE, engineId = 500)
+        g0.releases.add(
+            0,
+            GameRelease(
+                id = 902, title = arena.title, concept = arena, week = s.week - 20, reviews = emptyList(), score = 8.6, weeklySales = 200_000.0,
+                netShare = 0.7, design = 900.0, tech = 800.0, bugs = 10.0, hype = 40.0, devCost = 2e6, report = emptyList(),
+                lifetimeSales = 3e7, unitsSold = 2e6,
+            ),
+        )
+        File(RuntimeEnvironment.getApplication().filesDir, "autosave.json").writeText(s.encode())
+        launch()
+        compose.runOnIdle { store.openLane(Lane.GAMES) }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Start a league", ignoreCase = true))
+        compose.waitForIdle()
+        screen("62-start-a-league")
+        tapInList("Start")
+        val league = store.state!!.games!!.release(902)!!.league
+        assertNotNull(league)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(league!!.name))
+        compose.waitForIdle()
+        tapInList("Major")
+        assertEquals(PrizePool.MAJOR, store.state!!.games!!.release(902)!!.league!!.prize)
+        // Skip ahead to the championship.
+        compose.runOnIdle {
+            store.perform { games!!.release(902)!!.league!!.nextFinal = week + 1 }
+            store.advance(2)
+        }
+        compose.waitForIdle()
+        val after = store.state!!.games!!.release(902)!!.league!!
+        assertEquals(1, after.finals)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(after.name))
+        compose.waitForIdle()
+        screen("63-esports")
     }
 
     @Test

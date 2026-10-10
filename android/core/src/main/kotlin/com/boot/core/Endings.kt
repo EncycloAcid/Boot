@@ -64,6 +64,7 @@ class Stats {
     var ipoRaise = 0.0
     var acquisitions = 0
     var seasons = 0
+    var finals = 0
     val erasSeen = mutableListOf(Era.BOOTSTRAP_YEARS)
 }
 

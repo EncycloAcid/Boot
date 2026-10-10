@@ -47,7 +47,10 @@ import com.boot.core.expansionBlocker
 import com.boot.core.patchBlocker
 import com.boot.core.patchCost
 import com.boot.core.patchGame
+import com.boot.core.leagueBlocker
+import com.boot.core.leagueCost
 import com.boot.core.remasterBlocker
+import com.boot.core.startLeague
 import com.boot.core.remasterConcept
 import com.boot.core.sequelConcept
 import com.boot.core.startExpansion
@@ -231,6 +234,21 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
             if (r.patched) "Done" else "Patch",
             enabled = patch == null,
         ) { store.perform { patchGame(r.id) } }
+        if (Research.ESPORTS in state.researched) {
+            RowDivider()
+            val league = r.league
+            if (league == null) {
+                val blocker = state.leagueBlocker(r.id)
+                ActionRow(
+                    "Start an esports league",
+                    blocker ?: "Costs ${Format.money(r.leagueCost())}. Sponsors pay for viewers, and watching keeps people playing.",
+                    "Start",
+                    enabled = blocker == null,
+                ) { store.perform { startLeague(r.id) } }
+            } else {
+                ValueRow(league.name, if (league.closed) "folded" else "${Format.count(league.viewers)} viewers")
+            }
+        }
         RowDivider()
         ActionRow(
             "Make an expansion pack",

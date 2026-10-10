@@ -4,6 +4,8 @@ A company management game for Android and macOS. You start solo in a cramped apa
 
 The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
+**New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
+
 **New in 1.2 (Android):** your own label, and remasters.
 - Research a publishing label and small developers pitch you their games. Each pitch shows what it is, what it costs and what share you'd keep. You can see the demo and their last game, but not how good the team really is. A topic and genre you know works is the best sign. Fund up to three at a time, market them while they're made, and release them under your name with full reviews and a place on the chart.
 - Remaster an old hit: a game that scored 7+ and is three years old comes back for today's platforms at half the work, and its old fans buy it again.
