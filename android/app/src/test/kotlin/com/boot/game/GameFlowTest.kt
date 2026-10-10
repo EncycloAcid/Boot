@@ -120,6 +120,11 @@ class GameFlowTest {
         compose.waitForIdle()
     }
 
+    private fun studio(page: StudioPage) {
+        compose.runOnIdle { store.openStudio(page) }
+        compose.waitForIdle()
+    }
+
     private fun tab(label: String) {
         compose.onNode(hasText(label) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)).performClick()
         compose.waitForIdle()
@@ -339,10 +344,12 @@ class GameFlowTest {
         assertTrue(f.entries.size >= 2)
         assertTrue(g.market.upcoming.isNotEmpty())
         assertTrue(g.market.games.any { it.franchise != null })
+        studio(StudioPage.MARKET)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Coming soon", ignoreCase = true))
         compose.waitForIdle()
         compose.onNodeWithText(g.market.upcoming.first().title).assertExists()
         screen("40-coming-soon")
+        studio(StudioPage.GAMES)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(f.name))
         compose.waitForIdle()
         screen("41-franchises")
@@ -504,19 +511,21 @@ class GameFlowTest {
 
         compose.runOnIdle { store.openLane(Lane.GAMES) }
         compose.waitForIdle()
+        studio(StudioPage.MARKET)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Buy a studio", ignoreCase = true))
         compose.waitForIdle()
         compose.onNodeWithText("Team Cherry").assertExists()
         screen("45-studios")
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Buy"))
         compose.waitForIdle()
-        compose.onAllNodesWithText("Buy")[0].performClick()
+        compose.onAllNodesWithText("Buy")[0].performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         val dialogButtons = compose.onAllNodesWithText("Buy")
         dialogButtons[dialogButtons.fetchSemanticsNodes().size - 1].performClick()
         compose.waitForIdle()
         assertEquals(2, store.state!!.games!!.subsidiaries.size)
 
+        studio(StudioPage.GAMES)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Live games", ignoreCase = true))
         compose.waitForIdle()
         screen("46-live-games")
@@ -616,6 +625,7 @@ class GameFlowTest {
         launch()
         compose.runOnIdle { store.openLane(Lane.GAMES) }
         compose.waitForIdle()
+        studio(StudioPage.MARKET)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Pitches", ignoreCase = true))
         compose.waitForIdle()
         screen("58-label-pitches")
@@ -640,6 +650,7 @@ class GameFlowTest {
         screen("60-label-published")
 
         // An eight-year-old hit, ready for a remaster.
+        studio(StudioPage.MAKE)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Ready to remaster", ignoreCase = true))
         compose.waitForIdle()
         compose.onAllNodesWithText("Remaster")[0].performClick()
@@ -681,6 +692,7 @@ class GameFlowTest {
         launch()
         compose.runOnIdle { store.openLane(Lane.GAMES) }
         compose.waitForIdle()
+        studio(StudioPage.GAMES)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Start a league", ignoreCase = true))
         compose.waitForIdle()
         screen("62-start-a-league")

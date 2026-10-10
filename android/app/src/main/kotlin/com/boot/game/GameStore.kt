@@ -22,6 +22,9 @@ import kotlin.random.Random
 
 enum class Tab { OFFICE, LANES, RESEARCH, TEAM, COMPANY, NEWS }
 
+/** The game studio's pages: what you're making, what you've made, the market, and the tech. */
+enum class StudioPage(val title: String) { MAKE("Make"), GAMES("Games"), MARKET("Market"), TECH("Tech") }
+
 /** How fast the calendar runs while playing: milliseconds per week. */
 enum class Speed(val label: String, val millis: Long) {
     NORMAL("1×", 1_100),
@@ -50,6 +53,10 @@ class GameStore(app: Application) : AndroidViewModel(app) {
 
     /** Company tab page: 0 overview, 1 money and board, 2 combos. */
     var companyPage by mutableIntStateOf(0)
+    var studioPage by mutableStateOf(StudioPage.MAKE)
+
+    /** A "next step" the player waved away; it stays hidden until a different one comes up. */
+    var dismissedStep by mutableStateOf<String?>(null)
 
     /** The game designer is open, optionally seeded (a sequel). */
     var designing by mutableStateOf(false)
@@ -177,6 +184,11 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     fun openLane(lane: Lane) {
         this.lane = lane
         tab = Tab.LANES
+    }
+
+    fun openStudio(page: StudioPage) {
+        studioPage = page
+        openLane(Lane.GAMES)
     }
 
     private fun save(s: GameState) {

@@ -6,6 +6,12 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 1.4 (Android):** a friendlier UI.
+- A **Next step** card on the office suggests the one thing most worth doing now (money running out, a first hire, too few desks, research points to spend, pitches for your label) with a button that takes you there. Tap Not now to hide it until something else comes up.
+- The game studio is split into four pages: **Make** (what the teams are building, offers, remasters), **Games** (your catalogue, live games, esports), **Market** (the chart, what's coming, your label, studios for sale) and **Tech** (engines, platforms, your notebook). A count shows where something is waiting for you.
+- The top bar says what its numbers are ("41 RP", "7.3k fans"), and every top-bar control explains itself on a long press.
+- Cancelling a game in development asks first.
+
 **1.3.1:** the tab bar floats. It's a pill over the content with a soft shadow, the screen scrolls underneath it and fades out just behind it, and the selected tab's icon sits on a pill that slides between tabs.
 
 **New in 1.2 (Android):** your own label, and remasters.

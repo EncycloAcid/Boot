@@ -90,6 +90,7 @@ import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.game.GameStore
+import com.boot.game.StudioPage
 import com.boot.game.Speed
 import com.boot.game.Tab
 
@@ -236,18 +237,28 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                     detailColor = if (weekly >= 0) colors.good else colors.bad,
                     valueColor = if (state.cash < 0) colors.bad else MaterialTheme.colorScheme.onSurface,
                     description = "Cash",
+                    tip = "Cash in the bank, and what you've made or lost a week lately. Tap for money.",
                 ) {
                     store.companyPage = 1
                     store.tab = Tab.COMPANY
                 }
-                HudChip("${state.researchPoints.toInt()}", icon = Icons.Filled.Science, iconTint = colors.milestone, description = "Research points") {
+                HudChip(
+                    "${state.researchPoints.toInt()}", detail = "RP", icon = Icons.Filled.Science, iconTint = colors.milestone,
+                    description = "Research points", tip = "Research points, to spend on new tech. Tap for research.",
+                ) {
                     store.tab = Tab.RESEARCH
                 }
                 val fans = state.games?.fans
                 if (fans != null && Lane.GAMES in state.lanes) {
-                    HudChip(Format.count(fans), icon = Icons.Filled.Star, iconTint = colors.warn, description = "Fans") { store.openLane(Lane.GAMES) }
+                    HudChip(
+                        Format.count(fans), detail = "fans", icon = Icons.Filled.Star, iconTint = colors.warn,
+                        description = "Fans", tip = "Fans buy your games at launch. Hits win more; flops lose some. Tap for your games.",
+                    ) { store.openStudio(StudioPage.GAMES) }
                 } else {
-                    HudChip("${state.reputation.score.toInt()}", icon = Icons.Filled.Star, iconTint = colors.warn, description = "Reputation") {
+                    HudChip(
+                        "${state.reputation.score.toInt()}", detail = "rep", icon = Icons.Filled.Star, iconTint = colors.warn,
+                        description = "Reputation", tip = "Reputation, out of 100. Scandals leave scars. Tap for the company.",
+                    ) {
                         store.companyPage = 0
                         store.tab = Tab.COMPANY
                     }
@@ -283,8 +294,9 @@ private fun HudChip(
     icon: ImageVector? = null,
     iconTint: Color = Color.Unspecified,
     description: String,
+    tip: String = description,
     onClick: () -> Unit,
-) {
+) = Tip(tip) {
     Row(
         Modifier
             .clip(CircleShape)
@@ -296,8 +308,15 @@ private fun HudChip(
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         if (icon != null) Icon(icon, null, tint = iconTint, modifier = Modifier.size(16.dp))
-        Text(value, style = MaterialTheme.typography.labelLarge, color = valueColor, maxLines = 1)
-        if (detail != null) Text(detail, style = MaterialTheme.typography.labelSmall, color = detailColor, maxLines = 1)
+        // The last chip in the row gets what width is left, so its text shrinks rather than clips.
+        FitText(value, MaterialTheme.typography.labelLarge, color = valueColor, modifier = Modifier.weight(1f, fill = false))
+        if (detail != null) {
+            FitText(
+                detail, MaterialTheme.typography.labelSmall,
+                color = if (detailColor == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else detailColor,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
     }
 }
 
@@ -312,6 +331,7 @@ private fun ClockControls(store: GameStore) {
     val enabled = store.canAdvance && !store.holdsClock
     val corner by animateDpAsState(if (store.playing) 16.dp else 26.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "play")
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Tip("Game speed: ${store.speed.label}. Tap to change.") {
         Text(
             store.speed.label,
             style = MaterialTheme.typography.labelLarge,
@@ -326,6 +346,8 @@ private fun ClockControls(store: GameStore) {
                 .semantics { contentDescription = "Speed ${store.speed.label}" }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         )
+        }
+        Tip("Play one week") {
         IconButton(
             onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -333,6 +355,8 @@ private fun ClockControls(store: GameStore) {
             },
             enabled = enabled && !store.playing,
         ) { Icon(Icons.Filled.SkipNext, "Next week") }
+        }
+        Tip(if (store.playing) "Pause" else "Let time run. It stops by itself when something needs you.") {
         Surface(
             onClick = {
                 haptics.performHapticFeedback(if (store.playing) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn)
@@ -351,6 +375,7 @@ private fun ClockControls(store: GameStore) {
                     modifier = Modifier.size(30.dp),
                 )
             }
+        }
         }
     }
 }

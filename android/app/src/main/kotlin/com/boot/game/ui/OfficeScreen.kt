@@ -51,6 +51,7 @@ import com.boot.core.freeDesks
 import com.boot.core.launchGame
 import com.boot.core.researchBlocker
 import com.boot.game.GameStore
+import com.boot.game.StudioPage
 import com.boot.game.Tab
 
 /**
@@ -62,6 +63,7 @@ import com.boot.game.Tab
 fun OfficeScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { OfficeCard(store, state) }
+        if (nextStep(state)?.let { it.key != store.dismissedStep } == true) item { NextStepCard(store, state) }
         if (Lane.GAMES in state.lanes) item { StudioNow(store, state) }
         val others = state.lanes.filter { it != Lane.GAMES }
         if (others.isNotEmpty()) item { LanesNow(store, state, others) }
@@ -80,7 +82,7 @@ fun OfficeScreen(store: GameStore, state: GameState) {
             }
         }
         if (state.games != null) {
-            item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openLane(Lane.GAMES) }) }) { store.openRelease = it } }
+            item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openStudio(StudioPage.MARKET) }) }) { store.openRelease = it } }
             item { ComingSoonCard(state, limit = 3) }
         }
         item { Shortcuts(store, state) }
@@ -190,7 +192,7 @@ private fun StudioNow(store: GameStore, state: GameState) {
     val p = g.project
     val c = g.contract
     val x = g.expansion
-    GroupedSection("Game studio", action = { PlainButton("Studio", { store.openLane(Lane.GAMES) }) }) {
+    GroupedSection("Game studio", action = { PlainButton("Studio", { store.openStudio(StudioPage.MAKE) }) }) {
         g.project2?.let { p2 -> ProjectCard(store, state, p2, team = 2) }
         if (g.project2 != null && (p != null || c != null || x != null)) RowDivider()
         when {
@@ -220,7 +222,7 @@ private fun StudioNow(store: GameStore, state: GameState) {
                 PrimaryButton("Develop a new game", { store.designGame() }, Modifier.fillMaxWidth())
                 val offers = g.contractOffers.size + g.dealOffers.size
                 if (offers > 0) {
-                    TonalButton("$offers contract${if (offers == 1) "" else "s"} and deals on offer", { store.openLane(Lane.GAMES) }, Modifier.fillMaxWidth())
+                    TonalButton("$offers contract${if (offers == 1) "" else "s"} and deals on offer", { store.openStudio(StudioPage.MAKE) }, Modifier.fillMaxWidth())
                 }
             }
         }
@@ -270,7 +272,7 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
                     store.perform { buyCampaign(camp, team) }
                 }
             }
-            if (!p.isReady) TonalButton("Focus", { store.openLane(Lane.GAMES) })
+            if (!p.isReady) TonalButton("Focus", { store.openStudio(StudioPage.MAKE) })
         }
     }
 }

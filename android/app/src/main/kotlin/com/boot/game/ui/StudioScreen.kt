@@ -1,5 +1,8 @@
 package com.boot.game.ui
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -62,11 +65,49 @@ import com.boot.core.teamSize
 import com.boot.core.setTeamSplit
 import com.boot.core.takeGameContract
 import com.boot.game.GameStore
+import com.boot.game.StudioPage
 import java.util.Locale
 
 /** The game studio, Game Dev Tycoon style. */
 fun LazyListScope.studioItems(store: GameStore, state: GameState) {
     val g = state.games ?: return
+    item {
+        Segmented(StudioPage.entries, store.studioPage, { page ->
+            // A count where something is waiting for you.
+            val waiting = when (page) {
+                StudioPage.MAKE -> g.contractOffers.size + g.dealOffers.size
+                StudioPage.MARKET -> g.pitches.size
+                else -> 0
+            }
+            if (waiting > 0) "${page.title} · $waiting" else page.title
+        }) { store.studioPage = it }
+    }
+    when (store.studioPage) {
+        StudioPage.MAKE -> makeItems(store, state, g)
+        StudioPage.GAMES -> {
+            item { StudioOverview(state, g) }
+            if (g.franchises.isNotEmpty()) item { FranchisesSection(store, state, g) }
+            if (g.releases.any { it.live?.closed == false }) item { LiveGamesSection(store, state, g) }
+            if (Research.ESPORTS in state.researched) item { EsportsSection(store, state, g) }
+            item { ReleasesSection(store, g) }
+            if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
+        }
+        StudioPage.MARKET -> {
+            item { ChartCard(state, limit = 10) { store.openRelease = it } }
+            item { ComingSoonCard(state, limit = 8) }
+            if (Research.PUBLISHING in state.researched) item { LabelSection(store, state, g) }
+            item { StudiosSection(store, state, g) }
+        }
+        StudioPage.TECH -> {
+            item { EnginesSection(store, state, g) }
+            item { PlatformsSection(state) }
+            item { NotebookSection(g) }
+        }
+    }
+}
+
+/** What the teams are making now, and what they could start. */
+private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: GamesStudio) {
     val p = g.project
     val c = g.contract
     val x = g.expansion
@@ -108,20 +149,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
         }
     }
     if (Research.SECOND_TEAM in state.researched) secondTeamItems(store, state, g)
-    item { StudioOverview(state, g) }
-    item { ChartCard(state, limit = 10) { store.openRelease = it } }
-    item { ComingSoonCard(state, limit = 8) }
-    if (g.franchises.isNotEmpty()) item { FranchisesSection(store, state, g) }
-    if (g.releases.any { it.live?.closed == false }) item { LiveGamesSection(store, state, g) }
-    if (Research.ESPORTS in state.researched) item { EsportsSection(store, state, g) }
-    item { ReleasesSection(store, g) }
     if (Research.REMASTERS in state.researched) item { RemastersSection(store, state, g) }
-    if (Research.PUBLISHING in state.researched) item { LabelSection(store, state, g) }
-    item { StudiosSection(store, state, g) }
-    if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
-    item { EnginesSection(store, state, g) }
-    item { PlatformsSection(state) }
-    item { NotebookSection(g) }
 }
 
 @Composable
@@ -242,7 +270,20 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 PrimaryButton("Release ${p.title}", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady)
-                if (p.deal == null) PlainButton("Cancel", { store.perform { cancelGame(team) } }, color = colors.bad)
+                if (p.deal == null) {
+                    var confirming by remember { mutableStateOf(false) }
+                    PlainButton("Cancel", { confirming = true }, color = colors.bad)
+                    if (confirming) {
+                        ConfirmDialog(
+                            title = "Cancel ${p.title}?",
+                            text = "Everything spent on it so far (${Format.money(p.spent)}) is gone, and the team starts over.",
+                            confirm = "Cancel the game",
+                            destructive = true,
+                            onConfirm = { store.perform { cancelGame(team) } },
+                            onDismiss = { confirming = false },
+                        )
+                    }
+                }
             }
             Meter("Development", p.completion, wavy = !p.isReady)
             TileRow {

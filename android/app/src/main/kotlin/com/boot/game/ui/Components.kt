@@ -1,5 +1,6 @@
 package com.boot.game.ui
 
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -525,4 +526,17 @@ fun FitText(
         maxLines = 1, overflow = TextOverflow.Ellipsis,
         autoSize = TextAutoSize.StepBased(minFontSize = min, maxFontSize = style.fontSize, stepSize = 0.5.sp),
     )
+}
+
+/** A short explanation that appears on long press: for icons and numbers that don't say what they are. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun Tip(text: String, content: @Composable () -> Unit) {
+    androidx.compose.material3.TooltipBox(
+        positionProvider = androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider(
+            androidx.compose.material3.TooltipAnchorPosition.Below,
+        ),
+        tooltip = { PlainTooltip { Text(text) } },
+        state = androidx.compose.material3.rememberTooltipState(),
+    ) { content() }
 }
