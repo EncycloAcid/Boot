@@ -108,31 +108,35 @@ class SceneGalleryTest {
     @Config(qualifiers = "+night")
     fun everyOfficeByNight() = gallery("51-offices-night")
 
-    @Test
-    fun boxArt() {
-        val topics = listOf(
-            Topic.FANTASY, Topic.SPACE, Topic.CYBERPUNK, Topic.RACING, Topic.SPORTS, Topic.ZOMBIES,
-            Topic.PIRATES, Topic.FARMING, Topic.DINOSAURS, Topic.ROBOTS, Topic.WILD_WEST, Topic.MILITARY,
-        )
-        val platforms = listOf(Platform.PC, Platform.PLAYSYSTEM_5, Platform.SWITCHEROO, Platform.MBOX_Z)
-        val concepts = topics.mapIndexed { i, t ->
+    private fun covers(topics: List<Topic>, name: String) {
+        val platforms = listOf(Platform.PC, Platform.PLAYSYSTEM_5, Platform.SWITCHEROO, Platform.MBOX_Z, Platform.GRPHONE)
+        val concepts = topics.map { t ->
+            val i = t.ordinal
             val genre = Genre.entries[i % Genre.entries.size]
+            val base = gameTitle(t, genre, i.toLong())
             GameConcept(
-                gameTitle(t, genre, i.toLong()), t, genre, platforms = listOf(platforms[i % platforms.size]),
+                if (i % 3 == 0) "$base ${2 + i % 3}" else base, t, genre, platforms = listOf(platforms[i % platforms.size]),
                 audience = Audience.entries[i % Audience.entries.size], size = GameSize.MEDIUM,
             )
         }
         compose.setContent {
             BootTheme {
-                Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     concepts.chunked(4).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { row.forEach { GameCover(it, 86.dp) } }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { GameCover(it, 88.dp, studio = "Pixel Forge") } }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { concepts.take(6).forEachIndexed { i, c -> CoverWithScore(c, 5.0 + i * 0.9) } }
                 }
             }
         }
-        save("53-box-art")
+        save(name)
+    }
+
+    @Test
+    fun boxArt() = covers(Topic.entries.take(20), "53-box-art")
+
+    @Test
+    fun moreBoxArt() {
+        covers(Topic.entries.drop(20), "54-box-art")
     }
 
     @Test

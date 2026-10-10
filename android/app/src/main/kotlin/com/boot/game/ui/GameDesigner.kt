@@ -415,7 +415,7 @@ private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceT
     val fees = concept.platforms.sumOf { it.fee }
     val blocker = state.conceptBlocker(concept)
     Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        GameCover(concept, 104.dp)
+        GameCover(concept, 104.dp, studio = state.companyName)
         Column {
             Text(concept.title, style = MaterialTheme.typography.headlineMediumEmphasized)
             Text(

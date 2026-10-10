@@ -153,7 +153,7 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
     ) {
         CardBlock {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                GameCover(c, 64.dp)
+                GameCover(c, 64.dp, studio = state.companyName)
                 Column {
                     Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized)
                     Hint(

@@ -228,7 +228,7 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject) {
     val stage = if (p.isReady) "Polish" else listOf("Foundations", "Content", "Presentation")[p.stage]
     CardBlock {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GameCover(c, 48.dp)
+            GameCover(c, 48.dp, studio = state.companyName)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
