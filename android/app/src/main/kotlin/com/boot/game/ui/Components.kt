@@ -5,6 +5,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
@@ -82,13 +84,13 @@ import com.boot.core.GameClock
 import com.boot.core.Lane
 import com.boot.core.LogEntry
 
-// Grouped lists (iOS "inset grouped" tables)
+// Sections: a heading, a white card, and a footnote
 
-private val CardShape = RoundedCornerShape(22.dp)
+private val CardShape = RoundedCornerShape(24.dp)
 
 /**
- * An iOS inset grouped section: a small caps header outside the card, a rounded card of rows,
- * and an optional footnote under it.
+ * A section of a screen: a sentence-case heading, a rounded card of rows or content, and an
+ * optional footnote under it. The heading sits on the page, not in the card, so cards stay calm.
  */
 @Composable
 fun GroupedSection(
@@ -100,11 +102,14 @@ fun GroupedSection(
 ) {
     Column(modifier.fillMaxWidth()) {
         if (header != null || action != null) {
-            Row(Modifier.padding(start = 20.dp, end = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.heightIn(min = 32.dp).padding(start = 4.dp, end = 0.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    header?.uppercase() ?: "",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    header ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
                 action?.invoke()
@@ -118,7 +123,7 @@ fun GroupedSection(
                 footer,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 6.dp),
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
             )
         }
     }
@@ -126,14 +131,14 @@ fun GroupedSection(
 
 /** Free-form content inside a grouped card, with the card's padding. */
 @Composable
-fun CardBlock(spacing: Dp = 12.dp, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(spacing), content = content)
+fun CardBlock(spacing: Dp = 14.dp, content: @Composable ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(spacing), content = content)
 }
 
-/** The hairline between rows, inset like iOS. */
+/** The hairline between rows, inset to the text. */
 @Composable
-fun RowDivider(inset: Dp = 16.dp) {
-    HorizontalDivider(Modifier.padding(start = inset), thickness = 0.5.dp, color = gameColors.separator)
+fun RowDivider(inset: Dp = 20.dp) {
+    HorizontalDivider(Modifier.padding(start = inset.coerceAtLeast(20.dp), end = 20.dp), thickness = 1.dp, color = gameColors.separator)
 }
 
 /** One iOS table cell: optional leading badge, title and subtitle, a value on the right, a chevron if it navigates. */
@@ -154,8 +159,8 @@ fun ListRow(
         Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .heightIn(min = 48.dp)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
@@ -219,15 +224,13 @@ fun Pill(text: String, color: Color) {
 
 // Numbers
 
+/**
+ * A number with its label: a small label, the figure, an optional line under it. No box of its
+ * own; tiles sit straight on the card, separated by space.
+ */
 @Composable
 fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail: String? = null, tint: Color = Color.Unspecified) {
-    Column(
-        modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(16.dp))
-            .background(gameColors.fill)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) {
+    Column(modifier.fillMaxHeight().padding(vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         FitText(label, MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         FitText(
             value,
@@ -247,7 +250,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
 /** Tiles side by side. Phones are narrow; pairs and triples read better than a long row. */
 @Composable
 fun TileRow(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp), content = content)
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp), content = content)
 }
 
 /**
@@ -405,31 +408,48 @@ fun PlainButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
 }
 
 /**
- * A picker over a short list: Material's connected button group, which reads like an iOS
- * segmented control but springs and reshapes the selected segment.
+ * A picker over a short list: a soft track with the chosen option on a raised white pill that
+ * slides between options.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
     val haptics = LocalHapticFeedback.current
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
-        options.forEachIndexed { i, option ->
-            ToggleButton(
-                checked = option == selected,
-                onCheckedChange = {
-                    if (option != selected) {
-                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-                        onSelect(option)
-                    }
-                },
-                modifier = Modifier.weight(1f).semantics { role = Role.RadioButton },
-                shapes = when (i) {
-                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                contentPadding = PaddingValues(horizontal = 8.dp),
-            ) { FitText(label(option), MaterialTheme.typography.labelLarge) }
+    val colors = gameColors
+    val motion = MaterialTheme.motionScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(colors.fill)
+            .padding(3.dp),
+    ) {
+        options.forEach { option ->
+            val on = option == selected
+            // The chosen option sits on a raised pill: white on the light track, a lighter grey on the dark one.
+            val raised = if (colors.card.luminance() < 0.5f) MaterialTheme.colorScheme.surfaceContainerHighest else colors.card
+            val bg by androidx.compose.animation.animateColorAsState(if (on) raised else Color.Transparent, motion.defaultEffectsSpec(), label = "segment")
+            Surface(
+                color = bg,
+                shape = RoundedCornerShape(13.dp),
+                shadowElevation = if (on) 1.dp else 0.dp,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 40.dp)
+                    .selectable(selected = on, role = Role.RadioButton) {
+                        if (!on) {
+                            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                            onSelect(option)
+                        }
+                    },
+            ) {
+                Box(Modifier.padding(horizontal = 8.dp, vertical = 9.dp), contentAlignment = Alignment.Center) {
+                    FitText(
+                        label(option), MaterialTheme.typography.labelLarge,
+                        color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                    )
+                }
+            }
         }
     }
 }
@@ -531,12 +551,13 @@ fun FitText(
 /** A short explanation that appears on long press: for icons and numbers that don't say what they are. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun Tip(text: String, content: @Composable () -> Unit) {
+fun Tip(text: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     androidx.compose.material3.TooltipBox(
         positionProvider = androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider(
             androidx.compose.material3.TooltipAnchorPosition.Below,
         ),
         tooltip = { PlainTooltip { Text(text) } },
         state = androidx.compose.material3.rememberTooltipState(),
+        modifier = modifier,
     ) { content() }
 }

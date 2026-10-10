@@ -194,7 +194,7 @@ fun LiveServiceSection(store: GameStore, state: GameState, r: GameRelease) {
             Monetization.AGGRESSIVE -> "Aggressive: loot boxes and pay-to-win. Players spend more and leave faster, and the press notices."
         },
     ) {
-        Column(Modifier.padding(8.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
             TileRow {
                 StatTile("Players", Format.count(l.players), Modifier.weight(1f), "peak ${Format.count(l.peakPlayers)}")
                 StatTile("In-game", l.lastRevenue.perWeek(), Modifier.weight(1f), "servers ${l.lastCost.perWeek()}", tint = if (l.lastRevenue > 0) colors.good else Color.Unspecified)

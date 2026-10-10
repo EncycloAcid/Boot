@@ -24,69 +24,67 @@ import com.boot.core.Lane
 import com.boot.core.LogTone
 
 /*
- * Boot's look is iOS structure with Material 3 Expressive character:
- * - iOS: grouped backgrounds, inset grouped lists with hairline separators, large titles,
- *   the iOS system color palette, sheets for decisions, a tab bar.
- * - Expressive: the expressive motion scheme (springs everywhere), shape-morphing buttons,
- *   MaterialShapes lane badges that morph when selected, connected button groups, wavy progress,
- *   a floating toolbar for time, emphasized type for the numbers that matter.
+ * Boot's look is calm and airy: white cards on a soft off-white page (near-black in the dark),
+ * plenty of space, sentence-case headings, one big number where it matters, and colour kept for
+ * meaning: money up or down, each business, the thing to press. Material 3 Expressive supplies
+ * the motion (springs everywhere), the lane badges that morph when picked and the wavy progress.
  */
 
 private val Light = lightColorScheme(
-    primary = Color(0xFF4B3FE0),
+    primary = Color(0xFF5B5BD6),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE4E0FF),
-    onPrimaryContainer = Color(0xFF160E6E),
-    secondary = Color(0xFF00696E),
+    primaryContainer = Color(0xFFEDEDFC),
+    onPrimaryContainer = Color(0xFF27266B),
+    secondary = Color(0xFF3E7C76),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFC6EEEF),
-    onSecondaryContainer = Color(0xFF002022),
-    tertiary = Color(0xFFB4452A),
+    secondaryContainer = Color(0xFFEDEDFC),
+    onSecondaryContainer = Color(0xFF27266B),
+    tertiary = Color(0xFFB4593A),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFDAD0),
-    onTertiaryContainer = Color(0xFF3B0900),
-    background = Color(0xFFF2F2F7),
-    onBackground = Color(0xFF000000),
-    surface = Color(0xFFF2F2F7),
-    onSurface = Color(0xFF000000),
-    onSurfaceVariant = Color(0xFF6C6C70),
+    tertiaryContainer = Color(0xFFFBEAE2),
+    onTertiaryContainer = Color(0xFF4A1B0C),
+    background = Color(0xFFF6F6F3),
+    onBackground = Color(0xFF1B1B1F),
+    surface = Color(0xFFF6F6F3),
+    onSurface = Color(0xFF1B1B1F),
+    onSurfaceVariant = Color(0xFF6E6F76),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFF7F7FA),
-    surfaceContainer = Color(0xFFF9F9FB),
-    surfaceContainerHigh = Color(0xFFE9E9EF),
-    surfaceContainerHighest = Color(0xFFDEDEE4),
-    outline = Color(0xFF8E8E93),
-    outlineVariant = Color(0xFFC6C6C8),
+    surfaceContainerLow = Color(0xFFFAFAF8),
+    surfaceContainer = Color(0xFFFFFFFF),
+    surfaceContainerHigh = Color(0xFFF0F0EE),
+    surfaceContainerHighest = Color(0xFFE6E6E3),
+    outline = Color(0xFF9A9BA1),
+    outlineVariant = Color(0xFFE2E2DF),
 )
 
 private val Dark = darkColorScheme(
-    primary = Color(0xFFC6C0FF),
-    onPrimary = Color(0xFF231596),
-    primaryContainer = Color(0xFF3D31C9),
-    onPrimaryContainer = Color(0xFFE4E0FF),
-    secondary = Color(0xFF7FD6DB),
-    onSecondary = Color(0xFF003739),
-    secondaryContainer = Color(0xFF004F53),
-    onSecondaryContainer = Color(0xFFC6EEEF),
-    tertiary = Color(0xFFFFB4A0),
-    onTertiary = Color(0xFF5F1500),
-    tertiaryContainer = Color(0xFF8A2D14),
-    onTertiaryContainer = Color(0xFFFFDAD0),
-    background = Color(0xFF000000),
-    onBackground = Color.White,
-    surface = Color(0xFF000000),
-    onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFAEAEB2),
-    surfaceContainerLowest = Color(0xFF1C1C1E),
-    surfaceContainerLow = Color(0xFF232325),
-    surfaceContainer = Color(0xFF161618),
-    surfaceContainerHigh = Color(0xFF2C2C2E),
-    surfaceContainerHighest = Color(0xFF3A3A3C),
-    outline = Color(0xFF8E8E93),
-    outlineVariant = Color(0xFF38383A),
+    primary = Color(0xFFAEB0FF),
+    onPrimary = Color(0xFF1E1D5C),
+    primaryContainer = Color(0xFF2B2B5E),
+    onPrimaryContainer = Color(0xFFE2E2FF),
+    secondary = Color(0xFF8CC9C2),
+    onSecondary = Color(0xFF0E3632),
+    secondaryContainer = Color(0xFF2B2B5E),
+    onSecondaryContainer = Color(0xFFE2E2FF),
+    tertiary = Color(0xFFF2AE94),
+    onTertiary = Color(0xFF4A1B0C),
+    tertiaryContainer = Color(0xFF5A2A19),
+    onTertiaryContainer = Color(0xFFFBEAE2),
+    background = Color(0xFF111113),
+    onBackground = Color(0xFFEDEDEF),
+    surface = Color(0xFF111113),
+    onSurface = Color(0xFFEDEDEF),
+    onSurfaceVariant = Color(0xFF9E9FA6),
+    surfaceContainerLowest = Color(0xFF1B1B1E),
+    surfaceContainerLow = Color(0xFF1E1E21),
+    surfaceContainer = Color(0xFF1B1B1E),
+    surfaceContainerHigh = Color(0xFF26262A),
+    surfaceContainerHighest = Color(0xFF303035),
+    outline = Color(0xFF7D7E85),
+    outlineVariant = Color(0xFF2C2C30),
 )
 
-/** Colors with a meaning in the game, from the iOS system palette, plus the grouped-list surfaces. */
+/** Colors with a meaning in the game, plus the page and card surfaces. */
 @Immutable
 data class GameColors(
     val good: Color,
@@ -95,11 +93,11 @@ data class GameColors(
     val milestone: Color,
     val lanes: Map<Lane, Color>,
     val other: Color,
-    /** The page behind grouped lists. */
+    /** The page behind the cards. */
     val grouped: Color,
-    /** A grouped list's card. */
+    /** A card. */
     val card: Color,
-    /** Quiet fills inside a card: tiles, tracks, unselected chips. */
+    /** Quiet fills inside a card: tracks, unselected chips, the segmented control. */
     val fill: Color,
     /** Hairlines between rows. */
     val separator: Color,
@@ -120,79 +118,78 @@ data class GameColors(
 }
 
 private val LightGame = GameColors(
-    good = Color(0xFF248A3D),
-    bad = Color(0xFFD70015),
-    warn = Color(0xFFC93400),
-    milestone = Color(0xFF5856D6),
+    good = Color(0xFF1F8A4C),
+    bad = Color(0xFFD93D42),
+    warn = Color(0xFFC9650E),
+    milestone = Color(0xFF6E56CF),
     lanes = mapOf(
-        Lane.GAMES to Color(0xFFFF2D55),
-        Lane.WEBSITES to Color(0xFF007AFF),
-        Lane.APPS to Color(0xFF34C759),
-        Lane.SOCIAL to Color(0xFFFF9500),
-        Lane.HARDWARE to Color(0xFFAF52DE),
-        Lane.AI to Color(0xFF32ADE6),
+        Lane.GAMES to Color(0xFFE5486F),
+        Lane.WEBSITES to Color(0xFF3B7FE8),
+        Lane.APPS to Color(0xFF2E9E62),
+        Lane.SOCIAL to Color(0xFFE8920C),
+        Lane.HARDWARE to Color(0xFF9B59E0),
+        Lane.AI to Color(0xFF1F9BC9),
     ),
-    other = Color(0xFF8E8E93),
-    grouped = Color(0xFFF2F2F7),
+    other = Color(0xFF9A9BA1),
+    grouped = Color(0xFFF6F6F3),
     card = Color.White,
-    fill = Color(0xFFF2F2F7),
-    separator = Color(0xFFC6C6C8),
-    bar = Color(0xF7F9F9FB),
-    design = Color(0xFF2F7BF6),
-    tech = Color(0xFFFF7A1A),
+    fill = Color(0xFFF1F1EE),
+    separator = Color(0xFFEAEAE7),
+    bar = Color(0xFFFFFFFF),
+    design = Color(0xFF3B7FE8),
+    tech = Color(0xFFE8792A),
 )
 
 private val DarkGame = GameColors(
-    good = Color(0xFF30D158),
-    bad = Color(0xFFFF453A),
-    warn = Color(0xFFFF9F0A),
-    milestone = Color(0xFF7D7AFF),
+    good = Color(0xFF4CC38A),
+    bad = Color(0xFFFF6369),
+    warn = Color(0xFFF1A10D),
+    milestone = Color(0xFF9E8CFC),
     lanes = mapOf(
-        Lane.GAMES to Color(0xFFFF375F),
-        Lane.WEBSITES to Color(0xFF0A84FF),
-        Lane.APPS to Color(0xFF30D158),
-        Lane.SOCIAL to Color(0xFFFF9F0A),
-        Lane.HARDWARE to Color(0xFFBF5AF2),
-        Lane.AI to Color(0xFF64D2FF),
+        Lane.GAMES to Color(0xFFFF6B8F),
+        Lane.WEBSITES to Color(0xFF6AA2FF),
+        Lane.APPS to Color(0xFF4CC38A),
+        Lane.SOCIAL to Color(0xFFF5B13D),
+        Lane.HARDWARE to Color(0xFFBF8CFF),
+        Lane.AI to Color(0xFF5BC5F0),
     ),
-    other = Color(0xFF8E8E93),
-    grouped = Color.Black,
-    card = Color(0xFF1C1C1E),
-    fill = Color(0xFF2C2C2E),
-    separator = Color(0xFF38383A),
-    bar = Color(0xF2161618),
-    design = Color(0xFF4C93FF),
-    tech = Color(0xFFFF9F45),
+    other = Color(0xFF7D7E85),
+    grouped = Color(0xFF111113),
+    card = Color(0xFF1B1B1E),
+    fill = Color(0xFF26262A),
+    separator = Color(0xFF2A2A2E),
+    bar = Color(0xFF1E1E21),
+    design = Color(0xFF6AA2FF),
+    tech = Color(0xFFFF9F5A),
 )
 
 val LocalGameColors = staticCompositionLocalOf { LightGame }
 
-private fun TextStyle.ios(size: Int, line: Int, weight: FontWeight, tracking: Double = 0.0) =
+private fun TextStyle.sized(size: Int, line: Int, weight: FontWeight, tracking: Double = 0.0) =
     copy(fontSize = size.sp, lineHeight = line.sp, fontWeight = weight, letterSpacing = tracking.sp)
 
-/** The iOS type ramp (large title 34, headline 17, body 17, footnote 13) mapped onto Material roles. */
+/** A calm type ramp: generous line heights, semibold rather than black, big numbers kept bold. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val BootTypography = Typography().let { t ->
     t.copy(
-        // iOS large title. Material's flexible large top bar sets its expanded title in displaySmall.
-        displaySmall = t.displaySmall.ios(34, 41, FontWeight.Bold, -0.6),
-        displayMedium = t.displayMedium.ios(44, 50, FontWeight.Black, -1.4),
-        headlineLarge = t.headlineLarge.ios(34, 41, FontWeight.Bold, -0.6),
-        headlineMedium = t.headlineMedium.ios(28, 34, FontWeight.Bold, -0.4),
-        headlineSmall = t.headlineSmall.ios(22, 28, FontWeight.Bold, -0.3),
-        titleLarge = t.titleLarge.ios(20, 25, FontWeight.SemiBold, -0.2),
-        titleMedium = t.titleMedium.ios(17, 22, FontWeight.SemiBold, -0.2),
-        titleSmall = t.titleSmall.ios(15, 20, FontWeight.SemiBold, -0.1),
-        bodyLarge = t.bodyLarge.ios(17, 22, FontWeight.Normal, -0.2),
-        bodyMedium = t.bodyMedium.ios(15, 20, FontWeight.Normal, -0.1),
-        bodySmall = t.bodySmall.ios(13, 18, FontWeight.Normal),
-        labelLarge = t.labelLarge.ios(15, 20, FontWeight.SemiBold, -0.1),
-        labelMedium = t.labelMedium.ios(13, 18, FontWeight.Medium),
-        labelSmall = t.labelSmall.ios(11, 13, FontWeight.Medium, 0.1),
-        displaySmallEmphasized = t.displaySmallEmphasized.ios(40, 46, FontWeight.Black, -1.2),
-        headlineLargeEmphasized = t.headlineLargeEmphasized.ios(34, 40, FontWeight.ExtraBold, -0.8),
-        headlineMediumEmphasized = t.headlineMediumEmphasized.ios(28, 34, FontWeight.ExtraBold, -0.6),
-        titleLargeEmphasized = t.titleLargeEmphasized.ios(22, 28, FontWeight.ExtraBold, -0.4),
+        displaySmall = t.displaySmall.sized(34, 42, FontWeight.SemiBold, -0.6),
+        displayMedium = t.displayMedium.sized(44, 52, FontWeight.Bold, -1.2),
+        headlineLarge = t.headlineLarge.sized(32, 40, FontWeight.SemiBold, -0.6),
+        headlineMedium = t.headlineMedium.sized(26, 34, FontWeight.SemiBold, -0.4),
+        headlineSmall = t.headlineSmall.sized(21, 28, FontWeight.SemiBold, -0.2),
+        titleLarge = t.titleLarge.sized(19, 26, FontWeight.SemiBold, -0.2),
+        titleMedium = t.titleMedium.sized(17, 23, FontWeight.SemiBold, -0.1),
+        titleSmall = t.titleSmall.sized(15, 21, FontWeight.SemiBold, -0.1),
+        bodyLarge = t.bodyLarge.sized(16, 23, FontWeight.Normal, -0.1),
+        bodyMedium = t.bodyMedium.sized(15, 21, FontWeight.Normal, -0.1),
+        bodySmall = t.bodySmall.sized(13, 19, FontWeight.Normal),
+        labelLarge = t.labelLarge.sized(15, 20, FontWeight.SemiBold, -0.1),
+        labelMedium = t.labelMedium.sized(13, 18, FontWeight.Medium),
+        labelSmall = t.labelSmall.sized(11, 14, FontWeight.Medium, 0.2),
+        displaySmallEmphasized = t.displaySmallEmphasized.sized(38, 44, FontWeight.Bold, -1.0),
+        headlineLargeEmphasized = t.headlineLargeEmphasized.sized(32, 40, FontWeight.Bold, -0.8),
+        headlineMediumEmphasized = t.headlineMediumEmphasized.sized(28, 34, FontWeight.Bold, -0.6),
+        titleLargeEmphasized = t.titleLargeEmphasized.sized(22, 28, FontWeight.Bold, -0.4),
     )
 }
 
@@ -200,8 +197,8 @@ private val BootShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
     medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(22.dp),
-    extraLarge = RoundedCornerShape(30.dp),
+    large = RoundedCornerShape(24.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

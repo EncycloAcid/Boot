@@ -226,7 +226,7 @@ private fun StockSection(store: GameStore, state: GameState) {
         "Stock · ${l.ticker}",
         footer = l.lastEarnings ?: "The market expects revenue to grow about ${(EXPECTED_QUARTERLY_GROWTH * 100).toInt()}% a quarter. Beat it and the shares rise.",
     ) {
-        Column(Modifier.padding(8.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
             TileRow {
                 StatTile(
                     "Share price", "\$" + String.format(java.util.Locale.US, "%.2f", l.price), Modifier.weight(1f),

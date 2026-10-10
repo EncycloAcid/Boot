@@ -227,7 +227,7 @@ class GameFlowTest {
         compose.waitForIdle()
         val release = store.state!!.games!!.releases.single()
         assertEquals(release.id, store.state!!.games!!.unseenReview)
-        compose.onNodeWithText("THE REVIEWS ARE IN").assertExists()
+        compose.onNodeWithText("The reviews are in").assertExists()
         compose.onNodeWithText("Metascore").assertExists()
         compose.onNodeWithText("IGN").assertExists()
         overlay("21-reviews")

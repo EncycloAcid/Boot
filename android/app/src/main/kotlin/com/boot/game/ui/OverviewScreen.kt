@@ -1,5 +1,11 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.unit.sp
+
+import androidx.compose.foundation.layout.height
+
+import androidx.compose.foundation.layout.IntrinsicSize
+
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -52,7 +58,6 @@ import kotlin.math.abs
 /** The company at a glance: what it's worth, how it's doing, and the world around it. */
 fun LazyListScope.overviewItems(store: GameStore, state: GameState) {
     item { Hero(state) }
-    item { QuickStats(state) }
     item { LanesSection(store, state) }
     item { RankingsSection(state) }
     item { RevenueSection(state) }
@@ -61,68 +66,36 @@ fun LazyListScope.overviewItems(store: GameStore, state: GameState) {
     item { ReputationSection(state) }
 }
 
-/** The expressive hero: the number that matters most, on a slowly turning cookie shape. */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+/**
+ * The one big number: what the company is worth (or its market cap once listed), what it makes a
+ * week, and under a hairline the three things to keep an eye on.
+ */
 @Composable
 private fun Hero(state: GameState) {
     val colors = gameColors
-    val spin = rememberInfiniteTransition(label = "hero")
-    val angle by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(60_000, easing = LinearEasing), RepeatMode.Restart), label = "angle")
     val weeklyProfit = state.trailingProfit(weeks = 4) / 4
-    Surface(shape = RoundedCornerShape(30.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Box {
-            Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 48.dp, y = (-40).dp)
-                    .size(180.dp)
-                    .rotate(angle)
-                    .clip(MaterialShapes.Cookie12Sided.toShape())
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
-            )
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                val listing = state.listing
-                Text(
-                    listing?.let { "${it.ticker} · \$" + String.format(java.util.Locale.US, "%.2f", it.price) + " a share" } ?: "Valuation",
-                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Text(
-                    Format.money(listing?.marketCap ?: state.valuation),
-                    style = MaterialTheme.typography.displaySmallEmphasized,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Spacer(Modifier.size(6.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HeroChip("You own ${Format.percent(state.venture.founderEquity)}", MaterialTheme.colorScheme.onPrimaryContainer)
-                    HeroChip("${state.researchPoints.toInt()} RP", MaterialTheme.colorScheme.onPrimaryContainer)
-                    HeroChip(
-                        "${Format.signedMoney(weeklyProfit)}/wk",
-                        if (weeklyProfit >= 0) colors.good else colors.bad,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HeroChip(text: String, color: Color) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        color = color,
-        maxLines = 1,
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    )
-}
-
-@Composable
-private fun QuickStats(state: GameState) {
-    val colors = gameColors
+    val listing = state.listing
     GroupedSection(null) {
-        Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                listing?.let { "${it.ticker} · \$" + String.format(java.util.Locale.US, "%.2f", it.price) + " a share" } ?: "Valuation",
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FitText(Format.money(listing?.marketCap ?: state.valuation), MaterialTheme.typography.displaySmallEmphasized, min = 20.sp)
+            Text(
+                buildString {
+                    append("${Format.signedMoney(weeklyProfit)} a week")
+                    append(" · you own ${Format.percent(state.venture.founderEquity)}")
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (weeklyProfit >= 0) colors.good else colors.bad,
+            )
+        }
+        RowDivider()
+        Row(
+            Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
             StatTile(
                 "Reputation", "${state.reputation.score.toInt()}", Modifier.weight(1f),
                 if (state.reputation.scars.isEmpty()) "Clean" else "${state.reputation.scars.size} scar(s)",

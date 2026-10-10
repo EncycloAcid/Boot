@@ -160,7 +160,7 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
         "Studio",
         footer = g.trend?.let { "Trend: gamers can't get enough of ${it.title.lowercase()} games right now." },
     ) {
-        Column(Modifier.padding(8.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
             TileRow {
                 StatTile("Fans", Format.count(g.fans), Modifier.weight(1f), "trust ${String.format(Locale.US, "%.2f", g.fanTrust)}")
                 StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), "${g.releases.size} games")

@@ -100,7 +100,7 @@ private fun LaneHero(state: GameState, lane: Lane) {
                 )
             }
         }
-        Column(Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             TileRow {
                 StatTile("Revenue", (state.trailingRevenue(lane, 4) / 4).perWeek(), Modifier.weight(1f), "4-week average")
                 StatTile("Profit", profit.signedPerWeek(), Modifier.weight(1f), "after this lane's payroll", if (profit >= 0) colors.good else colors.bad)
@@ -175,7 +175,7 @@ private fun LazyListScope.webItems(store: GameStore, state: GameState) {
                 CardBlock(spacing = 8.dp) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(c.client, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        if (c.isOverdue) Pill("OVERDUE", gameColors.bad)
+                        if (c.isOverdue) Pill("Overdue", gameColors.bad)
                         Spacer(Modifier.width(6.dp))
                         Hint("week ${c.weeksElapsed}/${c.weeksAllowed}")
                     }
@@ -200,7 +200,7 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                     Meter("Progress", (a.buildProgress / a.buildWork).coerceAtMost(1.0), wavy = true)
                 }
             } else {
-                Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     TileRow {
                         StatTile("Users", Format.count(a.users), Modifier.weight(1f))
                         StatTile("Store rank", a.rankLabel, Modifier.weight(1f))
@@ -263,7 +263,7 @@ private fun LazyListScope.socialItems(store: GameStore, state: GameState) {
                     Meter("Progress", (s.buildProgress / s.buildWork).coerceAtMost(1.0), wavy = true)
                 }
             } else {
-                Column(Modifier.padding(8.dp)) {
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                     TileRow {
                         StatTile("Accounts", Format.count(s.users), Modifier.weight(1f))
                         StatTile("Real people", Format.count(s.realUsers), Modifier.weight(1f))
@@ -311,7 +311,7 @@ private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
             val m = h.onMarket
             if (m != null) {
                 ListRow(m.name, subtitle = "${Format.money(m.spec.price)} · reviewed ${m.quality.toInt()}")
-                Column(Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)) {
+                Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 18.dp)) {
                     TileRow {
                         StatTile("Demand", "${Format.count(h.lastDemand)}/wk", Modifier.weight(1f))
                         StatTile(
@@ -411,7 +411,7 @@ private fun LazyListScope.aiItems(store: GameStore, state: GameState) {
     val lab = state.ai ?: return
     item {
         GroupedSection("Models") {
-            Column(Modifier.padding(8.dp)) {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                 TileRow {
                     StatTile("Best model", lab.modelName ?: "None", Modifier.weight(1f))
                     StatTile("Capability", "${lab.capability.toInt()}", Modifier.weight(1f))

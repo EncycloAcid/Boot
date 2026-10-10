@@ -77,7 +77,7 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Hint("THE REVIEWS ARE IN")
+                Hint("The reviews are in")
                 Spacer(Modifier.size(10.dp))
                 GameCover(r.concept, 132.dp, studio = r.developer ?: r.publisher ?: state.companyName)
                 Spacer(Modifier.size(12.dp))
@@ -163,7 +163,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     }
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { ScoreSummary(r) }
                     GroupedSection("Sales") {
-                        Column(Modifier.padding(8.dp)) {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                             TileRow {
                                 StatTile("Earned", Format.money(r.lifetimeSales), Modifier.weight(1f), "after the cut")
                                 StatTile("Copies", Format.count(r.unitsSold), Modifier.weight(1f))

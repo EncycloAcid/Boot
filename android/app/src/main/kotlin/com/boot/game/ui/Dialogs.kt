@@ -112,7 +112,7 @@ fun EventSheet(store: GameStore, state: GameState) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         LaneBadge(lane, 32.dp)
                         Spacer(Modifier.width(8.dp))
-                        Hint(lane.businessName.uppercase())
+                        Hint(lane.businessName)
                     }
                 }
                 Text(e.title, style = MaterialTheme.typography.headlineMediumEmphasized)
@@ -163,7 +163,7 @@ fun PivotDialog(store: GameStore, state: GameState) {
                 ) {
                     Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            "THE PIVOT POINT · ${offer.trigger.title.uppercase()}",
+                            "The Pivot Point · ${offer.trigger.title}",
                             style = MaterialTheme.typography.labelLarge, color = colors.milestone, fontWeight = FontWeight.Bold,
                         )
                         Text(offer.headline, style = MaterialTheme.typography.headlineLarge)
@@ -274,7 +274,7 @@ fun EndingDialog(store: GameStore, state: GameState) {
                             Text(e.kind.emoji, style = MaterialTheme.typography.displaySmall)
                         }
                         Spacer(Modifier.size(12.dp))
-                        Text(e.kind.title.uppercase(), style = MaterialTheme.typography.labelLarge, color = accent, fontWeight = FontWeight.Bold)
+                        Text(e.kind.title, style = MaterialTheme.typography.labelLarge, color = accent, fontWeight = FontWeight.SemiBold)
                         Text(e.title, style = MaterialTheme.typography.displaySmallEmphasized, textAlign = TextAlign.Center)
                         Spacer(Modifier.size(6.dp))
                         Text(e.summary, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 8.dp))
@@ -288,7 +288,7 @@ fun EndingDialog(store: GameStore, state: GameState) {
                         }
                     }
                     GroupedSection(null) {
-                        Column(Modifier.padding(8.dp)) {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                             TileRow {
                                 StatTile("Final valuation", Format.money(e.valuation), Modifier.weight(1f))
                                 StatTile("You walk away with", Format.money(e.founderTakeHome), Modifier.weight(1f))

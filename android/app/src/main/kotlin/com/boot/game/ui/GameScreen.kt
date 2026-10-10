@@ -1,5 +1,7 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.platform.LocalDensity
+
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Badge
 import androidx.compose.ui.text.font.FontWeight
@@ -198,9 +200,9 @@ private fun GameScreen(store: GameStore, state: GameState) {
 }
 
 /**
- * The heads-up display, always on top: who you are and when, the clock controls, and the three
- * numbers you check constantly (cash, research points, fans or reputation). A thin line under it
- * fills as each week passes while the game runs.
+ * The header, always on top: who you are and when, the clock controls, and the three numbers you
+ * check constantly (cash, research points, fans or reputation), as plain text on the page. A thin
+ * line under it fills as each week passes while the game runs.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -208,18 +210,18 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
     val colors = gameColors
     var menuOpen by remember { mutableStateOf(false) }
     val weekly = state.trailingProfit(weeks = 4) / 4
-    Surface(color = colors.bar) {
+    Surface(color = colors.grouped) {
         Column(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
-            Row(Modifier.padding(start = 12.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(start = 16.dp, end = 12.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
                         .clip(CircleShape)
                         .clickable { store.tab = Tab.TEAM }
                         .semantics { contentDescription = "You, ${state.founder.name}" },
-                ) { FounderPortrait(state, 42.dp) }
-                Spacer(Modifier.width(10.dp))
+                ) { FounderPortrait(state, 40.dp) }
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    FitText(state.companyName, MaterialTheme.typography.titleLargeEmphasized, min = 14.sp)
+                    FitText(state.companyName, MaterialTheme.typography.titleLarge, min = 14.sp)
                     FitText(
                         "${state.dateLabel} · ${state.world.era.title.removePrefix("The ")}",
                         MaterialTheme.typography.labelMedium,
@@ -229,10 +231,13 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                 ClockControls(store)
             }
             Row(
-                Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                Modifier.padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // The numbers take what room there is and shrink to fit; the menu always keeps its place.
+                // With large text the little words beside the icons go, so the numbers themselves fit.
+                val roomy = LocalDensity.current.fontScale <= 1.15f
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                 HudChip(
                     Format.money(state.cash),
                     detail = "${Format.signedMoney(weekly)}/wk",
@@ -240,32 +245,36 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                     valueColor = if (state.cash < 0) colors.bad else MaterialTheme.colorScheme.onSurface,
                     description = "Cash",
                     tip = "Cash in the bank, and what you've made or lost a week lately. Tap for money.",
+                    modifier = Modifier.weight(1.8f, fill = false),
                 ) {
                     store.companyPage = 1
                     store.tab = Tab.COMPANY
                 }
                 HudChip(
-                    "${state.researchPoints.toInt()}", detail = "RP", icon = Icons.Filled.Science, iconTint = colors.milestone,
+                    "${state.researchPoints.toInt()}", detail = if (roomy) "RP" else null, icon = Icons.Filled.Science, iconTint = colors.milestone,
                     description = "Research points", tip = "Research points, to spend on new tech. Tap for research.",
+                    modifier = Modifier.weight(1f, fill = false),
                 ) {
                     store.tab = Tab.RESEARCH
                 }
                 val fans = state.games?.fans
                 if (fans != null && Lane.GAMES in state.lanes) {
                     HudChip(
-                        Format.count(fans), detail = "fans", icon = Icons.Filled.Star, iconTint = colors.warn,
+                        Format.count(fans), detail = if (roomy) "fans" else null, icon = Icons.Filled.Star, iconTint = colors.warn,
                         description = "Fans", tip = "Fans buy your games at launch. Hits win more; flops lose some. Tap for your games.",
+                        modifier = Modifier.weight(1f, fill = false),
                     ) { store.openStudio(StudioPage.GAMES) }
                 } else {
                     HudChip(
-                        "${state.reputation.score.toInt()}", detail = "rep", icon = Icons.Filled.Star, iconTint = colors.warn,
+                        "${state.reputation.score.toInt()}", detail = if (roomy) "rep" else null, icon = Icons.Filled.Star, iconTint = colors.warn,
                         description = "Reputation", tip = "Reputation, out of 100. Scandals leave scars. Tap for the company.",
+                        modifier = Modifier.weight(1f, fill = false),
                     ) {
                         store.companyPage = 0
                         store.tab = Tab.COMPANY
                     }
                 }
-                Spacer(Modifier.weight(1f))
+                }
                 Box {
                     val unread = state.news.count { it.id > store.newsSeen }
                     IconButton(onClick = { menuOpen = true }) {
@@ -300,21 +309,21 @@ private fun HudChip(
     iconTint: Color = Color.Unspecified,
     description: String,
     tip: String = description,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
-) = Tip(tip) {
+) = Tip(tip, modifier) {
     Row(
         Modifier
-            .clip(CircleShape)
-            .background(gameColors.fill)
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .semantics { contentDescription = description }
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         if (icon != null) Icon(icon, null, tint = iconTint, modifier = Modifier.size(16.dp))
-        // The last chip in the row gets what width is left, so its text shrinks rather than clips.
-        FitText(value, MaterialTheme.typography.labelLarge, color = valueColor, modifier = Modifier.weight(1f, fill = false))
+        // The last one in the row gets what width is left, so its text shrinks rather than clips.
+        FitText(value, MaterialTheme.typography.titleSmall, color = valueColor, modifier = Modifier.weight(1f, fill = false))
         if (detail != null) {
             FitText(
                 detail, MaterialTheme.typography.labelSmall,
@@ -334,22 +343,22 @@ private fun HudChip(
 private fun ClockControls(store: GameStore) {
     val haptics = LocalHapticFeedback.current
     val enabled = store.canAdvance && !store.holdsClock
-    val corner by animateDpAsState(if (store.playing) 16.dp else 26.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "play")
+    val corner by animateDpAsState(if (store.playing) 14.dp else 24.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "play")
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Tip("Game speed: ${store.speed.label}. Tap to change.") {
         Text(
             store.speed.label,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .background(gameColors.fill)
                 .clickable {
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
                 }
                 .semantics { contentDescription = "Speed ${store.speed.label}" }
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         )
         }
         Tip("Play one week") {
@@ -371,13 +380,13 @@ private fun ClockControls(store: GameStore) {
             shape = RoundedCornerShape(corner),
             color = if (enabled || store.playing) MaterialTheme.colorScheme.primary else gameColors.fill,
             contentColor = if (enabled || store.playing) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(52.dp),
+            modifier = Modifier.size(48.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     if (store.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     if (store.playing) "Pause" else "Play",
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(26.dp),
                 )
             }
         }
@@ -393,11 +402,11 @@ private fun WeekProgress(store: GameStore, state: GameState) {
         progress.snapTo(0f)
         if (store.playing) progress.animateTo(1f, tween(store.speed.millis.toInt(), easing = LinearEasing))
     }
-    Box(Modifier.fillMaxWidth().height(3.dp)) {
+    Box(Modifier.fillMaxWidth().height(2.dp)) {
         Box(
             Modifier
                 .fillMaxWidth(progress.value)
-                .height(3.dp)
+                .height(2.dp)
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = if (store.playing) 0.9f else 0f)),
         )
     }
@@ -423,9 +432,9 @@ private fun FloatingTabBar(store: GameStore, modifier: Modifier, snackbar: Snack
         ) {
             Surface(
                 shape = CircleShape,
-                color = colors.card,
-                shadowElevation = 10.dp,
-                border = BorderStroke(0.5.dp, colors.separator),
+                color = colors.bar,
+                shadowElevation = 6.dp,
+                border = BorderStroke(1.dp, colors.separator),
                 modifier = Modifier
                     .navigationBarsPadding()
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp)
@@ -445,7 +454,7 @@ private fun FloatingTabBar(store: GameStore, modifier: Modifier, snackbar: Snack
 private fun FloatingTab(t: TabSpec, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
-    val indicator by animateColorAsState(if (selected) scheme.secondaryContainer else Color.Transparent, motion.defaultEffectsSpec(), label = "tab")
+    val indicator by animateColorAsState(if (selected) scheme.primaryContainer else Color.Transparent, motion.defaultEffectsSpec(), label = "tab")
     val width by animateDpAsState(if (selected) 56.dp else 32.dp, motion.defaultSpatialSpec(), label = "tabWidth")
     Column(
         modifier
@@ -456,13 +465,13 @@ private fun FloatingTab(t: TabSpec, selected: Boolean, modifier: Modifier, onCli
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Box(Modifier.width(width).height(30.dp).background(indicator, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(t.icon, null, tint = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+            Icon(t.icon, null, tint = if (selected) scheme.primary else scheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
         }
         FitText(
             t.label,
             MaterialTheme.typography.labelMedium,
-            color = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) scheme.primary else scheme.onSurfaceVariant,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
         )
     }
 }
@@ -473,8 +482,8 @@ fun ScreenColumn(content: LazyListScope.() -> Unit) {
     val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + FloatingBarClearance + 32.dp
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottom),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = bottom),
+        verticalArrangement = Arrangement.spacedBy(28.dp),
         content = content,
     )
 }

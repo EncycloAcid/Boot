@@ -1,5 +1,7 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.text.style.TextOverflow
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -195,7 +197,7 @@ private fun TeamSection(store: GameStore, state: GameState) {
     ) {
         if (state.staff.isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
         state.staff.forEachIndexed { i, e ->
-            if (i > 0) RowDivider(68.dp)
+            if (i > 0) RowDivider(78.dp)
             EmployeeRow(
                 e, state.lanes,
                 onAssign = { lane -> store.perform { assign(e.id, lane) } },
@@ -231,26 +233,26 @@ private fun TeamSection(store: GameStore, state: GameState) {
 private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Unit, onFire: () -> Unit, onTrain: (() -> Unit)?) {
     val colors = gameColors
     var menu by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        StaffPortrait(e, 48.dp)
-        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        StaffPortrait(e, 44.dp)
+        Column(Modifier.weight(1f).padding(start = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(e.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-                Pill("Lv ${e.level}", colors.milestone)
-                Pill(e.lane?.short ?: "Unassigned", e.lane?.let { colors.lane(it) } ?: MaterialTheme.colorScheme.outline)
+                Text(e.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text("Lv ${e.level}", style = MaterialTheme.typography.labelMedium, color = colors.milestone)
+                // The trait by name; long-press for what it does.
+                e.trait?.let { t -> Tip("${t.title}: ${t.detail}") { Pill(t.title, colors.milestone) } }
             }
-            Text("${e.role.title} · skill ${e.skill} · ${e.salary.perWeek()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             Text(
-                "Design ${e.design} · Tech ${e.tech} · Research ${e.research}",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                "${e.role.title} · skill\u00A0${e.skill} · ${e.salary.perWeek()}" +
+                    // Only worth saying which lane when there's more than one, or none.
+                    (if (lanes.size > 1 || e.lane == null) " · ${e.lane?.short ?: "Unassigned"}" else ""),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            e.trait?.let { t ->
-                Text(
-                    "${t.title}: ${t.detail.replaceFirstChar { it.lowercase() }}",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Design\u00A0${e.design} · Tech\u00A0${e.tech} · Research\u00A0${e.research}",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 MiniBar("Morale", e.morale, if (e.morale < 0.35) colors.bad else colors.good)
                 MiniBar(if (e.maxLevel) "Max level" else "XP", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone)
             }

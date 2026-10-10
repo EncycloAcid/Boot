@@ -176,10 +176,9 @@ fun NewGameScreen(store: GameStore) {
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
-                    "PICK A LANE",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 20.dp, top = 8.dp),
+                    "Pick a lane",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp),
                 )
             }
             items(Lane.entries) { l ->

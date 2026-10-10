@@ -73,23 +73,14 @@ fun ResearchScreen(store: GameStore, state: GameState) {
 
 @Composable
 private fun PointsHero(state: GameState) {
-    Surface(shape = RoundedCornerShape(30.dp), color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp)) {
-            Text("Research points", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onTertiaryContainer)
-            Text(
-                "${state.researchPoints.toInt()} RP",
-                style = MaterialTheme.typography.displaySmallEmphasized,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
+    GroupedSection(null, footer = "Points come from your researchers, from you, and from every week the team spends making games.") {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Research points", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${state.researchPoints.toInt()} RP", style = MaterialTheme.typography.displaySmallEmphasized)
             Text(
                 String.format(Locale.US, "+%.1f RP a week · %d researched", state.researchPerWeek, state.researched.size),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
-            Spacer(Modifier.size(4.dp))
-            Hint(
-                "Points come from your researchers, from you, and from every week the team spends making games.",
-                MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
+                color = gameColors.milestone,
             )
         }
     }

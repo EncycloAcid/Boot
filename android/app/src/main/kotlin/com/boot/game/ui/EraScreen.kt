@@ -39,18 +39,18 @@ fun EraCard(state: GameState) {
     val scheme = MaterialTheme.colorScheme
     val colors = gameColors
     val weeks = state.week - w.eraStartWeek
-    Surface(shape = RoundedCornerShape(28.dp), color = scheme.tertiaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Box(Modifier.background(Brush.linearGradient(listOf(scheme.tertiaryContainer, scheme.primaryContainer)))) {
+    Surface(shape = RoundedCornerShape(24.dp), color = colors.card, modifier = Modifier.fillMaxWidth()) {
+        Box {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(era.emoji, style = MaterialTheme.typography.displaySmall)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("THE ERA", style = MaterialTheme.typography.labelMedium, color = scheme.onTertiaryContainer.copy(alpha = 0.7f))
-                        Text(era.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = scheme.onTertiaryContainer)
+                        Text("The era", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                        Text(era.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = scheme.onSurface)
                     }
                 }
-                Text(era.blurb, style = MaterialTheme.typography.bodyMedium, color = scheme.onTertiaryContainer)
+                Text(era.blurb, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                 if (era != com.boot.core.Era.BOOTSTRAP_YEARS) {
                     // Dawn, peak, fading: where the era is in its life.
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -60,12 +60,12 @@ fun EraCard(state: GameState) {
                                 Modifier
                                     .weight(1f)
                                     .height(28.dp)
-                                    .background(if (on) scheme.onTertiaryContainer else scheme.onTertiaryContainer.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+                                    .background(if (on) scheme.primary else colors.fill, RoundedCornerShape(14.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 FitText(
                                     p.title, MaterialTheme.typography.labelMedium,
-                                    color = if (on) scheme.tertiaryContainer else scheme.onTertiaryContainer.copy(alpha = 0.7f),
+                                    color = if (on) scheme.onPrimary else scheme.onSurfaceVariant,
                                     fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
                                 )
                             }
@@ -74,17 +74,17 @@ fun EraCard(state: GameState) {
                 }
                 Text(
                     "${Format.weeks(weeks)} so far · felt at ${Format.percent(w.eraIntensity)} strength",
-                    style = MaterialTheme.typography.labelMedium, color = scheme.onTertiaryContainer.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant,
                 )
                 w.nextEra?.let { next ->
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .background(scheme.surface.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                            .background(colors.fill, RoundedCornerShape(16.dp))
                             .padding(12.dp),
                     ) {
                         Column {
-                            Text("ON THE HORIZON", style = MaterialTheme.typography.labelSmall, color = colors.milestone, fontWeight = FontWeight.Bold)
+                            Text("On the horizon", style = MaterialTheme.typography.labelMedium, color = colors.milestone, fontWeight = FontWeight.SemiBold)
                             Text(next.rumor, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface)
                         }
                     }
