@@ -7,3 +7,7 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Release builds and review sheets copied out for sharing
+*.apk
+polish-*.png
