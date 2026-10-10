@@ -71,6 +71,14 @@ fun OfficeScreen(store: GameStore, state: GameState) {
                 store.tab = Tab.COMPANY
             }
         }
+        if (state.achievements.isNotEmpty()) {
+            item {
+                RecentAchievements(state) {
+                    store.companyPage = 3
+                    store.tab = Tab.COMPANY
+                }
+            }
+        }
         if (state.games != null) {
             item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openLane(Lane.GAMES) }) }) { store.openRelease = it } }
             item { ComingSoonCard(state, limit = 3) }

@@ -38,6 +38,8 @@ data class ChartEntry(
     val weeklySales: Double,
     val score: Double,
     val releaseId: Int? = null,
+    /** Made by a studio you own. */
+    val owned: Boolean = false,
 ) {
     val mine: Boolean get() = releaseId != null
 }
@@ -62,24 +64,6 @@ class GameMarket {
     val wins: Int get() = awards.count { it.mine }
 }
 
-/** Rival game studios and how good they usually are. */
-internal val RivalStudios = listOf(
-    "Electronic Arts" to 0.6,
-    "Ubisoft" to 0.55,
-    "Activision Blizzard" to 0.65,
-    "Rockstar Games" to 0.9,
-    "Nintendo" to 0.85,
-    "Capcom" to 0.75,
-    "FromSoftware" to 0.85,
-    "CD Projekt Red" to 0.75,
-    "Square Enix" to 0.65,
-    "Epic Games" to 0.6,
-    "Bandai Namco" to 0.6,
-    "Supercell" to 0.55,
-    "PlayStation Studios" to 0.85,
-    "Xbox Game Studios" to 0.7,
-    "Valve" to 0.85,
-)
 
 /** Week of the year the awards are held. */
 const val AWARDS_WEEK = 50
@@ -104,7 +88,7 @@ internal fun GameState.marketWeek() {
     m.games.removeAll { it.weeklySales <= 0 && week - it.week > 104 }
     while (m.games.size > 60) m.games.removeAt(0)
 
-    val entries = m.games.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, it.studio, it.weeklySales, it.score) } +
+    val entries = m.games.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, it.studio, it.weeklySales, it.score, owned = g.owns(it.studio)) } +
         g.releases.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, companyName, it.weeklySales, it.score, it.id) }
     val sorted = entries.sortedByDescending { it.weeklySales }
     m.chart = sorted.take(10)
@@ -126,9 +110,13 @@ internal fun GameState.marketWeek() {
 
 private fun GameState.releaseRivalGame(g: GamesStudio) {
     val m = g.market
-    val (studio, quality) = rng.pick(RivalStudios)
+    // The big studios release most of what's out; indies turn up now and then with something small.
+    val s = if (rng.chance(0.75)) rng.pick(Studios.filter { !it.indie }) else rng.pick(Studios.filter { it.indie })
+    val studio = s.name
+    val quality = s.quality
     val year = GameClock.year(week)
     val size = when {
+        s.indie -> if (rng.chance(0.75)) GameSize.SMALL else GameSize.MEDIUM
         year <= 2 -> if (rng.chance(0.7)) GameSize.SMALL else GameSize.MEDIUM
         year <= 5 -> rng.pick(listOf(GameSize.SMALL, GameSize.MEDIUM, GameSize.MEDIUM, GameSize.LARGE, GameSize.LARGE))
         else -> rng.pick(listOf(GameSize.MEDIUM, GameSize.LARGE, GameSize.LARGE, GameSize.AAA, GameSize.AAA))
@@ -142,9 +130,10 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     val title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), m.games.map { it.title }.toSet())
     val game = RivalGame(m.nextId++, title, studio, topic, genre, size, score, week, sales)
     m.games += game
-    if (score >= 8 || size >= GameSize.LARGE) {
-        val s = String.format(java.util.Locale.US, "%.1f", score)
-        addLog("$studio released $title, ${Format.a(topic.title.lowercase())} ${genre.lower} game: $s/10.", LogTone.NEUTRAL, Lane.GAMES)
+    if (score >= 8 || size >= GameSize.LARGE || g.owns(studio)) {
+        val sc = String.format(java.util.Locale.US, "%.1f", score)
+        val who = if (g.owns(studio)) "Your studio $studio" else studio
+        addLog("$who released $title, ${Format.a(topic.title.lowercase())} ${genre.lower} game: $sc/10.", if (g.owns(studio) && score >= 8) LogTone.GOOD else LogTone.NEUTRAL, Lane.GAMES)
     }
 }
 
@@ -158,10 +147,12 @@ data class Clash(val game: RivalGame, val penalty: Double) {
  * A mega release (an AAA 9+) in the last three weeks takes everyone's attention, whatever the genre (-20%).
  */
 fun GamesStudio.clashFor(concept: GameConcept, week: Int): Clash? {
-    val recent = market.games.filter { week - it.week in 0..6 }
+    // Your own studios' games don't compete with yours.
+    val recent = market.games.filter { week - it.week in 0..6 && !owns(it.studio) }
     recent.filter { it.mega && week - it.week <= 3 }.maxByOrNull { it.weeklySales }?.let { return Clash(it, 0.8) }
     return recent
-        .filter { it.score >= 7.5 && (it.genre == concept.genre || it.genre == concept.genre2) }
+        // A small indie hit doesn't take buyers from a big release, and the other way round matters less too.
+        .filter { it.score >= 7.5 && (it.genre == concept.genre || it.genre == concept.genre2) && it.size.ordinal >= concept.size.ordinal - 1 }
         .maxByOrNull { it.score }
         ?.let { Clash(it, 0.85) }
 }

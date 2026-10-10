@@ -22,6 +22,15 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import com.boot.core.Autopilot
+import com.boot.core.seasonCost
+import com.boot.core.research
+import com.boot.core.acquire
+import com.boot.core.Achievement
+import com.boot.core.Format
+import com.boot.core.Research
+import com.boot.core.LiveService
+import com.boot.core.GameRelease
+import com.boot.core.GameState
 import com.boot.core.Combo
 import com.boot.core.Difficulty
 import com.boot.core.Goal
@@ -253,7 +262,7 @@ class GameFlowTest {
     fun goalsChartsLoansAndLevels() {
         launch()
         compose.runOnIdle {
-            store.newGame("Long Haul", "Pia", Lane.GAMES, seed = 31)
+            store.newGame("Long Haul", "Pia", Lane.GAMES, seed = 35)
             val pilot = Autopilot()
             store.perform {
                 while (week < 130 && !isOver) pilot.playWeek(this)
@@ -439,6 +448,75 @@ class GameFlowTest {
         screen("13-office-dark")
         tab("Lanes")
         screen("14-hardware-dark")
+    }
+
+    @Test
+    fun studiosLiveGamesAndAchievements() {
+        // A rich studio with a live game, written as the save the app opens with.
+        val base = GameState.create("Empire Co", "Rae", Lane.GAMES, seed = 61)
+        val s = GameState.decode(
+            base.encode()
+                .replace(Regex("\"cash\":[-0-9.Ee+]+"), "\"cash\":5.0E9")
+                .replace(Regex("\"researchPoints\":[-0-9.Ee+]+"), "\"researchPoints\":100000.0"),
+        )
+        listOf(Research.MULTIPLAYER, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.MEDIUM_GAMES).forEach { s.research(it) }
+        s.acquire("Team Cherry")
+        repeat(10) {
+            s.advance()
+            while (s.needsDecision) s.choose(s.events[0].choices.size - 1)
+        }
+        val g = s.games!!
+        val concept = GameConcept("Skyforge Online", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.MEDIUM, live = true)
+        g.releases.add(
+            0,
+            GameRelease(
+                id = 900, title = concept.title, concept = concept, week = s.week - 12, reviews = emptyList(), score = 8.2, weeklySales = 40_000.0,
+                netShare = 0.7, design = 300.0, tech = 200.0, bugs = 10.0, hype = 20.0, devCost = 200_000.0, report = emptyList(),
+                live = LiveService(240_000.0, s.week - 12),
+            ),
+        )
+        File(RuntimeEnvironment.getApplication().filesDir, "autosave.json").writeText(s.encode())
+        launch()
+        assertEquals("Empire Co", store.state?.companyName)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Achievements", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("49-office-empire")
+
+        compose.runOnIdle { store.openLane(Lane.GAMES) }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Buy a studio", ignoreCase = true))
+        compose.waitForIdle()
+        compose.onNodeWithText("Team Cherry").assertExists()
+        screen("45-studios")
+        compose.onAllNodesWithText("Buy")[0].performClick()
+        compose.waitForIdle()
+        val dialogButtons = compose.onAllNodesWithText("Buy")
+        dialogButtons[dialogButtons.fetchSemanticsNodes().size - 1].performClick()
+        compose.waitForIdle()
+        assertEquals(2, store.state!!.games!!.subsidiaries.size)
+
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Live games", ignoreCase = true))
+        compose.waitForIdle()
+        screen("46-live-games")
+        compose.runOnIdle { store.openRelease = 900 }
+        compose.waitForIdle()
+        val cost = store.state!!.games!!.release(900)!!.seasonCost()
+        compose.onNodeWithText(Format.money(cost)).performScrollTo()
+        compose.waitForIdle()
+        overlay("47-live-service")
+        compose.onNodeWithText(Format.money(cost)).performClick()
+        compose.waitForIdle()
+        assertEquals(1, store.state!!.games!!.release(900)!!.live!!.seasons)
+        compose.runOnIdle { store.openRelease = null }
+        compose.waitForIdle()
+
+        tab("Company")
+        compose.onNodeWithText("Goals").performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Achievements ·", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        assertTrue(Achievement.FIRST_STUDIO in store.state!!.achievements)
+        screen("48-achievements")
     }
 
     @Test

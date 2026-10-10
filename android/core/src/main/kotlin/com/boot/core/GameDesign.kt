@@ -360,6 +360,8 @@ data class GameConcept(
     /** The release this is a sequel to. */
     val sequelOf: Int? = null,
     val price: PriceTier = PriceTier.STANDARD,
+    /** A live game: seasons, in-game purchases and servers. */
+    val live: Boolean = false,
 ) {
     /** What a copy sells for. */
     val unitPrice: Double get() = size.price * price.multiplier

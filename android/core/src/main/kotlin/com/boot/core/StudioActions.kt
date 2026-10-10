@@ -61,6 +61,10 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null): Strin
         val original = g.release(id) ?: return "No such game."
         if (original.concept.topic != c.topic) return "A sequel or spin-off keeps the topic."
     }
+    if (c.live) {
+        if (Research.LIVE_SERVICE !in researched) return "Research live service games first."
+        if (c.size == GameSize.SMALL) return "Live games need to be medium or bigger."
+    }
     val upfront = c.platforms.sumOf { it.fee } + c.size.weeklyBudget * 4
     if (cash < upfront) return "You need ${money(upfront)} for licence fees and the first month."
     return null

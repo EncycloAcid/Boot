@@ -88,10 +88,13 @@ private class SceneModel(
     val perks: Set<Perk>,
     val people: List<Worker>,
     val wins: Int,
+    /** Live games need servers. */
+    val servers: Boolean = false,
 )
 
 private fun GameState.sceneModel(office: Office = this.office) = SceneModel(
     office, companyName, lanes.first(), perks, workers(this).take(office.shownDesks), games?.market?.wins ?: 0,
+    servers = games?.releases?.any { it.live?.closed == false } == true,
 )
 
 private class Room(val w: Float, val d: Float, val h: Float, val cols: Int, val rows: Int, val seats: List<Seat>)
@@ -813,6 +816,7 @@ private fun furnish(props: MutableList<Prop>, iso: Iso, room: Room, model: Scene
     if (Perk.GYM in perks) leftItems += WallItem(0.9f) { treadmill(it) }
     if (Perk.DAYCARE in perks) leftItems += WallItem(1.0f) { playMat(it) }
     if (model.office != Office.APARTMENT) items += WallItem(0.45f) { waterCooler(it) }
+    if (model.servers) leftItems += WallItem(0.55f) { serverRack(it, anim) }
 
     // Along the right wall from the corner, then down the left wall; whatever doesn't fit moves over.
     var x = 1.3f
@@ -956,6 +960,20 @@ private fun DrawScope.playMat(s: Spot) {
     s.box(this, 0.26f, 0.44f, 0.22f, 0.4f, 0.2f, 0.38f, Color(0xFFFFD60A))
     drawCircle(Color(0xFF30D158), s.iso.t * 0.11f, s.p(0.78f, 0.6f, 0.11f))
     drawCircle(Color.White.copy(alpha = 0.5f), s.iso.t * 0.035f, s.p(0.75f, 0.6f, 0.15f))
+}
+
+private fun DrawScope.serverRack(s: Spot, anim: Float?) {
+    s.box(this, 0.02f, 0.53f, 0.02f, 0.5f, 0f, 1.45f, Color(0xFF23262E))
+    val leds = listOf(Color(0xFF30D158), Color(0xFF0A84FF), Color(0xFFFFD60A))
+    for (row in 0 until 7) {
+        val v0 = 0.12f + row * 0.18f
+        s.face(this, 0.07f, 0.48f, v0, v0 + 0.13f, 0.501f, Color(0xFF353A45))
+        for (k in 0..2) {
+            val on = anim == null || ((anim * 7 + row * 0.37f + k * 0.51f) % 1f) > 0.3f
+            val c = leds[(row + k) % leds.size]
+            drawCircle(if (on) c else c.copy(alpha = 0.25f), s.iso.t * 0.018f, s.p(0.12f + k * 0.06f, 0.502f, v0 + 0.065f))
+        }
+    }
 }
 
 private fun DrawScope.waterCooler(s: Spot) {

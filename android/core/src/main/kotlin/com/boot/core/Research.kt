@@ -52,6 +52,10 @@ enum class Research(
     CROSS_PLAY("Cross-play", "Everyone in one lobby.", Kind.ENGINE, 140, requires = ONLINE_SERVICES, engineLevel = 3),
     PROCEDURAL("Procedural generation", "Infinite worlds, finite budget.", Kind.ENGINE, 65, engineLevel = 2),
     OPEN_WORLD("Open world", "Go anywhere.", Kind.ENGINE, 85, requires = PHYSICS, engineLevel = 3),
+    LIVE_SERVICE(
+        "Live service games", "Ship medium and bigger games as live games: seasons of new content, in-game purchases, servers to run.",
+        Kind.STUDIO, 70, requires = ONLINE_SERVICES,
+    ),
 
     // Company
     TRAINING("Training program", "Send people on courses to raise their skills.", Kind.COMPANY, 15),

@@ -62,6 +62,8 @@ class Stats {
     var awards = 0
     var loans = 0
     var ipoRaise = 0.0
+    var acquisitions = 0
+    var seasons = 0
     val erasSeen = mutableListOf(Era.BOOTSTRAP_YEARS)
 }
 
@@ -97,6 +99,7 @@ internal fun GameState.end(kind: EndingKind, price: Double? = null, buyer: Strin
         ecosystem = stats.ecosystemWeeks >= 52,
     )
     ending = report
+    checkAchievements()
     addLog("THE END: ${report.title}", LogTone.MILESTONE)
 }
 
@@ -194,6 +197,9 @@ private fun GameState.endingStory(): List<String> {
     games?.let { g ->
         if (g.market.wins > 0) story += "You won Game of the Year ${if (g.market.wins == 1) "once" else "${g.market.wins} times"}."
         if (stats.chartToppers > 0) story += "${plural(stats.chartToppers, "game")} topped the sales chart."
+    }
+    games?.subsidiaries?.takeIf { it.isNotEmpty() }?.let { subs ->
+        story += "You bought ${plural(subs.size, "studio")}: ${subs.joinToString(", ") { it.name }}."
     }
     if (researched.isNotEmpty()) story += "Your labs researched ${plural(researched.size, "breakthrough")}."
     if (goalsDone.isNotEmpty()) story += "You reached ${plural(goalsDone.size, "goal")} along the way."

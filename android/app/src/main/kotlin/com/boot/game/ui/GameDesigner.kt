@@ -110,11 +110,13 @@ fun GameDesigner(store: GameStore, state: GameState) {
     var size by remember { mutableStateOf(seed?.size ?: GameSize.SMALL) }
     var engineId by remember { mutableIntStateOf(seed?.engineId ?: g.engines.maxBy { it.level }.id) }
     var price by remember { mutableStateOf(seed?.price ?: PriceTier.STANDARD) }
+    var live by remember { mutableStateOf(seed?.live ?: false) }
     val focus = remember { List(3) { mutableStateListOf(1.0, 1.0, 1.0) } }
 
     val concept = GameConcept(
         title = title.trim().ifEmpty { "Untitled" }, topic = topic, genre = genre, genre2 = genre2, audience = audience,
         platforms = platforms.toList(), size = size, engineId = engineId, sequelOf = sequel, price = price,
+        live = live && size != GameSize.SMALL,
     )
     fun close() {
         store.designing = false
@@ -168,7 +170,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                             )
                             1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it })
                             2 -> FocusStep(state, concept, focus)
-                            else -> SummaryStep(state, concept) { price = it }
+                            else -> SummaryStep(state, concept, { price = it }, { live = it })
                         }
                     }
                 }
@@ -407,7 +409,7 @@ private fun FocusStep(state: GameState, concept: GameConcept, focus: List<Mutabl
 }
 
 @Composable
-private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceTier) -> Unit) {
+private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceTier) -> Unit, onLive: (Boolean) -> Unit) {
     val g = state.games!!
     val colors = gameColors
     val fees = concept.platforms.sumOf { it.fee }
@@ -460,5 +462,14 @@ private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceT
         },
     ) {
         CardBlock { Segmented(PriceTier.entries, concept.price, { it.title }) { onPrice(it) } }
+    }
+    if (Research.LIVE_SERVICE in state.researched && concept.size != GameSize.SMALL) {
+        GroupedSection(
+            "Live service",
+            footer = "A live game sells a little less at launch and costs 25% more to make, but keeps a community that spends every week. " +
+                "Launch seasons to keep them, and pay for the servers.",
+        ) {
+            ToggleRow("Ship as a live game", concept.live, "Seasons, in-game purchases and servers.") { onLive(it) }
+        }
     }
 }

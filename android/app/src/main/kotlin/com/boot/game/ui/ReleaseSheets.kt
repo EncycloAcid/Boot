@@ -170,6 +170,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                             if (r.lifetimeSales >= r.devCost) colors.good else colors.bad,
                         )
                     }
+                    LiveServiceSection(store, state, r)
                     GroupedSection("Critics") {
                         r.reviews.forEachIndexed { i, review ->
                             if (i > 0) RowDivider()

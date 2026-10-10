@@ -128,6 +128,8 @@ data class GameRelease(
     val pros: List<String> = emptyList(),
     val cons: List<String> = emptyList(),
     val salesHistory: MutableList<Double> = mutableListOf(),
+    /** The community of a live game. */
+    var live: LiveService? = null,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -201,6 +203,9 @@ class GamesStudio {
     /** Side income last week, for the studio screen. */
     var lastRoyalties = 0.0
     var lastMerch = 0.0
+
+    /** Studios you've bought. */
+    val subsidiaries = mutableListOf<Subsidiary>()
 
     /** Releases whose fans have petitioned for a sequel, and the one you promised. */
     val petitions: MutableSet<Int> = mutableSetOf()
@@ -318,7 +323,7 @@ class GamesStudio {
                 p.lastBugs = -fixed
             }
             p.hype *= 0.99
-            val budget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0)
+            val budget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0) * (if (p.concept.live) 1.25 else 1.0)
             p.spent += budget
             report.expenses += budget
         }
@@ -371,6 +376,18 @@ class GamesStudio {
         dealOffers.removeAll { it.expiresWeek < ctx.week }
 
         for (r in releases) {
+            val l = r.live
+            if (l != null && !l.closed) {
+                val (rev, cost) = l.week(ctx.week, r.wordOfMouth, ctx.marketDemand)
+                report.revenue += rev
+                report.expenses += cost
+                r.lifetimeSales += rev - cost
+                if (l.players < 1_500) {
+                    l.closed = true
+                    l.players = 0.0
+                    report.log("${r.title} had too few players left to keep the servers on. It's shut down.", LogTone.NEUTRAL)
+                }
+            }
             if (r.weeklySales <= 0) continue
             val age = ctx.week - r.week
             report.revenue += r.weeklySales * r.netShare
@@ -469,7 +486,7 @@ class GamesStudio {
         if (spinOff) sequelLift = 1 + (sequelLift - 1) / 2
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg)
+            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0)
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 
@@ -536,7 +553,11 @@ class GamesStudio {
             netShare = netShare, design = p.design, tech = p.tech, bugs = p.bugs, hype = p.hype, devCost = p.spent,
             report = lines, publisher = p.deal?.publisher,
             userScore = verdict.userScore, aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons,
+            live = if (c.live) LiveService(livePlayers(gross / c.unitPrice), week) else null,
         )
+        if (c.live) {
+            lines += "It launched as a live game with ${Format.count(release.live!!.players)} players. Keep them with a new season every few months."
+        }
         releases.add(0, release)
         project = null
         unseenReview = release.id

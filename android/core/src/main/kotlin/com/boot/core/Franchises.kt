@@ -162,7 +162,8 @@ internal fun GameState.franchiseWeek(m: GameMarket) {
         val sales = f.size.launchSales * (score / 7).pow(3) * power * rng.range(0.85, 1.15) * world.era.demand(Lane.GAMES)
         m.games += RivalGame(m.nextId++, title, f.studio, f.topic, f.genre, f.size, score, week, sales, franchise = f.name)
         m.franchiseEntries[f.name] = entry + 1
-        if (score >= 9 && f.size == GameSize.AAA) {
+        val ours = games?.owns(f.studio) == true
+        if (score >= 9 && f.size == GameSize.AAA && !ours) {
             // A giant launch pulls players away from whatever else just came out, yours included.
             val fresh = games?.releases?.filter { it.weeklySales > 0 && week - it.week in 0..5 }.orEmpty()
             fresh.forEach { it.weeklySales *= 0.8 }
@@ -170,8 +171,12 @@ internal fun GameState.franchiseWeek(m: GameMarket) {
         }
         val s = String.format(java.util.Locale.US, "%.1f", score)
         addLog(
-            if (score >= 9 && f.size == GameSize.AAA) "$title is out, and it's everywhere: $s/10." else "${f.studio} released $title: $s/10.",
-            if (score >= 9) LogTone.MILESTONE else LogTone.NEUTRAL,
+            when {
+                ours -> "Your studio ${f.studio} released $title: $s/10."
+                score >= 9 && f.size == GameSize.AAA -> "$title is out, and it's everywhere: $s/10."
+                else -> "${f.studio} released $title: $s/10."
+            },
+            if (score >= 9 || ours && score >= 8) LogTone.MILESTONE else LogTone.NEUTRAL,
             Lane.GAMES,
         )
         m.franchiseNext[f.name] = if (f.annualWeek != null) {

@@ -118,9 +118,11 @@ class GameStore(app: Application) : AndroidViewModel(app) {
 
     fun advance(weeks: Int) {
         val done = state?.goalsDone?.size ?: 0
+        val had = state?.achievements?.keys.orEmpty()
         perform { this.advance(weeks) }
-        // Goals don't stop the clock; they just get a moment in the spotlight.
+        // Goals and achievements don't stop the clock; they just get a moment in the spotlight.
         state?.goalsDone?.drop(done)?.lastOrNull()?.let { notice = "Goal reached: ${it.title}. ${it.reward.label}" }
+        state?.achievements?.keys?.firstOrNull { it !in had }?.let { notice = "Achievement unlocked: ${it.title}" }
     }
 
     fun play() {

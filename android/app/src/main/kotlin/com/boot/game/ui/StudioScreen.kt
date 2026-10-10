@@ -108,7 +108,9 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
     item { ChartCard(state, limit = 10) { store.openRelease = it } }
     item { ComingSoonCard(state, limit = 8) }
     if (g.franchises.isNotEmpty()) item { FranchisesSection(store, state, g) }
+    if (g.releases.any { it.live?.closed == false }) item { LiveGamesSection(store, state, g) }
     item { ReleasesSection(store, g) }
+    item { StudiosSection(store, state, g) }
     if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
     item { EnginesSection(store, state, g) }
     item { PlatformsSection(state) }
@@ -360,7 +362,8 @@ private fun ReleasesSection(store: GameStore, g: GamesStudio) {
                 subtitle = "${r.verdict} · ${r.concept.topic.title} ${r.concept.genreTitle}" +
                     (if (r.chartRank > 0) " · #${r.chartRank} this week" else "") +
                     (if (r.expansions.isNotEmpty()) " · ${r.expansions.size} expansion${if (r.expansions.size > 1) "s" else ""}" else "") +
-                    (if (r.patched) " · patched" else ""),
+                    (if (r.patched) " · patched" else "") +
+                    (r.live?.let { if (it.closed) " · servers off" else " · live, ${Format.count(it.players)} players" } ?: ""),
                 leading = { CoverWithScore(r.concept, r.score) },
                 value = if (r.onSale) (r.weeklySales * r.netShare).perWeek() else Format.money(r.lifetimeSales),
                 valueDetail = if (r.onSale) "on sale" else "lifetime",

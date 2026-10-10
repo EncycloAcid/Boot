@@ -186,6 +186,8 @@ class Autopilot(
     private fun manageGames(s: GameState) {
         val g = s.games ?: return
         g.unseenReview?.let { s.acknowledgeReview() }
+        // Keep live games fresh while they pay for it.
+        for (r in g.liveGames) if (s.seasonBlocker(r.id) == null && s.cash > r.seasonCost() * 4) attempt { s.launchSeason(r.id) }
         val p = g.project
         if (p != null) {
             // Market a game that's worth it, then ship once the bugs are mostly gone.
@@ -247,6 +249,7 @@ class Autopilot(
         return GameConcept(
             title = g.suggestTitle(s.rng, topic, genre), topic = topic, genre = genre, audience = audience, platforms = platforms,
             size = size, engineId = g.engines.maxBy { it.level }.id,
+            live = Research.LIVE_SERVICE in s.researched && size >= GameSize.LARGE,
         )
     }
 
@@ -270,7 +273,8 @@ class Autopilot(
                         Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS, Research.MERCHANDISE,
                         Research.EXPANSIONS, Research.GRAPHICS_3D_V1,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
-                        Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.OPEN_WORLD, Research.GRAPHICS_3D_V3,
+                        Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.OPEN_WORLD,
+                        Research.GRAPHICS_3D_V3,
                         Research.AAA_GAMES, Research.SPATIAL_AUDIO, Research.GRAPHICS_3D_V4, Research.CROSS_PLAY, Research.NEURAL_NPCS,
                         Research.PHOTOREAL,
                     ),

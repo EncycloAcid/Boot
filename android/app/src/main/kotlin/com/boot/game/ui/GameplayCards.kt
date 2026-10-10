@@ -195,9 +195,9 @@ private fun ChartRow(rank: Int, e: ChartEntry, onOpen: ((Int) -> Unit)?) {
                 fontWeight = if (highlight) FontWeight.SemiBold else FontWeight.Normal,
             )
             Text(
-                (if (highlight) "You" else e.studio) + " · " + String.format(Locale.US, "%.1f", e.score) + "/10",
+                (if (highlight) "You" else if (e.owned) "${e.studio} · yours" else e.studio) + " · " + String.format(Locale.US, "%.1f", e.score) + "/10",
                 style = MaterialTheme.typography.labelMedium,
-                color = if (highlight) colors.milestone else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (highlight || e.owned) colors.milestone else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
         }

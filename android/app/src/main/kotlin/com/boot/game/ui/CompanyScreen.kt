@@ -16,7 +16,10 @@ fun CompanyScreen(store: GameStore, state: GameState) {
             0 -> overviewItems(store, state)
             1 -> moneyItems(store, state)
             2 -> combosItems(store, state)
-            else -> item { GoalsList(state) }
+            else -> {
+                item { GoalsList(state) }
+                item { AchievementsSection(state) }
+            }
         }
     }
 }

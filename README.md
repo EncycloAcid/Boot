@@ -4,6 +4,17 @@ A company management game for Android and macOS. You start solo in a cramped apa
 
 The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
+**New in 1.0 (Android):** the empire update.
+- **Buy studios.** Every studio on the games market is for sale, from indies like Team Cherry, ConcernedApe and Larian to the giants: Rockstar, Nintendo, EA, PlayStation Studios, Valve.
+  - A studio you own keeps making games under its own name. Its real series (GTA, Mario, Zelda, Call of Duty, FIFA and the rest) count as yours on the chart and stop competing with you.
+  - About 6% of its value comes home every year as profit, more when it has hits out.
+  - What it's worth counts towards your company's value, it leaves the industry league table, and you can sell it on.
+- **Live-service games.** Researched after online services, a medium or bigger game can ship as a live game.
+  - Players spend every week, but drift away, faster once the game goes stale.
+  - Launch seasons of new content to bring them back. Choose a cosmetics-only, fair or aggressive store (aggressive pays more, bleeds players and gets you called pay-to-win), and pay for the servers.
+  - A server rack blinks in the office while you run one.
+- **39 achievements**, bronze to platinum, from shipping your first game to buying Nintendo or joining the trillion-dollar club. They pop up as you earn them, the newest show in the office, and the full cabinet is under Company › Goals.
+
 **New in 0.9 (Android):** better graphics and a cleaner UI. The office is now an isometric diorama: back-to-back desks where you can see faces on one side and screens on the other, everyone's screen showing their lane's work (code and level editors, web pages, apps, feeds, CAD, training curves), each office tier with its own floor, windows and view, the perks you've bought standing along the walls, Game of the Year trophies on a shelf, and the night shift lit by monitors and desk lamps in dark mode. Everyone has a face: the same drawn person sits at their desk, appears in the team list and stays the same from candidate to hire, and you're in the top bar with your crown. Every game gets generated box art from its topic, genre, platform and rating, shown in the designer, while it's in development, in the reviews, the game report, your releases and your franchises. The Team tab previews the next office before you move, and staff rows are tidier with one menu for lanes, training and letting people go.
 
 **New in 0.8 (Android):** real franchises, your own series and better names. 47 real series (Call of Duty, EA Sports FC, Grand Theft Auto, Zelda, Mario, Pokémon, God of War, Halo, Elden Ring, Final Fantasy, Fortnite and more) release on their real schedules: yearly games every autumn, the big ones every few years, each announced months ahead in a new Coming soon list. The giants pull players away from anything that launches next to them, and the designer warns you before you ship into one. Your sequels and spin-offs now form franchises: a series that averages 7 or better sells more with every entry, a slipping one wears its fans out, and spin-offs take a series into a new genre. Sequels get real-style names ("Moss Knight II: Reborn", "Moss Knight Tactics"), new games get names that fit their topic and genre, and there's a button to roll another.

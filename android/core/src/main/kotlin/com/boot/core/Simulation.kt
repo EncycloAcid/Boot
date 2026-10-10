@@ -68,6 +68,7 @@ fun GameState.advance() {
     checkPivotPoint()
     updateStreaks()
     checkGoals()
+    checkAchievements()
     checkEndings()
 }
 
@@ -176,6 +177,11 @@ private fun GameState.studioWeek() {
     }
     if (GameClock.weekOfYear(week) == 26) enqueue(EventKind.Convention)
     marketWeek()
+    subsidiaryWeek()
+    // Pushy stores get noticed.
+    if (week % 13 == 0 && g.liveGames.any { it.live!!.monetization == Monetization.AGGRESSIVE && it.live!!.players > 10_000 }) {
+        reputation.scar(ScarKind.PREDATORY_MONETIZATION, 0.03, week, "Pay-to-win store")
+    }
     // Merchandise for the hits, fading over a couple of years.
     if (Research.MERCHANDISE in researched) {
         val merch = g.releases.filter { it.score >= 8 && it.publisher == null }

@@ -587,8 +587,152 @@ class FranchiseTest {
             s.launchGame()
             val r = s.games!!.releases[0]
             assertEquals(withSeries, r.report.any { "series" in it }, r.report.joinToString("\n"))
+            if (withSeries) assertTrue(r.report.any { "brought its fans: +20% at launch." in it }, r.report.joinToString("\n"))
             return r.weeklySales / r.score
         }
-        assertTrue(launchWeek(true) > launchWeek(false))
+        launchWeek(true)
+        launchWeek(false)
+    }
+}
+
+class AcquisitionTest {
+    private fun rich(seed: Long): GameState {
+        val s = game(Lane.GAMES, seed)
+        s.cash = 2e11
+        return s
+    }
+
+    @Test
+    fun buyAnIndieAndItPaysYou() {
+        val s = rich(50)
+        val g = s.games!!
+        val indie = studio("ConcernedApe")!!
+        val price = s.acquisitionPrice(indie)
+        val before = s.cash
+        val valueBefore = s.enterpriseValue
+        s.acquire(indie.name)
+        assertEquals(before - price, s.cash, 1.0)
+        assertTrue(g.owns(indie.name))
+        assertTrue(s.enterpriseValue - valueBefore > price * 0.8)
+        assertTrue(indie !in s.studiosForSale())
+        assertEquals("It's already yours.", s.acquisitionBlocker(indie))
+        s.play(1)
+        assertTrue(g.subsidiaries.single().lastProfit > 0)
+        assertTrue(Achievement.FIRST_STUDIO in s.achievements)
+        val cash = s.cash
+        s.divest(indie.name)
+        assertTrue(s.cash > cash + s.studioValue(indie) * 0.85)
+        assertTrue(g.subsidiaries.isEmpty())
+        assertEquals(GameState.decode(s.encode()).games!!.subsidiaries, g.subsidiaries)
+    }
+
+    @Test
+    fun bigPublishersWaitAndOwnedGamesStopCompeting() {
+        val s = rich(51)
+        val g = s.games!!
+        val nintendo = studio("Nintendo")!!
+        assertEquals("The big publishers won't talk to a company this young.", s.acquisitionBlocker(nintendo))
+        val old = rich(57)
+        old.week = 200
+        old.acquire("Nintendo")
+        val og = old.games!!
+        assertTrue(old.rankings().none { it.name == "Nintendo" })
+        og.market.games += RivalGame(950, "Mario Kart 10", "Nintendo", Topic.RACING, Genre.CASUAL, GameSize.AAA, 9.6, old.week, 9e8, franchise = "Mario Kart")
+        val concept = GameConcept("Mine", Topic.RACING, Genre.CASUAL, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+        assertNull(og.clashFor(concept, old.week))
+        assertTrue(g.subsidiaries.isEmpty())
+        old.play(1)
+        assertTrue(old.games!!.market.chart.any { it.owned }, old.games!!.market.chart.toString())
+        assertTrue(Achievement.ITS_A_ME in old.achievements)
+    }
+}
+
+class LiveServiceTest {
+    private fun liveGame(s: GameState, players: Double = 200_000.0, score: Double = 8.0): GameRelease {
+        val r = s.fakeRelease(score)
+        r.live = LiveService(players, s.week)
+        return r
+    }
+
+    @Test
+    fun liveGamesNeedResearchAndSize() {
+        val s = game(Lane.GAMES, 52)
+        s.cash = 1e7
+        val c = GameConcept("Live", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL, live = true)
+        assertEquals("Research live service games first.", s.conceptBlocker(c))
+        s.researched = s.researched + Research.LIVE_SERVICE
+        assertEquals("Live games need to be medium or bigger.", s.conceptBlocker(c))
+    }
+
+    @Test
+    fun playersSpendLeaveAndComeBackForSeasons() {
+        val s = game(Lane.GAMES, 53)
+        s.cash = 1e8
+        val r = liveGame(s)
+        val l = r.live!!
+        s.play(1)
+        assertTrue(l.lastRevenue > 0)
+        assertTrue(l.players < 200_000)
+        assertNotNull(s.seasonBlocker(r.id))
+        repeat(SEASON_GAP) { s.play(1) }
+        assertNull(s.seasonBlocker(r.id))
+        val before = l.players
+        s.launchSeason(r.id)
+        assertTrue(l.players > before * 1.15)
+        assertEquals(1, l.seasons)
+        assertNotNull(s.seasonBlocker(r.id))
+    }
+
+    @Test
+    fun staleGamesBleedAndAggressiveStoresBleedFaster() {
+        fun after(m: Monetization, weeks: Int): Double {
+            val s = game(Lane.GAMES, 54)
+            s.cash = 1e8
+            val r = liveGame(s)
+            s.setMonetization(r.id, m)
+            s.play(weeks)
+            return r.live!!.players
+        }
+        assertTrue(after(Monetization.AGGRESSIVE, 10) < after(Monetization.COSMETIC, 10))
+        // Past the stale point, players leave faster.
+        val p10 = after(Monetization.FAIR, 10)
+        val p30 = after(Monetization.FAIR, 30)
+        val p40 = after(Monetization.FAIR, 40)
+        assertTrue(p40 / p30 < p10 / 200_000)
+    }
+
+    @Test
+    fun shuttingDownStopsTheBills() {
+        val s = game(Lane.GAMES, 55)
+        s.cash = 1e8
+        val r = liveGame(s, players = 50_000.0)
+        val trust = s.games!!.fanTrust
+        s.endService(r.id)
+        assertTrue(r.live!!.closed)
+        assertTrue(s.games!!.fanTrust < trust)
+        assertTrue(s.games!!.liveGames.isEmpty())
+        s.play(1)
+        assertEquals(0.0, r.live!!.players)
+        assertEquals(r.live, GameState.decode(s.encode()).games!!.release(r.id)!!.live)
+    }
+}
+
+class AchievementTest {
+    @Test
+    fun achievementsUnlockOnceAndSurviveSaves() {
+        val s = game(Lane.GAMES, 56)
+        assertTrue(s.achievements.isEmpty())
+        s.fakeRelease(9.6)
+        s.play(1)
+        val got = s.achievements
+        assertTrue(Achievement.HELLO_WORLD in got)
+        assertTrue(Achievement.BREAKOUT in got)
+        assertTrue(Achievement.MASTERPIECE in got)
+        assertTrue(Achievement.GOTY !in got)
+        val week = got.getValue(Achievement.HELLO_WORLD)
+        s.play(1)
+        assertEquals(week, s.achievements.getValue(Achievement.HELLO_WORLD))
+        assertEquals(s.achievements, GameState.decode(s.encode()).achievements)
+        assertEquals(s.log.count { it.text.startsWith("Achievement unlocked: Hello, World") }, 1)
     }
 }

@@ -163,6 +163,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var perks: Set<Perk> = emptySet()
         internal set
 
+    /** Achievements earned, with the week each came. */
+    var achievements: Map<Achievement, Int> = emptyMap()
+        internal set
+
     /** Goals reached so far, in the order you reached them. */
     var goalsDone: List<Goal> = emptyList()
         internal set
@@ -229,7 +233,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     }
 
     /** What the businesses are worth, excluding cash in the bank. */
-    val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0)
+    val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0) + subsidiaryValue
 
     /** Enterprise value plus cash, less what you owe the bank. What a buyer or the market would pay. */
     val valuation: Double get() = max(0.0, enterpriseValue + max(0.0, cash) - (loan?.balance ?: 0.0))
