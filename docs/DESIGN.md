@@ -2,7 +2,7 @@
 
 A company management game for Android and macOS. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point forces you to take on a second lane. Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
 
-This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers, except for the studio update (the Games studio, research, offices and training) and the removal of founder energy, which so far exist only in the Kotlin version. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
+This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers, except for the studio update (the Games studio, research, offices and training), the removal of founder energy and the 0.5 gameplay update (difficulty, goals, the games market, patches and expansions, staff levels, loans and the newer events), which so far exist only in the Kotlin version. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
 
 ## Core loop
 
@@ -10,7 +10,10 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - On Android the clock runs by itself once you press play, at three speeds, and stops whenever something needs you: an event, a board demand, the Pivot Point, reviews coming in, a game ready to ship, or the account going red. You can also step one week at a time.
 - Money in comes from your lanes. Money out is lane costs, payroll and rent.
 - **Offices** have desks: cramped apartment (2), coworking desks (6), studio floor (16), downtown office (45), campus. Every hire needs a desk; moving up costs money and raises rent. Squeeze in more people than desks (after a merger, say) and morale drops every week until you move.
-- Eight straight weeks with negative cash is bankruptcy.
+- Eight straight weeks with negative cash is bankruptcy (twelve on Easy, six on Hard).
+- **Difficulty** is picked at the start. Easy: $60k savings, 20% more demand, cheaper running costs, softer rivals, cheap loans. Hard: $12k, 15% less demand, 12% higher costs, tougher rivals, dear loans.
+- **Goals** run from "Ship your first game" to "Be worth $1B": 43 in all, roughly in the order a run meets them. Lane goals only count while you run that lane. The next three unfinished ones are always on the office screen, and each pays out cash, research points, fans or reputation.
+- **Bank loans** lend against a year's revenue and what the business is worth, repaid weekly over a year at 6% (Easy), 10% or 16% (Hard) interest. One at a time; paying early saves some interest; debt counts against your valuation.
 
 ### You, the founder
 
@@ -24,7 +27,9 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - Five roles: engineer, designer, researcher, marketer, operations. Each lane weights roles differently (AI wants researchers; games want designers; social platforms need operations for moderation).
 - Each person has a skill (1 to 10), a salary and morale. Low morale cuts output and makes people quit.
 - Besides skill, everyone has **design, tech and research** talents, weighted by role. Design and tech drive game development; research generates research points.
+- **Experience.** People assigned to a lane earn experience every week (more in crunch and while the studio is shipping something). Each level raises their main talent and their pay; every second level raises their skill too. Levels go up to 10.
 - **Training** (once researched) sends someone on a course for research points and cash: skill and talents go up by one, and so does their pay.
+- **Small events** keep people interesting: someone asks for a raise after a year, a headhunter offers a star hire for a fee, a game jam can turn up a standout candidate, and the R&D tax credit can be banked or spent on a party.
 - **Rivals compete for talent.** Some candidates are contested by a rival studio and disappear in two weeks. Rivals also try to poach your best people; you can counter-offer or let them go, which makes that rival stronger.
 
 ## The six lanes
@@ -41,6 +46,10 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - **Contracts and publishers.** Contract jobs for other companies pay cash and a few research points if you deliver on time. Publisher deals pay half an advance up front for a game to spec, with the rest only if it scores well enough.
 - **Sequels** (once researched) keep the topic and genre, start with hype from the original and sell better if it scored 7 or more. A sequel within a year of the original is marked down as rushed, and repeating your last topic and genre without calling it a sequel is marked down too.
 - **Trends** come and go (a genre or topic everyone wants), and a **yearly convention** asks whether to book a small booth, a big booth or a keynote, or skip it.
+- **The market.** Seven rival studios (Gigaplay Interactive, Nebula Forge, Redshift Games and others) release games of their own, bigger as the years go by. Every game on sale, theirs and yours, competes on a weekly top-10 sales chart. Launching within six weeks of a rival's 7+ game in the same genre costs you about 15% of your launch sales, and the game report says so.
+- **Game of the Year** is decided every December from the year's four best-reviewed games. If you're nominated you can fly the team out (a small boost to your odds and to morale) or watch the stream. Winning brings fans, fan trust, reputation, a sales bump and hype for whatever you're making next.
+- **After launch.** A patch fixes the bugs a game shipped with, for a fee: fans notice and its sales hold up longer. Expansion packs (once researched) are small projects for games that scored 6 or more; owners of the original buy them and its sales pick up. Two per game at most.
+- **Fan moments.** Streamers pick up your games, early builds leak, and fans petition for sequels to the ones they loved; a promised sequel starts with extra hype.
 - **Fans** amplify future launches. **Fan trust** drops with every flop and only hits bring it back: the fanbase never forgets.
 
 ### Websites: an agency sim
@@ -149,7 +158,7 @@ Every pairing of two lanes (15 in all) unlocks a crossover product only that com
 | IPO | From year 5, a business worth $500M (excluding cash) with $50M annual revenue, and the board's sign-off | The Ecosystem IPO, IPO Whale-Funded, The Compute IPO, Bootstrapped to the Bell |
 | Acquired | Accept a buyout | The Quick Exit (before the Pivot Point), Absorbed by a rival |
 | Stayed independent | Reach year 15 | Still Indie, The Lifestyle Business, The Independent Empire, Private and Thriving, Zombie Unicorn |
-| Bankrupt | Eight weeks in the red | Burned the Compute Budget |
+| Bankrupt | Eight weeks in the red (twelve on Easy, six on Hard) | Burned the Compute Budget |
 | Ousted | Board confidence hits zero | Fired From Your Own Company |
 
 The ending screen tells the story of your run: where you started, what forced the Pivot Point and what you chose, the lanes you added, the crossovers you built, your record of hits, flops, recalls and scandals, the scars people still remember, how much you raised and kept, and the eras you lived through.
@@ -159,6 +168,6 @@ The ending screen tells the story of your run: where you started, what forced th
 - Multiple concurrent products per lane (a second app, two games in parallel).
 - Rival companies as full simulations, plus acquisitions you make yourself.
 - Art and sound. (The office is drawn in code: desks, people and rooms per office tier.)
-- The studio update, the running clock and the removal of energy in the Swift (macOS and terminal) version.
+- The studio update, the running clock, the removal of energy and the 0.5 gameplay update in the Swift (macOS and terminal) version.
 - Steam-style achievements per ending variant.
 - Proper tuning passes with real playtesters; the current numbers come from autopilot runs.

@@ -2,7 +2,7 @@ package com.boot.core
 
 // Everything the player can do between weeks.
 
-private fun GameState.requireLive() {
+internal fun GameState.requireLive() {
     if (ending != null) throw gameOver()
 }
 

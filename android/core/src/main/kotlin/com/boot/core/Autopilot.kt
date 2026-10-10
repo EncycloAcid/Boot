@@ -59,6 +59,15 @@ class Autopilot(
             is EventKind.ViralMoment -> 0
             is EventKind.ComboProblem -> if (s.cash > s.comboFixCost(k.combo) * 4) 0 else 1
             EventKind.EcosystemAntitrust -> 0
+            EventKind.GameAwards -> if (s.cash > 200_000) 0 else 1
+            is EventKind.RaiseRequest -> if (s.runwayWeeks > 26) 0 else 1
+            is EventKind.Streamer -> if (s.cash > 50_000) 0 else 1
+            EventKind.LeakedBuild -> 0
+            EventKind.GameJam -> if (s.cash > 100_000) 0 else 1
+            is EventKind.TaxCredit -> 0
+            is EventKind.ServerOutage -> if (s.cash > 200_000) 0 else 1
+            is EventKind.FanPetition -> 0
+            EventKind.Headhunter -> if (s.cash > 500_000 && s.freeDesks > 0) 0 else 1
             EventKind.Convention -> when {
                 s.games?.project != null && s.cash > 2_000_000 -> 1
                 s.cash > 200_000 -> 0
@@ -106,6 +115,9 @@ class Autopilot(
         }
 
         if (s.runwayWeeks < 20 && s.roundOffer().isSuccess) attempt { s.raiseRound() }
+        // A bank loan as a last resort, and paid off early once the money's there.
+        if (s.cash < s.weeklyBurn * 3 && s.loanBlocker == null) attempt { s.takeLoan() }
+        s.loanPayoff?.let { if (s.cash > it * 4 && s.runwayWeeks > 52) attempt { s.repayLoan() } }
         val lean = s.runwayWeeks < 16 && s.staff.isEmpty()
         if (lean != s.founder.freelancing) attempt { s.setFreelancing(lean) }
 
@@ -177,7 +189,12 @@ class Autopilot(
             if (p.isReady && (polished || s.runwayWeeks < 10)) attempt { s.launchGame() }
             return
         }
-        if (g.contract != null) return
+        if (g.contract != null || g.expansion != null) return
+        // Patch what shipped broken, and expand what sold well.
+        for (r in g.releases.take(3)) if (s.patchBlocker(r.id) == null && s.cash > r.patchCost() * 5) attempt { s.patchGame(r.id) }
+        g.releases.firstOrNull { it.score >= 7.5 && it.expansions.isEmpty() && s.expansionBlocker(it.id) == null }
+            ?.let { if (s.cash > it.concept.size.weeklyBudget * 40) attempt { s.startExpansion(it.id) } }
+        if (g.busy) return
         if (Research.CUSTOM_ENGINES in s.researched && g.engineBuild == null) {
             val (features, cost, _) = s.engineQuote()
             if (features.sumOf { it.engineLevel } >= g.engines.maxOf { it.level } + 4 && s.cash > cost * 6) attempt { s.buildEngine() }
@@ -233,7 +250,8 @@ class Autopilot(
                 addAll(
                     listOf(
                         Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.CUSTOM_ENGINES,
-                        Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.GRAPHICS_3D_V1,
+                        Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS,
+                        Research.EXPANSIONS, Research.GRAPHICS_3D_V1,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
                         Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.OPEN_WORLD, Research.GRAPHICS_3D_V3,
                         Research.AAA_GAMES, Research.SPATIAL_AUDIO, Research.GRAPHICS_3D_V4, Research.CROSS_PLAY, Research.NEURAL_NPCS,

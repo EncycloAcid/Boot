@@ -58,6 +58,9 @@ class Stats {
     var ecosystemPressure = 0.0
     var ecosystemOpened = false
     var crunchWeeks = 0
+    var chartToppers = 0
+    var awards = 0
+    var loans = 0
     val erasSeen = mutableListOf(Era.BOOTSTRAP_YEARS)
 }
 
@@ -184,7 +187,12 @@ private fun GameState.endingStory(): List<String> {
                 "${best.concept.genreLower} game that scored $score/10."
         }
     }
+    games?.let { g ->
+        if (g.market.wins > 0) story += "You won Game of the Year ${if (g.market.wins == 1) "once" else "${g.market.wins} times"}."
+        if (stats.chartToppers > 0) story += "${plural(stats.chartToppers, "game")} topped the sales chart."
+    }
     if (researched.isNotEmpty()) story += "Your labs researched ${plural(researched.size, "breakthrough")}."
+    if (goalsDone.isNotEmpty()) story += "You reached ${plural(goalsDone.size, "goal")} along the way."
 
     val built = crossovers.filter { it.built }.map { it.combo.product }
     if (built.isNotEmpty()) story += "Crossovers: ${built.joinToString(", ")}."

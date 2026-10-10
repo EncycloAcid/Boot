@@ -23,6 +23,8 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import com.boot.core.Autopilot
 import com.boot.core.Combo
+import com.boot.core.Difficulty
+import com.boot.core.Goal
 import com.boot.core.EndingKind
 import com.boot.core.GameConcept
 import com.boot.core.GameSize
@@ -30,6 +32,7 @@ import com.boot.core.Genre
 import com.boot.core.Lane
 import com.boot.core.Platform
 import com.boot.core.Topic
+import com.boot.core.acknowledgeReview
 import com.boot.core.advance
 import com.boot.core.startGame
 import com.boot.core.choose
@@ -110,9 +113,12 @@ class GameFlowTest {
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Hardware"))
         compose.onNodeWithText("Hardware").performClick()
         compose.onNodeWithText("Hard mode", substring = true).assertExists()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Hard"))
+        compose.onNodeWithText("Hard").performClick()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Games"))
         compose.onNodeWithText("Games").performClick()
         compose.onNodeWithText("Start your game studio").performClick()
+        assertEquals(Difficulty.HARD, store.state!!.difficulty)
 
         compose.onNodeWithText("The studio is free").assertExists()
         assertEquals(listOf(Lane.GAMES), store.state!!.lanes)
@@ -227,13 +233,56 @@ class GameFlowTest {
         compose.waitForIdle()
         compose.onAllNodesWithText("Trending Hub").onFirst().assertExists()
         screen("05-combos")
-        compose.onNodeWithText("Money & Board").performClick()
+        compose.onNodeWithText("Money").performClick()
         compose.waitForIdle()
         screen("07-money")
         tab("Team")
         screen("06-team")
         tab("Office")
         screen("08-office-two-lanes")
+    }
+
+    @Test
+    fun goalsChartsLoansAndLevels() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Long Haul", "Pia", Lane.GAMES, seed = 31)
+            val pilot = Autopilot()
+            store.perform {
+                while (week < 130 && !isOver) pilot.playWeek(this)
+                while (events.isNotEmpty()) choose(events[0].choices.size - 1)
+                acknowledgeReview()
+            }
+        }
+        val s = store.state!!
+        assertTrue(s.goalsDone.isNotEmpty())
+        assertTrue(s.games!!.market.games.isNotEmpty())
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Goals ·", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("26-office-goals")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Sales chart", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("27-office-chart")
+
+        tab("Company")
+        compose.onNodeWithText("Goals").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(Goal.G_SHIP.title).assertExists()
+        screen("28-goals")
+        compose.onNodeWithText("Money").performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Bank loan", ignoreCase = true))
+        screen("29-loan")
+
+        tab("Team")
+        if (s.staff.isNotEmpty()) compose.onAllNodesWithText("Lv", substring = true).onFirst().assertExists()
+        screen("30-team-levels")
+
+        val release = s.games!!.releases.first()
+        compose.runOnIdle { store.openRelease = release.id }
+        compose.waitForIdle()
+        compose.onNodeWithText("Make an expansion pack").performScrollTo()
+        overlay("31-after-launch")
     }
 
     @Test

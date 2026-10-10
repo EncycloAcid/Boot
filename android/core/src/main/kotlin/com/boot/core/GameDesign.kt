@@ -407,5 +407,9 @@ internal object GameNames {
         "Laundry", "Commute", "Rush", "Orchard", "Planet", "Frontier", "Legends", "Heist", "Odyssey", "Protocol",
     )
     val clients = listOf("Gigaplay", "a cereal brand", "a bank", "a theme park", "a sneaker company", "a soda brand", "a car maker", "a museum")
+    val expansions = listOf(
+        "Rising Tide", "The Lost Isles", "Frozen Throne", "Second Wind", "Afterglow", "Echoes", "The Deep End",
+        "Dark Harvest", "New Horizons", "Overtime", "Reloaded", "Wild Card",
+    )
     val publishers = listOf("Megapublish", "Blue Comet Games", "Overdrive Media", "Lantern & Co", "Northstar Interactive")
 }

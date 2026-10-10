@@ -42,6 +42,7 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null): Strin
     val g = games ?: return "You don't run a game studio."
     if (g.project != null) return "A game is already in development."
     if (g.contract != null) return "Finish the contract first."
+    if (g.expansion != null) return "Finish the expansion first."
     if (c.topic !in g.topics) return "Research ${c.topic.title} first."
     c.size.requires?.let { if (it !in researched) return "Research ${it.title} first." }
     if (gameTeam < c.size.minTeam) return "${c.size.title} games need ${c.size.minTeam} people on the game team. You have $gameTeam."
@@ -76,6 +77,10 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
     val original = concept.sequelOf?.let { g.release(it) }
     var hype = minOf(25.0, g.fans / 4_000)
     if (original != null) hype += if (original.score >= 8) 15.0 else 5.0
+    if (original != null && original.id == g.promisedSequel) {
+        hype += 20.0
+        g.promisedSequel = null
+    }
     g.project = GameProject(concept, focus.map { it.toMutableList() }, week, hype = hype)
     addLog(
         "Started ${concept.title}: ${Format.a(concept.size.lower)} ${concept.topic.title.lowercase()} " +
@@ -116,7 +121,7 @@ fun GameState.launchGame() {
     val g = studio()
     val p = g.project ?: throw invalid("No game in development.")
     val suited = p.concept.platforms.any { it.suits(p.concept.audience) }
-    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited)
+    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week))
     cash += report.revenue - report.expenses
     recordRevenue(report.revenue, Lane.GAMES)
     recordCost(report.expenses, Lane.GAMES)
@@ -130,7 +135,7 @@ fun GameState.acknowledgeReview() {
 
 fun GameState.takeGameContract(id: Int) {
     val g = studio()
-    if (g.project != null || g.contract != null) throw busy("The team is busy.")
+    if (g.busy) throw busy("The team is busy.")
     val c = g.contractOffers.firstOrNull { it.id == id } ?: throw invalid("That job is gone.")
     g.contractOffers.remove(c)
     g.contract = c.copy()
@@ -228,4 +233,62 @@ fun GameState.train(employeeId: Int) {
     e.lastTrainedWeek = week
     e.morale = minOf(1.0, e.morale + 0.1)
     addLog("${e.name} finished a training course. Skill ${e.skill}.", LogTone.GOOD, e.lane)
+}
+
+// After launch
+
+/** A patch: a few weeks of fixing what shipped broken. */
+fun GameRelease.patchCost(): Double = max(2_000.0, concept.size.weeklyBudget * 2 + bugs * 150)
+
+fun GameState.patchBlocker(id: Int): String? {
+    val g = games ?: return "You don't run a game studio."
+    val r = g.release(id) ?: return "That game is gone."
+    if (r.patched) return "Already patched."
+    if (r.publisher != null) return "${r.publisher} handles patches for that one."
+    if (r.bugs < 2) return "Nothing worth patching."
+    if (week - r.week > 52) return "Too long ago. Players have moved on."
+    if (cash < r.patchCost()) return "A patch costs ${money(r.patchCost())}."
+    return null
+}
+
+/** Fix the bugs that shipped. Players notice, and sales hold up a little longer. */
+fun GameState.patchGame(id: Int) {
+    requireLive()
+    patchBlocker(id)?.let { throw notAvailable(it) }
+    val g = studio()
+    val r = g.release(id)!!
+    val cost = r.patchCost()
+    spend(cost, Lane.GAMES)
+    val fixed = r.bugs
+    r.bugs = 0.0
+    r.patched = true
+    if (r.weeklySales > 0) r.weeklySales *= 1.15
+    g.fanTrust = minOf(1.2, g.fanTrust + 0.03)
+    reputation.adjust(1.0)
+    addLog("Patched ${r.title}: ${fixed.toInt()} bugs fixed for ${money(cost)}. Players notice.", LogTone.GOOD, Lane.GAMES)
+}
+
+fun GameState.expansionBlocker(id: Int): String? {
+    val g = games ?: return "You don't run a game studio."
+    val r = g.release(id) ?: return "That game is gone."
+    if (Research.EXPANSIONS !in researched) return "Research expansion packs first."
+    if (r.publisher != null) return "${r.publisher} owns that one."
+    if (r.score < 6) return "Only games that scored 6 or more have an audience for more."
+    if (r.expansions.size >= 2) return "Two expansions is plenty. Make a sequel."
+    if (week - r.week > 104) return "Players have moved on."
+    if (g.busy) return "The team is busy."
+    return null
+}
+
+/** Start an expansion pack for a released game. The team works on it until it's done. */
+fun GameState.startExpansion(id: Int) {
+    requireLive()
+    expansionBlocker(id)?.let { throw notAvailable(it) }
+    val g = studio()
+    val r = g.release(id)!!
+    val used = r.expansions.toSet()
+    val name = GameNames.expansions.filter { "${r.title}: $it" !in used }.let { rng.pick(it) }
+    val x = GameExpansion(r.id, "${r.title}: $name", work = r.concept.size.work * 0.3, weeklyBudget = r.concept.size.weeklyBudget * 0.5)
+    g.expansion = x
+    addLog("Work starts on ${x.title}.", LogTone.NEUTRAL, Lane.GAMES)
 }

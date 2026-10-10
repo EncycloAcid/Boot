@@ -33,6 +33,19 @@ data class GameContract(
     val completion: Double get() = min(1.0, done / work)
 }
 
+/** New content for a released game. The whole team works on it, like a small game. */
+@Serializable
+data class GameExpansion(
+    val releaseId: Int,
+    val title: String,
+    val work: Double,
+    val weeklyBudget: Double,
+    var done: Double = 0.0,
+    var weeks: Int = 0,
+) {
+    val completion: Double get() = min(1.0, done / work)
+}
+
 /** A publisher pays you to make the game they want, and takes most of the sales. */
 @Serializable
 data class PublisherDeal(
@@ -97,7 +110,7 @@ data class GameRelease(
     val netShare: Double,
     val design: Double,
     val tech: Double,
-    val bugs: Double,
+    var bugs: Double,
     val hype: Double,
     val devCost: Double,
     val report: List<String>,
@@ -106,6 +119,9 @@ data class GameRelease(
     var unitsSold: Double = 0.0,
     var chartRank: Int = 0,
     var bestRank: Int = 0,
+    /** A patch went out: bugs fixed, sales hold up a little longer. */
+    var patched: Boolean = false,
+    val expansions: MutableList<String> = mutableListOf(),
     val salesHistory: MutableList<Double> = mutableListOf(),
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
@@ -127,6 +143,10 @@ data class GameRelease(
 class GamesStudio {
     var project: GameProject? = null
     var contract: GameContract? = null
+    var expansion: GameExpansion? = null
+
+    /** Something is keeping the team busy. */
+    val busy: Boolean get() = project != null || contract != null || expansion != null
     val contractOffers = mutableListOf<GameContract>()
     val dealOffers = mutableListOf<PublisherDeal>()
     val releases = mutableListOf<GameRelease>()
@@ -154,6 +174,13 @@ class GamesStudio {
 
     /** Work done on games or contracts last week, for research. */
     var lastWork = 0.0
+
+    /** Rival games, the sales chart and the awards. */
+    val market = GameMarket()
+
+    /** Releases whose fans have petitioned for a sequel, and the one you promised. */
+    val petitions: MutableSet<Int> = mutableSetOf()
+    var promisedSequel: Int? = null
     private var nextId = 1
 
     internal fun nextId(): Int = nextId++
@@ -258,6 +285,25 @@ class GamesStudio {
             }
         }
 
+        expansion?.let { x ->
+            lastWork = work
+            x.done += work
+            x.weeks += 1
+            val budget = x.weeklyBudget * ctx.mods.cost
+            report.expenses += budget
+            if (x.done >= x.work) {
+                expansion = null
+                release(x.releaseId)?.let { r ->
+                    r.expansions += x.title
+                    val attach = (0.3 * (r.score / 8).pow(2)).clamped(0.05, 0.5)
+                    val buyers = r.unitsSold * attach
+                    r.weeklySales += buyers * r.concept.size.price * 0.4 * 0.3 * ctx.marketDemand
+                    fans += buyers * 0.1
+                    report.log("${x.title} is out. About ${Format.count(buyers)} players came back for more.", LogTone.GOOD)
+                }
+            }
+        }
+
         contractOffers.removeAll { it.expiresWeek < ctx.week }
         dealOffers.removeAll { it.expiresWeek < ctx.week }
 
@@ -269,10 +315,7 @@ class GamesStudio {
             r.unitsSold += r.weeklySales / r.concept.size.price
             r.salesHistory += r.weeklySales
             if (r.salesHistory.size > 52) r.salesHistory.removeAt(0)
-            r.chartRank = chartRank(r.weeklySales)
-            r.bestRank = if (r.bestRank == 0) r.chartRank else min(r.bestRank, r.chartRank)
-            val decay = if (age < 6) (0.75 + 0.02 * (r.score - 7)).clamped(0.68, 0.84) else (0.95 + 0.005 * (r.score - 7)).clamped(0.92, 0.97)
-            r.weeklySales *= decay
+            r.weeklySales *= salesDecay(age, r.score) * (if (r.patched) 1.01 else 1.0)
             if (r.weeklySales < 40) {
                 r.weeklySales = 0.0
                 r.chartRank = 0
@@ -281,12 +324,9 @@ class GamesStudio {
         return report
     }
 
-    /** Where a week's sales put a game on the charts. */
-    private fun chartRank(weekly: Double): Int = (1 + 40 * (50_000 / max(weekly, 1.0)).pow(0.55)).toInt().clamped(1, 100)
-
     // Launch, reviews and the game report
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean): LaneReport {
+    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: RivalGame? = null): LaneReport {
         val p = project ?: throw invalid("No game in development.")
         if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
         val c = p.concept
@@ -381,7 +421,8 @@ class GamesStudio {
         val reachMult = reach.pow(0.75).clamped(0.25, 2.0)
         val sequelLift = if (original != null && original.score >= 7) 1.15 else 1.0
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
-            ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift
+            ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
+            (if (clash != null) 0.85 else 1.0)
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 
@@ -419,6 +460,9 @@ class GamesStudio {
         if (bugPenalty < 0.95) lines += "Bugs cost you. Polish longer next time."
         if (dated) lines += "Your engine is behind the times. Research and build a new one."
         if (onTrend) lines += "Riding the ${trend?.title?.lowercase()} trend helped sales."
+        if (clash != null) {
+            lines += "${clash.title} by ${clash.studio} came out weeks earlier in the same genre and took some of your buyers."
+        }
 
         val release = GameRelease(
             id = nextId(), title = p.title, concept = c, week = week, reviews = reviews, score = avg, weeklySales = gross,
@@ -516,6 +560,7 @@ class GamesStudio {
                     if (p.isReady) ", polishing" else ""
             }
             contract?.let { return "Contract: ${it.title} ${(it.completion * 100).toInt()}%" }
+            expansion?.let { return "Expansion: ${it.title} ${(it.completion * 100).toInt()}%" }
             return if (releases.isEmpty()) "No game in development" else "Between projects"
         }
 }

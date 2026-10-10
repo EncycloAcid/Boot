@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.boot.core.Difficulty
 import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
@@ -59,6 +60,7 @@ fun NewGameScreen(store: GameStore) {
     var company by rememberSaveable { mutableStateOf("Garage Labs") }
     var founder by rememberSaveable { mutableStateOf("") }
     var lane by rememberSaveable { mutableStateOf(Lane.GAMES) }
+    var difficulty by rememberSaveable { mutableStateOf(Difficulty.NORMAL) }
     val colors = gameColors
 
     Scaffold(
@@ -82,7 +84,7 @@ fun NewGameScreen(store: GameStore) {
                         }
                         PrimaryButton(
                             "Start your ${lane.businessName.lowercase()}",
-                            { store.newGame(company.trim().ifEmpty { "Garage Labs" }, founder.trim().ifEmpty { "You" }, lane) },
+                            { store.newGame(company.trim().ifEmpty { "Garage Labs" }, founder.trim().ifEmpty { "You" }, lane, difficulty = difficulty) },
                             Modifier.fillMaxWidth(),
                         )
                     }
@@ -116,7 +118,7 @@ fun NewGameScreen(store: GameStore) {
                 Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Boot", style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.primary)
                     Text(
-                        "You start solo in a cramped apartment with ${Format.money(GameState.STARTING_CASH)} in savings. Pick a lane.",
+                        "You start solo in a cramped apartment with ${Format.money(difficulty.startingCash)} in savings. Pick a lane.",
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Hint(
@@ -131,6 +133,13 @@ fun NewGameScreen(store: GameStore) {
                     FormRow("Company", company, "Garage Labs", ImeAction.Next) { company = it }
                     RowDivider()
                     FormRow("Founder", founder, "You", ImeAction.Done) { founder = it }
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                GroupedSection("Difficulty", footer = difficulty.blurb) {
+                    Column(Modifier.padding(8.dp)) {
+                        Segmented(Difficulty.entries, difficulty, { it.title }) { difficulty = it }
+                    }
                 }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {

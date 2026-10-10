@@ -60,8 +60,21 @@ data class Employee(
     var tech: Int = roleTech(role, skill),
     var research: Int = roleResearch(role, skill),
     var lastTrainedWeek: Int = -1_000,
+    /** Experience from working. Enough of it and they level up. */
+    var xp: Double = 0.0,
+    var level: Int = 1,
+    var lastRaiseWeek: Int = -1_000,
 ) {
     internal val moraleFactor: Double get() = 0.5 + 0.5 * morale
+
+    /** Experience needed for the next level. */
+    val xpToNext: Double get() = 30.0 + 15.0 * level
+
+    val maxLevel: Boolean get() = level >= MAX_LEVEL
+
+    companion object {
+        const val MAX_LEVEL = 10
+    }
 
     internal fun output(lane: Lane): Double = skill * lane.weight(role) * moraleFactor
 }

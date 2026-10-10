@@ -188,6 +188,10 @@ private fun androidx.compose.ui.unit.Density.spawnBubbles(
         if (p.lastBugs >= 1) add(pick(2), "+${p.lastBugs.roundToInt()}", colors.bad)
         if (p.lastBugs <= -1) add(pick(2), "${p.lastBugs.roundToInt()}", colors.good)
     }
+    for (id in state.levelUps) {
+        val i = people.indexOfFirst { it.key == id }
+        if (i in layout.indices) add(i, "LV UP", Color(0xFFE0A800))
+    }
     val week = state.ledger.lastOrNull()
     for (lane in state.lanes) {
         if (lane == Lane.GAMES && state.games?.project != null) continue

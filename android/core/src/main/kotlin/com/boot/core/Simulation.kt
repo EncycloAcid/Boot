@@ -41,6 +41,7 @@ fun GameState.advance() {
     // Unassigned staff still get paid.
     val idle = staff.filter { it.lane == null }.sumOf { it.salary }
     spend(idle + headquarters.rent, null)
+    payLoan()
 
     updateCrossovers(fx)
 
@@ -64,6 +65,7 @@ fun GameState.advance() {
     boardReview()
     checkPivotPoint()
     updateStreaks()
+    checkGoals()
     checkEndings()
 }
 
@@ -170,6 +172,7 @@ private fun GameState.studioWeek() {
         g.trend = next
     }
     if (GameClock.weekOfYear(week) == 26) enqueue(EventKind.Convention)
+    marketWeek()
     val output = staffing(Lane.GAMES).output
     g.refreshOffers(week, output, rng, unlockedSizes, Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE })
 }
@@ -178,6 +181,7 @@ private fun GameState.rollWorldEvents() {
     for (lane in lanes) {
         if (rng.chance(0.0025) && hasLiveProduct(lane)) enqueue(EventKind.ViralMoment(lane))
     }
+    rollSmallEvents()
     if (pivot != null && valuation >= 2_000_000 && rng.chance(0.005)) {
         val bidder = if (rng.chance(0.5)) {
             rng.pick(world.rivals).name
@@ -186,6 +190,44 @@ private fun GameState.rollWorldEvents() {
         }
         enqueue(EventKind.Buyout(bidder, Math.round(valuation * rng.range(1.1, 1.6)).toDouble()))
     }
+}
+
+/** The everyday surprises: people, fans, leaks, refunds and outages. */
+private fun GameState.rollSmallEvents() {
+    if (staff.isNotEmpty() && rng.chance(0.006 + 0.0015 * min(staff.size, 10))) {
+        staff.filter { week - maxOf(it.hiredWeek, it.lastRaiseWeek) >= 52 && it.skill >= 5 }
+            .takeIf { it.isNotEmpty() }
+            ?.let { enqueue(EventKind.RaiseRequest(rng.pick(it).id)) }
+    }
+    games?.let { g ->
+        val hot = g.releases.filter { it.weeklySales > 0 && it.score >= 6.5 }
+        if (hot.isNotEmpty() && rng.chance(0.01)) {
+            enqueue(EventKind.Streamer(rng.pick(hot).id, rng.pick(listOf("xXPixelQueenXx", "Big Dave Plays", "Mira Streams", "TheLagWizard", "Cozy Kat"))))
+        }
+        val p = g.project
+        if (p != null && !p.isReady && p.stage >= 1 && rng.chance(0.004)) enqueue(EventKind.LeakedBuild)
+        if (Research.SEQUELS in researched && g.promisedSequel == null) {
+            val loved = g.releases.filter {
+                it.score >= 8 && it.id !in g.petitions && week - it.week in 8..104 &&
+                    g.releases.none { other -> other.concept.sequelOf == it.id }
+            }
+            if (loved.isNotEmpty() && rng.chance(0.015)) {
+                val r = rng.pick(loved)
+                g.petitions += r.id
+                enqueue(EventKind.FanPetition(r.id))
+            }
+        }
+    }
+    if (rng.chance(0.003)) enqueue(EventKind.GameJam)
+    if (GameClock.weekOfYear(week) == 14 && week > 52) {
+        val credit = Math.round(payroll * 52 * 0.05 / 100) * 100.0
+        if (credit >= 1_000 && rng.chance(0.6)) enqueue(EventKind.TaxCredit(credit))
+    }
+    for (lane in listOf(Lane.APPS, Lane.SOCIAL)) {
+        val live = (lane == Lane.APPS && apps?.isLive == true) || (lane == Lane.SOCIAL && social?.isLive == true)
+        if (live && rng.chance(0.004)) enqueue(EventKind.ServerOutage(lane))
+    }
+    if (freeDesks > 0 && week > 26 && rng.chance(0.004)) enqueue(EventKind.Headhunter)
 }
 
 private fun GameState.hasLiveProduct(lane: Lane): Boolean = when (lane) {
@@ -246,9 +288,49 @@ private fun GameState.updateStaff(fx: ComboEffects) {
         e.morale = m.clamped(0.0, 1.0)
         if (e.morale < 0.3 && rng.chance(0.04)) quitters += e
     }
+    gainExperience()
     for (q in quitters) {
         staff = staff.filterNot { it.id == q.id }
         addLog("${q.name} quit. Morale had been low for a while.", LogTone.BAD, q.lane)
+    }
+}
+
+/** People get better by doing the work. */
+private fun GameState.gainExperience() {
+    val ups = mutableListOf<Int>()
+    val shipping = games?.busy == true
+    for (e in staff) {
+        val lane = e.lane ?: continue
+        if (e.maxLevel) continue
+        var gain = 0.6 + 0.4 * e.morale
+        if (crunch) gain *= 1.3
+        if (lane == Lane.GAMES && shipping) gain += 0.3
+        e.xp += gain
+        if (e.xp < e.xpToNext) continue
+        e.xp -= e.xpToNext
+        e.level += 1
+        if (e.level % 2 == 0) e.skill = minOf(10, e.skill + 1)
+        when (e.role) {
+            Role.DESIGNER -> e.design = minOf(10, e.design + 1)
+            Role.ENGINEER -> e.tech = minOf(10, e.tech + 1)
+            Role.RESEARCHER -> e.research = minOf(10, e.research + 1)
+            Role.MARKETER, Role.OPERATOR -> {
+                if (e.design <= e.tech) e.design = minOf(10, e.design + 1) else e.tech = minOf(10, e.tech + 1)
+            }
+        }
+        e.salary *= 1.06
+        e.morale = minOf(1.0, e.morale + 0.1)
+        ups += e.id
+    }
+    levelUps = ups
+    val leveled = staff.filter { it.id in ups }
+    when (leveled.size) {
+        0 -> {}
+        1 -> leveled[0].let { e ->
+            addLog("${e.name} reached level ${e.level}. Skill ${e.skill}, and a raise to ${money(e.salary)}/week.", LogTone.GOOD, e.lane)
+        }
+        2 -> addLog("${leveled[0].name} and ${leveled[1].name} levelled up.", LogTone.GOOD)
+        else -> addLog("${leveled[0].name}, ${leveled[1].name} and ${leveled.size - 2} others levelled up.", LogTone.GOOD)
     }
 }
 
@@ -272,8 +354,8 @@ private fun GameState.checkEndings() {
     if (ending != null) return
     if (cash < 0) {
         stats.weeksInRed += 1
-        if (stats.weeksInRed == 1) addLog("You're overdrawn. Eight weeks in the red and it's over.", LogTone.BAD)
-        if (stats.weeksInRed >= 8) {
+        if (stats.weeksInRed == 1) addLog("You're overdrawn. ${difficulty.redWeeks} weeks in the red and it's over.", LogTone.BAD)
+        if (stats.weeksInRed >= difficulty.redWeeks) {
             end(EndingKind.BANKRUPT)
             return
         }

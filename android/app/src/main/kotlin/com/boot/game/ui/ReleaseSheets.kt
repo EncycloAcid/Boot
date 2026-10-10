@@ -43,7 +43,12 @@ import com.boot.core.GameState
 import com.boot.core.Research
 import com.boot.core.Review
 import com.boot.core.acknowledgeReview
+import com.boot.core.expansionBlocker
+import com.boot.core.patchBlocker
+import com.boot.core.patchCost
+import com.boot.core.patchGame
 import com.boot.core.sequelConcept
+import com.boot.core.startExpansion
 import com.boot.game.GameStore
 import java.util.Locale
 
@@ -126,7 +131,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
     val g = state.games ?: return
     val r: GameRelease = g.release(releaseId) ?: return
     val colors = gameColors
-    val canSequel = Research.SEQUELS in state.researched && g.project == null && g.contract == null
+    val canSequel = Research.SEQUELS in state.researched && !g.busy
     Dialog(onDismissRequest = { store.openRelease = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
@@ -177,13 +182,15 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     }
                     GroupedSection(
                         "What you learned",
-                        footer = String.format(Locale.US, "Design %.0f · Tech %.0f · Bugs at launch %.0f · Hype %.0f", r.design, r.tech, r.bugs, r.hype),
+                        footer = String.format(Locale.US, "Design %.0f · Tech %.0f · Hype %.0f · ", r.design, r.tech, r.hype) +
+                            if (r.patched) "patched" else String.format(Locale.US, "%.0f bugs shipped", r.bugs),
                     ) {
                         r.report.forEachIndexed { i, line ->
                             if (i > 0) RowDivider(52.dp)
                             ListRow(line, leading = { Icon(Icons.Filled.Lightbulb, null, tint = colors.warn) })
                         }
                     }
+                    AfterLaunch(store, state, r)
                     if (canSequel) {
                         PrimaryButton("Make a sequel", {
                             val seed = store.state?.sequelConcept(r.id)
@@ -193,6 +200,35 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     }
                 }
             }
+        }
+    }
+}
+
+/** Keep a game alive after launch: patch what shipped broken, and sell more to the people who loved it. */
+@Composable
+private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
+    if (r.publisher != null) return
+    val patch = state.patchBlocker(r.id)
+    val expansion = state.expansionBlocker(r.id)
+    GroupedSection(
+        "After launch",
+        footer = if (r.expansions.isEmpty()) null else "Expansions: ${r.expansions.joinToString()}.",
+    ) {
+        ActionRow(
+            if (r.patched) "Patched" else "Release a patch",
+            if (r.patched) "The bugs are fixed. Fans noticed." else patch ?: "Fixes ${r.bugs.toInt()} bugs for ${Format.money(r.patchCost())}. Fans notice, and sales hold up longer.",
+            if (r.patched) "Done" else "Patch",
+            enabled = patch == null,
+        ) { store.perform { patchGame(r.id) } }
+        RowDivider()
+        ActionRow(
+            "Make an expansion pack",
+            expansion ?: "New content the team builds like a small game. Owners of ${r.title} come back for it.",
+            "Start",
+            enabled = expansion == null,
+        ) {
+            store.perform { startExpansion(r.id) }
+            store.openRelease = null
         }
     }
 }

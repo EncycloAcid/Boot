@@ -46,6 +46,33 @@ sealed interface EventKind {
 
     @Serializable @SerialName("convention")
     data object Convention : EventKind
+
+    @Serializable @SerialName("gameAwards")
+    data object GameAwards : EventKind
+
+    @Serializable @SerialName("raiseRequest")
+    data class RaiseRequest(val employeeId: Int) : EventKind
+
+    @Serializable @SerialName("streamer")
+    data class Streamer(val releaseId: Int, val name: String) : EventKind
+
+    @Serializable @SerialName("leakedBuild")
+    data object LeakedBuild : EventKind
+
+    @Serializable @SerialName("gameJam")
+    data object GameJam : EventKind
+
+    @Serializable @SerialName("taxCredit")
+    data class TaxCredit(val amount: Double) : EventKind
+
+    @Serializable @SerialName("serverOutage")
+    data class ServerOutage(val lane: Lane) : EventKind
+
+    @Serializable @SerialName("fanPetition")
+    data class FanPetition(val releaseId: Int) : EventKind
+
+    @Serializable @SerialName("headhunter")
+    data object Headhunter : EventKind
 }
 
 @Serializable
@@ -72,6 +99,14 @@ internal fun GameState.enqueue(kind: EventKind) {
 }
 
 private fun choice(label: String, detail: String) = EventChoice(label, detail)
+
+/** Emergency servers cost more the bigger you are. */
+private fun GameState.outageCost(lane: Lane): Double = max(10_000.0, trailingRevenue(lane, 4) / 4 * 0.5)
+
+private val GameState.headhunterFee: Double get() = 20_000.0 + 2_000.0 * GameClock.year(week)
+
+/** What flying the whole team to the awards costs. */
+private val GameState.awardsTrip: Double get() = 4_000.0 + 1_500.0 * staff.size
 
 private fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is EventKind.Poach -> {
@@ -184,6 +219,97 @@ private fun GameState.describe(kind: EventKind): Description? = when (kind) {
                 choice("Dial it back", "${money(comboFixCost(combo))} and lower ${combo.dial.lowercase()}."),
                 choice("Ride it out", rideOutDetail(combo)),
             ),
+        )
+    }
+    is EventKind.RaiseRequest -> staff.firstOrNull { it.id == kind.employeeId }?.let { e ->
+        Description(
+            "${e.name} wants a raise",
+            "Your ${e.role.title.lowercase()} ${e.name} (level ${e.level}, skill ${e.skill}) thinks they're worth more than ${money(e.salary)} a week.",
+            listOf(
+                choice("Give them 15%", "${money(e.salary * 1.15)}/week. Morale up."),
+                choice("Not this year", "They won't be happy. Unhappy people quit."),
+            ),
+            e.lane,
+        )
+    }
+    is EventKind.Streamer -> games?.release(kind.releaseId)?.let { r ->
+        Description(
+            "${kind.name} is playing ${r.title}",
+            "One of the biggest streamers around is playing ${r.title} live, and the chat is loving it.",
+            listOf(
+                choice("Send keys and merch", "${money(5_000.0)}. Ride the wave: a big sales spike and new fans."),
+                choice("Let it happen", "Free. A smaller bump."),
+            ),
+            Lane.GAMES,
+        )
+    }
+    EventKind.LeakedBuild -> games?.project?.let { p ->
+        Description(
+            "An early build of ${p.title} leaked",
+            "Someone put a work-in-progress build online. People are playing it, bugs and all.",
+            listOf(
+                choice("Lean into it", "Joke about it and build hype. Some fans think it looks rough."),
+                choice("Send the lawyers", "${money(20_000.0)}. It comes down, mostly. A little hype anyway."),
+            ),
+            Lane.GAMES,
+        )
+    }
+    EventKind.GameJam -> Description(
+        "A game jam needs a sponsor",
+        "A weekend hackathon downtown wants a sponsor. Lots of hungry young developers will be there.",
+        listOf(
+            choice("Sponsor it", "${money(8_000.0)}. Research points, goodwill, and a shot at a great hire."),
+            choice("Pass", "Keep the money."),
+        ),
+    )
+    is EventKind.TaxCredit -> Description(
+        "Your R&D tax credit came through",
+        "The government refunds part of what you spent on research and development: ${money(kind.amount)}.",
+        listOf(
+            choice("Bank it", "All of it goes to the runway."),
+            choice("Throw a party", "Half of it on the team. Morale up for everyone."),
+        ),
+    )
+    is EventKind.ServerOutage -> Description(
+        "Your servers are down",
+        "${if (kind.lane == Lane.APPS) apps?.name ?: "The app" else social?.name ?: "The platform"} has been offline for hours and people are noticing.",
+        listOf(
+            choice("Emergency cloud capacity", "${money(outageCost(kind.lane))}. Back up tonight."),
+            choice("Wait it out", "Free. Some users won't come back, and it makes the news."),
+        ),
+        kind.lane,
+    )
+    is EventKind.FanPetition -> games?.release(kind.releaseId)?.let { r ->
+        Description(
+            "Fans want ${r.title} 2",
+            "A petition for a sequel to ${r.title} has thousands of signatures.",
+            listOf(
+                choice("Promise a sequel", "Fans are thrilled. When you make it, it starts with big hype."),
+                choice("Not now", "Some fans grumble."),
+            ),
+            Lane.GAMES,
+        )
+    }
+    EventKind.Headhunter -> Description(
+        "A headhunter has a star",
+        "A recruiter can introduce you to someone exceptional, for a fee of ${money(headhunterFee)}.",
+        listOf(
+            choice("Pay the fee", "A skill 8 to 10 candidate joins your hiring list for eight weeks."),
+            choice("No thanks", "Keep looking the usual way."),
+        ),
+    )
+    EventKind.GameAwards -> {
+        val nominees = awardNominees()
+        Description(
+            "Game of the Year nominations",
+            "You're nominated! The shortlist: " + nominees.joinToString("; ") {
+                "${it.title} (${if (it.mine) "you" else it.studio}, ${String.format(java.util.Locale.US, "%.1f", it.score)})"
+            } + ".",
+            listOf(
+                choice("Fly the team out", "${money(awardsTrip)}. Everyone has a great night, and it helps your chances a little."),
+                choice("Watch the stream", "Free. Fingers crossed."),
+            ),
+            Lane.GAMES,
         )
     }
     EventKind.Convention -> {
@@ -388,6 +514,110 @@ private fun GameState.resolve(kind: EventKind, choice: Int) {
                 c.pressure = 0.2
                 rideOut(kind.combo)
             }
+        }
+
+        is EventKind.RaiseRequest -> {
+            val e = staff.firstOrNull { it.id == kind.employeeId } ?: return
+            e.lastRaiseWeek = week
+            if (choice == 0) {
+                e.salary *= 1.15
+                e.morale = min(1.0, e.morale + 0.2)
+                addLog("${e.name} got a raise and is happy again.", LogTone.NEUTRAL, e.lane)
+            } else {
+                e.morale = max(0.0, e.morale - 0.25)
+                addLog("${e.name} didn't get a raise. They're updating their CV.", LogTone.BAD, e.lane)
+            }
+        }
+
+        is EventKind.Streamer -> {
+            val g = games ?: return
+            val r = g.release(kind.releaseId) ?: return
+            if (choice == 0) {
+                spend(5_000.0, Lane.GAMES)
+                r.weeklySales = max(r.weeklySales * 1.6, r.lifetimeSales / r.netShare * 0.03)
+                g.fans += max(500.0, g.fans * 0.04)
+                addLog("${kind.name}'s stream sent ${r.title} up the charts.", LogTone.GOOD, Lane.GAMES)
+            } else {
+                r.weeklySales *= 1.2
+                addLog("${kind.name}'s stream gave ${r.title} a little bump.", LogTone.NEUTRAL, Lane.GAMES)
+            }
+        }
+
+        EventKind.LeakedBuild -> {
+            val g = games ?: return
+            val p = g.project ?: return
+            if (choice == 0) {
+                p.hype = min(100.0, p.hype + 15)
+                g.fanTrust = max(0.3, g.fanTrust - 0.03)
+                addLog("You turned the ${p.title} leak into a marketing beat.", LogTone.NEUTRAL, Lane.GAMES)
+            } else {
+                spend(20_000.0, Lane.GAMES)
+                p.hype = min(100.0, p.hype + 5)
+                addLog("Lawyers took the ${p.title} leak down. Mostly.", LogTone.NEUTRAL, Lane.GAMES)
+            }
+        }
+
+        EventKind.GameJam -> if (choice == 0) {
+            spend(8_000.0, null)
+            researchPoints += 8.0
+            reputation.adjust(1.0)
+            games?.let { it.fans += 300.0 }
+            if (rng.chance(0.6)) {
+                val star = makeCandidate(star = true)
+                candidates = candidates + star
+                addLog("The game jam went great. ${star.name}, a standout ${star.role.title.lowercase()}, wants to meet you.", LogTone.GOOD)
+            } else {
+                addLog("The game jam went great. Your logo was on every pizza box.", LogTone.GOOD)
+            }
+        }
+
+        is EventKind.TaxCredit -> if (choice == 0) {
+            cash += kind.amount
+            recordRevenue(kind.amount, null)
+            addLog("Tax credit banked: ${money(kind.amount)}.", LogTone.GOOD)
+        } else {
+            cash += kind.amount / 2
+            recordRevenue(kind.amount / 2, null)
+            for (e in staff) e.morale = min(1.0, e.morale + 0.15)
+            addLog("You spent half the tax credit on a team party. Nobody will forget the karaoke.", LogTone.GOOD)
+        }
+
+        is EventKind.ServerOutage -> if (choice == 0) {
+            spend(outageCost(kind.lane), kind.lane)
+            addLog("Emergency capacity got you back online by midnight.", LogTone.NEUTRAL, kind.lane)
+        } else {
+            if (kind.lane == Lane.APPS) apps?.let { it.users *= 0.94 }
+            if (kind.lane == Lane.SOCIAL) social?.let { it.users *= 0.94 }
+            reputation.adjust(-2.0)
+            addLog("The outage lasted two days. Some users never came back.", LogTone.BAD, kind.lane)
+        }
+
+        is EventKind.FanPetition -> {
+            val g = games ?: return
+            if (choice == 0) {
+                g.promisedSequel = kind.releaseId
+                g.fans *= 1.05
+                addLog("You promised a sequel to ${g.release(kind.releaseId)?.title}. The fans are counting the days.", LogTone.GOOD, Lane.GAMES)
+            } else {
+                g.fanTrust = max(0.3, g.fanTrust - 0.02)
+            }
+        }
+
+        EventKind.Headhunter -> if (choice == 0) {
+            spend(headhunterFee, null)
+            val star = makeCandidate(star = true)
+            candidates = candidates + star
+            addLog("The headhunter found ${star.name}: a skill ${star.skill} ${star.role.title.lowercase()}. They're on your hiring list.", LogTone.GOOD)
+        }
+
+        EventKind.GameAwards -> {
+            val g = games ?: return
+            val attended = choice == 0
+            if (attended) {
+                spend(awardsTrip, Lane.GAMES)
+                for (e in staff) e.morale = min(1.0, e.morale + 0.1)
+            }
+            announceWinner(g, awardNominees(), attended)
         }
 
         EventKind.Convention -> {

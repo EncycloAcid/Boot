@@ -52,11 +52,19 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         }
 
         /** Start a new company. Hardware and AI need a seed round from day one. */
-        fun create(companyName: String, founderName: String, lane: Lane, seed: Long = Random.nextLong()): GameState {
+        fun create(
+            companyName: String,
+            founderName: String,
+            lane: Lane,
+            seed: Long = Random.nextLong(),
+            difficulty: Difficulty = Difficulty.NORMAL,
+        ): GameState {
             val s = GameState(seed, lane)
             s.companyName = companyName
             s.founder = Founder(founderName)
-            s.world.rivals += World.makeRivals()
+            s.difficulty = difficulty
+            s.cash = difficulty.startingCash
+            s.world.rivals += World.makeRivals().onEach { it.strength = (it.strength + difficulty.rivalStrength).clamped(0.05, 1.0) }
             s.world.eraLength = s.rng.int(70, 110)
             s.ledger = listOf(WeekLedger(0, cash = s.cash))
             s.openLane(lane)
@@ -108,6 +116,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         internal set
     var cash = STARTING_CASH
         internal set
+    var difficulty = Difficulty.NORMAL
+        internal set
+    var loan: Loan? = null
+        internal set
     var crunch = false
         internal set
     val reputation = Reputation()
@@ -135,6 +147,14 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var researchPoints = 0.0
         internal set
     var researched: Set<Research> = emptySet()
+        internal set
+
+    /** Goals reached so far, in the order you reached them. */
+    var goalsDone: List<Goal> = emptyList()
+        internal set
+
+    /** Who levelled up this week, for the office. */
+    var levelUps: List<Int> = emptyList()
         internal set
     internal var idCounter = 1
 
@@ -197,8 +217,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     /** What the businesses are worth, excluding cash in the bank. */
     val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0)
 
-    /** Enterprise value plus cash. What a buyer or the market would pay. */
-    val valuation: Double get() = enterpriseValue + max(0.0, cash)
+    /** Enterprise value plus cash, less what you owe the bank. What a buyer or the market would pay. */
+    val valuation: Double get() = max(0.0, enterpriseValue + max(0.0, cash) - (loan?.balance ?: 0.0))
 
     fun staff(lane: Lane): List<Employee> = staff.filter { it.lane == lane }
 
@@ -246,6 +266,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     internal fun context(lane: Lane, effects: ComboEffects? = null): LaneContext {
         val mods = effects?.mods?.get(lane)?.copy() ?: LaneModifiers()
         applyResearch(lane, mods)
+        mods.demand *= difficulty.sales
+        mods.cost *= difficulty.costs
         if (isEcosystem) {
             mods.demand *= if (stats.ecosystemOpened) 1.08 else 1.15
             if (lane == Lane.APPS) mods.churn *= 0.9
@@ -342,15 +364,17 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
 
     // Talent
 
-    internal fun makeCandidate(role: Role? = null): Candidate {
+    internal fun makeCandidate(role: Role? = null, star: Boolean = false): Candidate {
         val r = role ?: pickRole()
-        val skill = rng.normal(5.0, 1.8).roundToInt().clamped(1, 10)
+        val skill = if (star) rng.int(8, 10) else rng.normal(5.0, 1.8).roundToInt().clamped(1, 10)
         var salary = r.baseSalary * (0.5 + skill * 0.1) * rng.range(0.9, 1.15)
         if (r == Role.RESEARCHER && world.era == Era.AI_GOLD_RUSH) salary *= 1.6
         var contested: String? = null
         var expires = week + 6
         val rival = rng.pick(world.rivals)
-        if (rng.chance(0.15 + 0.3 * rival.aggression * (if (skill >= 7) 1.0 else 0.4))) {
+        if (star) {
+            expires = week + 8
+        } else if (rng.chance(0.15 + 0.3 * rival.aggression * (if (skill >= 7) 1.0 else 0.4))) {
             contested = rival.name
             salary *= 1.2
             expires = week + 2

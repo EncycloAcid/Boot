@@ -29,12 +29,20 @@ import com.boot.core.ipoBlocker
 import com.boot.core.isEcosystem
 import com.boot.core.raiseRound
 import com.boot.core.roundOffer
+import com.boot.core.LOAN_TERM_WEEKS
+import com.boot.core.loanBlocker
+import com.boot.core.loanLimit
+import com.boot.core.loanOffer
+import com.boot.core.loanPayoff
+import com.boot.core.repayLoan
+import com.boot.core.takeLoan
 import com.boot.game.GameStore
 import androidx.compose.foundation.lazy.LazyListScope
 
 fun LazyListScope.moneyItems(store: GameStore, state: GameState) {
     run {
         item { OwnershipSection(store, state) }
+        item { LoanSection(store, state) }
         item { BoardSection(state) }
         item { ExpansionSection(store, state) }
         item { ExitSection(store, state) }
@@ -166,5 +174,47 @@ private fun ExitSection(store: GameStore, state: GameState) {
             onConfirm = { store.perform { goPublic() } },
             onDismiss = { confirm = false },
         )
+    }
+}
+
+/** The bank: cash now, paid back weekly over a year. No board, no equity. */
+@Composable
+private fun LoanSection(store: GameStore, state: GameState) {
+    val colors = gameColors
+    val loan = state.loan
+    if (loan != null) {
+        val payoff = state.loanPayoff ?: loan.balance
+        GroupedSection(
+            "Bank loan",
+            footer = "Repayments come out every week. Paying early saves some of the interest.",
+        ) {
+            CardBlock {
+                Meter(
+                    "Paid back", 1 - loan.balance / (loan.amount * (1 + loan.rate)), colors.good,
+                    caption = "${Format.money(loan.balance)} left",
+                )
+            }
+            RowDivider()
+            ValueRow("Weekly repayment", loan.weeklyPayment.perWeek(), colors.bad)
+            RowDivider()
+            ActionRow("Pay it off now", "Clears the loan for ${Format.money(payoff)}.", "Repay", enabled = state.cash >= payoff) {
+                store.perform { repayLoan() }
+            }
+        }
+    } else {
+        val offer = state.loanOffer()
+        val blocker = state.loanBlocker
+        GroupedSection(
+            "Bank loan",
+            footer = "The bank lends against your revenue and what the business is worth. " +
+                "${(offer.rate * 100).toInt()}% interest, repaid over $LOAN_TERM_WEEKS weeks. Debt counts against your valuation.",
+        ) {
+            ActionRow(
+                "Borrow ${Format.money(state.loanLimit)}",
+                blocker ?: "Then ${offer.weeklyPayment.perWeek()} for a year.",
+                "Borrow",
+                enabled = blocker == null,
+            ) { store.perform { takeLoan() } }
+        }
     }
 }

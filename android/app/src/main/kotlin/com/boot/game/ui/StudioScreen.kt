@@ -63,11 +63,20 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
     val g = state.games ?: return
     val p = g.project
     val c = g.contract
+    val x = g.expansion
     when {
         p != null -> {
             item { DevelopmentSection(store, state, p) }
             if (!p.isReady) item { FocusSection(store, g, p) }
             item { HypeSection(store, state, p) }
+        }
+        x != null -> item {
+            GroupedSection("Expansion pack", footer = "When it's done, owners of the original come back and buy it. Sales of the original pick up too.") {
+                CardBlock {
+                    Text(x.title, style = MaterialTheme.typography.titleLargeEmphasized)
+                    Meter("Progress", x.completion, gameColors.milestone, wavy = true, caption = Format.weeks(x.weeks) + " in")
+                }
+            }
         }
         c != null -> item {
             GroupedSection("Contract work", footer = "Deliver on time and you get paid plus a few research points. Miss it and they want a refund.") {
@@ -93,7 +102,9 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
         }
     }
     item { StudioOverview(state, g) }
+    item { ChartCard(state, limit = 10) { store.openRelease = it } }
     item { ReleasesSection(store, g) }
+    if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
     item { EnginesSection(store, state, g) }
     item { PlatformsSection(state) }
     item { NotebookSection(g) }
@@ -291,7 +302,10 @@ private fun ReleasesSection(store: GameStore, g: GamesStudio) {
             if (i > 0) RowDivider(72.dp)
             ListRow(
                 r.title,
-                subtitle = "${r.verdict} · ${r.concept.topic.title} ${r.concept.genreTitle}" + if (r.chartRank > 0) " · #${r.chartRank} this week" else "",
+                subtitle = "${r.verdict} · ${r.concept.topic.title} ${r.concept.genreTitle}" +
+                    (if (r.chartRank > 0) " · #${r.chartRank} this week" else "") +
+                    (if (r.expansions.isNotEmpty()) " · ${r.expansions.size} expansion${if (r.expansions.size > 1) "s" else ""}" else "") +
+                    (if (r.patched) " · patched" else ""),
                 leading = { ScoreBadge(r.score, 44.dp) },
                 value = if (r.onSale) (r.weeklySales * r.netShare).perWeek() else Format.money(r.lifetimeSales),
                 valueDetail = if (r.onSale) "on sale" else "lifetime",

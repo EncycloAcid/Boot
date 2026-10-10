@@ -64,6 +64,15 @@ fun OfficeScreen(store: GameStore, state: GameState) {
         if (Lane.GAMES in state.lanes) item { StudioNow(store, state) }
         val others = state.lanes.filter { it != Lane.GAMES }
         if (others.isNotEmpty()) item { LanesNow(store, state, others) }
+        item {
+            GoalsCard(state) {
+                store.companyPage = 3
+                store.tab = Tab.COMPANY
+            }
+        }
+        if (state.games != null) {
+            item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openLane(Lane.GAMES) }) }) { store.openRelease = it } }
+        }
         item { Shortcuts(store, state) }
         item {
             GroupedSection("Latest", action = { PlainButton("All news", { store.tab = Tab.NEWS }) }) {
@@ -154,12 +163,19 @@ private fun Ticker(store: GameStore, state: GameState) {
 
 @Composable
 private fun StudioNow(store: GameStore, state: GameState) {
+    val colors = gameColors
     val g = state.games ?: return
     val p = g.project
     val c = g.contract
+    val x = g.expansion
     GroupedSection("Game studio", action = { PlainButton("Studio", { store.openLane(Lane.GAMES) }) }) {
         when {
             p != null -> ProjectCard(store, state, p)
+            x != null -> CardBlock {
+                Text(x.title, style = MaterialTheme.typography.titleLargeEmphasized)
+                Hint("Expansion pack. Everyone who bought the original is a potential customer.")
+                Meter("Progress", x.completion, colors.milestone, wavy = store.playing, caption = Format.weeks(x.weeks) + " in")
+            }
             c != null -> CardBlock {
                 Text("Contract: ${c.title}", style = MaterialTheme.typography.titleLargeEmphasized)
                 Meter("Progress", c.completion, wavy = store.playing, caption = "week ${c.weeksElapsed} of ${c.weeksAllowed} · pays ${Format.money(c.pay)}")

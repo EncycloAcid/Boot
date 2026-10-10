@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.boot.core.Difficulty
 import com.boot.core.GameException
 import com.boot.core.GameConcept
 import com.boot.core.GameState
@@ -79,8 +80,14 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     /** A full-screen page that holds the clock while it's open. */
     val holdsClock: Boolean get() = designing || openRelease != null
 
-    fun newGame(company: String, founder: String, lane: Lane, seed: Long = Random.nextLong()) {
-        val s = GameState.create(company, founder, lane, seed)
+    fun newGame(
+        company: String,
+        founder: String,
+        lane: Lane,
+        seed: Long = Random.nextLong(),
+        difficulty: Difficulty = Difficulty.NORMAL,
+    ) {
+        val s = GameState.create(company, founder, lane, seed, difficulty)
         state = s
         playing = false
         tab = Tab.OFFICE
@@ -109,7 +116,12 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         save(next)
     }
 
-    fun advance(weeks: Int) = perform { this.advance(weeks) }
+    fun advance(weeks: Int) {
+        val done = state?.goalsDone?.size ?: 0
+        perform { this.advance(weeks) }
+        // Goals don't stop the clock; they just get a moment in the spotlight.
+        state?.goalsDone?.drop(done)?.lastOrNull()?.let { notice = "Goal reached: ${it.title}. ${it.reward.label}" }
+    }
 
     fun play() {
         if (canAdvance && !holdsClock) playing = true
@@ -139,7 +151,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         val reason = when {
             !canAdvance -> ""
             !wasReady && project?.isReady == true -> "${project.title} is ready to ship. Release it, or keep polishing."
-            wasSolvent && now.cash < 0 -> "You're overdrawn. Eight weeks in the red and it's over."
+            wasSolvent && now.cash < 0 -> "You're overdrawn. ${now.difficulty.redWeeks} weeks in the red and it's over. A bank loan can buy time."
             else -> null
         }
         if (reason != null) {

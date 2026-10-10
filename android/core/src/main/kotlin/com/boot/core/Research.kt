@@ -23,6 +23,7 @@ enum class Research(
     TARGET_AUDIENCE("Target audience", "Pick who a game is for: young, everyone or mature.", Kind.STUDIO, 8),
     MARKETING("Marketing campaigns", "Buy hype before launch: press releases, ads, TV.", Kind.STUDIO, 10),
     SEQUELS("Sequels", "Follow up a game with the same topic and genre. Fans come back.", Kind.STUDIO, 12),
+    EXPANSIONS("Expansion packs", "New content for a game that sold well. Everyone who bought it is a customer.", Kind.STUDIO, 18, requires = SEQUELS),
     CUSTOM_ENGINES("Custom engines", "Build engines from the features you've researched.", Kind.STUDIO, 15),
     MEDIUM_GAMES("Medium games", "Bigger games, bigger launches.", Kind.STUDIO, 20),
     MULTI_GENRE("Multi-genre games", "Mix two genres in one game.", Kind.STUDIO, 35),

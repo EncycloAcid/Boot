@@ -1,9 +1,11 @@
 package com.boot.game.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,17 +33,17 @@ import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.Research
-import com.boot.core.freeDesks
-import com.boot.core.moveOffice
-import com.boot.core.train
-import com.boot.core.trainingBlocker
-import com.boot.core.trainingCost
 import com.boot.core.assign
 import com.boot.core.fire
+import com.boot.core.freeDesks
 import com.boot.core.hire
+import com.boot.core.moveOffice
 import com.boot.core.setCrunch
 import com.boot.core.setFocus
 import com.boot.core.setFreelancing
+import com.boot.core.train
+import com.boot.core.trainingBlocker
+import com.boot.core.trainingCost
 import com.boot.game.GameStore
 import java.util.Locale
 
@@ -214,23 +216,19 @@ private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Uni
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Initials(e.name, false)
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text(e.name, style = MaterialTheme.typography.bodyLarge)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(e.name, style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.width(6.dp))
+                Pill("Lv ${e.level}", colors.milestone)
+            }
             Text("${e.role.title} · skill ${e.skill} · ${e.salary.perWeek()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Design ${e.design} · Tech ${e.tech} · Research ${e.research}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Box(
-                Modifier
-                    .padding(top = 6.dp)
-                    .width(72.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(colors.fill),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(e.morale.toFloat().coerceIn(0f, 1f))
-                        .height(4.dp)
-                        .background(if (e.morale < 0.35) colors.bad else colors.good, CircleShape),
-                )
+            Text(
+                "Design ${e.design} · Tech ${e.tech} · Res ${e.research}",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+            )
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                MiniBar("Morale", e.morale, if (e.morale < 0.35) colors.bad else colors.good)
+                MiniBar(if (e.maxLevel) "Max level" else "XP", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone)
             }
         }
         MenuButton(e.lane?.short ?: "Unassigned", listOf<Lane?>(null) + lanes, { it?.businessName ?: "Unassigned" }, onPick = onAssign)
@@ -238,5 +236,28 @@ private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Uni
             IconButton(onClick = onTrain) { Icon(Icons.Filled.School, "Train ${e.name}", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         IconButton(onClick = onFire) { Icon(Icons.Filled.PersonRemove, "Let ${e.name} go", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** A tiny labelled bar for a list row. */
+@Composable
+private fun MiniBar(label: String, value: Double, color: androidx.compose.ui.graphics.Color) {
+    val colors = gameColors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(
+            Modifier
+                .width(44.dp)
+                .height(4.dp)
+                .clip(CircleShape)
+                .background(colors.fill),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(value.toFloat().coerceIn(0f, 1f))
+                    .height(4.dp)
+                    .background(color, CircleShape),
+            )
+        }
     }
 }
