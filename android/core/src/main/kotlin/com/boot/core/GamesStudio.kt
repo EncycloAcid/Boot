@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.exp
+import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -130,6 +131,8 @@ data class GameRelease(
     val salesHistory: MutableList<Double> = mutableListOf(),
     /** The community of a live game. */
     var live: LiveService? = null,
+    /** Why it scored what it did: the baseline plus each part. Empty on old saves and for games you didn't make. */
+    val breakdown: List<ScorePart> = emptyList(),
     /** The indie who made it, when your label published it. */
     val developer: String? = null,
     /** Its pro league, if it has one. */
@@ -154,6 +157,27 @@ data class GameRelease(
         }
 
     val onSale: Boolean get() = weeklySales > 0
+}
+
+/** One part of a game's score: what it was, how many points it added or took off, and why. */
+@Serializable
+data class ScorePart(val label: String, val points: Double, val note: String = "")
+
+/** Where every score starts before its parts. */
+const val SCORE_BASELINE = 5.0
+
+/** Design and tech points per unit of work that a decent team makes in a given week: it rises 10% a year. */
+internal fun craftBenchmark(week: Int): Double = 2.0 * 1.1.pow(week / 52.0)
+
+/** Above 8, every extra point counts half: a 10 needs everything to go right. */
+internal fun softCap(raw: Double): Double = if (raw > 8) 8 + (raw - 8) * 0.5 else raw
+
+/** Points for how well a topic fits a genre. */
+internal fun fitPoints(f: Fit): Double = when (f) {
+    Fit.GREAT -> 0.6
+    Fit.GOOD -> 0.2
+    Fit.OKAY -> -0.3
+    Fit.BAD -> -1.5
 }
 
 /** One of your series: the first game and everything that followed it. */
@@ -446,44 +470,64 @@ class GamesStudio {
         val week = ctx.week
         val engine = engine(c.engineId)
 
-        // Quality: points against what the era expects, then everything that makes a game fit together.
-        val eraTech = 1 + 0.1 * week / 52.0
-        val base = (p.design + p.tech) / (2.6 * p.work * eraTech)
+        // The score: a baseline, plus or minus each part of how the game was made. Every part is
+        // shown in the game report, so a score can always be explained.
+        val parts = mutableListOf<ScorePart>()
+        fun part(label: String, points: Double, note: String) {
+            if (abs(points) >= 0.05) parts += ScorePart(label, (points * 10).roundToInt() / 10.0, note)
+        }
+        // Craft: design and tech points for the work, against what a decent team makes this year.
+        val craft = (p.design + p.tech) / max(1.0, p.work) / craftBenchmark(week)
+        part("Craft", (2.2 * ln(max(0.05, craft)) / ln(1.5)).clamped(-3.0, 2.0),
+            "${Format.percent(craft)} of what a decent team makes today. Better people and engines raise it.")
         val designRatio = p.design / max(1.0, p.design + p.tech)
-        val ratioFit = (1 - abs(designRatio - c.idealDesignShare) * 2.2).clamped(0.45, 1.0)
-        val focusMult = 0.7 + 0.4 * p.focusMatch
-        val audienceFit = when (c.topic.fit(c.audience)) {
-            Fit.GOOD, Fit.GREAT -> 1.05
-            Fit.OKAY -> 0.97
-            Fit.BAD -> 0.82
-        } * (if (audienceSuited) 1.0 else 0.92)
-        val platformFit = c.platforms.map {
+        val combo = (listOf(c.topic.fit(c.genre)) + listOfNotNull(c.genre2?.let { c.topic.fit(it) })).map { fitPoints(it) }.average()
+        part("${c.topic.title} + ${c.genreTitle}", combo, "How well the topic and genre fit together.")
+        val audienceFit = c.topic.fit(c.audience)
+        part("Audience", (if (audienceFit == Fit.BAD) -0.8 else if (audienceFit == Fit.OKAY) 0.0 else 0.2) + (if (audienceSuited) 0.0 else -0.4),
+            if (audienceSuited) "${c.topic.title} for ${c.audience.phrase}." else "Your platforms' players aren't ${c.audience.phrase}.")
+        part("Platforms", c.platforms.map {
             when (it.fit(c.genre)) {
-                Fit.GOOD, Fit.GREAT -> 1.06
-                Fit.OKAY -> 1.0
-                Fit.BAD -> 0.85
+                Fit.GREAT, Fit.GOOD -> 0.2
+                Fit.OKAY -> 0.0
+                Fit.BAD -> -0.7
             }
-        }.average()
+        }.average() - 0.1 * (c.platforms.size - 1), "How ${c.genre.lower} games play on ${c.platforms.joinToString { it.title }}.")
+        part("Focus", ((p.focusMatch - 0.6) * 2.5).clamped(-1.5, 0.8), "How close the effort split was to what ${c.genreLower} games need.")
+        val balanceOff = abs(designRatio - c.idealDesignShare)
+        part("Design and tech balance", if (balanceOff < 0.05) 0.2 else -(balanceOff * 4).clamped(0.0, 1.0),
+            "${Format.percent(designRatio)} design; ${c.genreLower} games want about ${Format.percent(c.idealDesignShare)}.")
         val bugPenalty = 1 - min(0.35, p.bugs / (p.work * 0.6) * 0.35)
-        val polishBonus = 1 + min(0.06, 0.2 * p.polish / p.work)
-        val last = releases.firstOrNull()
-        val repeated = c.sequelOf == null && c.remasterOf == null && last != null && last.concept.topic == c.topic && last.concept.genre == c.genre
-        val original = c.sequelOf?.let { release(it) }
-        val rushedSequel = original != null && week - original.week < 52
-        val onTrend = trend?.matches(c) == true
+        part("Bugs", -(1 - bugPenalty) * 7, "${p.bugs.roundToInt()} bug${if (p.bugs.roundToInt() == 1) "" else "s"} shipped.")
+        part("Polish", 0.4 * min(1.0, p.polish / (p.work * 0.4)), "Weeks spent polishing after content was done.")
         val standard = week / 20.0
         val dated = engine.level < standard - 5
-        val engineFit = if (dated) max(0.82, 1 - 0.015 * (standard - 5 - engine.level)) else 1.0
-        val q = base * ratioFit * focusMult * c.comboFit * audienceFit * platformFit * bugPenalty * polishBonus *
-            (if (repeated) 0.85 else 1.0) * (if (rushedSequel) 0.92 else 1.0) * (if (onTrend) 1.08 else 1.0) *
-            engineFit * (1 - 0.02 * (c.platforms.size - 1)) * (1 + ctx.mods.quality / 100)
-
-        // Like any reviewer, they judge you against your own best work: keep improving or scores slide.
-        val expectation = max(0.95, topQuality)
-        val ratio = q / expectation
-        val score = (10 * (1 - exp(-(ratio / 0.85).pow(2.4)))).clamped(1.0, 10.0)
-        val stepBack = topQuality > 0 && ratio < 0.85
-        val record = q > topQuality && releases.isNotEmpty()
+        part("Engine", when {
+            dated -> -(0.12 * (standard - 5 - engine.level)).clamped(0.0, 1.2)
+            engine.level >= standard + 3 -> 0.2
+            else -> 0.0
+        }, if (dated) "${engine.name} is behind the times." else "${engine.name}, level ${engine.level}.")
+        val onTrend = trend?.matches(c) == true
+        if (onTrend) part("On trend", 0.4, "Everyone wants ${trend?.title?.lowercase()} games right now.")
+        val last = releases.firstOrNull()
+        val repeated = c.sequelOf == null && c.remasterOf == null && last != null && last.concept.topic == c.topic && last.concept.genre == c.genre
+        if (repeated) part("Retread", -0.8, "The same topic and genre as your last game, without calling it a sequel.")
+        val original = c.sequelOf?.let { release(it) }
+        val rushedSequel = original != null && week - original.week < 52
+        if (rushedSequel) part("Rushed sequel", -0.6, "Less than a year after ${original!!.title}.")
+        part("Your people", ctx.mods.quality / 15, "Perfectionists on the team.")
+        // Critics expect a studio to keep its level, but only a real drop is held against it.
+        val recent = releases.filter { it.developer == null }.take(3).map { it.score }
+        val before = SCORE_BASELINE + parts.sumOf { it.points }
+        val stepBack = recent.isNotEmpty() && before < recent.average() - 1.5
+        val record = releases.isNotEmpty() && before > topScore
+        if (stepBack) part("A step back", -0.5, "Well below your last games (${String.format(java.util.Locale.US, "%.1f", recent.average())} on average).")
+        if (record) part("Your best yet", 0.2, "Better than anything you've made.")
+        part("Critics' mood", rng.normal(sd = 0.3).clamped(-0.6, 0.6), "Reviewers are people.")
+        val raw = SCORE_BASELINE + parts.sumOf { it.points }
+        if (raw > 8) part("Diminishing returns", softCap(raw) - raw, "Above 8, every extra point counts half.")
+        val score = softCap(raw).clamped(1.0, 10.0)
+        val q = craft
 
         // The critics, and then the players.
         val areas = FocusArea.entries
@@ -494,7 +538,7 @@ class GamesStudio {
                 bugPenalty = bugPenalty, polish = p.polish / p.work, engineLevel = engine.level, engineStandard = standard,
                 hype = p.hype, fanTrust = fanTrust, onTrend = onTrend, repeated = repeated, rushedSequel = rushedSequel,
                 worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
-                wrongCrowd = audienceFit < 0.9, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
+                wrongCrowd = audienceFit == Fit.BAD || !audienceSuited, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
             ),
             rng,
         )
@@ -594,6 +638,7 @@ class GamesStudio {
             report = lines, publisher = p.deal?.publisher,
             userScore = verdict.userScore, aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons,
             live = if (c.live) LiveService(livePlayers(gross / c.unitPrice), week) else null,
+            breakdown = listOf(ScorePart("Baseline", SCORE_BASELINE, "Where every game starts.")) + parts,
         )
         if (c.live) {
             lines += "It launched as a live game with ${Format.count(release.live!!.players)} players. Keep them with a new season every few months."

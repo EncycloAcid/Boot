@@ -1242,3 +1242,60 @@ class NewsTest {
         assertTrue(s.news.size <= 300)
     }
 }
+
+class RatingTest {
+    /** Ship a small game straight away with chosen points, bugs and focus. */
+    private fun ship(seed: Long, topic: Topic, genre: Genre, design: Double, tech: Double, bugs: Double = 2.0, focus: Double = 0.9, s: GameState = game(Lane.GAMES, seed)): GameRelease {
+        s.cash = 1e7
+        s.games!!.topics += topic
+        s.startGame(GameConcept("Test ${s.games!!.releases.size}", topic, genre, platforms = listOf(Platform.PC), size = GameSize.SMALL))
+        val p = s.games!!.project!!
+        p.progress = p.work
+        p.design = design
+        p.tech = tech
+        p.bugs = bugs
+        p.polish = p.work * 0.4
+        p.matchSum = focus * 100
+        p.matchWork = 100.0
+        s.launchGame()
+        return s.games!!.releases.first()
+    }
+
+    private fun pair(fit: Fit): Pair<Topic, Genre> =
+        Topic.entries.flatMap { t -> Genre.entries.map { t to it } }.first { (t, g) -> t.fit(g) == fit }
+
+    @Test
+    fun theBreakdownAddsUpToTheScore() {
+        val (t, g) = pair(Fit.GOOD)
+        val r = ship(200, t, g, 70.0, 50.0)
+        assertEquals("Baseline", r.breakdown.first().label)
+        // The outlets each have their own taste, so their average sits close to the breakdown's total.
+        assertEquals(r.breakdown.sumOf { it.points }.coerceIn(1.0, 10.0), r.score, 1.0)
+        assertTrue(r.score in 3.0..9.5)
+    }
+
+    @Test
+    fun choicesShowUpInTheScore() {
+        val (gt, gg) = pair(Fit.GREAT)
+        val (bt, bg) = pair(Fit.BAD)
+        val good = ship(201, gt, gg, 70.0, 50.0, focus = 0.95)
+        val bad = ship(201, bt, bg, 110.0, 10.0, focus = 0.3)
+        assertTrue(good.score > bad.score + 2, "good ${good.score} bad ${bad.score}")
+        assertTrue(bad.breakdown.any { it.label == "Focus" && it.points < 0 })
+        val buggy = ship(201, gt, gg, 70.0, 50.0, bugs = 60.0)
+        assertTrue(buggy.breakdown.any { it.label == "Bugs" && it.points <= -1.5 })
+        assertTrue(buggy.score < good.score)
+    }
+
+    @Test
+    fun aHitDoesNotSinkTheNextDecentGame() {
+        val s = game(Lane.GAMES, 202)
+        val (t, g) = pair(Fit.GREAT)
+        val (t2, g2) = pair(Fit.GOOD)
+        val hit = ship(0, t, g, 140.0, 100.0, s = s)
+        val next = ship(0, t2, g2, 80.0, 60.0, s = s)
+        // The old system scored anything under your best like a flop; now a decent game is a decent score.
+        assertTrue(next.score >= 5.5, "hit ${hit.score} next ${next.score}")
+        assertTrue(next.score > hit.score - 2.5)
+    }
+}

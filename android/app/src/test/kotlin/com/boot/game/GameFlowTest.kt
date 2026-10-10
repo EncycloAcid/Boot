@@ -229,11 +229,19 @@ class GameFlowTest {
         compose.onNodeWithText("Metascore").assertExists()
         compose.onNodeWithText("IGN").assertExists()
         overlay("21-reviews")
+        // Why it scored what it did, on the verdict screen.
+        assertTrue(release.breakdown.isNotEmpty())
+        compose.onNodeWithText("Critics", ignoreCase = true).performScrollTo()
+        compose.waitForIdle()
+        overlay("21b-why-it-scored")
         compose.onNodeWithText("Game report").performScrollTo().performClick()
         compose.waitForIdle()
         assertNull(store.state!!.games!!.unseenReview)
         assertEquals(release.id, store.openRelease)
         overlay("22-game-report")
+        compose.onNodeWithText("Total").performScrollTo()
+        compose.waitForIdle()
+        overlay("22b-score-breakdown")
     }
 
     @Test
@@ -294,7 +302,11 @@ class GameFlowTest {
             store.newGame("Long Haul", "Pia", Lane.GAMES, seed = 35)
             val pilot = Autopilot()
             store.perform {
-                while (week < 130 && !isOver) pilot.playWeek(this)
+                // Stay a game studio whatever the Pivot Point offers.
+                while (week < 130 && !isOver) {
+                    if (pendingPivot != null) stayFocused()
+                    pilot.playWeek(this)
+                }
                 while (events.isNotEmpty()) choose(events[0].choices.size - 1)
                 acknowledgeReview()
             }
@@ -767,7 +779,12 @@ class GameFlowTest {
         compose.runOnIdle {
             store.newGame("Night Desk", "Ivy", Lane.GAMES, seed = 12)
             val pilot = Autopilot()
-            store.perform { repeat(140) { if (pendingPivot != null) stayFocused(); pilot.playWeek(this) } }
+            store.perform {
+                repeat(140) { if (pendingPivot != null) stayFocused(); pilot.playWeek(this) }
+                if (pendingPivot != null) stayFocused()
+                while (events.isNotEmpty()) choose(events[0].choices.size - 1)
+                acknowledgeReview()
+            }
         }
         compose.waitForIdle()
         assertTrue(store.state!!.news.isNotEmpty())

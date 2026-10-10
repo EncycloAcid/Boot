@@ -55,6 +55,7 @@ import com.boot.core.remasterConcept
 import com.boot.core.sequelConcept
 import com.boot.core.startExpansion
 import com.boot.game.GameStore
+import androidx.compose.ui.graphics.Color
 import java.util.Locale
 
 /** Launch day: the critics give their verdicts one after another, then the players weigh in. */
@@ -91,6 +92,8 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // Why, before what each critic said.
+            if (r.breakdown.isNotEmpty()) ScoreBreakdown(r, top = 4)
             GroupedSection("Critics") {
                 r.reviews.forEachIndexed { i, review ->
                     if (i > 0) RowDivider()
@@ -185,6 +188,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     }
                     AspectBreakdown(r.aspects)
                     ProsCons(r.pros, r.cons)
+                    if (r.breakdown.isNotEmpty()) ScoreBreakdown(r)
                     GroupedSection(
                         "What you learned",
                         footer = String.format(Locale.US, "Design %.0f · Tech %.0f · Hype %.0f · ", r.design, r.tech, r.hype) +
@@ -258,6 +262,47 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
         ) {
             store.perform { startExpansion(r.id) }
             store.openRelease = null
+        }
+    }
+}
+
+/**
+ * Why a game scored what it did: the baseline, then every part that added or took points off,
+ * biggest first. [top] shows only the biggest few, for the verdict screen.
+ */
+@Composable
+fun ScoreBreakdown(r: GameRelease, top: Int? = null) {
+    val colors = gameColors
+    val baseline = r.breakdown.first()
+    val all = r.breakdown.drop(1).sortedByDescending { kotlin.math.abs(it.points) }
+    // The verdict screen shows real reasons; the critics' mood is in the full report.
+    val shown = top?.let { all.filter { p -> p.label != "Critics' mood" }.take(it) } ?: all
+    val total = r.breakdown.sumOf { it.points }.coerceIn(1.0, 10.0)
+    GroupedSection(
+        if (top != null) "Why it scored ${String.format(Locale.US, "%.1f", r.score)}" else "How the score added up",
+        footer = if (top != null && all.size > top) "The full breakdown is in the game report." else
+            "Every game starts at ${String.format(Locale.US, "%.1f", baseline.points)}. The critics' average lands near the total, each with their own taste.",
+    ) {
+        if (top == null) {
+            ListRow(baseline.label, subtitle = baseline.note, value = String.format(Locale.US, "%.1f", baseline.points))
+            RowDivider()
+        }
+        shown.forEachIndexed { i, part ->
+            if (i > 0) RowDivider()
+            ListRow(
+                part.label,
+                subtitle = part.note.ifEmpty { null },
+                value = (if (part.points > 0) "+" else "") + String.format(Locale.US, "%.1f", part.points),
+                valueColor = when {
+                    part.points > 0 -> colors.good
+                    part.points < 0 -> colors.bad
+                    else -> Color.Unspecified
+                },
+            )
+        }
+        if (top == null) {
+            RowDivider()
+            ListRow("Total", value = String.format(Locale.US, "%.1f", total))
         }
     }
 }
