@@ -139,7 +139,7 @@ private fun SceneChip(text: String, icon: ImageVector? = null, tint: Color = Mat
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         if (icon != null) Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge, color = tint, maxLines = 1)
+        FitText(text, MaterialTheme.typography.labelLarge, color = tint)
     }
 }
 
@@ -236,22 +236,23 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
         Row(verticalAlignment = Alignment.Top) {
             GameCover(c, 48.dp, studio = state.companyName)
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stage,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                )
                 Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Hint((if (team == 2) "Team 2 · " else "") + "${c.size.title} ${c.topic.title.lowercase()} ${c.genreLower} · ${c.platforms.joinToString { it.title }}")
             }
-            Text(
-                stage,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            )
         }
         if (p.isReady) {
-            Meter("Polish", p.polish / (p.work * 0.4), colors.milestone, caption = "Content complete. Bugs get fixed while you polish.")
+            Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
+            Hint("Content complete. Bugs get fixed while you polish.")
         } else {
             Meter("Development", p.completion, wavy = store.playing, caption = Format.weeks(p.weeksInDev) + " in")
         }

@@ -207,9 +207,9 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 stageLabels.forEachIndexed { i, label ->
                     val on = i == current
                     val done = i < current
-                    Text(
+                    FitText(
                         label,
-                        style = MaterialTheme.typography.labelMedium,
+                        MaterialTheme.typography.labelMedium,
                         fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
                         color = when {
                             on -> MaterialTheme.colorScheme.onPrimary
@@ -222,7 +222,6 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                             .background(if (on) MaterialTheme.colorScheme.primary else colors.fill)
                             .padding(vertical = 6.dp),
                         textAlign = TextAlign.Center,
-                        maxLines = 1,
                     )
                 }
             }
@@ -239,7 +238,7 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 warning?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.warn) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                PrimaryButton("Release ${p.title}", { store.perform { launchGame(team) } }, enabled = p.isReady)
+                PrimaryButton("Release ${p.title}", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady)
                 if (p.deal == null) PlainButton("Cancel", { store.perform { cancelGame(team) } }, color = colors.bad)
             }
             Meter("Development", p.completion, wavy = !p.isReady)

@@ -63,7 +63,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -222,7 +227,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
             .background(gameColors.fill)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        FitText(label, MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
             value,
             style = MaterialTheme.typography.titleLargeEmphasized,
@@ -260,9 +265,16 @@ fun Meter(
     val target = value.coerceIn(0.0, 1.0).toFloat()
     val animated by animateFloatAsState(target, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "meter")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row {
-            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            Text(caption ?: Format.percent(value), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // The label keeps its width; a long caption wraps on the right rather than squeezing it.
+        Row(horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.padding(end = 12.dp))
+            Text(
+                caption ?: Format.percent(value),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f, fill = false),
+            )
         }
         if (wavy) {
             LinearWavyProgressIndicator(
@@ -373,7 +385,7 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         modifier = modifier.heightIn(min = 52.dp),
         enabled = enabled,
         contentPadding = PaddingValues(horizontal = 24.dp),
-    ) { Text(text, style = MaterialTheme.typography.labelLarge) }
+    ) { Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center) }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -417,7 +429,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                     else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                 },
                 contentPadding = PaddingValues(horizontal = 8.dp),
-            ) { Text(label(option), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            ) { FitText(label(option), MaterialTheme.typography.labelLarge) }
         }
     }
 }
@@ -494,3 +506,24 @@ fun ConfirmDialog(title: String, text: String, confirm: String, onConfirm: () ->
 fun Double.perWeek() = "${Format.money(this)}/wk"
 
 fun Double.signedPerWeek() = "${Format.signedMoney(this)}/wk"
+
+/**
+ * One line that shrinks to fit, down to [min], instead of cutting off. Labels in tight rows
+ * (segments, tiles, the top bar) stay whole when the phone's text size is turned up.
+ */
+@Composable
+fun FitText(
+    text: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+    fontWeight: FontWeight? = null,
+    textAlign: TextAlign? = null,
+    min: TextUnit = 9.sp,
+) {
+    Text(
+        text, modifier, color = color, fontWeight = fontWeight, textAlign = textAlign, style = style,
+        maxLines = 1, overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(minFontSize = min, maxFontSize = style.fontSize, stepSize = 0.5.sp),
+    )
+}

@@ -74,7 +74,10 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w393dp-h852dp-xxhdpi")
 class GameFlowTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val display = DisplayRule()
+
+    @get:Rule(order = 1)
     val compose = createComposeRule()
 
     private lateinit var store: GameStore
@@ -91,7 +94,7 @@ class GameFlowTest {
         val view = (fetchSemanticsNode().root as ViewRootForTest).view
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
-        val dir = File("build/screenshots").apply { mkdirs() }
+        val dir = DisplayRule.screenshots
         File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
@@ -193,8 +196,13 @@ class GameFlowTest {
                     while (needsDecision) choose(events[0].choices.size - 1)
                 }
             }
-            store.openLane(Lane.GAMES)
         }
+        // The office card in polish: the meter label and its note must both stay readable.
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Release", ignoreCase = true))
+        compose.waitForIdle()
+        screen("19b-office-polish")
+        compose.runOnIdle { store.openLane(Lane.GAMES) }
+        compose.waitForIdle()
         screen("20-ready-to-ship")
         tapInList("Release Moss Knight")
         compose.waitForIdle()
@@ -233,7 +241,7 @@ class GameFlowTest {
         overlay("04-pivot-point")
 
         compose.onNodeWithText("Stay focused", substring = true).assertExists()
-        compose.onNodeWithTag("pivot-lane-SOCIAL").performClick()
+        compose.onNodeWithTag("pivot-lane-SOCIAL").performScrollTo().performClick()
         compose.onNodeWithText("Expand into Social Media").performClick()
         compose.waitForIdle()
 

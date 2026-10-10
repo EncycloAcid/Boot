@@ -11,8 +11,8 @@ android {
         applicationId = "com.boot.game"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.1.1"
+        versionCode = 16
+        versionName = "1.1.2"
     }
 
     buildTypes {
@@ -39,6 +39,12 @@ android {
         // Robolectric runs the Compose UI on the JVM, so UI tests need no emulator.
         unitTests.isIncludeAndroidResources = true
     }
+}
+
+// -PfontScale=1.3 and -Pnight redraw every screenshot with big text and/or in dark mode (see DisplayRule).
+tasks.withType<Test>().configureEach {
+    providers.gradleProperty("fontScale").orNull?.let { systemProperty("boot.fontScale", it) }
+    if (providers.gradleProperty("night").isPresent) systemProperty("boot.night", "true")
 }
 
 dependencies {

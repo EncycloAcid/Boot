@@ -75,6 +75,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.boot.core.Format
@@ -221,16 +222,11 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                 ) { FounderPortrait(state, 42.dp) }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        state.companyName,
-                        style = MaterialTheme.typography.titleLargeEmphasized,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
+                    FitText(state.companyName, MaterialTheme.typography.titleLargeEmphasized, min = 14.sp)
+                    FitText(
                         "${state.dateLabel} · ${state.world.era.title.removePrefix("The ")}",
-                        style = MaterialTheme.typography.labelMedium,
+                        MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
                 ClockControls(store)

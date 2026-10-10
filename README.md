@@ -12,6 +12,8 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **1.1.1 polish:** focus sliders start in the middle of the track, not full; long game titles wrap on the office card instead of getting cut off; business descriptions show in full; stat tile notes wrap instead of ending in "…"; tiles in a row line up; the top bar shows the era without "The"; the live-service options fit ("Cosmetic", "Fair", "Aggressive"); and $0 incomes show grey instead of green.
 
+**1.1.2 polish:** the UI holds up with big system text and in dark mode. Short labels (segmented tabs, stage tabs, stat tiles, the top bar, the office chips) shrink to fit instead of cutting off; a meter's label can no longer be squeezed into a column of single letters by a long note (the office card in polish did this); the stage pill sits above the game title instead of squeezing it; Team 2's Cancel button no longer disappears beside a long Release button; and the company card's pills wrap onto a new line. `./gradlew :app:testDebugUnitTest -PfontScale=1.3 -Pnight` redraws every screenshot with big text and/or in dark mode.
+
 **New in 1.0 (Android):** the empire update.
 - **Buy studios.** Every studio on the games market is for sale, from indies like Team Cherry, ConcernedApe and Larian to the giants: Rockstar, Nintendo, EA, PlayStation Studios, Valve.
   - A studio you own keeps making games under its own name. Its real series (GTA, Mario, Zelda, Call of Duty, FIFA and the rest) count as yours on the chart and stop competing with you.

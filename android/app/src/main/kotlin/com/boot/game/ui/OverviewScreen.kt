@@ -92,7 +92,7 @@ private fun Hero(state: GameState) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Spacer(Modifier.size(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     HeroChip("You own ${Format.percent(state.venture.founderEquity)}", MaterialTheme.colorScheme.onPrimaryContainer)
                     HeroChip("${state.researchPoints.toInt()} RP", MaterialTheme.colorScheme.onPrimaryContainer)
                     HeroChip(
@@ -111,6 +111,7 @@ private fun HeroChip(text: String, color: Color) {
         text,
         style = MaterialTheme.typography.labelLarge,
         color = color,
+        maxLines = 1,
         modifier = Modifier
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape)
             .padding(horizontal = 12.dp, vertical = 6.dp),

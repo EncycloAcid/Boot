@@ -51,7 +51,10 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w393dp-h852dp-xxhdpi")
 class SceneGalleryTest {
-    @get:Rule
+    @get:Rule(order = 0)
+    val display = DisplayRule()
+
+    @get:Rule(order = 1)
     val compose = createComposeRule()
 
     private fun office(tier: Office, people: Int, perks: List<Perk>, lanes: List<Lane> = listOf(Lane.GAMES)): GameState {
@@ -77,7 +80,7 @@ class SceneGalleryTest {
         val view = (compose.onRoot().fetchSemanticsNode().root as ViewRootForTest).view
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
-        val dir = File("build/screenshots").apply { mkdirs() }
+        val dir = DisplayRule.screenshots
         File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
@@ -171,8 +174,7 @@ class SceneGalleryTest {
         canvas.translate(20f + 2 * (size + 20f), 20f)
         canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), size / 2f, size / 2f, mp)
         canvas.restore()
-        File("build/screenshots").mkdirs()
-        File("build/screenshots/00-logo.png").outputStream().use { out.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                File(DisplayRule.screenshots, "00-logo.png").outputStream().use { out.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test
