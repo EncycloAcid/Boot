@@ -302,6 +302,7 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
 @Composable
 private fun HudChip(
     value: String,
+    modifier: Modifier = Modifier,
     detail: String? = null,
     detailColor: Color = Color.Unspecified,
     valueColor: Color = Color.Unspecified,
@@ -309,7 +310,6 @@ private fun HudChip(
     iconTint: Color = Color.Unspecified,
     description: String,
     tip: String = description,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) = Tip(tip, modifier) {
     Row(
