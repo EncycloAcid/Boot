@@ -46,6 +46,9 @@ import com.boot.core.offeringBlocker
 import com.boot.core.raiseRound
 import com.boot.core.repayLoan
 import com.boot.core.retire
+import com.boot.core.laneOpen
+import com.boot.core.arrival
+import com.boot.core.arrives
 import com.boot.core.roundOffer
 import com.boot.core.takeLoan
 import com.boot.game.GameStore
@@ -131,6 +134,11 @@ private fun ExpansionSection(store: GameStore, state: GameState) {
             Lane.entries.filter { it !in state.lanes }.forEach { lane ->
                 RowDivider(68.dp)
                 val combos = state.lanes.mapNotNull { Combo.between(it, lane)?.product }
+                if (!state.laneOpen(lane)) {
+                    // Not invented yet: a run set in the past has to wait for it.
+                    ActionRow(title = lane.title, detail = lane.arrival, action = "From ${lane.arrives}", enabled = false, leading = { LaneBadge(lane, 40.dp) }) {}
+                    return@forEach
+                }
                 ActionRow(
                     title = lane.title,
                     detail = "Setup ${Format.money(lane.setupCost)}" +
@@ -172,7 +180,7 @@ private fun ExitSection(store: GameStore, state: GameState) {
     val blocker = state.ipoBlocker
     GroupedSection(
         "Going public",
-        footer = blocker ?: "List the company and keep running it, or ring the bell and retire. Stay private and you can play on past year 15.",
+        footer = blocker ?: "List the company and keep running it, or ring the bell and retire. Stay private and you can play on past the end of the run.",
     ) {
         CardBlock {
             Meter("Toward an IPO valuation", state.enterpriseValue / IPO_VALUATION, caption = "${Format.money(state.enterpriseValue)} of ${Format.money(IPO_VALUATION)}")

@@ -59,14 +59,18 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             seed: Long = Random.nextLong(),
             difficulty: Difficulty = Difficulty.NORMAL,
             legacy: List<LegacyPerk> = emptyList(),
+            start: StartPoint = StartPoint.TODAY,
         ): GameState {
             val s = GameState(seed, lane)
+            s.startYear = start.year
+            GameClock.startYear = start.year
             s.companyName = companyName
             s.founder = Founder(founderName)
             s.difficulty = difficulty
             s.cash = difficulty.startingCash
             s.world.rivals += World.makeRivals().onEach { it.strength = (it.strength + difficulty.rivalStrength).clamped(0.05, 1.0) }
             s.world.eraLength = s.rng.int(70, 110)
+            start.year?.let { s.world.startAt(it); s.adoptHistory() }
             s.ledger = listOf(WeekLedger(0, cash = s.cash))
             s.openLane(lane)
             s.refreshTalentPool()
@@ -83,6 +87,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         }
 
         fun decode(text: String): GameState = json.decodeFromString(serializer(), text).apply {
+            GameClock.startYear = startYear
             for (r in world.rivals) World.renamed[r.name]?.let { r.name = it }
         }
     }
@@ -98,6 +103,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         internal set
     internal var rng = SeededRNG.fromSeed(seed)
     var week = 0
+        internal set
+
+    /** The year a Decades run started in, or null for a run that starts today. */
+    var startYear: Int? = null
         internal set
     var lanes: List<Lane> = emptyList()
         internal set
@@ -318,7 +327,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         return LaneContext(
             week = week, staffing = staffing(lane), mods = mods,
             reception = reputation.launchReception(lane), era = world.era, eraDemand = world.demand(lane), gpuPrice = world.gpuPrice,
-            competition = world.competition(lane), crunch = crunch, lane = lane,
+            competition = world.competition(lane), crunch = crunch, lane = lane, year = calendarYear,
         )
     }
 

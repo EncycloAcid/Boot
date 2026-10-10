@@ -5,6 +5,7 @@ import com.boot.core.runRecord
 import com.boot.core.encodeHall
 import com.boot.core.decodeHall
 import com.boot.core.LegacyPerk
+import com.boot.core.StartPoint
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -107,8 +108,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         lane: Lane,
         seed: Long = Random.nextLong(),
         difficulty: Difficulty = Difficulty.NORMAL,
+        start: StartPoint = StartPoint.TODAY,
     ) {
-        val s = GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall))
+        val s = GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start)
         state = s
         newsSeen = 0
         playing = false

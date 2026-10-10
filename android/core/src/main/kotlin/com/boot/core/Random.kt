@@ -75,7 +75,21 @@ object GameClock {
     const val WEEKS_PER_YEAR = 52
     const val WEEKS_PER_QUARTER = 13
 
+    private val Months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    /**
+     * The year the calendar starts in when the run in play started in the past, so dates read as real
+     * ones ("Mar 1983"). Null for a run that starts today, whose dates count years from the start.
+     */
+    var startYear: Int? = null
+
     fun year(week: Int) = week / WEEKS_PER_YEAR + 1
-    fun weekOfYear(week: Int) = week % WEEKS_PER_YEAR + 1
-    fun label(week: Int) = "Y${year(week)} W${weekOfYear(week)}"
+    fun weekOfYear(week: Int) = week.mod(WEEKS_PER_YEAR) + 1
+    fun label(week: Int): String {
+        val start = startYear ?: return "Y${year(week)} W${weekOfYear(week)}"
+        return "${Months[(weekOfYear(week) - 1) * 12 / WEEKS_PER_YEAR]} ${start + week.floorDiv(WEEKS_PER_YEAR)}"
+    }
+
+    /** "In year 3", or "In 1983" when the calendar shows real dates. */
+    fun inYear(week: Int): String = startYear?.let { "In ${it + week.floorDiv(WEEKS_PER_YEAR)}" } ?: "In year ${year(week)}"
 }

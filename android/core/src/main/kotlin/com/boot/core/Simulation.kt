@@ -12,6 +12,7 @@ fun GameState.advance() {
     ledger = (if (ledger.size >= GameState.LENGTH_WEEKS + 10) ledger.drop(1) else ledger) + WeekLedger(week)
 
     updateEra()
+    updateHistoricRivals()
     updateRivals()
 
     // Combos first: they shape every lane's week.
@@ -163,18 +164,21 @@ private fun GameState.updateEra() {
 }
 
 private fun GameState.pickNextEra(): Era {
-    val unseen = Era.entries.filter { it != Era.BOOTSTRAP_YEARS && it !in world.pastEras && it != world.era }
-    return if (unseen.isEmpty()) rng.pick(Era.entries.filter { it != world.era && it != Era.BOOTSTRAP_YEARS }) else rng.pick(unseen)
+    // A run that started in the past follows history until the present.
+    historicalEraAfter()?.let { return it.first }
+    val pool = Era.entries.filter { it != Era.BOOTSTRAP_YEARS && !it.historical && it != world.era }
+    val unseen = pool.filter { it !in world.pastEras }
+    return rng.pick(unseen.ifEmpty { pool })
 }
 
 private fun GameState.startNextEra() {
     val w = world
-    val next = w.nextEra ?: pickNextEra()
+    val next = historicalEraAfter()?.first ?: w.nextEra ?: pickNextEra()
     w.history += EraSpan(w.era, w.eraStartWeek, week)
     w.pastEras += w.era
     w.era = next
     w.eraStartWeek = week
-    w.eraLength = rng.int(78, 130)
+    w.eraLength = historicalEraAfter(now = true)?.let { (_, end) -> (end - calendarYear) * 52 - week.mod(52) } ?: rng.int(78, 130)
     w.phase = EraPhase.DAWN
     w.eraIntensity = 0.35
     w.nextEra = null
@@ -195,7 +199,7 @@ private fun GameState.updateRivals() {
         r.strength = (r.strength + (target - r.strength) * 0.02 + rng.normal(sd = 0.01)).clamped(0.05, 1.0)
 
         if (rng.chance(0.008)) {
-            val who = if (rng.chance(0.5)) r.name else rng.pick(World.peers(r.lane))
+            val who = if (rng.chance(0.5)) r.name else rng.pick(if (isDecades) peersIn(r.lane, calendarYear) else World.peers(r.lane))
             val headline = rivalMove(who, r.lane)
             if (r.lane in lanes) {
                 r.strength = min(1.0, r.strength + 0.1)
@@ -472,7 +476,7 @@ private fun GameState.checkEndings() {
     } else {
         stats.weeksInRed = 0
     }
-    if (week >= GameState.LENGTH_WEEKS && !freeplay) end(if (listing != null) EndingKind.IPO else EndingKind.INDIE)
+    if (week >= runLength && !freeplay) end(if (listing != null) EndingKind.IPO else EndingKind.INDIE)
 }
 
 /** What a rival's big move looks like in the headlines. */

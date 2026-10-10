@@ -539,6 +539,7 @@ class GamesStudio {
                 hype = p.hype, fanTrust = fanTrust, onTrend = onTrend, repeated = repeated, rushedSequel = rushedSequel,
                 worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
                 wrongCrowd = audienceFit == Fit.BAD || !audienceSuited, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
+                year = ctx.year,
             ),
             rng,
         )

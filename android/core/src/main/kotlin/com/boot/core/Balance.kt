@@ -3,16 +3,17 @@ package com.boot.core
 /** Autopilot many games per starting lane and print outcome stats: `./gradlew :core:balance -Pruns=20`. */
 fun main(args: Array<String>) {
     val runs = args.firstOrNull()?.toIntOrNull() ?: 20
-    println("Autopilot balance run: $runs games per starting lane\n")
+    val start = args.getOrNull(1)?.toIntOrNull()?.let { y -> StartPoint.entries.first { it.year == y } } ?: StartPoint.TODAY
+    println("Autopilot balance run: $runs games per starting lane, starting ${start.title}\n")
     println("lane       ending distribution                                    median end   peak val: 25% / median / 75%")
-    for (lane in Lane.entries) {
+    for (lane in Lane.entries.filter { start.year == null || it.arrives <= start.year }) {
         val endings = mutableMapOf<EndingKind, Int>()
         val weeks = mutableListOf<Int>()
         val peaks = mutableListOf<Double>()
         val pivots = mutableMapOf<PivotTrigger, Int>()
         val ecosystems = mutableListOf<Boolean>()
         for (i in 0 until runs) {
-            val s = GameState.create("Bot $i", "Bot", lane, seed = 1000L + i)
+            val s = GameState.create("Bot $i", "Bot", lane, seed = 1000L + i, start = start)
             Autopilot().playToEnd(s)
             s.ending?.let {
                 endings.merge(it.kind, 1, Int::plus)

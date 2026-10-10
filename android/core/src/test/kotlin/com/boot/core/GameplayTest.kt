@@ -286,7 +286,7 @@ class ReviewTest {
             s.play(6)
             s.launchGame()
             val r = s.games!!.releases.first()
-            assertEquals(Outlet.entries.size, r.reviews.size, "PC games get PC Gamer too")
+            assertEquals(Outlet.entries.count { MODERN_YEAR in it.years }, r.reviews.size, "PC games get PC Gamer too")
             assertTrue(r.reviews.all { it.comment.length > 10 && it.comment.endsWith(".") })
             assertEquals(ReviewAspect.entries.toSet(), r.aspects.keys)
             assertTrue(r.userScore in 1.0..10.0)

@@ -21,11 +21,11 @@ dependencies {
     testImplementation(libs.junit)
 }
 
-// ./gradlew :core:balance -Pruns=20
+// ./gradlew :core:balance -Pruns=20 [-Pstart=1985]
 tasks.register<JavaExec>("balance") {
     group = "verification"
     description = "Autopilot many games per starting lane and print outcome stats."
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.boot.core.BalanceKt")
-    args((project.findProperty("runs") ?: "20").toString())
+    args((project.findProperty("runs") ?: "20").toString(), (project.findProperty("start") ?: "").toString())
 }

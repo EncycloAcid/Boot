@@ -100,7 +100,7 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
             val suggestion = when (lane) {
                 Lane.GAMES, Lane.APPS, Lane.AI -> Lane.SOCIAL
                 Lane.WEBSITES, Lane.HARDWARE, Lane.SOCIAL -> Lane.APPS
-            }
+            }.takeIf { laneOpen(it) } ?: pivotChoices.first()
             val story = when (lane) {
                 Lane.GAMES -> "A clip from your game exploded online and the fans need somewhere to gather."
                 Lane.WEBSITES -> "A little tool you built for a client went viral, and strangers want to download it."
@@ -121,12 +121,13 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
 }
 
 /** Lanes you can move into at the Pivot Point. */
-val GameState.pivotChoices: List<Lane> get() = Lane.entries.filter { it !in lanes }
+val GameState.pivotChoices: List<Lane> get() = Lane.entries.filter { it !in lanes && laneOpen(it) }
 
 /** Why a choice can't be taken, or null if it can. */
 fun GameState.pivotBlocker(lane: Lane, mode: PivotMode, fundWithVenture: Boolean): String? {
     val offer = pendingPivot ?: return "There's no decision to make right now."
     if (lane in lanes) return "You already run that lane."
+    laneClosed(lane)?.let { return it }
     val available = cash + (if (mode == PivotMode.PIVOT) offer.salePrice else 0.0) -
         (if (mode == PivotMode.EXPAND) lane.setupCost else 0.0)
     if (lane.isCapitalIntensive && !fundWithVenture && available < lane.selfFundThreshold) {
@@ -246,6 +247,7 @@ val GameState.expansionBlocker: String?
 fun GameState.expand(lane: Lane, fundWithVenture: Boolean = false) {
     expansionBlocker?.let { throw notAvailable(it) }
     if (lane in lanes) throw invalid("You already run ${lane.title}.")
+    laneClosed(lane)?.let { throw notAvailable(it) }
     if (fundWithVenture) {
         val round = ventureForLane(lane).getOrElse { throw it }
         takeRound(round)

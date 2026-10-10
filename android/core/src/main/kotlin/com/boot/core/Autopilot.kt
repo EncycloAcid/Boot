@@ -30,7 +30,7 @@ class Autopilot(
 
     /** Play until the game ends. Returns the ending. */
     fun playToEnd(s: GameState): EndingReport? {
-        while (!s.isOver && s.week <= GameState.LENGTH_WEEKS + 5) playWeek(s)
+        while (!s.isOver && s.week <= s.runLength + 5) playWeek(s)
         return s.ending
     }
 
@@ -93,7 +93,7 @@ class Autopilot(
     private fun resolvePivot(s: GameState) {
         val offer = s.pendingPivot ?: return
         val mode = if (s.trailingProfit(weeks = 13) > 0) PivotMode.EXPAND else PivotMode.PIVOT
-        val options = lanePreference.filter { it !in s.lanes }.toMutableList()
+        val options = lanePreference.filter { it in s.pivotChoices }.toMutableList()
         offer.suggestedLane?.let { suggested ->
             if (options.remove(suggested)) options.add(0, suggested)
         }
@@ -161,7 +161,7 @@ class Autopilot(
         }
 
         if (s.expansionBlocker == null) {
-            lanePreference.firstOrNull { it !in s.lanes }?.let { next ->
+            lanePreference.firstOrNull { it !in s.lanes && s.laneOpen(it) }?.let { next ->
                 if (s.cash > next.selfFundThreshold + next.setupCost) {
                     attempt { s.expand(next) }
                 } else if (next.isCapitalIntensive && s.ventureForLane(next).isSuccess) {

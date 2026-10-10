@@ -44,6 +44,16 @@ val Studios = listOf(
     Studio("Devolver Digital", 0.6, 300e6, indie = true),
     Studio("Remedy Entertainment", 0.75, 500e6, indie = true),
     Studio("Larian Studios", 0.9, 1.5e9, indie = true),
+    // Around for a while, or only in the past: they show up in the years they were making games.
+    Studio("Sega", 0.65, 4e9),
+    Studio("Konami", 0.65, 8e9),
+    Studio("Atari", 0.5, 2e9),
+    Studio("id Software", 0.85, 1e9, indie = true),
+    Studio("Sierra On-Line", 0.65, 3e9),
+    Studio("Infocom", 0.75, 1e9, indie = true),
+    Studio("Origin Systems", 0.75, 2e9),
+    Studio("Westwood Studios", 0.8, 2e9),
+    Studio("LucasArts", 0.8, 3e9),
 )
 
 fun studio(name: String): Studio? = Studios.firstOrNull { it.name == name }
@@ -63,8 +73,7 @@ const val ACQUISITION_PREMIUM = 0.15
 
 /** What a studio is worth today: values drift with the industry the way the league table's do. */
 fun GameState.studioValue(s: Studio): Double {
-    val years = week / 52.0
-    return s.baseValue * world.demand(Lane.GAMES).pow(1.5) * 1.06.pow(years)
+    return s.baseValue * world.demand(Lane.GAMES).pow(1.5) * industryGrowth
 }
 
 /** What it costs to buy a studio today, premium included. */
@@ -73,12 +82,12 @@ fun GameState.acquisitionPrice(s: Studio): Double = studioValue(s) * (1 + ACQUIS
 /** What selling one of yours brings in. */
 fun GameState.divestPrice(s: Studio): Double = studioValue(s) * 0.9
 
-fun GamesStudio.owns(name: String): Boolean = subsidiaries.any { it.name == name }
+fun GamesStudio.owns(name: String): Boolean = subsidiaries.any { it.name == name || it.name == canonicalStudio(name) }
 
 /** The studios you could buy, cheapest first. */
 fun GameState.studiosForSale(): List<Studio> {
     val g = games ?: return emptyList()
-    return Studios.filter { !g.owns(it.name) }.sortedBy { it.baseValue }
+    return Studios.filter { !g.owns(it.name) && studioActive(it.name, calendarYear) }.sortedBy { it.baseValue }
 }
 
 /** Why you can't buy [s] right now, or null if you can. */
@@ -124,7 +133,7 @@ internal fun GameState.subsidiaryWeek() {
     val g = games ?: return
     for (sub in g.subsidiaries) {
         val s = studio(sub.name) ?: continue
-        val theirs = g.market.games.filter { it.studio == s.name && week - it.week <= 52 }
+        val theirs = g.market.games.filter { canonicalStudio(it.studio) == s.name && week - it.week <= 52 }
         val hits = theirs.count { it.score >= 8 }
         val flops = theirs.count { it.score < 5 }
         val form = (0.8 + 0.15 * hits - 0.1 * flops).clamped(0.6, 1.5)

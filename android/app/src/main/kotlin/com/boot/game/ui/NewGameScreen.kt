@@ -62,6 +62,13 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boot.core.Difficulty
+import com.boot.core.StartPoint
+import com.boot.core.era
+import com.boot.core.laneOpen
+import com.boot.core.years
+import com.boot.core.arrives
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.ui.draw.alpha
 import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
@@ -74,6 +81,7 @@ fun NewGameScreen(store: GameStore) {
     var founder by rememberSaveable { mutableStateOf("") }
     var lane by rememberSaveable { mutableStateOf(Lane.GAMES) }
     var difficulty by rememberSaveable { mutableStateOf(Difficulty.NORMAL) }
+    var start by rememberSaveable { mutableStateOf(StartPoint.TODAY) }
     val colors = gameColors
 
     Scaffold(
@@ -97,7 +105,7 @@ fun NewGameScreen(store: GameStore) {
                         }
                         PrimaryButton(
                             "Start your ${lane.businessName.lowercase()}",
-                            { store.newGame(company.trim().ifEmpty { "Garage Labs" }, founder.trim().ifEmpty { "You" }, lane, difficulty = difficulty) },
+                            { store.newGame(company.trim().ifEmpty { "Garage Labs" }, founder.trim().ifEmpty { "You" }, lane, difficulty = difficulty, start = start) },
                             Modifier.fillMaxWidth(),
                         )
                     }
@@ -134,7 +142,8 @@ fun NewGameScreen(store: GameStore) {
                         Text("Boot", style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.primary)
                     }
                     Text(
-                        "You start solo in a cramped apartment with ${Format.money(difficulty.startingCash)} in savings. Pick a lane.",
+                        "You start solo in a cramped apartment with ${Format.money(difficulty.startingCash)} in savings" +
+                            (start.year?.let { " in $it" } ?: "") + ". Pick a lane.",
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Hint(
@@ -159,6 +168,13 @@ fun NewGameScreen(store: GameStore) {
                 }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
+                StartSection(start) { picked ->
+                    start = picked
+                    // A business that hasn't been invented yet can't be started.
+                    if (!picked.laneOpen(lane)) lane = Lane.GAMES
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     "PICK A LANE",
                     style = MaterialTheme.typography.labelMedium,
@@ -166,7 +182,10 @@ fun NewGameScreen(store: GameStore) {
                     modifier = Modifier.padding(start = 20.dp, top = 8.dp),
                 )
             }
-            items(Lane.entries) { l -> LaneTile(l, selected = l == lane) { lane = l } }
+            items(Lane.entries) { l ->
+                val open = start.laneOpen(l)
+                LaneTile(l, selected = l == lane, arrives = if (open) null else l.arrives) { if (open) lane = l }
+            }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 val motion = MaterialTheme.motionScheme
                 AnimatedContent(
@@ -215,14 +234,15 @@ private fun FormRow(label: String, value: String, placeholder: String, ime: ImeA
 }
 
 @Composable
-private fun LaneTile(lane: Lane, selected: Boolean, onClick: () -> Unit) {
+private fun LaneTile(lane: Lane, selected: Boolean, arrives: Int? = null, onClick: () -> Unit) {
     val colors = gameColors
     val accent = colors.lane(lane)
     val border by animateColorAsState(if (selected) accent else colors.card, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "border")
     val width by animateDpAsState(if (selected) 2.5.dp else 0.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "width")
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        enabled = arrives == null,
+        modifier = Modifier.fillMaxWidth().alpha(if (arrives == null) 1f else 0.55f),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = colors.card),
         border = BorderStroke(width, border),
@@ -231,7 +251,8 @@ private fun LaneTile(lane: Lane, selected: Boolean, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.Top) {
                 LaneBadge(lane, 56.dp, selected = selected, morph = true)
                 Spacer(Modifier.weight(1f))
-                if (lane.isCapitalIntensive) Pill("VC", colors.warn)
+                if (arrives != null) Pill("From $arrives", MaterialTheme.colorScheme.onSurfaceVariant)
+                else if (lane.isCapitalIntensive) Pill("VC", colors.warn)
             }
             Spacer(Modifier.height(12.dp))
             Text(lane.title, style = MaterialTheme.typography.titleMedium)
@@ -239,6 +260,30 @@ private fun LaneTile(lane: Lane, selected: Boolean, onClick: () -> Unit) {
                 lane.businessName,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** When the run starts: today, or at one of tech's revolutions, playing through to the present. */
+@Composable
+private fun StartSection(start: StartPoint, onPick: (StartPoint) -> Unit) {
+    GroupedSection("When", footer = start.blurb) {
+        StartPoint.entries.forEachIndexed { i, p ->
+            if (i > 0) RowDivider(56.dp)
+            val selected = p == start
+            ListRow(
+                p.title,
+                subtitle = if (p.year == null) "${p.years} years from now" else "Decades: ${p.years} years to today · ${p.era?.title}",
+                leading = { Text(p.era?.emoji ?: "🚀", style = MaterialTheme.typography.titleLarge) },
+                onClick = { onPick(p) },
+                trailing = {
+                    Icon(
+                        if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked, null,
+                        tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                },
             )
         }
     }

@@ -53,10 +53,14 @@ fun GameState.rankings(): List<RankedCompany> {
     val years = week / 52.0
     // Companies you've bought aren't on the table any more: they're part of you.
     val owned = games?.subsidiaries?.map { if (it.name == "CD Projekt Red") "CD Projekt" else it.name }.orEmpty().toSet()
-    val others = Industry.filter { it.first !in owned }.mapIndexed { i, (name, base, lane) ->
+    val year = (startYear ?: MODERN_YEAR) + years
+    val others = Industry.filter { it.first !in owned && (IndustryFounded[it.first] ?: 0) <= year }.mapIndexed { i, (name, base, lane) ->
         val era = world.demand(lane).pow(1.5)
         val wobble = 1 + 0.06 * sin(week / 9.0 + i * 1.7)
-        RankedCompany(name, base * era * 1.06.pow(years) * wobble, lane, mine = false)
+        RankedCompany(companyNameIn(name, year.toInt()), base * era * industryGrowth * wobble, lane, mine = false)
+    } + (if (isDecades) HistoricCompanies else emptyList()).mapNotNull { (name, lane, points) ->
+        // The giants of the past, at what they were really worth.
+        historicValue(points, year)?.let { RankedCompany(name, it * world.demand(lane).pow(1.5), lane, mine = false) }
     }
     val me = RankedCompany(companyName, listing?.marketCap ?: valuation, null, mine = true)
     return (others + me).sortedByDescending { it.value }

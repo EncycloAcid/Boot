@@ -183,7 +183,7 @@ class LaneTest {
         assertEquals(1, g.releases.size)
         assertEquals(1, s.stats.releases)
         val r = g.releases[0]
-        assertEquals(Outlet.entries.size, r.reviews.size, "six outlets review a PC game")
+        assertEquals(Outlet.entries.count { MODERN_YEAR in it.years }, r.reviews.size, "six outlets review a PC game")
         assertTrue(r.reviews.all { it.score in 1..10 && it.comment.isNotBlank() })
         assertTrue(r.report.isNotEmpty())
         assertEquals(r.id, g.unseenReview)

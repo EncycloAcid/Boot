@@ -45,6 +45,8 @@ import com.boot.core.PrizePool
 import com.boot.core.Engine
 import com.boot.core.stayFocused
 import com.boot.core.Combo
+import com.boot.core.Era
+import com.boot.core.calendarYear
 import com.boot.core.Difficulty
 import com.boot.core.Goal
 import com.boot.core.EndingKind
@@ -145,12 +147,12 @@ class GameFlowTest {
         screen("01-new-game")
 
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Hardware"))
-        compose.onNodeWithText("Hardware").performClick()
+        compose.onNodeWithText("Hardware").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithText("Hard mode", substring = true).assertExists()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Hard"))
-        compose.onNodeWithText("Hard").performClick()
+        compose.onNodeWithText("Hard").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Games"))
-        compose.onNodeWithText("Games").performClick()
+        compose.onNodeWithText("Games").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithText("Start your game studio").performClick()
         assertEquals(Difficulty.HARD, store.state!!.difficulty)
 
@@ -804,6 +806,58 @@ class GameFlowTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Demand this era", ignoreCase = true))
         compose.waitForIdle()
         screen("69-era")
+    }
+
+    @Test
+    fun decadesStartsInThePastAndPlaysThroughHistory() {
+        launch()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("1985: The console wars"))
+        compose.onNodeWithText("1985: The console wars").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        // The web hasn't been invented yet.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Websites"))
+        compose.onNodeWithText("From 1994").assertExists()
+        compose.onNodeWithText("Websites").performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("When", ignoreCase = true))
+        screen("70-decades-new-game")
+        compose.onNodeWithText("Start your game studio").performClick()
+        compose.waitForIdle()
+        val s = store.state!!
+        assertEquals(1985, s.startYear)
+        assertEquals(Lane.GAMES, s.lanes.single())
+        assertEquals("Jan 1985", s.dateLabel)
+        assertEquals(Era.CONSOLE_WARS, s.world.era)
+        compose.runOnIdle {
+            val pilot = Autopilot()
+            store.perform {
+                repeat(52 * 3) { if (pendingPivot != null) stayFocused(); pilot.playWeek(this) }
+                if (pendingPivot != null) stayFocused()
+                while (events.isNotEmpty()) choose(events[0].choices.size - 1)
+                acknowledgeReview()
+            }
+        }
+        compose.waitForIdle()
+        assertEquals(1988, store.state!!.calendarYear)
+        assertEquals(Era.CONSOLE_WARS, store.state!!.world.era)
+        assertTrue(store.state!!.games!!.market.games.any { it.title == "Super Mario Bros." || it.title == "The Legend of Zelda" })
+        compose.runOnIdle { store.tab = Tab.NEWS }
+        compose.waitForIdle()
+        screen("71-decades-news")
+        studio(StudioPage.TECH)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Platforms", ignoreCase = true))
+        compose.onNodeWithText("NES").assertExists()
+        screen("72-decades-platforms")
+        studio(StudioPage.MARKET)
+        scrollToTop()
+        screen("73-decades-market")
+        compose.runOnIdle {
+            store.companyPage = 0
+            store.tab = Tab.COMPANY
+        }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("From 2023"))
+        compose.waitForIdle()
+        screen("74-decades-timeline")
     }
 
     @Test

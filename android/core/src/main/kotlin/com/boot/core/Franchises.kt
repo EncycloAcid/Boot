@@ -29,8 +29,9 @@ internal class RealFranchise(
     val titles: List<String> = emptyList(),
     val yearly: ((Int) -> String)? = null,
 ) {
-    fun title(entry: Int, week: Int): String =
-        yearly?.invoke(realYear(week)) ?: titles.getOrNull(entry) ?: "$name ${entry + 2}"
+    /** The [entry]th entry from today on, out in [year]. */
+    fun title(entry: Int, year: Int): String =
+        yearly?.invoke(year) ?: titles.getOrNull(entry) ?: "$name ${entry + 2}"
 }
 
 private fun yy(year: Int) = String.format(java.util.Locale.US, "%02d", (year + 1) % 100)
@@ -127,8 +128,27 @@ data class Announcement(
 
 internal val RealFranchise.mega: Boolean get() = size == GameSize.AAA && quality >= 0.9
 
+/** A series entry's title: the real one in a run set in the past, while history has it. */
+internal fun GameState.seriesTitle(f: RealFranchise, entry: Int, week: Int): String {
+    val year = yearAt(week)
+    if (!isDecades) return f.title(entry, year)
+    historicTitle(f, entry, year)?.let { return it }
+    return f.title(entry - (SeriesHistory[f.name]?.size ?: 1), year)
+}
+
+/** No AAA blockbusters before there were budgets for them. */
+internal fun GameState.seriesSize(f: RealFranchise, week: Int): GameSize =
+    if (isDecades) minOf(f.size, biggestRivalGame(yearAt(week))) else f.size
+
+/** What a studio was called in the week, in a run set in the past. */
+fun GameState.studioName(studio: String, week: Int = this.week): String = if (isDecades) studioNameIn(studio, yearAt(week)) else studio
+
 /** Spread the first entries out over the first years of the run. */
 internal fun GameState.seedFranchises(m: GameMarket) {
+    startYear?.let { year ->
+        for (f in RealFranchises) seedHistoricSeries(m, f, year)
+        return
+    }
     for (f in RealFranchises) {
         val first = when {
             f.annualWeek != null -> f.annualWeek - 1
@@ -147,7 +167,7 @@ internal fun GameState.franchiseWeek(m: GameMarket) {
         val entry = m.franchiseEntries[f.name] ?: 0
         val lead = if (f.size == GameSize.AAA) 26 else 12
         if (next - week in 0..lead && m.upcoming.none { it.franchise == f.name }) {
-            val a = Announcement(f.title(entry, next), f.studio, f.name, next, f.topic, f.genre, f.size, f.mega)
+            val a = Announcement(seriesTitle(f, entry, next), studioName(f.studio, next), f.name, next, f.topic, f.genre, seriesSize(f, next), f.mega)
             m.upcoming += a
             if (f.mega || f.size == GameSize.AAA) {
                 addLog("${f.studio} announced ${a.title}, out ${GameClock.label(a.week)}.", LogTone.NEUTRAL, Lane.GAMES)
@@ -156,14 +176,15 @@ internal fun GameState.franchiseWeek(m: GameMarket) {
         if (week < next) continue
         val a = m.upcoming.firstOrNull { it.franchise == f.name }
         m.upcoming.removeAll { it.franchise == f.name }
-        val title = a?.title ?: f.title(entry, week)
+        val title = a?.title ?: seriesTitle(f, entry, week)
+        val size = seriesSize(f, week)
         val score = (rng.normal(5.0 + 4.6 * f.quality, 0.6) + (entry % 3 - 1) * 0.1).clamped(3.0, 9.9)
         val power = 1 + 2 * f.quality
-        val sales = f.size.launchSales * (score / 7).pow(3) * power * rng.range(0.85, 1.15) * world.demand(Lane.GAMES)
-        m.games += RivalGame(m.nextId++, title, f.studio, f.topic, f.genre, f.size, score, week, sales, franchise = f.name)
+        val sales = size.launchSales * (score / 7).pow(3) * power * rng.range(0.85, 1.15) * world.demand(Lane.GAMES)
+        m.games += RivalGame(m.nextId++, title, studioName(f.studio, week), f.topic, f.genre, size, score, week, sales, franchise = f.name)
         m.franchiseEntries[f.name] = entry + 1
         val ours = games?.owns(f.studio) == true
-        if (score >= 9 && f.size == GameSize.AAA && !ours) {
+        if (score >= 9 && size == GameSize.AAA && !ours) {
             // A giant launch pulls players away from whatever else just came out, yours included.
             val fresh = games?.releases?.filter { it.weeklySales > 0 && week - it.week in 0..5 }.orEmpty()
             fresh.forEach { it.weeklySales *= 0.8 }
@@ -173,13 +194,13 @@ internal fun GameState.franchiseWeek(m: GameMarket) {
         addLog(
             when {
                 ours -> "Your studio ${f.studio} released $title: $s/10."
-                score >= 9 && f.size == GameSize.AAA -> "$title is out, and it's everywhere: $s/10."
-                else -> "${f.studio} released $title: $s/10."
+                score >= 9 && size == GameSize.AAA -> "$title is out, and it's everywhere: $s/10."
+                else -> "${studioName(f.studio, week)} released $title: $s/10."
             },
             if (score >= 9 || ours && score >= 8) LogTone.MILESTONE else LogTone.NEUTRAL,
             Lane.GAMES,
         )
-        m.franchiseNext[f.name] = if (f.annualWeek != null) {
+        m.franchiseNext[f.name] = historicNext(f, entry + 1) ?: if (f.annualWeek != null) {
             week + 52
         } else {
             week + (f.cadence * rng.range(0.85, 1.25)).toInt()

@@ -235,6 +235,7 @@ private fun GameState.publish(s: SignedGame) {
             engineLevel = (week / 20.0 - 2 + 3 * p.talent).toInt(), engineStandard = week / 20.0,
             hype = s.hype, fanTrust = 1.0, onTrend = onTrend, repeated = false, rushedSequel = false, worthySequel = false,
             stepBack = false, record = false, wrongCrowd = false, awkwardPlatform = p.platforms.firstOrNull { it.fit(p.genre) == Fit.BAD },
+            year = ctx.year,
         ),
         rng,
     )

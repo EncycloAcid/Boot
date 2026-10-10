@@ -35,6 +35,8 @@ data class LaneContext(
     /** The era's pull on this lane, as strongly as it's felt this week. */
     val eraDemand: Double = era.demand(lane),
     val gpuPrice: Double = era.gpuPrice,
+    /** The calendar year, for runs set in the past. */
+    val year: Int = MODERN_YEAR,
 ) {
     /** Era, rivals and modifiers rolled into one demand number. */
     val marketDemand: Double get() = eraDemand * competition * mods.demand

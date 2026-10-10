@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.boot.core.Achievement
+import com.boot.core.studioName
 import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.GameRelease
@@ -119,7 +120,7 @@ fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
             if (i > 0) RowDivider(68.dp)
             val blocked = state.acquisitionBlocker(s)
             ListRow(
-                s.name,
+                state.studioName(s.name),
                 subtitle = s.blurb(),
                 leading = { StudioBadge(s.name) },
                 value = Format.money(state.acquisitionPrice(s)),

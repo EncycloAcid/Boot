@@ -112,8 +112,10 @@ internal fun GameState.marketWeek() {
 private fun GameState.releaseRivalGame(g: GamesStudio) {
     val m = g.market
     // The big studios release most of what's out; indies turn up now and then with something small.
-    val s = if (rng.chance(0.75)) rng.pick(Studios.filter { !it.indie }) else rng.pick(Studios.filter { it.indie })
-    val studio = s.name
+    val active = Studios.filter { studioActive(it.name, calendarYear) }
+    val indies = active.filter { it.indie }
+    val s = if (rng.chance(0.75) || indies.isEmpty()) rng.pick(active.filter { !it.indie }) else rng.pick(indies)
+    val studio = studioName(s.name)
     val quality = s.quality
     val year = GameClock.year(week)
     val size = when {
@@ -121,7 +123,7 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
         year <= 2 -> if (rng.chance(0.7)) GameSize.SMALL else GameSize.MEDIUM
         year <= 5 -> rng.pick(listOf(GameSize.SMALL, GameSize.MEDIUM, GameSize.MEDIUM, GameSize.LARGE, GameSize.LARGE))
         else -> rng.pick(listOf(GameSize.MEDIUM, GameSize.LARGE, GameSize.LARGE, GameSize.AAA, GameSize.AAA))
-    }
+    }.let { if (isDecades) minOf(it, biggestRivalGame(calendarYear)) else it }
     val genre = rng.pick(Genre.entries)
     val topic = rng.pick(Topic.entries.filter { it.fit(genre) != Fit.BAD })
     // Licensing your engine helps them too.
@@ -205,6 +207,7 @@ internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>
         }
     }
     val year = GameClock.year(week)
+    val yearName = if (isDecades) "$calendarYear" else "year $year"
     g.market.awards += Award(year, winner.title, winner.studio, winner.score, winner.mine)
     if (winner.mine) {
         stats.awards += 1
@@ -214,9 +217,9 @@ internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>
         g.release(winner.releaseId ?: -1)?.let { r -> r.weeklySales = max(r.weeklySales * 1.6, r.lifetimeSales / r.netShare * 0.05) }
         g.project?.let { it.hype = minOf(100.0, it.hype + 15) }
         addLog("${winner.title} wins Game of the Year! Fans flock to you and sales jump.", LogTone.MILESTONE, Lane.GAMES)
-        publish(NewsDesk.YOU, "IGN", "${winner.title} is Game of the Year", "$companyName takes the industry's biggest prize for $year.", LogTone.GOOD, Lane.GAMES, lead = true)
+        publish(NewsDesk.YOU, "IGN", "${winner.title} is Game of the Year", "$companyName takes the industry's biggest prize for $yearName.", LogTone.GOOD, Lane.GAMES, lead = true)
     } else {
-        addLog("Game of the Year $year goes to ${winner.title} by ${winner.studio}.", LogTone.NEUTRAL, Lane.GAMES)
-        publish(NewsDesk.GAMES, "IGN", "${winner.title} is Game of the Year", "${winner.studio} takes the prize for $year.", lane = Lane.GAMES, lead = true)
+        addLog("Game of the Year for $yearName goes to ${winner.title} by ${winner.studio}.", LogTone.NEUTRAL, Lane.GAMES)
+        publish(NewsDesk.GAMES, "IGN", "${winner.title} is Game of the Year", "${winner.studio} takes the prize for $yearName.", lane = Lane.GAMES, lead = true)
     }
 }

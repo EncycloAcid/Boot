@@ -22,7 +22,32 @@ enum class Outlet(val title: String, val style: ScoreStyle) {
     @SerialName("CRITICAL_HIT") GAME_INFORMER("Game Informer", ScoreStyle.QUARTERS),
     @SerialName("LOADING_SCREEN") EUROGAMER("Eurogamer", ScoreStyle.STARS),
     PC_GAMER("PC Gamer", ScoreStyle.PERCENT),
-    EDGE("Edge", ScoreStyle.OUT_OF_TEN);
+    EDGE("Edge", ScoreStyle.OUT_OF_TEN),
+
+    // The magazines of the past, for runs set there.
+    CREATIVE_COMPUTING("Creative Computing", ScoreStyle.OUT_OF_TEN),
+    BYTE("Byte", ScoreStyle.STARS),
+    ELECTRONIC_GAMES("Electronic Games", ScoreStyle.OUT_OF_TEN),
+    COMPUTER_GAMING_WORLD("Computer Gaming World", ScoreStyle.STARS),
+    ZZAP_64("Zzap!64", ScoreStyle.PERCENT),
+    NINTENDO_POWER("Nintendo Power", ScoreStyle.OUT_OF_TEN),
+    EGM("Electronic Gaming Monthly", ScoreStyle.QUARTERS);
+
+    /** The years it was reviewing games. */
+    val years: IntRange
+        get() = when (this) {
+            IGN, GAMESPOT -> 1996..9999
+            GAME_INFORMER -> 1991..9999
+            EUROGAMER -> 1999..9999
+            PC_GAMER, EDGE -> 1993..9999
+            CREATIVE_COMPUTING -> 1974..1985
+            BYTE -> 1975..1998
+            ELECTRONIC_GAMES -> 1981..1985
+            COMPUTER_GAMING_WORLD -> 1981..2006
+            ZZAP_64 -> 1985..1992
+            NINTENDO_POWER -> 1988..2012
+            EGM -> 1989..2014
+        }
 
     /** A score out of ten, the way this outlet prints it. */
     fun format(score: Double): String = when (style) {
@@ -123,6 +148,7 @@ internal data class ReviewInputs(
     val wrongCrowd: Boolean,
     val awkwardPlatform: Platform?,
     val price: PriceTier = PriceTier.STANDARD,
+    val year: Int = MODERN_YEAR,
 )
 
 internal data class ReviewResult(
@@ -216,7 +242,8 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     val sortedCons = cons.distinctBy { it.line }.sortedByDescending { it.weight }
 
     // Each outlet's verdict.
-    val outlets = Outlet.entries.filter { it != Outlet.PC_GAMER || Platform.PC in c.platforms }
+    val outlets = Outlet.entries.filter { i.year in it.years && (it != Outlet.PC_GAMER || Platform.PC in c.platforms) }
+        .ifEmpty { listOf(Outlet.CREATIVE_COMPUTING) }
     val reviews = outlets.mapIndexed { n, outlet ->
         val exact = (i.score + bias(outlet, i, aspects) + rng.normal(sd = 0.4)).coerceIn(1.0, 10.0)
         Review(outlet, exact.roundToInt().coerceIn(1, 10), comment(outlet, n, exact, sortedPros, sortedCons, rng), exact)
@@ -258,6 +285,18 @@ private fun bias(outlet: Outlet, i: ReviewInputs, aspects: Map<ReviewAspect, Dou
             (aspects.getValue(ReviewAspect.VISUALS) - i.score) * 0.2
         // Famously hard to please, but rewards a coherent vision.
         Outlet.EDGE -> -0.7 + (if (i.focusMatch > 0.8) 0.3 else 0.0)
+        // Hobbyists: they love a clever program and forgive rough edges.
+        Outlet.CREATIVE_COMPUTING, Outlet.BYTE -> (if (i.designRatio > 0.55) 0.3 else 0.0) - (aspects.getValue(ReviewAspect.VISUALS) - i.score).coerceAtMost(0.0) * 0.2
+        // The first games magazine: cheerleaders for the hobby.
+        Outlet.ELECTRONIC_GAMES -> 0.3
+        // Serious about strategy and simulation, like the PC crowd after them.
+        Outlet.COMPUTER_GAMING_WORLD -> (if (c.genre in listOf(Genre.STRATEGY, Genre.SIMULATION, Genre.RPG)) 0.35 else -0.1)
+        // Percentages that swing wildly: great games get gushed over, bad ones get savaged.
+        Outlet.ZZAP_64 -> (i.score - 6.5) * 0.15
+        // Generous to anything on a Nintendo.
+        Outlet.NINTENDO_POWER -> if (c.platforms.any { it.maker == "Nintendo" }) 0.5 else 0.0
+        // Four reviewers who rarely agree; action fans at heart.
+        Outlet.EGM -> if (c.genre == Genre.ACTION) 0.25 else 0.0
     }
 }
 

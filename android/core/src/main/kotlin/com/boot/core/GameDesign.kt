@@ -283,19 +283,39 @@ enum class Platform(
     private val bad: String,
     private val audiences: String,
 ) {
-    // Enum names are kept from earlier versions so old saves still load.
-    PC("PC", "Valve (Steam)", -2_000, 100_000, 55.0, 1.0, 0.0, "TSR", "", "EM"),
-    PLAYSYSTEM_5("PlayStation 5", "Sony", -150, 330, 50.0, 1.0, 80_000.0, "AVR", "T", "EM"),
-    MBOX_Z("Xbox Series X|S", "Microsoft", -150, 330, 28.0, 1.0, 80_000.0, "AS", "C", "M"),
-    SWITCHEROO("Nintendo Switch", "Nintendo", -450, 160, 42.0, 0.9, 50_000.0, "CVA", "ST", "YE"),
-    GRPHONE("iPhone & Android", "Apple and Google", -2_000, 100_000, 400.0, 0.08, 2_000.0, "C", "TS", "YE"),
-    VAPOR_DECK("Steam Deck", "Valve", -200, 560, 9.0, 1.1, 0.0, "RTA", "", "EM"),
-    STRATOS("Amazon Luna", "Amazon", -60, 230, 6.0, 0.7, 20_000.0, "A", "T", "E"),
-    VISOR_VR("Meta Quest", "Meta", -250, 620, 14.0, 1.1, 30_000.0, "AS", "TR", "EM"),
-    SWITCHEROO_2("Nintendo Switch 2", "Nintendo", -60, 100_000, 60.0, 0.9, 70_000.0, "CVA", "ST", "YE"),
+    // Enum names are kept from earlier versions so old saves still load. Weeks are on the shared
+    // timeline, where week 0 is the start of MODERN_YEAR; a run started today begins there.
+    PC("PC", "Valve (Steam)", -2_600, 100_000, 55.0, 1.0, 0.0, "TSR", "", "EM"),
+    PLAYSYSTEM_5("PlayStation 5", "Sony", -322, 330, 50.0, 1.0, 80_000.0, "AVR", "T", "EM"),
+    MBOX_Z("Xbox Series X|S", "Microsoft", -322, 330, 28.0, 1.0, 80_000.0, "AS", "C", "M"),
+    SWITCHEROO("Nintendo Switch", "Nintendo", -514, 160, 42.0, 0.9, 50_000.0, "CVA", "ST", "YE"),
+    GRPHONE("iPhone & Android", "Apple and Google", -988, 100_000, 400.0, 0.08, 2_000.0, "C", "TS", "YE"),
+    VAPOR_DECK("Steam Deck", "Valve", -255, 560, 9.0, 1.1, 0.0, "RTA", "", "EM"),
+    STRATOS("Amazon Luna", "Amazon", -220, 230, 6.0, 0.7, 20_000.0, "A", "T", "E"),
+    VISOR_VR("Meta Quest", "Meta", -376, 620, 14.0, 1.1, 30_000.0, "AS", "TR", "EM"),
+    SWITCHEROO_2("Nintendo Switch 2", "Nintendo", -82, 100_000, 60.0, 0.9, 70_000.0, "CVA", "ST", "YE"),
     PLAYSYSTEM_6("PlayStation 6", "Sony", 110, 100_000, 65.0, 1.0, 120_000.0, "AVR", "T", "EM"),
     MBOX_INFINITY("Next-gen Xbox", "Microsoft", 100, 100_000, 34.0, 1.0, 120_000.0, "AS", "C", "M"),
     SPECTACLE_AR("Apple Vision", "Apple", 300, 100_000, 30.0, 0.8, 50_000.0, "CA", "T", "YE"),
+
+    // The consoles of the past, for runs that start there. They're long retired by today.
+    ATARI_2600("Atari 2600", "Atari", -2_584, -1_820, 18.0, 1.0, 0.0, "AC", "RS", "YE"),
+    C64("Commodore 64", "Commodore", -2_324, -1_700, 14.0, 0.9, 0.0, "AVS", "", "YEM"),
+    NES("NES", "Nintendo", -2_174, -1_664, 34.0, 1.0, 20_000.0, "AVC", "S", "YE"),
+    GAME_BOY("Game Boy", "Nintendo", -1_957, -1_248, 40.0, 0.7, 15_000.0, "CV", "ST", "YE"),
+    GENESIS("Sega Genesis", "Sega", -1_950, -1_508, 22.0, 1.0, 20_000.0, "A", "", "YEM"),
+    SNES("Super Nintendo", "Nintendo", -1_836, -1_456, 30.0, 1.0, 25_000.0, "RVA", "", "YE"),
+    PLAYSTATION("PlayStation", "Sony", -1_628, -1_144, 60.0, 1.0, 30_000.0, "AVR", "", "EM"),
+    N64("Nintendo 64", "Nintendo", -1_576, -1_300, 22.0, 1.0, 30_000.0, "AV", "T", "YE"),
+    PS2("PlayStation 2", "Sony", -1_362, -728, 90.0, 1.0, 40_000.0, "AVR", "", "EM"),
+    XBOX("Xbox", "Microsoft", -1_304, -1_092, 18.0, 1.0, 40_000.0, "AS", "C", "M"),
+    GAMECUBE("GameCube", "Nintendo", -1_304, -1_040, 15.0, 1.0, 35_000.0, "CVA", "ST", "YE"),
+    NINTENDO_DS("Nintendo DS", "Nintendo", -1_144, -676, 80.0, 0.8, 25_000.0, "CV", "ST", "YE"),
+    XBOX_360("Xbox 360", "Microsoft", -1_092, -572, 60.0, 1.0, 50_000.0, "AS", "C", "M"),
+    WII("Wii", "Nintendo", -1_040, -676, 70.0, 0.8, 40_000.0, "CS", "TR", "YE"),
+    PS3("PlayStation 3", "Sony", -1_040, -520, 60.0, 1.0, 50_000.0, "AVR", "", "EM"),
+    PS4("PlayStation 4", "Sony", -684, -156, 85.0, 1.0, 60_000.0, "AVR", "T", "EM"),
+    XBOX_ONE("Xbox One", "Microsoft", -684, -260, 40.0, 1.0, 60_000.0, "AS", "C", "M"),
 
     /** Your own handheld, once Games and Hardware have built the Handheld Console crossover. */
     OWN_CONSOLE("Your handheld", "You", -2_000, 100_000, 0.0, 1.2, 0.0, "AVRSTC", "", "YEM");
@@ -308,13 +328,27 @@ enum class Platform(
 
     fun suits(audience: Audience): Boolean = audience.code in audiences
 
-    /** Millions of active players this week. */
+    /** Who made it in [year]: before Steam, PC games came on disks from the shops. */
+    fun makerIn(year: Int): String = when {
+        this == PC && year < 1982 -> "Apple, Commodore and Tandy"
+        this == PC && year < 2004 -> "IBM PC and clones"
+        this == GRPHONE && year < 2009 -> "Apple"
+        else -> maker
+    }
+
+    /** Millions of active players in this week of the timeline, where week 0 is the start of MODERN_YEAR. */
     fun players(week: Int, ownConsoleUnits: Int = 0): Double {
         if (this == OWN_CONSOLE) return ownConsoleUnits / 1_000_000.0 * 2.5
         if (week < launch || week >= retire) return 0.0
         val ramp = min(1.0, (week - launch) / 52.0 + 0.15)
         val decline = min(1.0, (retire - week) / 104.0)
-        val growth = if (this == PC || this == GRPHONE) 1 + week / 780.0 * 0.6 else 1.0
+        // Computers and phones keep growing: from launch to today, then on from there.
+        val growth = when {
+            this != PC && this != GRPHONE -> 1.0
+            week >= 0 -> 1 + week / 780.0 * 0.6
+            this == PC -> 0.3 + 0.7 * (week - launch).toDouble() / -launch
+            else -> 0.25 + 0.75 * (week - launch).toDouble() / -launch
+        }
         return peakPlayers * ramp * decline * growth
     }
 

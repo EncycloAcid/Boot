@@ -191,13 +191,39 @@ Every pairing of two lanes (15 in all) unlocks a crossover product only that com
 
 **The news.** The Daily Byte has a front page (the era card, a lead story from the last six months, and the latest stories) and four desks: your company, industry, games and markets, plus your company log. Stories come from outlets that would run them (The Economist and Bloomberg for the era and the markets, TechCrunch for funding, IGN and Kotaku for games, The Verge and Wired for devices and AI). Sources: the era's dawn, peak and fade headlines every few weeks, the start of each era and rumours of the next, every rival's big moves in any lane, notable rival game releases (8.5+, mega releases and AAA flops), Game of the Year, esports finals, the quarterly markets (the most valuable company, hot and cold sectors, your place in the top twenty), and your own reviews, funding rounds, IPO, acquisitions, label hits, milestones and ending. The paper keeps the last 300 stories.
 
+## Decades
+
+A run can start today or at one of tech's revolutions, and play through to the present (the run ends at the start of 2027, the year a run started today begins in, rather than after fifteen years):
+
+| Start | Opens in | Lanes open |
+| --- | --- | --- |
+| Today | The Bootstrap Years | All six |
+| 1977: Home computers | The Home Computer Revolution | Games, Hardware |
+| 1985: The console wars | The 8-Bit Console Wars | Games, Hardware |
+| 1995: The web | The Dot-com Boom | Games, Hardware, Websites |
+| 2007: The smartphone | The Smartphone Revolution | Games, Hardware, Websites, Social (Apps from 2008) |
+
+**Calendar.** Dates read as real months and years. Week 0 of a run started today is the start of 2027, and every platform launch, retirement and real series release sits on that shared timeline, so a run started in 1985 sees the same world a run started today does once it gets there.
+
+**History's eras.** The Home Computer Revolution (1977), the Video Game Crash (1983), the 8-Bit Console Wars (1985), the Multimedia Age (1990), the Dot-com Boom (1995), the Dot-com Bust (2000), Web 2.0 (2004), the Smartphone Revolution (2007), the Free-to-Play Boom (2012), then the VR Hype Cycle (2016), the Creator Economy (2018), the Remote Work Boom (2020), Crypto Winter (2022) and the AI Gold Rush (2023). Each lasts until the next begins and has a dawn, peak and fade like any era. The dot-com boom brings investor appetite of 1.8×, and the bust that follows 0.45×. The historical eras never come round in a run started today. After 2027 (playing on), eras are picked as usual.
+
+**Businesses arrive** when they became possible: games 1970, hardware 1975, websites 1994, social media 2004, apps 2008, AI 2012. Until then they can't be picked at the start, at the Pivot Point or as an expansion.
+
+**Platforms.** The Atari 2600, Commodore 64, NES, Game Boy, Sega Genesis, Super Nintendo, PlayStation, Nintendo 64, PlayStation 2, Xbox, GameCube, Nintendo DS, Xbox 360, Wii, PlayStation 3, PlayStation 4 and Xbox One each launch and retire in their real years. The PC is there from the start (the Apple II and its rivals, then the IBM PC and clones, then Steam) and grows from about 30% of today's players in 1977. Phones arrive with the App Store in 2008.
+
+**The games market.** The 47 real series debut in their real years. Their entries before today come out in their real years with their real titles (from Super Mario Bros. in 1985 to Grand Theft Auto VI in 2026); after that they carry on with the entries a run started today would see. Rival games are capped by year: small only before 1990, medium before 1998, large before 2005. Studios appear from their founding year until they closed, under the names of the day (Activision, Square, Namco, Sony Computer Entertainment, Microsoft Game Studios, Epic MegaGames), and Atari, Sierra On-Line, Infocom, Origin Systems, Westwood Studios, LucasArts, Sega, Konami and id Software join the market. Studios are worth far less in the past (values shrink about 14% for each year before 2027), so buying EA in 1987 is a bargain.
+
+**Reviews and the news.** Reviewers are the ones of the day: Creative Computing (to 1985), Byte (to 1998), Electronic Games (1981-85), Computer Gaming World (1981-2006, fond of strategy, simulation and RPGs), Zzap!64 (1985-92, in wildly swinging percentages), Nintendo Power (1988-2012, generous to Nintendo platforms) and Electronic Gaming Monthly (1989-2014), then IGN, GameSpot, Game Informer, Eurogamer, PC Gamer and Edge as they open. News outlets that didn't exist yet are swapped for ones that did. Each lane's main rival changes over the years (games: Atari, Nintendo from 1985, EA from 2000; social: MySpace, Facebook, Meta; hardware: Commodore, IBM, Dell, Apple; AI: Google DeepMind, then OpenAI), with a story when the giant changes. The league table includes only companies that existed, under their names of the time (Google, Facebook, Snapchat), with today's giants scaled back, plus IBM, Atari, Commodore, AOL, Yahoo, Nokia and BlackBerry at their real values through the years.
+
+**Balance.** With the autopilot, historical starts land in the same range as a run started today (median peak valuations of $650M-$1.2B). The exceptions are hardware in 1995, which rides the dot-com bubble, and social and hardware in 2007, which spend the smartphone years before any bad era and peak at $3-4B.
+
 ## Endings
 
 | Ending | How | Variants |
 | --- | --- | --- |
 | IPO | From year 5, a business worth $500M (excluding cash) with $50M annual revenue, and the board's sign-off | The Ecosystem IPO, IPO Whale-Funded, The Compute IPO, Bootstrapped to the Bell |
 | Acquired | Accept a buyout | The Quick Exit (before the Pivot Point), Absorbed by a rival |
-| Stayed independent | Reach year 15 | Still Indie, The Lifestyle Business, The Independent Empire, Private and Thriving, Zombie Unicorn |
+| Stayed independent | Reach year 15 (or the present, in a Decades run) | Still Indie, The Lifestyle Business, The Independent Empire, Private and Thriving, Zombie Unicorn |
 | Bankrupt | Eight weeks in the red (twelve on Easy, six on Hard) | Burned the Compute Budget |
 | Ousted | Board confidence hits zero | Fired From Your Own Company |
 

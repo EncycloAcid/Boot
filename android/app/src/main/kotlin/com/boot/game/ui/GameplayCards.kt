@@ -248,7 +248,7 @@ fun AwardsCard(state: GameState) {
             if (i > 0) RowDivider(52.dp)
             ListRow(
                 a.title,
-                subtitle = "Year ${a.year} · ${if (a.mine) "You" else a.studio} · ${String.format(Locale.US, "%.1f", a.score)}/10",
+                subtitle = (state.startYear?.let { "${it + a.year - 1}" } ?: "Year ${a.year}") + " · ${if (a.mine) "You" else a.studio} · ${String.format(Locale.US, "%.1f", a.score)}/10",
                 leading = {
                     Icon(Icons.Filled.EmojiEvents, null, tint = if (a.mine) colors.milestone else MaterialTheme.colorScheme.outline, modifier = Modifier.size(24.dp))
                 },

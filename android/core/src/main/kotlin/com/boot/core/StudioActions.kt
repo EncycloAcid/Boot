@@ -18,13 +18,13 @@ val GameState.unlockedSizes: List<GameSize> get() = GameSize.entries.filter { it
 /** Whether a platform is on sale and open to you this week. */
 fun GameState.availablePlatform(p: Platform): Boolean = when (p) {
     Platform.OWN_CONSOLE -> crossover(Combo.GAMES_HARDWARE)?.built == true && (hardware?.lifetimeUnits ?: 0) > 0
-    else -> p.isAvailable(week)
+    else -> p.isAvailable(timelineWeek)
 }
 
 /** Platforms you could ship on today. */
 val GameState.platformsOnSale: List<Platform> get() = Platform.entries.filter { availablePlatform(it) }
 
-fun GameState.platformPlayers(p: Platform): Double = p.players(week, hardware?.lifetimeUnits ?: 0)
+fun GameState.platformPlayers(p: Platform): Double = p.players(timelineWeek, hardware?.lifetimeUnits ?: 0)
 
 /** Sales reach of a set of platforms, about 1 for one big console. */
 fun GameState.reach(platforms: List<Platform>): Double = platforms.sumOf { platformPlayers(it) * it.spend } / 75.0

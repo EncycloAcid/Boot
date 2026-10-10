@@ -157,7 +157,7 @@ private fun GameState.endingSummary(kind: EndingKind, value: Double, buyer: Stri
         EndingKind.INDIE -> if (freeplay) {
             "You stepped away after ${plural(week / 52, "year")}. $companyName is worth ${money(valuation)}."
         } else {
-            "Fifteen years in, $companyName is still yours${if (venture.isBacked) ", more or less" else ""}. " +
+            (startYear?.let { "From $it to today, " } ?: "Fifteen years in, ") + "$companyName is still yours${if (venture.isBacked) ", more or less" else ""}. " +
                 "Worth ${money(valuation)} and answering to ${if (venture.board == null) "nobody" else "a board"}."
         }
         EndingKind.BANKRUPT ->
@@ -187,11 +187,11 @@ private fun GameState.endingStory(): List<String> {
             PivotMode.EXPAND -> "kept it and expanded into ${p.to.title}"
             PivotMode.STAY -> "turned it all down and stayed focused on the ${p.from.businessName.lowercase()}"
         }
-        story += "In year ${GameClock.year(p.week)}, $why forced the question. You $how."
+        story += "${GameClock.inYear(p.week)}, $why forced the question. You $how."
     } else {
         story += "You never reached the Pivot Point."
     }
-    for (e in expansions) story += "In year ${GameClock.year(e.week)} you added ${e.lane.title}."
+    for (e in expansions) story += "${GameClock.inYear(e.week)} you added ${e.lane.title}."
     if (stats.ecosystemWeeks >= 52) {
         val years = stats.ecosystemWeeks / 52
         story += "For ${plural(years, "year")} you ran a true ecosystem: hardware, software and services under one roof."

@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.boot.core.Campaign
+import com.boot.core.calendarYear
+import com.boot.core.timelineWeek
 import com.boot.core.FocusArea
 import com.boot.core.Fit
 import com.boot.core.Format
@@ -527,7 +529,8 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
 private fun PlatformsSection(state: GameState) {
     val onSale = state.platformsOnSale
     val total = onSale.sumOf { state.platformPlayers(it) * it.spend }.coerceAtLeast(1.0)
-    val upcoming = Platform.entries.filter { it.launch > state.week && it.launch <= state.week + 78 && it != Platform.OWN_CONSOLE }
+    val now = state.timelineWeek
+    val upcoming = Platform.entries.filter { it.launch > now && it.launch <= now + 78 && it != Platform.OWN_CONSOLE }
     GroupedSection(
         "Platforms",
         footer = upcoming.takeIf { it.isNotEmpty() }?.let { list -> "Coming soon: " + list.joinToString { it.title } + "." },
@@ -535,10 +538,10 @@ private fun PlatformsSection(state: GameState) {
         onSale.sortedByDescending { state.platformPlayers(it) * it.spend }.forEachIndexed { i, p ->
             if (i > 0) RowDivider()
             val players = state.platformPlayers(p)
-            val leaving = p.retire - state.week in 1..104
+            val leaving = p.retire - now in 1..104
             ListRow(
                 p.title,
-                subtitle = "${p.maker} · ${String.format(Locale.US, "%.0f", players)}M players" +
+                subtitle = "${p.makerIn(state.calendarYear)} · ${String.format(Locale.US, "%.0f", players)}M players" +
                     (if (p.fee > 0) " · ${Format.money(p.fee)} licence" else " · no licence fee") +
                     (if (leaving) " · being retired" else ""),
                 value = Format.percent(players * p.spend / total),

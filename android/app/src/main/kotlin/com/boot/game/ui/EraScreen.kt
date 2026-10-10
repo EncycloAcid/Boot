@@ -25,6 +25,10 @@ import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.MODERN_YEAR
+import com.boot.core.historyAhead
+import com.boot.core.laneOpen
+import com.boot.core.arrives
 import kotlin.math.abs
 
 /** The era: what it is, where it is in its life, and what people say is next. */
@@ -97,14 +101,15 @@ fun EraEffects(state: GameState) {
     val colors = gameColors
     fun pct(x: Double) = if (abs(x - 1) < 0.005) "—" else (if (x > 1) "+" else "") + Format.percent(x - 1)
     @Composable
-    fun row(label: String, x: Double, mine: Boolean = false, goodWhenUp: Boolean = true) {
+    fun row(label: String, x: Double, mine: Boolean = false, goodWhenUp: Boolean = true, note: String? = null) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
             Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = if (mine) FontWeight.SemiBold else FontWeight.Normal, modifier = Modifier.weight(1f))
             val better = if (goodWhenUp) x > 1.005 else x < 0.995
             val worse = if (goodWhenUp) x < 0.995 else x > 1.005
             Text(
-                pct(x), style = MaterialTheme.typography.bodyLarge,
+                note ?: pct(x), style = MaterialTheme.typography.bodyLarge,
                 color = when {
+                    note != null -> MaterialTheme.colorScheme.onSurfaceVariant
                     better -> colors.good
                     worse -> colors.warn
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -115,7 +120,7 @@ fun EraEffects(state: GameState) {
     GroupedSection("Demand this era", footer = "At today's strength. Eras build up at dawn and ease off as they fade.") {
         Lane.entries.forEachIndexed { i, lane ->
             if (i > 0) RowDivider()
-            row("${lane.emoji}  ${lane.title}", w.demand(lane), mine = lane in state.lanes)
+            row("${lane.emoji}  ${lane.title}", w.demand(lane), mine = lane in state.lanes, note = if (state.laneOpen(lane)) null else "From ${lane.arrives}")
         }
     }
     GroupedSection("Costs and money") {
@@ -148,5 +153,18 @@ fun EraTimeline(state: GameState) {
             subtitle = "Since ${GameClock.label(w.eraStartWeek)} · now",
             leading = { Text(w.era.emoji, style = MaterialTheme.typography.titleLarge) },
         )
+    }
+    // A run set in the past knows what history has in store.
+    val ahead = state.historyAhead
+    if (ahead.isNotEmpty()) {
+        GroupedSection("Still to come", footer = "History, as it happened. You reach the present in $MODERN_YEAR.") {
+            ahead.forEachIndexed { i, (year, era) ->
+                if (i > 0) RowDivider(56.dp)
+                ListRow(
+                    era.title, subtitle = "From $year",
+                    leading = { Text(era.emoji, style = MaterialTheme.typography.titleLarge) },
+                )
+            }
+        }
     }
 }

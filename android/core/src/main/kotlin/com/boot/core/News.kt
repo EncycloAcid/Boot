@@ -36,7 +36,9 @@ internal fun GameState.publish(
     desk: NewsDesk, outlet: String, headline: String, body: String = "",
     tone: LogTone = LogTone.NEUTRAL, lane: Lane? = null, lead: Boolean = false,
 ) {
-    val story = NewsStory(nextId(), week, desk, outlet, headline, body, tone, lane, lead)
+    // In a run set in the past, outlets that didn't exist yet are swapped for ones of the day.
+    val byline = if (isDecades) outletIn(outlet, calendarYear) else outlet
+    val story = NewsStory(nextId(), week, desk, byline, headline, body, tone, lane, lead)
     news = (if (news.size >= 300) news.drop(news.size - 299) else news) + story
 }
 

@@ -20,7 +20,21 @@ enum class Era {
     METAVERSE_HANGOVER,
     CHIP_SHORTAGE,
     CLOUD_GAMING,
-    SUPER_APPS;
+    SUPER_APPS,
+
+    // History, for runs that start in the past.
+    HOME_COMPUTERS,
+    VIDEO_GAME_CRASH,
+    CONSOLE_WARS,
+    MULTIMEDIA,
+    DOT_COM_BOOM,
+    DOT_COM_BUST,
+    WEB_2_0,
+    SMARTPHONES,
+    FREE_TO_PLAY;
+
+    /** An era of the past: it only comes round in a run that starts before it. */
+    val historical: Boolean get() = ordinal >= HOME_COMPUTERS.ordinal
 
     val title: String
         get() = when (this) {
@@ -36,6 +50,15 @@ enum class Era {
             CHIP_SHORTAGE -> "The Chip Shortage"
             CLOUD_GAMING -> "The Cloud Gaming Push"
             SUPER_APPS -> "The Super-App Era"
+            HOME_COMPUTERS -> "The Home Computer Revolution"
+            VIDEO_GAME_CRASH -> "The Video Game Crash"
+            CONSOLE_WARS -> "The 8-Bit Console Wars"
+            MULTIMEDIA -> "The Multimedia Age"
+            DOT_COM_BOOM -> "The Dot-com Boom"
+            DOT_COM_BUST -> "The Dot-com Bust"
+            WEB_2_0 -> "Web 2.0"
+            SMARTPHONES -> "The Smartphone Revolution"
+            FREE_TO_PLAY -> "The Free-to-Play Boom"
         }
 
     val emoji: String
@@ -52,6 +75,15 @@ enum class Era {
             CHIP_SHORTAGE -> "🔌"
             CLOUD_GAMING -> "☁️"
             SUPER_APPS -> "📲"
+            HOME_COMPUTERS -> "🖥️"
+            VIDEO_GAME_CRASH -> "📉"
+            CONSOLE_WARS -> "🕹️"
+            MULTIMEDIA -> "💿"
+            DOT_COM_BOOM -> "🌐"
+            DOT_COM_BUST -> "💥"
+            WEB_2_0 -> "🧩"
+            SMARTPHONES -> "📱"
+            FREE_TO_PLAY -> "🎁"
         }
 
     val blurb: String
@@ -68,6 +100,15 @@ enum class Era {
             CHIP_SHORTAGE -> "Factories can't make chips fast enough. Devices cost more to build and GPUs are scarce."
             CLOUD_GAMING -> "Games stream from the cloud to anything with a screen. Consoles feel old; game studios are in demand."
             SUPER_APPS -> "One app to chat, pay, shop and order dinner. Apps and social boom; websites feel quaint."
+            HOME_COMPUTERS -> "Computers are coming home: the Apple II, the TRS-80, the Commodore PET. Hobbyists type in games from magazines."
+            VIDEO_GAME_CRASH -> "Too many consoles and too many bad games. Shops can't give cartridges away, and nobody wants to fund a game studio."
+            CONSOLE_WARS -> "A console from Japan brought games back from the dead. Plumbers and hedgehogs fight for the living room."
+            MULTIMEDIA -> "CD-ROMs, sound cards, 16 bits and the first 3D worlds. Every family wants a multimedia PC."
+            DOT_COM_BOOM -> "Everyone needs a website, and anything ending in .com can go public. Investors have never been so generous."
+            DOT_COM_BUST -> "The bubble burst. Investors want profits now, and websites are a dirty word."
+            WEB_2_0 -> "Blogs, wikis and everyone sharing everything. Social networks spring up in dorm rooms."
+            SMARTPHONES -> "A phone with no keyboard changed everything. There's an app for that."
+            FREE_TO_PLAY -> "Games are free and the gems cost money. Mobile games out-earn consoles, and everyone has a phone."
         }
 
     /** What people say about it before it arrives. */
@@ -85,6 +126,15 @@ enum class Era {
             CHIP_SHORTAGE -> "A fab fire and a busy shipping season have chip buyers worried."
             CLOUD_GAMING -> "Every big tech company seems to be building data centres for games."
             SUPER_APPS -> "Messaging apps keep adding payments, shops and taxis."
+            HOME_COMPUTERS -> "Garage tinkerers say there'll be a computer in every home."
+            VIDEO_GAME_CRASH -> "Shops are piling up unsold cartridges, and the console makers are cutting prices."
+            CONSOLE_WARS -> "A toy company from Kyoto is test-marketing a console in New York."
+            MULTIMEDIA -> "Developers are excited about a shiny disc that holds 650 megabytes."
+            DOT_COM_BOOM -> "Something called the World Wide Web is spreading out of the universities."
+            DOT_COM_BUST -> "Analysts are starting to ask how the dot-coms will ever make money."
+            WEB_2_0 -> "College students are signing up for a network called TheFacebook."
+            SMARTPHONES -> "Apple is rumoured to be making a phone."
+            FREE_TO_PLAY -> "A game about matching candies is making millions a day, and it's free."
         }
 
     /** Headlines while it arrives, at its height, and as it fades. */
@@ -102,6 +152,15 @@ enum class Era {
             CHIP_SHORTAGE -> listOf("Chipmakers warn of months-long waits", "Car makers halt lines for lack of chips", "Device makers raise prices")
             CLOUD_GAMING -> listOf("A tech giant launches a game-streaming service", "Studios sign exclusive streaming deals", "\"The last console generation\", says one CEO")
             SUPER_APPS -> listOf("A messaging app adds payments and shopping", "Banks rush to get inside chat apps", "\"Why open a website?\" asks a viral post")
+            HOME_COMPUTERS -> listOf("The Apple II goes on sale for $1,298", "Computer clubs pack out garages every weekend", "Magazines print games readers can type in")
+            VIDEO_GAME_CRASH -> listOf("Console makers slash prices to clear stock", "A famous flop is buried in a New Mexico landfill", "Retailers pull games off their shelves")
+            CONSOLE_WARS -> listOf("A Japanese console sells out its first Christmas", "Shops bring back games, cautiously", "Kids line up for a game about a plumber")
+            MULTIMEDIA -> listOf("CD-ROM drives become a must-have", "A shooter on a disc sells millions", "Sound cards outsell graphics cards")
+            DOT_COM_BOOM -> listOf("A browser company's IPO doubles on day one", "Every business wants a home page", "Investors ask startups for their URL, not their revenue")
+            DOT_COM_BUST -> listOf("The Nasdaq falls for a fifth straight week", "A famous pet-supplies site shuts down", "Startups lay off half their staff")
+            WEB_2_0 -> listOf("A social network launches at Harvard", "Blogs are the new newspapers", "Everyone's uploading videos to a site called YouTube")
+            SMARTPHONES -> listOf("Apple unveils the iPhone", "The App Store opens with 500 apps", "Keyboard phones are suddenly old-fashioned")
+            FREE_TO_PLAY -> listOf("A free mobile game passes $1 billion in sales", "Studios bolt in-game stores onto everything", "Whales: the players who pay for everyone")
         }
 
     val peak: List<String>
@@ -118,6 +177,15 @@ enum class Era {
             CHIP_SHORTAGE -> listOf("Device makers ration their best models", "GPUs resell for twice their price", "Factories fight over the last wafers")
             CLOUD_GAMING -> listOf("Game streaming passes console sales", "Studios are the hottest acquisition targets", "Console makers cut prices to keep up")
             SUPER_APPS -> listOf("A super-app passes a billion daily users", "Websites lose traffic to apps", "Social apps become shops")
+            HOME_COMPUTERS -> listOf("Computer sales triple in a year", "A spreadsheet program sells computers by itself", "Arcade hits come home on cassette")
+            VIDEO_GAME_CRASH -> listOf("Game sales fall by 97%", "Investors call video games a fad", "Home computers win the living room, for now")
+            CONSOLE_WARS -> listOf("The console war hits the playground", "Mascots get their own cartoons", "Game sales pass the movies")
+            MULTIMEDIA -> listOf("3D graphics cards arrive", "The first online games connect over phone lines", "Every PC ships with a CD-ROM drive")
+            DOT_COM_BOOM -> listOf("A company with no revenue is worth $10 billion", "Web designers earn more than doctors", "Investors pour billions into anything online")
+            DOT_COM_BUST -> listOf("Funding dries up across the industry", "Former dot-com staff look for real jobs", "Only the profitable survive")
+            WEB_2_0 -> listOf("A social network passes 100 million users", "User-generated content is the future", "Websites add share buttons to everything")
+            SMARTPHONES -> listOf("App developers become millionaires overnight", "Everyone has a smartphone now", "A bird game is the biggest game in the world")
+            FREE_TO_PLAY -> listOf("Mobile games out-earn consoles", "A battle royale is free and everywhere", "Loot boxes draw regulators' attention")
         }
 
     val fade: List<String>
@@ -134,6 +202,15 @@ enum class Era {
             CHIP_SHORTAGE -> listOf("New fabs come online", "Chip prices fall back")
             CLOUD_GAMING -> listOf("Streaming services fight over the same players", "Gamers complain about lag")
             SUPER_APPS -> listOf("Regulators look at super-app monopolies", "Users say they miss simple apps")
+            HOME_COMPUTERS -> listOf("Too many consoles, too many games, say retailers", "Game prices start to fall")
+            VIDEO_GAME_CRASH -> listOf("A new console is coming from Japan", "Shops wonder if games can come back")
+            CONSOLE_WARS -> listOf("16-bit consoles are on the way", "Kids want better graphics")
+            MULTIMEDIA -> listOf("Everyone's talking about the internet", "Modems get faster")
+            DOT_COM_BOOM -> listOf("Some say the dot-com stocks are overvalued", "Interest rates go up")
+            DOT_COM_BUST -> listOf("A few web companies are profitable after all", "Investors start looking again")
+            WEB_2_0 -> listOf("Phones that browse the web are coming", "Social networks look for ways to make money")
+            SMARTPHONES -> listOf("App stores are crowded", "Free apps push out paid ones")
+            FREE_TO_PLAY -> listOf("Headsets are coming back", "Players tire of paywalls")
         }
 
     /** Demand multiplier per lane. */
@@ -172,6 +249,33 @@ enum class Era {
         SUPER_APPS -> when (lane) {
             Lane.APPS -> 1.3; Lane.SOCIAL -> 1.2; Lane.WEBSITES -> 0.8; else -> 1.0
         }
+        HOME_COMPUTERS -> when (lane) {
+            Lane.HARDWARE -> 1.4; Lane.GAMES -> 1.2; else -> 1.0
+        }
+        VIDEO_GAME_CRASH -> when (lane) {
+            Lane.GAMES -> 0.6; Lane.HARDWARE -> 0.85; else -> 1.0
+        }
+        CONSOLE_WARS -> when (lane) {
+            Lane.GAMES -> 1.35; Lane.HARDWARE -> 1.1; else -> 1.0
+        }
+        MULTIMEDIA -> when (lane) {
+            Lane.GAMES -> 1.2; Lane.HARDWARE -> 1.2; else -> 1.0
+        }
+        DOT_COM_BOOM -> when (lane) {
+            Lane.WEBSITES -> 1.5; Lane.HARDWARE -> 1.15; Lane.GAMES -> 1.1; else -> 1.0
+        }
+        DOT_COM_BUST -> when (lane) {
+            Lane.WEBSITES -> 0.6; Lane.HARDWARE -> 0.85; Lane.GAMES -> 1.05; else -> 0.9
+        }
+        WEB_2_0 -> when (lane) {
+            Lane.SOCIAL -> 1.4; Lane.WEBSITES -> 1.2; Lane.GAMES -> 1.1; else -> 1.0
+        }
+        SMARTPHONES -> when (lane) {
+            Lane.APPS -> 1.35; Lane.HARDWARE -> 1.15; Lane.SOCIAL -> 1.0; Lane.WEBSITES -> 0.95; else -> 1.0
+        }
+        FREE_TO_PLAY -> when (lane) {
+            Lane.APPS -> 1.25; Lane.GAMES -> 1.2; Lane.SOCIAL -> 1.15; Lane.AI -> 0.9; else -> 1.0
+        }
     }
 
     /** Multiplier on what people ask to be paid. */
@@ -179,6 +283,9 @@ enum class Era {
         get() = when (this) {
             AI_GOLD_RUSH -> 1.12
             REMOTE_WORK_BOOM -> 1.08
+            DOT_COM_BOOM -> 1.15
+            DOT_COM_BUST -> 0.88
+            VIDEO_GAME_CRASH -> 0.9
             CRYPTO_WINTER -> 0.9
             METAVERSE_HANGOVER -> 0.92
             else -> 1.0
@@ -189,6 +296,7 @@ enum class Era {
         get() = when (this) {
             CHIP_SHORTAGE -> 1.3
             VR_HYPE_CYCLE -> 1.05
+            HOME_COMPUTERS -> 1.1
             CRYPTO_WINTER -> 0.95
             else -> 1.0
         }
@@ -212,6 +320,12 @@ enum class Era {
             METAVERSE_HANGOVER -> 0.7
             PRIVACY_PANIC -> 0.9
             CLOUD_GAMING -> 1.1
+            HOME_COMPUTERS -> 1.2
+            VIDEO_GAME_CRASH -> 0.7
+            DOT_COM_BOOM -> 1.8
+            DOT_COM_BUST -> 0.45
+            WEB_2_0 -> 1.1
+            SMARTPHONES -> 1.1
             else -> 1.0
         }
 
