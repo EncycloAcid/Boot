@@ -58,6 +58,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             lane: Lane,
             seed: Long = Random.nextLong(),
             difficulty: Difficulty = Difficulty.NORMAL,
+            legacy: List<LegacyPerk> = emptyList(),
         ): GameState {
             val s = GameState(seed, lane)
             s.companyName = companyName
@@ -70,6 +71,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             s.openLane(lane)
             s.refreshTalentPool()
             s.addLog("Day one. A laptop, a cramped apartment, and ${money(s.cash)} in savings.", LogTone.MILESTONE)
+            s.applyLegacy(legacy)
+            s.ledger = listOf(WeekLedger(0, cash = s.cash))
             if (lane.isCapitalIntensive) {
                 s.ventureForLane(lane).getOrNull()?.let { round ->
                     s.takeRound(round)
@@ -157,6 +160,12 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var researchPoints = 0.0
         internal set
     var researched: Set<Research> = emptySet()
+        internal set
+
+    /** Roadmap features built, and the ones being built. */
+    var features: Set<Feature> = emptySet()
+        internal set
+    var building: List<FeatureBuild> = emptyList()
         internal set
 
     /** What's in the office besides desks. */
@@ -248,8 +257,15 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         var weight = 0.0
         for (e in staff) {
             if (e.lane != lane) continue
-            s.output += e.output(lane)
-            s.teamOutput += e.output(lane)
+            // Night owls come alive in crunch.
+            val owl = if (crunch && e.trait == Trait.NIGHT_OWL) 1.3 else 1.0
+            s.output += e.output(lane) * owl
+            s.teamOutput += e.output(lane) * owl
+            when (e.trait) {
+                Trait.PERFECTIONIST -> s.traitQuality += 1.5
+                Trait.RAINMAKER -> s.traitDemand = minOf(1.08, s.traitDemand + 0.03)
+                else -> {}
+            }
             s.headcount += 1
             skillSum += e.skill
             designSum += e.design
@@ -284,6 +300,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     internal fun context(lane: Lane, effects: ComboEffects? = null): LaneContext {
         val mods = effects?.mods?.get(lane)?.copy() ?: LaneModifiers()
         applyResearch(lane, mods)
+        applyRoadmap(lane, mods)
+        val people = staffing(lane)
+        mods.quality += minOf(6.0, people.traitQuality)
+        mods.demand *= people.traitDemand
         mods.demand *= difficulty.sales
         mods.cost *= difficulty.costs
         if (isEcosystem) {
@@ -405,6 +425,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             id = nextId(), name = "${rng.pick(Names.first)} ${rng.pick(Names.last)}", role = r,
             skill = skill, askingSalary = salary.roundToInt().toDouble(), contestedBy = contested, expiresWeek = expires,
             design = jitter(roleDesign(r, skill)), tech = jitter(roleTech(r, skill)), research = jitter(roleResearch(r, skill)),
+            // Most people have something about them; a few are just easy to work with.
+            trait = if (rng.chance(0.7)) rng.pick(Trait.entries) else null,
         )
     }
 
@@ -433,7 +455,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         val e = Employee(
             id = c.id, name = c.name, role = c.role, skill = c.skill, salary = c.askingSalary,
             morale = 0.75, lane = lane ?: bestLane(c.role), hiredWeek = week,
-            design = c.design, tech = c.tech, research = c.research,
+            design = c.design, tech = c.tech, research = c.research, trait = c.trait,
         )
         staff = staff + e
         stats.peakHeadcount = max(stats.peakHeadcount, staff.size)

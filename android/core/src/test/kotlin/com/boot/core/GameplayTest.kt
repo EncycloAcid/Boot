@@ -1025,3 +1025,146 @@ class EsportsTest {
         assertTrue(after(PrizePool.MAJOR) > after(PrizePool.MODEST))
     }
 }
+
+class TraitTest {
+    private fun employee(s: GameState, trait: Trait?, lane: Lane = Lane.WEBSITES, skill: Int = 6): Employee {
+        val c = s.makeCandidate(Role.ENGINEER).copy(skill = skill, trait = trait)
+        return s.hireDirect(c, lane)
+    }
+
+    @Test
+    fun candidatesComeWithPersonalities() {
+        val s = game(Lane.WEBSITES, 140)
+        val traits = (1..200).map { s.makeCandidate().trait }
+        assertTrue(traits.count { it != null } in 110..170)
+        assertTrue(traits.filterNotNull().toSet().size >= 7)
+    }
+
+    @Test
+    fun traitsChangeOutputQualityAndMorale() {
+        val s = game(Lane.WEBSITES, 141)
+        val plain = employee(s, null)
+        val hustler = employee(s, Trait.HUSTLER)
+        val diva = employee(s, Trait.DIVA)
+        val perfectionist = employee(s, Trait.PERFECTIONIST)
+        assertTrue(hustler.output(Lane.WEBSITES) > plain.output(Lane.WEBSITES))
+        assertTrue(diva.output(Lane.WEBSITES) > hustler.output(Lane.WEBSITES))
+        assertTrue(perfectionist.output(Lane.WEBSITES) < plain.output(Lane.WEBSITES))
+        assertTrue(s.staffing(Lane.WEBSITES).traitQuality > 0)
+        s.cash = 1e7
+        s.play(40)
+        // Divas settle unhappier than everyone else.
+        assertTrue(diva.morale < plain.morale)
+    }
+
+    @Test
+    fun loyalPeopleNeverQuitAndFastLearnersLevelUp() {
+        val s = game(Lane.WEBSITES, 142)
+        s.cash = 1e7
+        val loyal = employee(s, Trait.LOYAL)
+        // Below the skill rivals poach at, so both stay for the comparison.
+        val learner = employee(s, Trait.FAST_LEARNER, skill = 5)
+        val plain = employee(s, null, skill = 5)
+        repeat(30) {
+            loyal.morale = 0.0
+            s.play(1)
+        }
+        assertTrue(s.staff.any { it.id == loyal.id })
+        assertTrue(learner.level > plain.level)
+    }
+}
+
+class RoadmapTest {
+    @Test
+    fun buildAFeatureAndItHelpsForGood() {
+        val s = game(Lane.APPS, 150)
+        s.cash = 1e7
+        assertEquals("Needs at least one person on the ${Lane.APPS.businessName.lowercase()}.", s.featureBlocker(Feature.ONBOARDING))
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.APPS)
+        assertTrue(s.featureBlocker(Feature.CASE_STUDIES)!!.startsWith("You don't run"))
+        assertNull(s.featureBlocker(Feature.ONBOARDING))
+        val before = s.cash
+        s.buildFeature(Feature.ONBOARDING)
+        assertEquals(before - Feature.ONBOARDING.cost, s.cash, 1.0)
+        assertEquals("The team is building guided onboarding.", s.featureBlocker(Feature.DARK_MODE))
+        // The team is slower while it builds.
+        assertEquals(BUILD_DRAG, s.context(Lane.APPS).mods.output, 1e-9)
+        s.play(Feature.ONBOARDING.weeks)
+        assertTrue(Feature.ONBOARDING in s.features)
+        assertTrue(s.building.isEmpty())
+        assertEquals(0.96, s.context(Lane.APPS).mods.churn, 1e-9)
+        assertEquals(1.0, s.context(Lane.APPS).mods.output, 1e-9)
+        assertEquals("Already built.", s.featureBlocker(Feature.ONBOARDING))
+    }
+
+    @Test
+    fun everyBusinessButGamesHasFourFeatures() {
+        for (lane in Lane.entries) assertEquals(if (lane == Lane.GAMES) 0 else 4, Feature.forLane(lane).size)
+    }
+}
+
+class LegacyTest {
+    private fun record(kind: EndingKind, valuation: Double = 5e6, ecosystem: Boolean = false) = RunRecord(
+        "Old Co", "Me", Lane.APPS, kind, "The End", 400, valuation, valuation / 2, ecosystem, Difficulty.NORMAL, 10,
+    )
+
+    @Test
+    fun perksAreEarnedByWhatYouDid() {
+        assertTrue(LegacyPerk.earned(emptyList()).isEmpty())
+        assertEquals(listOf(LegacyPerk.BEEN_HERE_BEFORE), LegacyPerk.earned(listOf(record(EndingKind.INDIE))))
+        val many = List(5) { record(EndingKind.BANKRUPT) } + record(EndingKind.IPO, 2e9, ecosystem = true)
+        assertEquals(LegacyPerk.entries.toSet(), LegacyPerk.earned(many).toSet())
+        assertEquals(2e9, many.ranked().first().valuation, 1.0)
+    }
+
+    @Test
+    fun aLegacyGivesTheNextRunAHeadStart() {
+        val plain = GameState.create("New Co", "Me", Lane.WEBSITES, seed = 160)
+        val veteran = GameState.create("New Co", "Me", Lane.WEBSITES, seed = 160, legacy = LegacyPerk.entries)
+        assertEquals(plain.cash + 25_000, veteran.cash, 1.0)
+        assertEquals(plain.researchPoints + 30, veteran.researchPoints, 1e-9)
+        assertTrue(veteran.candidates.any { it.skill >= 8 })
+        assertTrue(Perk.COFFEE in veteran.perks)
+        assertTrue(veteran.founder.skillBonus(Lane.WEBSITES) > plain.founder.skillBonus(Lane.WEBSITES))
+        assertEquals(veteran.cash, veteran.ledger.last().cash, 1.0)
+    }
+
+    @Test
+    fun aFinishedRunMakesARecord() {
+        val s = game(Lane.WEBSITES, 161)
+        assertNull(s.runRecord())
+        val pilot = Autopilot()
+        var guard = 0
+        while (!s.isOver && guard++ < 52 * 16) pilot.playWeek(s)
+        val r = s.runRecord()!!
+        assertEquals(s.companyName, r.company)
+        assertEquals(s.ending!!.kind, r.kind)
+    }
+}
+
+class LaneEventsTest {
+    @Test
+    fun anOffsiteLiftsEveryone() {
+        val s = game(Lane.WEBSITES, 170)
+        s.cash = 1e7
+        repeat(6) { s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.WEBSITES) }
+        s.staff.forEach { it.morale = 0.5 }
+        s.enqueue(EventKind.Offsite)
+        val cash = s.cash
+        s.choose(0)
+        assertTrue(s.staff.all { it.morale > 0.6 })
+        assertTrue(s.cash < cash)
+    }
+
+    @Test
+    fun aRushJobPaysAndTiresTheTeam() {
+        val s = game(Lane.WEBSITES, 171)
+        val e = s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.WEBSITES)
+        e.morale = 0.8
+        s.enqueue(EventKind.RushJob("Nike", 30_000.0))
+        val cash = s.cash
+        s.choose(0)
+        assertEquals(cash + 30_000.0, s.cash, 1.0)
+        assertTrue(e.morale < 0.8)
+    }
+}

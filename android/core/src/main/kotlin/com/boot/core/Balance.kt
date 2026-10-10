@@ -4,7 +4,7 @@ package com.boot.core
 fun main(args: Array<String>) {
     val runs = args.firstOrNull()?.toIntOrNull() ?: 20
     println("Autopilot balance run: $runs games per starting lane\n")
-    println("lane       ending distribution                                    median end   median peak val")
+    println("lane       ending distribution                                    median end   peak val: 25% / median / 75%")
     for (lane in Lane.entries) {
         val endings = mutableMapOf<EndingKind, Int>()
         val weeks = mutableListOf<Int>()
@@ -27,7 +27,8 @@ fun main(args: Array<String>) {
         val dist = EndingKind.entries.mapNotNull { k -> endings[k]?.let { "${k.name.lowercase()} $it" } }.joinToString(", ")
         val name = lane.name.lowercase().padEnd(10)
         val medianEnd = if (weeks.isEmpty()) "-" else GameClock.label(weeks[weeks.size / 2])
-        println("$name ${dist.padEnd(54)} ${medianEnd.padEnd(12)} ${Format.money(peaks[peaks.size / 2])}")
+        val q = { f: Double -> Format.money(peaks[(peaks.size * f).toInt().coerceAtMost(peaks.size - 1)]) }
+        println("$name ${dist.padEnd(54)} ${medianEnd.padEnd(12)} ${q(0.25)} / ${q(0.5)} / ${q(0.75)}")
         val pivotText = pivots.entries.map { "${it.key.name.lowercase()} ${it.value}" }.sorted().joinToString(", ")
         println("           pivots: $pivotText; ended as ecosystem: ${ecosystems.count { it }}")
     }

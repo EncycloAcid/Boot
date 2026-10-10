@@ -68,6 +68,11 @@ class Autopilot(
             is EventKind.ServerOutage -> if (s.cash > 200_000) 0 else 1
             is EventKind.FanPetition -> 0
             EventKind.Headhunter -> if (s.cash > 500_000 && s.freeDesks > 0) 0 else 1
+            is EventKind.RushJob -> if (s.staff(Lane.WEBSITES).all { it.morale > 0.6 }) 0 else 1
+            EventKind.AppFeatured -> if (s.cash > 100_000) 0 else 1
+            is EventKind.Celebrity -> if ((s.social?.toxicity ?: 0.0) < 0.3) 0 else 1
+            EventKind.OpenSource -> 0
+            EventKind.Offsite -> if (s.runwayWeeks > 26) 0 else 1
             EventKind.Convention -> when {
                 s.games?.project != null && s.cash > 2_000_000 -> 1
                 s.cash > 200_000 -> 0
@@ -75,6 +80,14 @@ class Autopilot(
             }
         }
         attempt { s.choose(choice) }
+    }
+
+    /** Build the cheapest useful roadmap feature for each business once there's money to spare. */
+    private fun buildRoadmap(s: GameState) {
+        for (lane in s.lanes) {
+            val next = Feature.forLane(lane).filter { s.featureBlocker(it) == null }.minByOrNull { it.cost } ?: continue
+            if (s.cash > next.cost * 8 && s.runwayWeeks > 26) attempt { s.buildFeature(next) }
+        }
     }
 
     private fun resolvePivot(s: GameState) {
@@ -115,6 +128,7 @@ class Autopilot(
         }
 
         if (s.runwayWeeks < 20 && s.roundOffer().isSuccess) attempt { s.raiseRound() }
+        buildRoadmap(s)
         // Perks once the business can carry them.
         val weeklyRevenue = s.trailingRevenue(weeks = 13) / 13
         for (perk in Perk.entries) {

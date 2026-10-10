@@ -73,6 +73,21 @@ sealed interface EventKind {
 
     @Serializable @SerialName("headhunter")
     data object Headhunter : EventKind
+
+    @Serializable @SerialName("rushJob")
+    data class RushJob(val client: String, val pay: Double) : EventKind
+
+    @Serializable @SerialName("appFeatured")
+    data object AppFeatured : EventKind
+
+    @Serializable @SerialName("celebrity")
+    data class Celebrity(val name: String) : EventKind
+
+    @Serializable @SerialName("openSource")
+    data object OpenSource : EventKind
+
+    @Serializable @SerialName("offsite")
+    data object Offsite : EventKind
 }
 
 @Serializable
@@ -104,6 +119,9 @@ private fun choice(label: String, detail: String) = EventChoice(label, detail)
 private fun GameState.outageCost(lane: Lane): Double = max(10_000.0, trailingRevenue(lane, 4) / 4 * 0.5)
 
 private val GameState.headhunterFee: Double get() = 20_000.0 + 2_000.0 * GameClock.year(week)
+
+/** What a team offsite costs. */
+private val GameState.offsiteCost: Double get() = 1_500.0 * staff.size
 
 /** What flying the whole team to the awards costs. */
 private val GameState.awardsTrip: Double get() = 4_000.0 + 1_500.0 * staff.size
@@ -290,6 +308,50 @@ private fun GameState.describe(kind: EventKind): Description? = when (kind) {
             Lane.GAMES,
         )
     }
+    is EventKind.RushJob -> Description(
+        "${kind.client} needs it yesterday",
+        "A rush job: a site in two weeks instead of eight. They'll pay ${money(kind.pay)}, but the agency team will be living at their desks.",
+        listOf(
+            choice("Take it", "${money(kind.pay)}, and the web team's morale takes a hit."),
+            choice("Turn it down", "Nobody pulls all-nighters."),
+        ),
+        Lane.WEBSITES,
+    )
+    EventKind.AppFeatured -> Description(
+        "The App Store wants to feature ${apps?.name}",
+        "An editor loves it and offers a spot on the front page, if you ship something new for it.",
+        listOf(
+            choice("Ship an update for it", "${money(20_000.0)}. Lots of new installs."),
+            choice("Take the spot as it is", "A smaller bump."),
+        ),
+        Lane.APPS,
+    )
+    is EventKind.Celebrity -> Description(
+        "${kind.name} just joined ${social?.name}",
+        "Millions of followers are coming with them. Some of them are lovely.",
+        listOf(
+            choice("Verify and promote them", "Big growth, and their fans bring drama."),
+            choice("Treat them like anyone", "Some growth, no fuss."),
+        ),
+        Lane.SOCIAL,
+    )
+    EventKind.OpenSource -> Description(
+        "Your researchers want to open-source a model",
+        "They say it'll win the respect of the field and attract talent. Your rivals would get it too.",
+        listOf(
+            choice("Publish it", "Reputation and research points; rivals catch up a little."),
+            choice("Keep it closed", "The AI team is disappointed."),
+        ),
+        Lane.AI,
+    )
+    EventKind.Offsite -> Description(
+        "The team wants an offsite",
+        "A few days somewhere with a lake and no laptops. People keep bringing it up.",
+        listOf(
+            choice("Book it", "${money(offsiteCost)}. Morale up across the company."),
+            choice("Not this year", "A little grumbling."),
+        ),
+    )
     EventKind.Headhunter -> Description(
         "A headhunter has a star",
         "A recruiter can introduce you to someone exceptional, for a fee of ${money(headhunterFee)}.",
@@ -601,6 +663,53 @@ private fun GameState.resolve(kind: EventKind, choice: Int) {
             } else {
                 g.fanTrust = max(0.3, g.fanTrust - 0.02)
             }
+        }
+
+        is EventKind.RushJob -> if (choice == 0) {
+            cash += kind.pay
+            recordRevenue(kind.pay, Lane.WEBSITES)
+            for (e in staff(Lane.WEBSITES)) e.morale = max(0.0, e.morale - 0.12)
+            addLog("You took the rush job for ${kind.client}: ${money(kind.pay)}. The web team is exhausted.", LogTone.GOOD, Lane.WEBSITES)
+        }
+
+        EventKind.AppFeatured -> apps?.let { a ->
+            if (choice == 0) {
+                spend(20_000.0, Lane.APPS)
+                a.users *= 1.08
+                addLog("${a.name} is on the front page of the App Store. Installs are pouring in.", LogTone.MILESTONE, Lane.APPS)
+            } else {
+                a.users *= 1.03
+                addLog("${a.name} got a small App Store feature.", LogTone.GOOD, Lane.APPS)
+            }
+        }
+
+        is EventKind.Celebrity -> social?.let { sp ->
+            if (choice == 0) {
+                sp.users *= 1.08
+                sp.toxicity = min(1.0, sp.toxicity + 0.05)
+                addLog("${kind.name} is the face of ${sp.name} now. Growth is wild, and so are the replies.", LogTone.GOOD, Lane.SOCIAL)
+            } else {
+                sp.users *= 1.03
+                addLog("${kind.name} brought a few followers to ${sp.name}.", LogTone.GOOD, Lane.SOCIAL)
+            }
+            sp.peakUsers = max(sp.peakUsers, sp.users)
+        }
+
+        EventKind.OpenSource -> if (choice == 0) {
+            reputation.adjust(3.0)
+            researchPoints += 15
+            for (r in world.rivals) r.strength = min(1.0, r.strength + 0.02)
+            addLog("You open-sourced a model. The field is impressed, and your rivals are reading the code.", LogTone.GOOD, Lane.AI)
+        } else {
+            for (e in staff(Lane.AI)) e.morale = max(0.0, e.morale - 0.06)
+        }
+
+        EventKind.Offsite -> if (choice == 0) {
+            spend(offsiteCost, null)
+            for (e in staff) e.morale = min(1.0, e.morale + 0.15)
+            addLog("The offsite was a hit. Everyone came back rested.", LogTone.GOOD)
+        } else {
+            for (e in staff) e.morale = max(0.0, e.morale - 0.03)
         }
 
         EventKind.Headhunter -> if (choice == 0) {

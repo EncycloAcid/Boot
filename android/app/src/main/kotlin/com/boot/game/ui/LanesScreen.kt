@@ -81,6 +81,7 @@ fun LanesScreen(store: GameStore, state: GameState) {
             Lane.HARDWARE -> hardwareItems(store, state)
             Lane.AI -> aiItems(store, state)
         }
+        if (lane != Lane.GAMES) item { RoadmapSection(store, state, lane) }
     }
 }
 

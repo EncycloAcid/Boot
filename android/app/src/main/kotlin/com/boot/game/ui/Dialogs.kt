@@ -1,5 +1,6 @@
 package com.boot.game.ui
 
+import com.boot.core.ranked
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -277,6 +278,14 @@ fun EndingDialog(store: GameStore, state: GameState) {
                         Text(e.title, style = MaterialTheme.typography.displaySmallEmphasized, textAlign = TextAlign.Center)
                         Spacer(Modifier.size(6.dp))
                         Text(e.summary, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 8.dp))
+                        val rank = store.hall.ranked().indexOfFirst { it.seed == state.seed && it.company == state.companyName } + 1
+                        if (rank > 0) {
+                            Spacer(Modifier.size(10.dp))
+                            Pill(
+                                if (rank == 1 && store.hall.size > 1) "A new record: #1 in your Hall of Fame" else "#$rank of ${store.hall.size} in your Hall of Fame",
+                                colors.milestone,
+                            )
+                        }
                     }
                     GroupedSection(null) {
                         Column(Modifier.padding(8.dp)) {

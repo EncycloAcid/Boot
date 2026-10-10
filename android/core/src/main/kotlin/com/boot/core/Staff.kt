@@ -29,6 +29,38 @@ enum class Role {
         }
 }
 
+/** A personality: what someone's like to work with, for better and worse. Old hires have none. */
+@Serializable
+enum class Trait(val title: String, val detail: String) {
+    PERFECTIONIST("Perfectionist", "Better quality, a little slower."),
+    HUSTLER("Hustler", "Works fast, but needs more to stay happy."),
+    NIGHT_OWL("Night owl", "Thrives in crunch: more output, no morale hit."),
+    MENTOR("Mentor", "Everyone else on the team learns faster."),
+    DIVA("Diva", "Brilliant and productive, hard to keep happy."),
+    TEAM_PLAYER("Team player", "Lifts the morale of everyone on the team."),
+    RAINMAKER("Rainmaker", "Brings in business: more demand."),
+    LOYAL("Loyal", "Never quits or listens to rivals, and asks for smaller raises."),
+    FAST_LEARNER("Fast learner", "Levels up twice as fast."),
+    ;
+
+    /** Multiplier on what they get done. */
+    internal val output: Double
+        get() = when (this) {
+            PERFECTIONIST -> 0.9
+            HUSTLER -> 1.15
+            DIVA -> 1.25
+            else -> 1.0
+        }
+
+    /** Where their morale settles, against everyone else's. */
+    internal val settle: Double
+        get() = when (this) {
+            HUSTLER -> -0.06
+            DIVA -> -0.12
+            else -> 0.0
+        }
+}
+
 /** Design, tech and research talent follow from a role: designers design, engineers build. */
 internal fun roleDesign(role: Role, skill: Int) = (skill + when (role) {
     Role.DESIGNER -> 2; Role.MARKETER -> 0; Role.ENGINEER -> -2; Role.RESEARCHER -> -1; Role.OPERATOR -> -2
@@ -64,6 +96,7 @@ data class Employee(
     var xp: Double = 0.0,
     var level: Int = 1,
     var lastRaiseWeek: Int = -1_000,
+    val trait: Trait? = null,
 ) {
     internal val moraleFactor: Double get() = 0.5 + 0.5 * morale
 
@@ -76,7 +109,7 @@ data class Employee(
         const val MAX_LEVEL = 10
     }
 
-    internal fun output(lane: Lane): Double = skill * lane.weight(role) * moraleFactor
+    internal fun output(lane: Lane): Double = skill * lane.weight(role) * moraleFactor * (trait?.output ?: 1.0)
 }
 
 @Serializable
@@ -92,6 +125,7 @@ data class Candidate(
     val design: Int = roleDesign(role, skill),
     val tech: Int = roleTech(role, skill),
     val research: Int = roleResearch(role, skill),
+    val trait: Trait? = null,
 )
 
 @Serializable
@@ -132,6 +166,9 @@ data class Staffing(
     /** Team design and tech talent, 1...10, for making games. */
     var avgDesign: Double = 5.0,
     var avgTech: Double = 5.0,
+    /** What the team's personalities add: quality points, and demand from rainmakers. */
+    var traitQuality: Double = 0.0,
+    var traitDemand: Double = 1.0,
 )
 
 internal object Names {

@@ -36,6 +36,7 @@ fun GameState.advance() {
     }
 
     studioWeek()
+    roadmapWeek()
     researchPoints += weeklyResearch(games?.lastWork ?: 0.0)
 
     // Unassigned staff still get paid.
@@ -151,7 +152,7 @@ private fun GameState.updateRivals() {
         }
 
         // Rivals compete for the same talent.
-        val best = staff.filter { it.lane == r.lane && it.skill >= 6 }.maxByOrNull { it.skill }
+        val best = staff.filter { it.lane == r.lane && it.skill >= 6 && it.trait != Trait.LOYAL }.maxByOrNull { it.skill }
         if (best != null && rng.chance(r.aggression * 0.006)) {
             enqueue(EventKind.Poach(best.id, r.name))
         }
@@ -215,6 +216,16 @@ private fun GameState.rollWorldEvents() {
 
 /** The everyday surprises: people, fans, leaks, refunds and outages. */
 private fun GameState.rollSmallEvents() {
+    if (staff.size >= 6 && rng.chance(0.003)) enqueue(EventKind.Offsite)
+    if (web != null && staff(Lane.WEBSITES).isNotEmpty() && rng.chance(0.006)) {
+        val pay = max(15_000.0, trailingRevenue(Lane.WEBSITES, 4) / 4 * 3)
+        enqueue(EventKind.RushJob(rng.pick(Names.brands + Names.clients), Math.round(pay / 1_000.0) * 1_000.0))
+    }
+    if (apps?.isLive == true && rng.chance(0.004)) enqueue(EventKind.AppFeatured)
+    if (social?.isLive == true && social?.caughtOn == true && rng.chance(0.004)) {
+        enqueue(EventKind.Celebrity(rng.pick(listOf("Taylor Swift", "MrBeast", "Zendaya", "Keanu Reeves", "Rihanna", "Lionel Messi", "Bad Bunny"))))
+    }
+    if ((ai?.capability ?: 0.0) > 10 && rng.chance(0.004)) enqueue(EventKind.OpenSource)
     if (staff.isNotEmpty() && rng.chance(0.006 + 0.0015 * min(staff.size, 10))) {
         staff.filter { week - maxOf(it.hiredWeek, it.lastRaiseWeek) >= 52 && it.skill >= 5 }
             .takeIf { it.isNotEmpty() }
@@ -301,14 +312,17 @@ private fun GameState.updateStaff(fx: ComboEffects) {
     val quitters = mutableListOf<Employee>()
     for (e in staff) {
         var m = e.morale
-        val settle = minOf(0.95, 0.7 + perks.sumOf { it.morale })
+        // Team players lift everyone they work with.
+        val lift = minOf(0.08, 0.04 * staff.count { it.lane == e.lane && it.id != e.id && it.trait == Trait.TEAM_PLAYER })
+        val settle = minOf(0.95, 0.7 + perks.sumOf { it.morale } + (e.trait?.settle ?: 0.0) + lift)
         m += (settle - m) * 0.05
-        if (crunch) m -= if (has(Perk.NAP_PODS)) 0.0125 else 0.025
+        if (crunch && e.trait != Trait.NIGHT_OWL) m -= if (has(Perk.NAP_PODS)) 0.0125 else 0.025
         if (cash < 0) m -= 0.03
         if (e.lane == Lane.WEBSITES) m -= fx.moraleDrain
         if (staff.size > office.desks) m -= 0.02
         e.morale = m.clamped(0.0, 1.0)
-        if (e.morale < 0.3 && rng.chance(if (has(Perk.DAYCARE)) 0.02 else 0.04)) quitters += e
+        val quitChance = (if (has(Perk.DAYCARE)) 0.02 else 0.04) * (if (e.trait == Trait.DIVA) 2.0 else 1.0)
+        if (e.morale < 0.3 && e.trait != Trait.LOYAL && rng.chance(quitChance)) quitters += e
     }
     gainExperience()
     for (q in quitters) {
@@ -344,6 +358,8 @@ private fun GameState.gainExperience() {
         if (lane == Lane.GAMES && shipping) gain += 0.3
         if (lane == Lane.GAMES && has(Perk.ARCADE)) gain *= 1.2
         if (has(Perk.GYM)) gain *= 1.1
+        if (e.trait == Trait.FAST_LEARNER) gain *= 2
+        if (staff.any { it.lane == lane && it.id != e.id && it.trait == Trait.MENTOR }) gain *= 1.25
         e.xp += gain
         if (e.xp < e.xpToNext) continue
         e.xp -= e.xpToNext
@@ -357,7 +373,7 @@ private fun GameState.gainExperience() {
                 if (e.design <= e.tech) e.design = minOf(10, e.design + 1) else e.tech = minOf(10, e.tech + 1)
             }
         }
-        e.salary *= 1.06
+        e.salary *= if (e.trait == Trait.LOYAL) 1.03 else 1.06
         e.morale = minOf(1.0, e.morale + 0.1)
         ups += e.id
     }

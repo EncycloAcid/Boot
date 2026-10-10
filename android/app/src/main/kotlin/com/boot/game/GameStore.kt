@@ -1,5 +1,10 @@
 package com.boot.game
 
+import com.boot.core.with
+import com.boot.core.runRecord
+import com.boot.core.encodeHall
+import com.boot.core.decodeHall
+import com.boot.core.LegacyPerk
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -35,6 +40,11 @@ enum class Speed(val label: String, val millis: Long) {
 /** Owns the running game, routes player actions into it, runs the clock, and autosaves. */
 class GameStore(app: Application) : AndroidViewModel(app) {
     private val saveFile = File(app.filesDir, "autosave.json")
+    private val hallFile = File(app.filesDir, "hall.json")
+
+    /** Every run that has ended, kept across games. */
+    var hall by mutableStateOf(runCatching { decodeHall(hallFile.readText()) }.getOrDefault(emptyList()))
+        private set
 
     /** Replaced with a fresh copy after every action, so Compose always sees the change. */
     var state by mutableStateOf<GameState?>(null)
@@ -94,7 +104,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         seed: Long = Random.nextLong(),
         difficulty: Difficulty = Difficulty.NORMAL,
     ) {
-        val s = GameState.create(company, founder, lane, seed, difficulty)
+        val s = GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall))
         state = s
         playing = false
         tab = Tab.OFFICE
@@ -192,6 +202,13 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     }
 
     private fun save(s: GameState) {
+        s.runRecord()?.let { record ->
+            if (record !in hall) {
+                hall = hall.with(record)
+                val text = encodeHall(hall)
+                runCatching { hallFile.writeText(text) }
+            }
+        }
         val encoded = s.encode()
         json = encoded
         pendingSave.value = encoded

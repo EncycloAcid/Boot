@@ -1,5 +1,14 @@
 package com.boot.game.ui
 
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.Icons
+import com.boot.core.ranked
+import com.boot.core.GameClock
+import com.boot.core.EndingKind
+import com.boot.core.LegacyPerk
+import com.boot.core.RunRecord
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -173,6 +182,10 @@ fun NewGameScreen(store: GameStore) {
                     }
                 }
             }
+            if (store.hall.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) { LegacySection(store.hall) }
+                item(span = { GridItemSpan(maxLineSpan) }) { HallOfFame(store.hall) }
+            }
         }
     }
 }
@@ -226,6 +239,56 @@ private fun LaneTile(lane: Lane, selected: Boolean, onClick: () -> Unit) {
                 lane.businessName,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Head starts earned in earlier runs, and how to earn the rest. */
+@Composable
+private fun LegacySection(hall: List<RunRecord>) {
+    val colors = gameColors
+    val earned = LegacyPerk.earned(hall)
+    GroupedSection("Your legacy · ${earned.size} of ${LegacyPerk.entries.size}", footer = "What you've done before gives every new company a head start.") {
+        LegacyPerk.entries.forEachIndexed { i, p ->
+            if (i > 0) RowDivider(56.dp)
+            val has = p in earned
+            ListRow(
+                p.title,
+                subtitle = if (has) p.detail else p.progress(hall),
+                leading = {
+                    Icon(
+                        if (has) Icons.Filled.CheckCircle else Icons.Filled.Lock, null,
+                        tint = if (has) colors.good else MaterialTheme.colorScheme.outline,
+                    )
+                },
+            )
+        }
+    }
+}
+
+/** Your best runs, biggest first. */
+@Composable
+private fun HallOfFame(hall: List<RunRecord>) {
+    val colors = gameColors
+    GroupedSection("Hall of Fame · ${hall.size} run${if (hall.size == 1) "" else "s"}") {
+        hall.ranked().take(5).forEachIndexed { i, r ->
+            if (i > 0) RowDivider(56.dp)
+            val good = r.kind == EndingKind.IPO || r.kind == EndingKind.ACQUIRED || r.kind == EndingKind.INDIE
+            ListRow(
+                r.company,
+                subtitle = "${r.kind.title} · ${r.lane.businessName} · ${GameClock.label(r.week)}" +
+                    (if (r.difficulty != Difficulty.NORMAL) " · ${r.difficulty.title.lowercase()}" else ""),
+                leading = {
+                    Text(
+                        "${i + 1}", style = MaterialTheme.typography.titleMedium,
+                        color = if (i == 0) colors.warn else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(24.dp),
+                    )
+                },
+                value = Format.money(r.valuation),
+                valueColor = if (good) MaterialTheme.colorScheme.onSurface else colors.bad,
+                valueDetail = "you took ${Format.money(r.takeHome)}",
             )
         }
     }

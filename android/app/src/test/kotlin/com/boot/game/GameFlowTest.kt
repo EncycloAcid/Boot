@@ -37,6 +37,10 @@ import com.boot.core.Research
 import com.boot.core.LiveService
 import com.boot.core.GameRelease
 import com.boot.core.GameState
+import com.boot.core.Perk
+import com.boot.core.Feature
+import com.boot.core.encodeHall
+import com.boot.core.RunRecord
 import com.boot.core.PrizePool
 import com.boot.core.Engine
 import com.boot.core.stayFocused
@@ -714,6 +718,47 @@ class GameFlowTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(after.name))
         compose.waitForIdle()
         screen("63-esports")
+    }
+
+    @Test
+    fun hallOfFameTraitsAndRoadmaps() {
+        // Three earlier runs: one went public, one went bust.
+        val earlier = listOf(
+            RunRecord("Moss & Co", "Ivy", Lane.GAMES, EndingKind.IPO, "The Moss IPO", 300, 2.4e9, 6e8, false, Difficulty.NORMAL, 22, seed = 1),
+            RunRecord("Pebble Works", "Ivy", Lane.HARDWARE, EndingKind.BANKRUPT, "Out of Stock", 140, 3e6, 0.0, false, Difficulty.HARD, 6, seed = 2),
+            RunRecord("Tally Apps", "Ivy", Lane.APPS, EndingKind.INDIE, "Small and Mighty", 780, 9e7, 9e7, false, Difficulty.EASY, 15, seed = 3),
+        )
+        File(RuntimeEnvironment.getApplication().filesDir, "hall.json").writeText(encodeHall(earlier))
+        launch()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Hall of Fame", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        compose.onNodeWithText("Moss & Co").assertExists()
+        screen("64-hall-of-fame")
+
+        compose.runOnIdle { store.newGame("Lantern Web", "Ivy", Lane.WEBSITES, seed = 5) }
+        compose.waitForIdle()
+        val s = store.state!!
+        // Been here before, IPO veteran, survivor and billion-dollar founder.
+        assertEquals(Difficulty.NORMAL.startingCash + 10_000, s.cash, 1.0)
+        assertTrue(s.candidates.any { it.skill >= 8 })
+        assertTrue(Perk.COFFEE in s.perks)
+
+        compose.runOnIdle { store.perform { hire(candidates.first { it.trait != null }.id, Lane.WEBSITES) } }
+        compose.waitForIdle()
+        val hired = store.state!!.staff.single()
+        tab("Team")
+        compose.onAllNodesWithText(hired.trait!!.title, substring = true).onFirst().assertExists()
+        screen("65-traits")
+
+        tab("Lanes")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Roadmap", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Build")[0].performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        assertEquals(Feature.CASE_STUDIES, store.state!!.building.single().feature)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Roadmap", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("66-roadmap")
     }
 
     @Test

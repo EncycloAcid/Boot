@@ -102,6 +102,26 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - Regulators show up the moment you get big. Rival labs poach researchers aggressively.
 - The highest ceiling in the game and the fastest way to go broke.
 
+## Personalities
+
+About 70% of candidates come with a trait, shown before you hire them, and keep it: **Perfectionist** (90% output, +1.5 quality points each, up to +6 for a team), **Hustler** (115% output, morale settles 6 points lower), **Night owl** (130% output and no morale loss during crunch), **Mentor** (everyone else on their team earns 25% more experience), **Diva** (125% output, morale settles 12 points lower, twice as likely to quit when unhappy), **Team player** (lifts teammates' morale by 4 points, up to 8), **Rainmaker** (+3% demand for their business, up to +8%), **Loyal** (never quits, rivals don't poach them, 3% raises on level-up instead of 6%) and **Fast learner** (double experience).
+
+## Product roadmaps
+
+Every business except the game studio has four features to build, each with a cash cost and a build time in weeks. While one is being built the team gets 15% less done; once it's live the effect is permanent. One build per business at a time.
+
+- **Web agency:** case studies (+5% demand), design system (+6% output), retainer packages (+3% demand, -5% costs), offshore partners (+12% output, -4% demand).
+- **Apps:** guided onboarding (-4% churn), dark mode and polish (+3 quality), referral program (+6% demand, +3% costs), offline mode (-5% churn, +5% costs).
+- **Social:** stories (+3% growth, more toxicity), algorithmic feed (+8% demand, more toxicity), community notes (toxicity falls faster), live video (+4% growth, +6% costs).
+- **Hardware:** drop-test lab (-30% recall risk), in-house chip (+4 quality, -3% costs), retail partners (+6% demand), repair program (+2 quality, -15% risk).
+- **AI:** inference optimization (-5% compute), data deals (+5% capability per run, +10% regulator risk), red team (-15% risk), enterprise API (+4% demand).
+
+The effects are small on purpose: churn and growth compound every week.
+
+## Hall of Fame and legacy
+
+Every run that ends goes into a Hall of Fame kept across games (a run that ends, plays on as a public company and ends again keeps one entry), ranked by valuation. Six legacy perks follow you into new companies once earned: **Been here before** (any finished run: +$10k), **Serial founder** (five runs: +$15k and 10 RP), **IPO veteran** (an IPO: a star candidate on day one), **Survivor** (a bankruptcy: experience in your starting lane), **Ecosystem builder** (an ecosystem ending: 20 RP) and **Billion-dollar founder** (a $1B run: the espresso machine from day one).
+
 ## Research
 
 Your team generates **research points (RP)** every week: researchers and research talent count most, game development adds some, and an R&D lab adds half again. RP buy items from one tree:

@@ -170,6 +170,7 @@ private fun HiringSection(store: GameStore, state: GameState) {
             ListRow(
                 c.name,
                 subtitle = "${c.role.title} · skill ${c.skill} · ${c.askingSalary.perWeek()}\nDesign ${c.design} · Tech ${c.tech} · Research ${c.research}" +
+                    (c.trait?.let { "\n${it.title}: ${it.detail.replaceFirstChar { ch -> ch.lowercase() }}" } ?: "") +
                     (c.contestedBy?.let { "\n$it is circling" } ?: ""),
                 leading = { CandidatePortrait(c.id, 44.dp, ring = if (c.contestedBy != null) gameColors.warn else null) },
             ) {
@@ -243,6 +244,12 @@ private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Uni
                 "Design ${e.design} · Tech ${e.tech} · Research ${e.research}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
             )
+            e.trait?.let { t ->
+                Text(
+                    "${t.title}: ${t.detail.replaceFirstChar { it.lowercase() }}",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                )
+            }
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 MiniBar("Morale", e.morale, if (e.morale < 0.35) colors.bad else colors.good)
                 MiniBar(if (e.maxLevel) "Max level" else "XP", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone)
