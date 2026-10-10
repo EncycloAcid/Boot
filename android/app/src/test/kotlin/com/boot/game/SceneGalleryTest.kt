@@ -136,6 +136,42 @@ class SceneGalleryTest {
     }
 
     @Test
+    fun logo() {
+        val ctx = org.robolectric.RuntimeEnvironment.getApplication()
+        val size = 432
+        val out = Bitmap.createBitmap(size * 3 + 80, size + 40, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        canvas.drawColor(android.graphics.Color.rgb(242, 242, 247))
+        // The launcher icon as a circle, as a rounded square, and the themed monochrome version.
+        val layers = listOf(com.boot.game.R.drawable.ic_launcher_background, com.boot.game.R.drawable.ic_launcher_foreground)
+        val shapes = listOf(size / 2f, size * 0.22f)
+        shapes.forEachIndexed { i, radius ->
+            val tile = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val c = Canvas(tile)
+            for (id in layers) ctx.getDrawable(id)!!.apply { setBounds(-size / 4, -size / 4, size + size / 4, size + size / 4) }.draw(c)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { shader = android.graphics.BitmapShader(tile, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP) }
+            canvas.save()
+            canvas.translate(20f + i * (size + 20f), 20f)
+            canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), radius, radius, paint)
+            canvas.restore()
+        }
+        val mono = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val mc = Canvas(mono)
+        mc.drawColor(android.graphics.Color.rgb(46, 52, 64))
+        ctx.getDrawable(com.boot.game.R.drawable.ic_launcher_monochrome)!!.apply {
+            setTint(android.graphics.Color.rgb(200, 215, 255))
+            setBounds(-size / 4, -size / 4, size + size / 4, size + size / 4)
+        }.draw(mc)
+        val mp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { shader = android.graphics.BitmapShader(mono, android.graphics.Shader.TileMode.CLAMP, android.graphics.Shader.TileMode.CLAMP) }
+        canvas.save()
+        canvas.translate(20f + 2 * (size + 20f), 20f)
+        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), size / 2f, size / 2f, mp)
+        canvas.restore()
+        File("build/screenshots").mkdirs()
+        File("build/screenshots/00-logo.png").outputStream().use { out.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    @Test
     fun portraits() {
         val s = office(Office.STUDIO, 12, emptyList(), listOf(Lane.GAMES, Lane.GAMES))
         compose.setContent {

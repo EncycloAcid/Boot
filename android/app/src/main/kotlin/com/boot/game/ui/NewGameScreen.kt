@@ -42,6 +42,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
+import com.boot.game.R
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
@@ -116,7 +120,10 @@ fun NewGameScreen(store: GameStore) {
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Boot", style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Image(painterResource(R.drawable.logo), contentDescription = null, modifier = Modifier.size(52.dp))
+                        Text("Boot", style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.primary)
+                    }
                     Text(
                         "You start solo in a cramped apartment with ${Format.money(difficulty.startingCash)} in savings. Pick a lane.",
                         style = MaterialTheme.typography.titleMedium,
