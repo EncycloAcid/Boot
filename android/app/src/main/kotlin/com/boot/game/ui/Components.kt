@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -215,11 +217,12 @@ fun Pill(text: String, color: Color) {
 fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail: String? = null, tint: Color = Color.Unspecified) {
     Column(
         modifier
+            .fillMaxHeight()
             .clip(RoundedCornerShape(16.dp))
             .background(gameColors.fill)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
             value,
             style = MaterialTheme.typography.titleLargeEmphasized,
@@ -230,7 +233,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
         if (detail != null) {
             Text(
                 detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -239,7 +242,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
 /** Tiles side by side. Phones are narrow; pairs and triples read better than a long row. */
 @Composable
 fun TileRow(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), content = content)
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp), content = content)
 }
 
 /**

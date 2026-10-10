@@ -492,6 +492,8 @@ class GameFlowTest {
         compose.waitForIdle()
         compose.onNodeWithText("Team Cherry").assertExists()
         screen("45-studios")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Buy"))
+        compose.waitForIdle()
         compose.onAllNodesWithText("Buy")[0].performClick()
         compose.waitForIdle()
         val dialogButtons = compose.onAllNodesWithText("Buy")

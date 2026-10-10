@@ -10,6 +10,8 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 - Each team has its own development, focus and hype panels, its own release button, and its own card on the office screen, and points float up for both.
 - There's a new "Double Feature" achievement.
 
+**1.1.1 polish:** focus sliders start in the middle of the track, not full; long game titles wrap on the office card instead of getting cut off; business descriptions show in full; stat tile notes wrap instead of ending in "…"; tiles in a row line up; the top bar shows the era without "The"; the live-service options fit ("Cosmetic", "Fair", "Aggressive"); and $0 incomes show grey instead of green.
+
 **New in 1.0 (Android):** the empire update.
 - **Buy studios.** Every studio on the games market is for sale, from indies like Team Cherry, ConcernedApe and Larian to the giants: Rockstar, Nintendo, EA, PlayStation Studios, Valve.
   - A studio you own keeps making games under its own name. Its real series (GTA, Mario, Zelda, Call of Duty, FIFA and the rest) count as yours on the chart and stop competing with you.

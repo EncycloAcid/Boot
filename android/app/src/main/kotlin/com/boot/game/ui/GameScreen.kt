@@ -227,7 +227,7 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        "${state.dateLabel} · ${state.world.era.title}",
+                        "${state.dateLabel} · ${state.world.era.title.removePrefix("The ")}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,

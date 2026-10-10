@@ -233,11 +233,11 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
     val c = p.concept
     val stage = if (p.isReady) "Polish" else listOf("Foundations", "Content", "Presentation")[p.stage]
     CardBlock {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Top) {
             GameCover(c, 48.dp, studio = state.companyName)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Hint((if (team == 2) "Team 2 · " else "") + "${c.size.title} ${c.topic.title.lowercase()} ${c.genreLower} · ${c.platforms.joinToString { it.title }}")
             }
             Text(

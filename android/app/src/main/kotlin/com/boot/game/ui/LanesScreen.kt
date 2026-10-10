@@ -96,7 +96,6 @@ private fun LaneHero(state: GameState, lane: Lane) {
                 Text(lane.businessName, style = MaterialTheme.typography.headlineSmall)
                 Text(
                     lane.pitch, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
             }
         }

@@ -101,7 +101,7 @@ fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
                     subtitle = "Since ${GameClock.label(sub.boughtWeek)} · worth ${Format.money(state.studioValue(s))} · earned ${Format.money(sub.lifetimeProfit)}",
                     leading = { StudioBadge(sub.name) },
                     value = sub.lastProfit.perWeek(),
-                    valueColor = colors.good,
+                    valueColor = if (sub.lastProfit > 0) colors.good else Color.Unspecified,
                     trailing = { PlainButton("Sell", { selling = s }) },
                 )
             }
@@ -166,7 +166,7 @@ fun LiveGamesSection(store: GameStore, state: GameState, g: GamesStudio) {
                     if (stale) " · going stale" else " · ${Format.weeks(state.week - l.lastSeasonWeek)} in",
                 leading = { CoverWithScore(r.concept, r.score) },
                 value = (l.lastRevenue - l.lastCost).perWeek(),
-                valueColor = if (l.lastRevenue >= l.lastCost) colors.good else colors.bad,
+                valueColor = when { l.lastRevenue > l.lastCost -> colors.good; l.lastRevenue < l.lastCost -> colors.bad; else -> Color.Unspecified },
                 chevron = true,
                 onClick = { store.openRelease = r.id },
             )
@@ -196,7 +196,7 @@ fun LiveServiceSection(store: GameStore, state: GameState, r: GameRelease) {
         Column(Modifier.padding(8.dp)) {
             TileRow {
                 StatTile("Players", Format.count(l.players), Modifier.weight(1f), "peak ${Format.count(l.peakPlayers)}")
-                StatTile("In-game", l.lastRevenue.perWeek(), Modifier.weight(1f), "servers ${l.lastCost.perWeek()}", tint = colors.good)
+                StatTile("In-game", l.lastRevenue.perWeek(), Modifier.weight(1f), "servers ${l.lastCost.perWeek()}", tint = if (l.lastRevenue > 0) colors.good else Color.Unspecified)
                 StatTile("Seasons", "${l.seasons}", Modifier.weight(1f), if (since > STALE_AFTER) "going stale" else "${Format.weeks(since)} since")
             }
         }

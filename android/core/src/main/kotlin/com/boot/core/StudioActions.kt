@@ -51,7 +51,7 @@ fun GameState.setTeamSplit(share: Double) {
 }
 
 /** A balanced starting split: a third each. */
-fun evenFocus(): List<MutableList<Double>> = List(3) { mutableListOf(1.0, 1.0, 1.0) }
+fun evenFocus(): List<MutableList<Double>> = List(3) { mutableListOf(0.5, 0.5, 0.5) }
 
 /** Why a concept can't be started, or null if it can. */
 fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: Int = 1): String? {

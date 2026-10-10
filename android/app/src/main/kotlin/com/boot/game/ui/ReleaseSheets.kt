@@ -156,7 +156,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     GroupedSection("Sales") {
                         Column(Modifier.padding(8.dp)) {
                             TileRow {
-                                StatTile("Earned", Format.money(r.lifetimeSales), Modifier.weight(1f), "after platform cut")
+                                StatTile("Earned", Format.money(r.lifetimeSales), Modifier.weight(1f), "after the cut")
                                 StatTile("Copies", Format.count(r.unitsSold), Modifier.weight(1f))
                                 StatTile("Best rank", if (r.bestRank > 0) "#${r.bestRank}" else "—", Modifier.weight(1f))
                             }

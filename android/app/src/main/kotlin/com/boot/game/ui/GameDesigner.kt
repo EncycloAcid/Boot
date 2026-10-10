@@ -112,7 +112,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
     var engineId by remember { mutableIntStateOf(seed?.engineId ?: g.engines.maxBy { it.level }.id) }
     var price by remember { mutableStateOf(seed?.price ?: PriceTier.STANDARD) }
     var live by remember { mutableStateOf(seed?.live ?: false) }
-    val focus = remember { List(3) { mutableStateListOf(1.0, 1.0, 1.0) } }
+    val focus = remember { List(3) { mutableStateListOf(0.5, 0.5, 0.5) } }
 
     val concept = GameConcept(
         title = title.trim().ifEmpty { "Untitled" }, topic = topic, genre = genre, genre2 = genre2, audience = audience,

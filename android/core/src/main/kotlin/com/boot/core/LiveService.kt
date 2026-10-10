@@ -19,7 +19,7 @@ enum class Monetization {
 
     val title: String
         get() = when (this) {
-            COSMETIC -> "Cosmetics only"
+            COSMETIC -> "Cosmetic"
             FAIR -> "Fair"
             AGGRESSIVE -> "Aggressive"
         }
