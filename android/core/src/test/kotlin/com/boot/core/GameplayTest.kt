@@ -1168,3 +1168,77 @@ class LaneEventsTest {
         assertTrue(e.morale < 0.8)
     }
 }
+
+class EraTest {
+    /** A week at a time, staying focused at the Pivot Point, until [done] or a cap. */
+    private fun GameState.until(cap: Int = 400, done: GameState.() -> Boolean) {
+        var guard = 0
+        while (!done() && !isOver && guard++ < cap) {
+            if (pendingPivot != null) stayFocused()
+            play(1)
+        }
+        assertTrue(done(), "ran out of weeks")
+    }
+
+    @Test
+    fun anEraDawnsPeaksFadesAndHandsOver() {
+        val s = game(Lane.APPS, 180)
+        s.cash = 1e9
+        // Skip the bootstrap years.
+        s.until { world.era != Era.BOOTSTRAP_YEARS }
+        val w = s.world
+        val era = w.era
+        assertEquals(EraPhase.DAWN, w.phase)
+        assertTrue(w.eraIntensity < 0.5)
+        assertTrue(s.news.any { it.lead && it.headline.contains(era.title) })
+        // At the dawn the era is only partly felt.
+        assertEquals(1 + (era.demand(Lane.APPS) - 1) * w.eraIntensity, w.demand(Lane.APPS), 1e-9)
+        s.until { world.phase != EraPhase.DAWN }
+        assertEquals(EraPhase.PEAK, w.phase)
+        assertEquals(1.0, w.eraIntensity, 1e-9)
+        s.until { world.phase != EraPhase.PEAK }
+        assertEquals(EraPhase.FADING, w.phase)
+        val next = w.nextEra!!
+        assertTrue(next != era)
+        assertTrue(s.news.any { it.body.contains(next.rumor) })
+        s.until { world.era != era }
+        assertEquals(next, w.era)
+        assertEquals(era, w.history.last().era)
+        assertNull(w.nextEra)
+    }
+
+    @Test
+    fun theNewErasExist() {
+        for (e in listOf(Era.CHIP_SHORTAGE, Era.CLOUD_GAMING, Era.SUPER_APPS)) {
+            assertTrue(e.dawn.isNotEmpty() && e.peak.isNotEmpty() && e.fade.isNotEmpty() && e.rumor.isNotEmpty())
+        }
+        assertEquals(1.3, Era.CHIP_SHORTAGE.hardwareCost, 1e-9)
+    }
+}
+
+class NewsTest {
+    @Test
+    fun yourLaunchesMakeThePaper() {
+        val s = game(Lane.GAMES, 190)
+        s.cash = 1e7
+        s.startGame(GameConcept("Paper Moon", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL))
+        var guard = 0
+        while (s.games!!.project?.isReady != true && guard++ < 60) s.play(1)
+        s.launchGame()
+        val story = s.news.last()
+        assertEquals(NewsDesk.YOU, story.desk)
+        assertTrue(story.headline.startsWith("Paper Moon review"))
+    }
+
+    @Test
+    fun theWorldMakesNewsWithoutYou() {
+        val s = game(Lane.WEBSITES, 191)
+        s.cash = 1e8
+        s.play(150)
+        assertTrue(s.news.any { it.desk == NewsDesk.INDUSTRY })
+        assertTrue(s.news.any { it.desk == NewsDesk.MARKETS })
+        // Rivals outside your business still make the industry pages.
+        assertTrue(s.news.any { it.desk == NewsDesk.INDUSTRY && it.lane != null && it.lane != Lane.WEBSITES })
+        assertTrue(s.news.size <= 300)
+    }
+}

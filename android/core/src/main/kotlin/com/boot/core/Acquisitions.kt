@@ -64,7 +64,7 @@ const val ACQUISITION_PREMIUM = 0.15
 /** What a studio is worth today: values drift with the industry the way the league table's do. */
 fun GameState.studioValue(s: Studio): Double {
     val years = week / 52.0
-    return s.baseValue * world.era.demand(Lane.GAMES).pow(1.5) * 1.06.pow(years)
+    return s.baseValue * world.demand(Lane.GAMES).pow(1.5) * 1.06.pow(years)
 }
 
 /** What it costs to buy a studio today, premium included. */
@@ -101,6 +101,7 @@ fun GameState.acquire(name: String) {
     stats.acquisitions += 1
     reputation.adjust(if (s.indie) 1.0 else 3.0)
     addLog("You bought ${s.name} for ${money(price)}. Their games are yours now.", LogTone.MILESTONE, Lane.GAMES)
+    publish(NewsDesk.YOU, rng.pick(listOf("The Verge", "Bloomberg", "Kotaku")), "$companyName buys ${s.name} for ${money(price)}", studioFranchises(s.name).take(2).joinToString().let { if (it.isEmpty()) "" else "The maker of $it." }, LogTone.GOOD, Lane.GAMES, lead = !s.indie)
 }
 
 fun GameState.divest(name: String) {

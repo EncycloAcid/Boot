@@ -150,6 +150,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         internal set
     var log: List<LogEntry> = emptyList()
         internal set
+
+    /** The press: the world's news, and stories about you. */
+    var news: List<NewsStory> = emptyList()
+        internal set
     var ledger: List<WeekLedger> = emptyList()
         internal set
     val stats = Stats()
@@ -238,7 +242,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             Lane.HARDWARE -> hardware?.assetValue
             Lane.AI -> ai?.assetValue
         } ?: 0.0
-        return max(0.0, annual * lane.revenueMultiple * world.era.investorAppetite) + assets
+        return max(0.0, annual * lane.revenueMultiple * world.investorAppetite) + assets
     }
 
     /** What the businesses are worth, excluding cash in the bank. */
@@ -304,6 +308,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         val people = staffing(lane)
         mods.quality += minOf(6.0, people.traitQuality)
         mods.demand *= people.traitDemand
+        if (lane == Lane.HARDWARE) mods.cost *= world.hardwareCost
         mods.demand *= difficulty.sales
         mods.cost *= difficulty.costs
         if (isEcosystem) {
@@ -312,7 +317,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         }
         return LaneContext(
             week = week, staffing = staffing(lane), mods = mods,
-            reception = reputation.launchReception(lane), era = world.era,
+            reception = reputation.launchReception(lane), era = world.era, eraDemand = world.demand(lane), gpuPrice = world.gpuPrice,
             competition = world.competition(lane), crunch = crunch, lane = lane,
         )
     }
@@ -366,6 +371,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
                 "You now own ${Format.percent(venture.founderEquity)}.",
             LogTone.MILESTONE,
         )
+        publish(
+            NewsDesk.YOU, "TechCrunch", "$companyName raises ${money(offer.amount)}" + (if (offer.lead.isNotEmpty()) ", led by ${offer.lead}" else ""),
+            "A ${offer.name.lowercase()} at a ${money(offer.preMoney)} valuation.", LogTone.GOOD,
+        )
     }
 
     internal fun openLane(lane: Lane) {
@@ -408,7 +417,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         val appeal = if (has(Perk.CHEF)) 0.5 else 0.0
         val skill = if (star) rng.int(8, 10) else rng.normal(5.0 + appeal, 1.8).roundToInt().clamped(1, 10)
         var salary = r.baseSalary * (0.5 + skill * 0.1) * rng.range(0.9, 1.15)
-        if (r == Role.RESEARCHER && world.era == Era.AI_GOLD_RUSH) salary *= 1.6
+        if (r == Role.RESEARCHER && world.era == Era.AI_GOLD_RUSH) salary *= 1 + 0.6 * world.eraIntensity
+        salary *= world.salaries
         var contested: String? = null
         var expires = week + 6
         val rival = rng.pick(world.rivals)

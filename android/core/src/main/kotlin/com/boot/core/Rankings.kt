@@ -54,7 +54,7 @@ fun GameState.rankings(): List<RankedCompany> {
     // Companies you've bought aren't on the table any more: they're part of you.
     val owned = games?.subsidiaries?.map { if (it.name == "CD Projekt Red") "CD Projekt" else it.name }.orEmpty().toSet()
     val others = Industry.filter { it.first !in owned }.mapIndexed { i, (name, base, lane) ->
-        val era = world.era.demand(lane).pow(1.5)
+        val era = world.demand(lane).pow(1.5)
         val wobble = 1 + 0.06 * sin(week / 9.0 + i * 1.7)
         RankedCompany(name, base * era * 1.06.pow(years) * wobble, lane, mine = false)
     }

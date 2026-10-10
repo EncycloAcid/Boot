@@ -186,9 +186,9 @@ Every pairing of two lanes (15 in all) unlocks a crossover product only that com
 
 ## The world
 
-- **Eras** last 1.5 to 2.5 years and shift demand per lane, GPU prices and investor appetite: The Bootstrap Years, The AI Gold Rush, The VR Hype Cycle, Crypto Winter, The Remote Work Boom, The Privacy Panic, The Creator Economy, The Retro Revival, The Metaverse Hangover.
-- **Rivals**, one main rival per lane (Electronic Arts, Squarespace, Google, Meta, Apple, OpenAI on Android; parody names in the Swift version), squeeze your demand, launch competing products and poach your people. The news also mentions the other big names in each lane.
-- **Reputation carries across everything.** Scars (predatory monetization, flops, privacy breaches, scandals, recalls, antitrust, layoffs) fade at different speeds and make each lane's audience suspicious in different ways. Ship a predatory mobile game and your social app launches to suspicion.
+**Eras.** Twelve eras (the Bootstrap Years, then the AI Gold Rush, VR Hype Cycle, Crypto Winter, Remote Work Boom, Privacy Panic, Creator Economy, Retro Revival, Metaverse Hangover, Chip Shortage, Cloud Gaming Push and Super-App Era) each last 78-130 weeks and change demand per lane, salaries, GPU prices, hardware part costs and investor appetite. Each has a life: the first 20% is its dawn, when its effects build from 35% to full strength; then its peak; and the last 25% it fades, easing to half strength. When it starts to fade, the next era is chosen (unseen ones first) and its rumours appear in the news and on the era card. The company page shows the era, its phase and strength, every effect as it stands, and a timeline.
+
+**The news.** The Daily Byte has a front page (the era card, a lead story from the last six months, and the latest stories) and four desks: your company, industry, games and markets, plus your company log. Stories come from outlets that would run them (The Economist and Bloomberg for the era and the markets, TechCrunch for funding, IGN and Kotaku for games, The Verge and Wired for devices and AI). Sources: the era's dawn, peak and fade headlines every few weeks, the start of each era and rumours of the next, every rival's big moves in any lane, notable rival game releases (8.5+, mega releases and AAA flops), Game of the Year, esports finals, the quarterly markets (the most valuable company, hot and cold sectors, your place in the top twenty), and your own reviews, funding rounds, IPO, acquisitions, label hits, milestones and ending. The paper keeps the last 300 stories.
 
 ## Endings
 

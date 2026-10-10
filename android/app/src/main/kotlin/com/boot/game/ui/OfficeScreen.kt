@@ -85,6 +85,7 @@ fun OfficeScreen(store: GameStore, state: GameState) {
             item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openStudio(StudioPage.MARKET) }) }) { store.openRelease = it } }
             item { ComingSoonCard(state, limit = 3) }
         }
+        item { HeadlinesCard(store, state) }
         item { Shortcuts(store, state) }
         item {
             GroupedSection("Latest", action = { PlainButton("All news", { store.tab = Tab.NEWS }) }) {

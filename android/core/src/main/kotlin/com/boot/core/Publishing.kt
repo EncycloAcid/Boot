@@ -271,6 +271,7 @@ private fun GameState.publish(s: SignedGame) {
         avg >= 8 -> {
             g.fans += gross / c.unitPrice * 0.08
             addLog("Your label's ${p.title} by ${p.developer} is a hit: $text/10. Launch week: ${money(gross)}.", LogTone.MILESTONE, Lane.GAMES)
+            publish(NewsDesk.YOU, techOutlet(Lane.GAMES, rng), "${p.title} review: ${p.developer} and $companyName find a gem", "$text/10.", LogTone.GOOD, Lane.GAMES)
         }
         avg >= 5 -> addLog("Your label released ${p.title} by ${p.developer}: $text/10. Launch week: ${money(gross)}.", LogTone.GOOD, Lane.GAMES)
         else -> addLog("${p.title} by ${p.developer} flopped at $text/10. Your label takes the hit.", LogTone.BAD, Lane.GAMES)

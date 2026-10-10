@@ -334,7 +334,7 @@ class GameFlowTest {
     fun franchisesComingSoonAndSpinOffs() {
         launch()
         compose.runOnIdle {
-            store.newGame("Series Co", "Rae", Lane.GAMES, seed = 21)
+            store.newGame("Series Co", "Rae", Lane.GAMES, seed = 22)
             val pilot = Autopilot()
             store.perform {
                 while (week < 300 && !isOver && (games!!.franchises.isEmpty() || games!!.busy)) pilot.playWeek(this)
@@ -759,6 +759,34 @@ class GameFlowTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Roadmap", substring = true, ignoreCase = true))
         compose.waitForIdle()
         screen("66-roadmap")
+    }
+
+    @Test
+    fun theDailyByteAndTheEra() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Night Desk", "Ivy", Lane.GAMES, seed = 12)
+            val pilot = Autopilot()
+            store.perform { repeat(140) { if (pendingPivot != null) stayFocused(); pilot.playWeek(this) } }
+        }
+        compose.waitForIdle()
+        assertTrue(store.state!!.news.isNotEmpty())
+        compose.runOnIdle { store.tab = Tab.NEWS }
+        compose.waitForIdle()
+        compose.onNodeWithText("The Daily Byte").assertExists()
+        screen("67-news-front")
+        assertEquals(store.state!!.news.last().id, store.newsSeen)
+        compose.onNodeWithText("Industry").performClick()
+        compose.waitForIdle()
+        screen("68-news-industry")
+        compose.runOnIdle {
+            store.companyPage = 0
+            store.tab = Tab.COMPANY
+        }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Demand this era", ignoreCase = true))
+        compose.waitForIdle()
+        screen("69-era")
     }
 
     @Test

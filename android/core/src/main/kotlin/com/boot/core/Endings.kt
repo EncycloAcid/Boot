@@ -87,6 +87,17 @@ val GameState.ipoBlocker: String?
 internal fun GameState.end(kind: EndingKind, price: Double? = null, buyer: String? = null) {
     if (ending != null) return
     val value = price ?: listing?.marketCap ?: valuation
+    publish(
+        NewsDesk.YOU, businessOutlet(),
+        when (kind) {
+            EndingKind.IPO -> "$companyName goes public at ${money(value)}"
+            EndingKind.ACQUIRED -> "${buyer ?: "A buyer"} buys $companyName for ${money(value)}"
+            EndingKind.INDIE -> "$companyName stays independent"
+            EndingKind.BANKRUPT -> "$companyName files for bankruptcy"
+            EndingKind.OUSTED -> "$companyName's board ousts its founder"
+        },
+        tone = if (kind == EndingKind.BANKRUPT || kind == EndingKind.OUSTED) LogTone.BAD else LogTone.GOOD, lead = true,
+    )
     stats.peakValuation = max(stats.peakValuation, valuation)
     val equity = venture.founderEquity
     val takeHome = when (kind) {

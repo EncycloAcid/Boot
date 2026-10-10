@@ -116,7 +116,7 @@ fun GameState.roundOffer(): Result<RoundOffer> {
         }
     }
     val name = Venture.roundNames[venture.rounds.size]
-    val appetite = world.era.investorAppetite * (if (lanes.any { it in world.era.hotLanes }) 1.3 else 1.0)
+    val appetite = world.investorAppetite * (if (lanes.any { it in world.era.hotLanes }) 1.3 else 1.0)
     var pre = enterpriseValue * appetite + max(0.0, cash)
     if (venture.rounds.isEmpty()) {
         lanes.firstOrNull { it.isCapitalIntensive }?.let { heavy ->

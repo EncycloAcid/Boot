@@ -37,6 +37,7 @@ fun GameState.advance() {
 
     studioWeek()
     roadmapWeek()
+    newsWeek()
     researchPoints += weeklyResearch(games?.lastWork ?: 0.0)
 
     // Unassigned staff still get paid.
@@ -93,7 +94,12 @@ private fun GameState.applyReport(report: LaneReport, lane: Lane) {
 internal fun GameState.handle(incidents: List<Incident>, lane: Lane?) {
     for (incident in incidents) {
         when (incident) {
-            is Incident.Log -> addLog(incident.text, incident.tone, lane)
+            is Incident.Log -> {
+                addLog(incident.text, incident.tone, lane)
+                if (incident.tone == LogTone.MILESTONE && lane != null && lane != Lane.GAMES) {
+                    publish(NewsDesk.YOU, techOutlet(lane, rng), incident.text.substringBefore(". ").removeSuffix("."), "$companyName · ${lane.businessName}", LogTone.GOOD, lane)
+                }
+            }
             is Incident.Reputation -> reputation.adjust(incident.delta)
             is Incident.Scar -> reputation.scar(incident.kind, incident.severity, week, incident.note)
             is Incident.Event -> enqueue(incident.kind)
@@ -117,17 +123,61 @@ internal fun GameState.handle(incidents: List<Incident>, lane: Lane?) {
 // World
 
 private fun GameState.updateEra() {
-    if (week - world.eraStartWeek < world.eraLength) return
-    val unseen = Era.entries.filter { it != Era.BOOTSTRAP_YEARS && it !in world.pastEras && it != world.era }
-    val next = if (unseen.isEmpty()) {
-        rng.pick(Era.entries.filter { it != world.era && it != Era.BOOTSTRAP_YEARS })
-    } else {
-        rng.pick(unseen)
+    val w = world
+    val progress = (week - w.eraStartWeek).toDouble() / w.eraLength
+    if (progress >= 1.0) {
+        startNextEra()
+        return
     }
-    world.pastEras += world.era
-    world.era = next
-    world.eraStartWeek = week
-    world.eraLength = rng.int(78, 130)
+    val phase = when {
+        w.era == Era.BOOTSTRAP_YEARS -> EraPhase.PEAK
+        progress < 0.2 -> EraPhase.DAWN
+        progress > 0.75 -> EraPhase.FADING
+        else -> EraPhase.PEAK
+    }
+    w.eraIntensity = when (phase) {
+        EraPhase.DAWN -> 0.35 + 0.65 * progress / 0.2
+        EraPhase.PEAK -> 1.0
+        EraPhase.FADING -> 1 - 0.5 * (progress - 0.75) / 0.25
+    }
+    if (phase != w.phase) {
+        w.phase = phase
+        when (phase) {
+            EraPhase.PEAK -> if (w.era != Era.BOOTSTRAP_YEARS) {
+                publish(NewsDesk.INDUSTRY, "The Economist", "${w.era.title} is at its height", w.era.blurb, lead = true)
+            }
+            EraPhase.FADING -> {
+                val next = pickNextEra()
+                w.nextEra = next
+                publish(NewsDesk.INDUSTRY, "The Economist", "Is ${w.era.title.removePrefix("The ").lowercase()} over?", "What people are talking about now: ${next.rumor}")
+                addLog("${w.era.title} is fading. The talk is of something new: ${next.rumor}", LogTone.NEUTRAL)
+            }
+            EraPhase.DAWN -> {}
+        }
+    }
+    // While an era fades, the rumours of the next get louder.
+    val next = w.nextEra
+    if (phase == EraPhase.FADING && next != null && rng.chance(0.05)) {
+        publish(NewsDesk.INDUSTRY, techOutlet(null, rng), "What comes after ${w.era.title.removePrefix("The ").lowercase()}?", next.rumor)
+    }
+}
+
+private fun GameState.pickNextEra(): Era {
+    val unseen = Era.entries.filter { it != Era.BOOTSTRAP_YEARS && it !in world.pastEras && it != world.era }
+    return if (unseen.isEmpty()) rng.pick(Era.entries.filter { it != world.era && it != Era.BOOTSTRAP_YEARS }) else rng.pick(unseen)
+}
+
+private fun GameState.startNextEra() {
+    val w = world
+    val next = w.nextEra ?: pickNextEra()
+    w.history += EraSpan(w.era, w.eraStartWeek, week)
+    w.pastEras += w.era
+    w.era = next
+    w.eraStartWeek = week
+    w.eraLength = rng.int(78, 130)
+    w.phase = EraPhase.DAWN
+    w.eraIntensity = 0.35
+    w.nextEra = null
     if (next !in stats.erasSeen) stats.erasSeen += next
     val mine = lanes.map { next.demand(it) }
     val tone = when {
@@ -136,19 +186,24 @@ private fun GameState.updateEra() {
         else -> LogTone.NEUTRAL
     }
     addLog("A new era begins: ${next.title}. ${next.blurb}", tone)
+    publish(NewsDesk.INDUSTRY, "The Economist", "${next.emoji} ${next.title} begins", next.blurb, tone, lead = true)
 }
 
 private fun GameState.updateRivals() {
     for (r in world.rivals) {
-        val target = (0.5 * world.era.demand(r.lane)).clamped(0.2, 0.9)
+        val target = (0.5 * world.demand(r.lane)).clamped(0.2, 0.9)
         r.strength = (r.strength + (target - r.strength) * 0.02 + rng.normal(sd = 0.01)).clamped(0.05, 1.0)
 
-        if (r.lane in lanes && rng.chance(0.008)) {
-            r.strength = min(1.0, r.strength + 0.1)
+        if (rng.chance(0.008)) {
             val who = if (rng.chance(0.5)) r.name else rng.pick(World.peers(r.lane))
-            val move = "$who launched something big in ${r.lane.title.lowercase()}. Your market just got tougher."
-            r.lastMove = move
-            addLog(move, LogTone.BAD, r.lane)
+            val headline = rivalMove(who, r.lane)
+            if (r.lane in lanes) {
+                r.strength = min(1.0, r.strength + 0.1)
+                val move = "$headline. Your market just got tougher."
+                r.lastMove = move
+                addLog(move, LogTone.BAD, r.lane)
+            }
+            publish(NewsDesk.INDUSTRY, techOutlet(r.lane, rng), headline, if (r.lane in lanes) "A rival in your market." else "", lane = r.lane)
         }
 
         // Rivals compete for the same talent.
@@ -419,3 +474,15 @@ private fun GameState.checkEndings() {
     }
     if (week >= GameState.LENGTH_WEEKS && !freeplay) end(if (listing != null) EndingKind.IPO else EndingKind.INDIE)
 }
+
+/** What a rival's big move looks like in the headlines. */
+private fun GameState.rivalMove(who: String, lane: Lane): String = rng.pick(
+    when (lane) {
+        Lane.GAMES -> listOf("$who announces its biggest game yet", "$who signs a blockbuster exclusive", "$who buys a hot indie studio")
+        Lane.WEBSITES -> listOf("$who launches an AI site builder", "$who cuts its prices in half", "$who signs a deal with every bank in the country")
+        Lane.APPS -> listOf("$who ships a redesign everyone's talking about", "$who's new app tops the store in a day", "$who adds a feature everyone else will copy")
+        Lane.SOCIAL -> listOf("$who copies a rival's best feature", "$who's new app passes 100 million users", "$who pays creators to move over")
+        Lane.HARDWARE -> listOf("$who unveils a new flagship", "$who's new device sells out in minutes", "$who undercuts everyone on price")
+        Lane.AI -> listOf("$who releases a new frontier model", "$who's model tops every benchmark", "$who raises billions for a new data centre")
+    },
+)

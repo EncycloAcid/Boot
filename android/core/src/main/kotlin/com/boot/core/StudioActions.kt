@@ -167,6 +167,21 @@ fun GameState.launchGame(team: Int = 1) {
     val p = g.projectOf(team) ?: throw invalid("No game in development.")
     val suited = p.concept.platforms.any { it.suits(p.concept.audience) }
     val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team)
+    g.releases.firstOrNull()?.let { r ->
+        val sc = String.format(java.util.Locale.US, "%.1f", r.score)
+        publish(
+            NewsDesk.YOU, rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon")),
+            when {
+                r.score >= 9 -> "${r.title} review: a masterpiece"
+                r.score >= 8 -> "${r.title} review: $companyName has a hit"
+                r.score >= 6.5 -> "${r.title} review: solid, if not spectacular"
+                r.score >= 5 -> "${r.title} review: a mixed bag"
+                else -> "${r.title} review: avoid"
+            },
+            "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game. $sc/10.",
+            if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL, Lane.GAMES, lead = r.score >= 9,
+        )
+    }
     cash += report.revenue - report.expenses
     recordRevenue(report.revenue, Lane.GAMES)
     recordCost(report.expenses, Lane.GAMES)

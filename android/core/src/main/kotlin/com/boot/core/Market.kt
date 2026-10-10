@@ -127,10 +127,24 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     // Licensing your engine helps them too.
     val licensed = g.engines.filter { it.licensed }.maxOfOrNull { it.level } ?: 0
     val score = (rng.normal(6.2 + 1.2 * quality, 1.2) + licensed * 0.02).clamped(2.5, 9.7)
-    val sales = size.launchSales * (score / 7).pow(3) * rng.range(0.7, 1.3) * world.era.demand(Lane.GAMES)
+    val sales = size.launchSales * (score / 7).pow(3) * rng.range(0.7, 1.3) * world.demand(Lane.GAMES)
     val title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), m.games.map { it.title }.toSet())
     val game = RivalGame(m.nextId++, title, studio, topic, genre, size, score, week, sales)
     m.games += game
+    if (score >= 8.5 || game.mega || (size == GameSize.AAA && score < 5.5)) {
+        val sc = String.format(java.util.Locale.US, "%.1f", score)
+        publish(
+            NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
+            when {
+                game.mega -> "$title is here, and everyone's playing it"
+                score >= 9 -> "$title review: an instant classic"
+                score >= 8.5 -> "$title review: $studio does it again"
+                else -> "$studio's $title is a costly misfire"
+            },
+            "${Format.a(size.lower).replaceFirstChar { it.uppercase() }} ${topic.title.lowercase()} ${genre.lower} game by $studio. $sc/10.",
+            lane = Lane.GAMES, lead = game.mega,
+        )
+    }
     if (score >= 8 || size >= GameSize.LARGE || g.owns(studio)) {
         val sc = String.format(java.util.Locale.US, "%.1f", score)
         val who = if (g.owns(studio)) "Your studio $studio" else studio
@@ -200,7 +214,9 @@ internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>
         g.release(winner.releaseId ?: -1)?.let { r -> r.weeklySales = max(r.weeklySales * 1.6, r.lifetimeSales / r.netShare * 0.05) }
         g.project?.let { it.hype = minOf(100.0, it.hype + 15) }
         addLog("${winner.title} wins Game of the Year! Fans flock to you and sales jump.", LogTone.MILESTONE, Lane.GAMES)
+        publish(NewsDesk.YOU, "IGN", "${winner.title} is Game of the Year", "$companyName takes the industry's biggest prize for $year.", LogTone.GOOD, Lane.GAMES, lead = true)
     } else {
         addLog("Game of the Year $year goes to ${winner.title} by ${winner.studio}.", LogTone.NEUTRAL, Lane.GAMES)
+        publish(NewsDesk.GAMES, "IGN", "${winner.title} is Game of the Year", "${winner.studio} takes the prize for $year.", lane = Lane.GAMES, lead = true)
     }
 }

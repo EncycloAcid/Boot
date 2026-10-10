@@ -184,7 +184,7 @@ fun GameState.setAIFocus(p: AIProduct) {
     ai!!.focus = p
 }
 
-fun GameState.gpuCost(units: Int): Double = units * AILab.GPU_UNIT_PRICE * world.era.gpuPrice
+fun GameState.gpuCost(units: Int): Double = units * AILab.GPU_UNIT_PRICE * world.gpuPrice
 
 fun GameState.buyGPUs(units: Int) {
     require(Lane.AI)

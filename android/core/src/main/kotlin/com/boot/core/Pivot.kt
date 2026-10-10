@@ -60,7 +60,7 @@ const val EXPANSION_STREAK_NEEDED = 12
 internal fun GameState.checkPivotPoint() {
     if (pivot != null || pendingPivot != null || week < PIVOT_WINDOW.first) return
     var trigger: PivotTrigger? = when {
-        world.era.demand(startingLane) <= 0.85 -> PivotTrigger.MARKET_CRASH
+        world.demand(startingLane) <= 0.85 -> PivotTrigger.MARKET_CRASH
         valuation >= 300_000 && rng.chance(0.03) -> PivotTrigger.BUYOUT_OFFER
         rng.chance(0.02) -> PivotTrigger.VIRAL_ACCIDENT
         else -> null

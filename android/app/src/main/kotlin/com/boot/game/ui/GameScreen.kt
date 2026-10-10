@@ -1,5 +1,7 @@
 package com.boot.game.ui
 
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.selectable
@@ -166,7 +168,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
                     Tab.TEAM -> TeamScreen(store, state)
                     Tab.RESEARCH -> ResearchScreen(store, state)
                     Tab.COMPANY -> CompanyScreen(store, state)
-                    Tab.NEWS -> NewsScreen(state)
+                    Tab.NEWS -> NewsScreen(store, state)
                 }
             }
             FloatingTabBar(store, Modifier.align(Alignment.BottomCenter), snackbar)
@@ -265,9 +267,12 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                 }
                 Spacer(Modifier.weight(1f))
                 Box {
-                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Filled.MoreHoriz, "More") }
+                    val unread = state.news.count { it.id > store.newsSeen }
+                    IconButton(onClick = { menuOpen = true }) {
+                        BadgedBox(badge = { if (unread > 0) Badge() }) { Icon(Icons.Filled.MoreHoriz, if (unread > 0) "More, $unread new stories" else "More") }
+                    }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(text = { Text("All news") }, onClick = {
+                        DropdownMenuItem(text = { Text(if (unread > 0) "News · $unread new" else "News") }, onClick = {
                             menuOpen = false
                             store.tab = Tab.NEWS
                         })

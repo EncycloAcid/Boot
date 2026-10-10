@@ -93,7 +93,7 @@ class AILab {
     internal fun weeklyComputeCost(units: Int, ctx: LaneContext): Double {
         val rented = max(0, units - gpusOwned)
         val owned = min(units, gpusOwned)
-        return (rented * RENT_PER_UNIT * ctx.era.gpuPrice + owned * 1_000.0) * ctx.mods.computeCost
+        return (rented * RENT_PER_UNIT * ctx.gpuPrice + owned * 1_000.0) * ctx.mods.computeCost
     }
 
     internal fun startTraining(size: TrainingSize, rng: SeededRNG) {

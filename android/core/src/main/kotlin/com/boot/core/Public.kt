@@ -63,6 +63,10 @@ internal fun GameState.list() {
             "The offering raised ${money(raise)}. You own ${Format.percent(venture.founderEquity)}.",
         LogTone.MILESTONE,
     )
+    publish(
+        NewsDesk.YOU, businessOutlet(), "$companyName shares open at \$$price in market debut",
+        "${l.ticker} is valued at ${money(l.marketCap)}. The offering raised ${money(raise)}.", LogTone.GOOD, lead = true,
+    )
 }
 
 /** What your stake is worth today. */

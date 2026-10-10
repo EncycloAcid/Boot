@@ -167,6 +167,10 @@ private fun GameState.championship(r: GameRelease, l: League) {
     l.peakViewers = max(l.peakViewers, l.viewers)
     if (r.weeklySales > 0) r.weeklySales *= 1.15
     games!!.fans += l.viewers * 0.02
+    publish(
+        NewsDesk.GAMES, rng.pick(listOf("Dexerto", "ESPN Esports", "The Esports Observer")),
+        "$champion win the ${l.name}", "${Format.count(l.viewers)} watched the final. Prize pool: ${money(prize.amount)}.", LogTone.GOOD, Lane.GAMES,
+    )
     addLog(
         "$champion win the ${l.name} and ${money(prize.amount)} in front of ${Format.count(l.viewers)} viewers." +
             if (prize < l.prize) " You could only afford a ${prize.title.lowercase()} prize pool." else "",

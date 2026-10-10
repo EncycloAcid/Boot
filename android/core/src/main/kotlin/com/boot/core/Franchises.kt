@@ -159,7 +159,7 @@ internal fun GameState.franchiseWeek(m: GameMarket) {
         val title = a?.title ?: f.title(entry, week)
         val score = (rng.normal(5.0 + 4.6 * f.quality, 0.6) + (entry % 3 - 1) * 0.1).clamped(3.0, 9.9)
         val power = 1 + 2 * f.quality
-        val sales = f.size.launchSales * (score / 7).pow(3) * power * rng.range(0.85, 1.15) * world.era.demand(Lane.GAMES)
+        val sales = f.size.launchSales * (score / 7).pow(3) * power * rng.range(0.85, 1.15) * world.demand(Lane.GAMES)
         m.games += RivalGame(m.nextId++, title, f.studio, f.topic, f.genre, f.size, score, week, sales, franchise = f.name)
         m.franchiseEntries[f.name] = entry + 1
         val ours = games?.owns(f.studio) == true

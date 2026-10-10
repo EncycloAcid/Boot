@@ -216,37 +216,10 @@ private fun Legend(label: String, color: Color) {
 
 @Composable
 private fun EraSection(state: GameState) {
-    val colors = gameColors
-    val era = state.world.era
-    GroupedSection(
-        "Era",
-        footer = if (era.gpuPrice != 1.0) "GPU prices ${if (era.gpuPrice > 1) "up" else "down"} ${Format.percent(abs(era.gpuPrice - 1))}." else null,
-    ) {
-        CardBlock(spacing = 4.dp) {
-            Text(era.title, style = MaterialTheme.typography.titleLarge)
-            Text(era.blurb, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        for (lane in Lane.entries) {
-            RowDivider()
-            val d = era.demand(lane)
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                Text(
-                    "${lane.emoji}  ${lane.title}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (lane in state.lanes) FontWeight.SemiBold else FontWeight.Normal,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    if (d == 1.0) "—" else (if (d > 1) "+" else "") + Format.percent(d - 1),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = when {
-                        d > 1 -> colors.good
-                        d < 1 -> colors.warn
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        EraCard(state)
+        EraEffects(state)
+        EraTimeline(state)
     }
 }
 

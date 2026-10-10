@@ -65,6 +65,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var companyPage by mutableIntStateOf(0)
     var studioPage by mutableStateOf(StudioPage.MAKE)
 
+    /** The newest story the player has seen, for the unread count. */
+    var newsSeen by mutableIntStateOf(0)
+
     /** A "next step" the player waved away; it stays hidden until a different one comes up. */
     var dismissedStep by mutableStateOf<String?>(null)
 
@@ -85,6 +88,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
 
     init {
         state = runCatching { GameState.decode(saveFile.readText()) }.getOrNull()?.takeUnless { it.isOver }
+        newsSeen = state?.news?.lastOrNull()?.id ?: 0
         viewModelScope.launch(Dispatchers.IO) {
             pendingSave.filterNotNull().collect { write(it) }
         }
@@ -106,6 +110,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     ) {
         val s = GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall))
         state = s
+        newsSeen = 0
         playing = false
         tab = Tab.OFFICE
         this.lane = lane

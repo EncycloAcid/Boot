@@ -32,9 +32,12 @@ data class LaneContext(
     val competition: Double,
     val crunch: Boolean,
     val lane: Lane,
+    /** The era's pull on this lane, as strongly as it's felt this week. */
+    val eraDemand: Double = era.demand(lane),
+    val gpuPrice: Double = era.gpuPrice,
 ) {
     /** Era, rivals and modifiers rolled into one demand number. */
-    val marketDemand: Double get() = era.demand(lane) * competition * mods.demand
+    val marketDemand: Double get() = eraDemand * competition * mods.demand
 
     /** Crunch stretches the team, not the founder, who already gives everything. */
     val workOutput: Double get() = (staffing.output + (if (crunch) 0.4 * staffing.teamOutput else 0.0)) * mods.output
