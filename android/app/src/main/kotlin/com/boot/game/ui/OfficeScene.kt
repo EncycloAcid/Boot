@@ -997,30 +997,20 @@ private fun station(props: MutableList<Prop>, iso: Iso, index: Int, seat: Seat, 
         solid(iso, cx - 0.03f, chairY - 0.2f, 0f, cx + 0.03f, chairY + 0.2f, 0.04f, p.chair.shade(0.7f))
         solid(iso, cx - 0.025f, chairY - 0.025f, 0.04f, cx + 0.025f, chairY + 0.025f, 0.34f, Color(0xFF7A7F8A))
         solid(iso, cx - 0.18f, chairY - 0.17f, 0.34f, cx + 0.18f, chairY + 0.17f, SEAT_Z, p.seat)
-        if (front) solid(iso, cx - 0.17f, chairY - 0.22f, 0.42f, cx + 0.17f, chairY - 0.16f, 0.88f, p.chair)
+        if (front) solid(iso, cx - 0.17f, chairY - 0.22f, 0.42f, cx + 0.17f, chairY - 0.16f, 0.8f, p.chair)
     }
+    // Where they sit and where their hands rest on the keyboard.
+    val ky = if (front) deskY0 + 0.08f else deskY1 - 0.18f
+    val hip = iso.p(cx, cy + (if (front) 0.02f else 0f), SEAT_Z)
+    val hands = iso.p(cx - 0.1f, ky + 0.05f, DESK_Z + 0.03f) to iso.p(cx + 0.08f, ky + 0.05f, DESK_Z + 0.03f)
     if (worker != null) {
         props += Prop(cx + cy) {
-            val hip = iso.p(cx, cy + (if (front) 0.02f else 0f), SEAT_Z)
-            val s = iso.zpx
-            val pants = Color(0xFF2F3A4F).let { if (night) it.shade(0.7f) else it }
-            if (front) {
-                // Thighs forward under the desk, shins down to the floor.
-                val knee = iso.p(cx, cy + 0.32f, SEAT_Z + 0.03f)
-                val foot = iso.p(cx, cy + 0.36f, 0.02f)
-                drawLine(pants, Offset(hip.x - 0.06f * s, hip.y), Offset(knee.x - 0.06f * s, knee.y), strokeWidth = 0.12f * s, cap = StrokeCap.Round)
-                drawLine(pants.shade(0.85f), Offset(hip.x + 0.06f * s, hip.y), Offset(knee.x + 0.06f * s, knee.y), strokeWidth = 0.12f * s, cap = StrokeCap.Round)
-                drawLine(pants, Offset(knee.x - 0.06f * s, knee.y), Offset(foot.x - 0.06f * s, foot.y), strokeWidth = 0.1f * s, cap = StrokeCap.Round)
-                drawLine(pants.shade(0.85f), Offset(knee.x + 0.06f * s, knee.y), Offset(foot.x + 0.06f * s, foot.y), strokeWidth = 0.1f * s, cap = StrokeCap.Round)
-                drawOval(Color(0xFF1E1E24), Offset(foot.x - 0.17f * s, foot.y - 0.03f * s), Size(0.14f * s, 0.07f * s))
-                drawOval(Color(0xFF1E1E24), Offset(foot.x + 0.01f * s, foot.y - 0.03f * s), Size(0.14f * s, 0.07f * s))
-            }
-            drawSeated(hip, s, worker.look, shirt, seat.facing, phase, crown = worker.founder)
+            drawSeated(hip, iso.zpx, worker.look, shirt, seat.facing, phase, crown = worker.founder, hands = hands)
         }
     }
     if (!front) {
         props += Prop(cx + chairY + 0.2f) {
-            solid(iso, cx - 0.17f, chairY + 0.16f, 0.42f, cx + 0.17f, chairY + 0.22f, 0.88f, p.chair)
+            solid(iso, cx - 0.17f, chairY + 0.16f, 0.46f, cx + 0.17f, chairY + 0.22f, 0.76f, p.chair)
             solid(iso, cx - 0.04f, chairY + 0.17f, SEAT_Z, cx + 0.04f, chairY + 0.21f, 0.42f, Color(0xFF7A7F8A))
         }
     }
@@ -1030,11 +1020,11 @@ private fun station(props: MutableList<Prop>, iso: Iso, index: Int, seat: Seat, 
         shadow(iso, cx, (deskY0 + deskY1) / 2, DESK_W / 2, 0.3f, 0.08f)
         solid(iso, x0, deskY0 + 0.04f, 0f, x0 + 0.05f, deskY1 - 0.04f, DESK_Z - 0.04f, p.deskSide)
         solid(iso, x1 - 0.05f, deskY0 + 0.04f, 0f, x1, deskY1 - 0.04f, DESK_Z - 0.04f, p.deskSide)
-        if (!front) solid(iso, x0 + 0.05f, deskY0 + 0.02f, 0.2f, x1 - 0.05f, deskY0 + 0.05f, DESK_Z - 0.04f, p.deskSide.shade(0.9f))
+        // A modesty panel down the middle of the island hides the legs of whoever faces us.
+        if (front) solid(iso, x0 + 0.05f, deskY1 - 0.05f, 0.12f, x1 - 0.05f, deskY1 - 0.02f, DESK_Z - 0.04f, p.deskSide.shade(0.9f))
         solid(iso, x0, deskY0, DESK_Z - 0.04f, x1, deskY1, DESK_Z, p.deskSide, top = p.deskTop)
 
         // Keyboard and mouse on the sitter's side.
-        val ky = if (front) deskY0 + 0.08f else deskY1 - 0.18f
         solid(iso, cx - 0.17f, ky, DESK_Z, cx + 0.15f, ky + 0.1f, DESK_Z + 0.02f, Color(0xFF4A4F5C), top = Color(0xFF5D6370))
         solid(iso, cx + 0.22f, ky + 0.02f, DESK_Z, cx + 0.27f, ky + 0.08f, DESK_Z + 0.025f, Color(0xFF4A4F5C))
 
@@ -1050,6 +1040,8 @@ private fun station(props: MutableList<Prop>, iso: Iso, index: Int, seat: Seat, 
             2 -> solid(iso, x0 + 0.06f, my - 0.05f, DESK_Z, x0 + 0.26f, my + 0.1f, DESK_Z + 0.012f, Color(0xFFF7F7F7))
             else -> mug(iso, x1 - 0.15f, my, Color(0xFF0A84FF))
         }
+        // Someone facing us rests their forearms on the desk.
+        if (worker != null && front) drawForearms(hip, iso.zpx, worker.look, shirt, hands, phase)
         if (night && index % 3 == 1 && occupied) lamp(iso, x0 + 0.1f, if (front) deskY0 + 0.38f else deskY0 + 0.1f, p)
 
         // The monitor, back to back with the one opposite.
