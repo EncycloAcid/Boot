@@ -94,12 +94,15 @@ fun GameDesigner(store: GameStore, state: GameState) {
     var topic by remember { mutableStateOf(seed?.topic ?: g.topics.first()) }
     var genre by remember { mutableStateOf(seed?.genre ?: Genre.ACTION) }
     val sequel = seed?.sequelOf
+    val remaster = seed?.remasterOf
     val seriesGenre = sequel?.let { g.release(it)?.concept?.genre }
     val salt = remember { state.week * 13L + g.releases.size }
     var reroll by remember { mutableIntStateOf(0) }
     // A name the player typed stays put; a suggested one follows the topic and genre.
     var typed by remember { mutableStateOf(false) }
-    fun suggested(): String = if (sequel != null) {
+    fun suggested(): String = if (remaster != null) {
+        seed.title
+    } else if (sequel != null) {
         g.nextTitle(sequel, genre, reroll)
     } else {
         gameTitle(topic, genre, salt + reroll, g.releases.map { it.title }.toSet())
@@ -116,7 +119,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
 
     val concept = GameConcept(
         title = title.trim().ifEmpty { "Untitled" }, topic = topic, genre = genre, genre2 = genre2, audience = audience,
-        platforms = platforms.toList(), size = size, engineId = engineId, sequelOf = sequel, price = price,
+        platforms = platforms.toList(), size = size, engineId = engineId, sequelOf = sequel, price = price, remasterOf = remaster,
         live = live && size != GameSize.SMALL,
     )
     fun close() {
@@ -131,6 +134,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                     IconButton(onClick = { close() }) { Icon(Icons.Filled.Close, "Close") }
                     Column(Modifier.weight(1f)) {
                         val heading = when {
+                            remaster != null -> "Design a remaster"
                             team == 2 && sequel == null -> "Design a game for Team 2"
                             sequel == null -> "Design a game"
                             genre != seriesGenre -> "Design a spin-off"
@@ -168,9 +172,9 @@ fun GameDesigner(store: GameStore, state: GameState) {
                                 title, { title = it; typed = true }, { reroll += 1; typed = false; title = suggested() },
                                 topic, { topic = it; if (!typed) title = suggested() },
                                 genre, { genre = it; if (genre2 == it) genre2 = null; if (!typed) title = suggested() },
-                                genre2, { genre2 = it }, audience, { audience = it }, seriesGenre,
+                                genre2, { genre2 = it }, audience, { audience = it }, seriesGenre, remaster != null,
                             )
-                            1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it })
+                            1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it }, remaster != null)
                             2 -> FocusStep(state, concept, focus)
                             else -> SummaryStep(state, concept, team, { price = it }, { live = it })
                         }
@@ -213,8 +217,9 @@ private fun ConceptStep(
     genre2: Genre?, onGenre2: (Genre?) -> Unit,
     audience: Audience, onAudience: (Audience) -> Unit,
     seriesGenre: Genre?,
+    remastering: Boolean = false,
 ) {
-    val locked = seriesGenre != null
+    val locked = seriesGenre != null || remastering
     val g = state.games!!
     val colors = gameColors
     GroupedSection("Name") {
@@ -234,7 +239,9 @@ private fun ConceptStep(
     }
     GroupedSection(
         "Topic",
-        footer = if (locked) "A series keeps its topic. Pick another genre to make it a spin-off." else "Colors show combos you've learned from game reports. Research more topics in the Research tab.",
+        footer = if (remastering) {
+            "A remaster keeps the original's topic, genre and size, and takes half the work."
+        } else if (locked) "A series keeps its topic. Pick another genre to make it a spin-off." else "Colors show combos you've learned from game reports. Research more topics in the Research tab.",
     ) {
         CardBlock {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -271,6 +278,7 @@ private fun ConceptStep(
                     FilterChip(
                         selected = gn == genre,
                         onClick = { onGenre(gn) },
+                        enabled = !remastering || gn == genre,
                         label = { Text(gn.title) },
                         leadingIcon = { Box(Modifier.size(8.dp).background(fitColor(fit, colors), CircleShape)) },
                     )
@@ -312,6 +320,7 @@ private fun PlatformStep(
     platforms: MutableList<Platform>,
     size: GameSize, onSize: (GameSize) -> Unit,
     engineId: Int, onEngine: (Int) -> Unit,
+    remastering: Boolean = false,
 ) {
     val g = state.games!!
     val colors = gameColors
@@ -347,11 +356,16 @@ private fun PlatformStep(
             )
         }
     }
-    val sizes = state.unlockedSizes
+    val sizes = if (remastering) listOf(size) else state.unlockedSizes
+    val weeks = if (remastering) (state.estimatedWeeks(size) + 1) / 2 else state.estimatedWeeks(size)
     GroupedSection(
         "Size",
-        footer = "${size.title}: about ${state.estimatedWeeks(size)} weeks with your team, ${size.weeklyBudget.perWeek()} budget. " +
-            (GameSize.entries.firstOrNull { it !in sizes }?.let { "Research ${it.requires?.title?.lowercase()} for bigger games." } ?: ""),
+        footer = "${size.title}: about $weeks weeks with your team, ${size.weeklyBudget.perWeek()} budget. " +
+            if (remastering) {
+                "A remaster keeps the original's size."
+            } else {
+                GameSize.entries.firstOrNull { it !in sizes }?.let { "Research ${it.requires?.title?.lowercase()} for bigger games." } ?: ""
+            },
     ) {
         CardBlock { Segmented(sizes, size.takeIf { it in sizes } ?: sizes.first(), { it.title }, onSize) }
     }
@@ -449,7 +463,7 @@ private fun SummaryStep(state: GameState, concept: GameConcept, team: Int, onPri
         }
     }
     GroupedSection("Budget", footer = blocker) {
-        ValueRow("Development", "about ${state.estimatedWeeks(concept.size)} weeks")
+        ValueRow("Development", "about ${state.estimatedWeeks(concept)} weeks")
         RowDivider()
         ValueRow("Budget", concept.size.weeklyBudget.perWeek())
         RowDivider()

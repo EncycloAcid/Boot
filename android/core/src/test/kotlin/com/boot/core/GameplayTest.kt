@@ -799,3 +799,151 @@ class SecondTeamTest {
         assertNull(g.project)
     }
 }
+
+class PublishingTest {
+    private fun label(seed: Long): GameState {
+        val s = game(Lane.GAMES, seed)
+        s.cash = 1e8
+        s.researched = s.researched + Research.MARKETING + Research.PUBLISHING
+        return s
+    }
+
+    private fun GameState.waitForPitches(n: Int = 1) {
+        var guard = 0
+        while (games!!.pitches.size < n && guard++ < 200) play(1)
+    }
+
+    @Test
+    fun pitchesNeedTheResearch() {
+        val s = game(Lane.GAMES, 90)
+        s.cash = 1e8
+        s.play(30)
+        assertTrue(s.games!!.pitches.isEmpty())
+    }
+
+    @Test
+    fun signAPitchAndYourLabelReleasesIt() {
+        val s = label(91)
+        val g = s.games!!
+        s.waitForPitches()
+        val p = g.pitches.first()
+        assertTrue(p.funding > 0 && p.weeks > 0 && p.labelShare in 0.3..0.7)
+        assertNull(s.signBlocker(p.id))
+        val before = s.cash
+        s.signPitch(p.id)
+        assertEquals(before - p.funding, s.cash, 1.0)
+        assertTrue(g.pitches.none { it.id == p.id })
+        val signed = g.signed.single()
+        s.buyLabelCampaign(p.id, Campaign.PRESS_RELEASE)
+        assertTrue(signed.hype >= Campaign.PRESS_RELEASE.hype)
+        assertEquals("Already running.", s.labelCampaignBlocker(p.id, Campaign.PRESS_RELEASE))
+        var guard = 0
+        while (g.published.isEmpty() && guard++ < 80) s.play(1)
+        val r = g.published.single()
+        assertEquals(p.title, r.title)
+        assertEquals(p.developer, r.developer)
+        assertEquals(0.7 * p.labelShare, r.netShare, 1e-9)
+        assertTrue(r.reviews.isNotEmpty())
+        assertTrue(g.signed.isEmpty())
+        // It's on your books but it isn't one of your own games.
+        assertTrue(g.releases.none { it.id == r.id })
+        assertEquals(r, g.release(r.id))
+        assertEquals("${p.developer} handles patches for that one.", s.patchBlocker(r.id))
+        val sequel = r.concept.copy(title = "${r.title} 2", sequelOf = r.id)
+        s.researched = s.researched + Research.SEQUELS
+        assertEquals("${r.title} belongs to ${p.developer}.", s.conceptBlocker(sequel))
+        assertTrue(Achievement.LABEL in s.achievements)
+        // And it sells.
+        val earned = r.lifetimeSales
+        s.play(2)
+        assertTrue(r.lifetimeSales > earned)
+    }
+
+    @Test
+    fun theLabelHasThreeSlots() {
+        val s = label(92)
+        val g = s.games!!
+        var guard = 0
+        while (g.signed.size < LABEL_SLOTS && guard++ < 300) {
+            g.pitches.toList().forEach { if (g.signed.size < LABEL_SLOTS) s.signPitch(it.id) }
+            s.play(1)
+            // Keep them in development so the slots stay full.
+            g.signed.forEach { it.weeksLeft = 30 }
+        }
+        assertEquals(LABEL_SLOTS, g.signed.size)
+        s.waitForPitches()
+        assertEquals("Your label can back $LABEL_SLOTS games at a time.", s.signBlocker(g.pitches.first().id))
+        s.passPitch(g.pitches.first().id)
+    }
+
+    @Test
+    fun aKnownGreatComboIsTheSaferBet() {
+        // Over many pitches, games in combos that fit score higher than ones that don't.
+        val good = mutableListOf<Double>()
+        val bad = mutableListOf<Double>()
+        for (seed in 100L..105L) {
+            val s = label(seed)
+            val g = s.games!!
+            repeat(200) {
+                g.pitches.toList().forEach { if (s.signBlocker(it.id) == null) s.signPitch(it.id) }
+                s.play(1)
+            }
+            for (r in g.published) when (r.concept.topic.fit(r.concept.genre)) {
+                Fit.GREAT, Fit.GOOD -> good += r.score
+                Fit.BAD -> bad += r.score
+                else -> {}
+            }
+        }
+        assertTrue(good.size > 5 && bad.size > 5)
+        assertTrue(good.average() > bad.average() + 1.5)
+    }
+}
+
+class RemasterTest {
+    private fun classic(seed: Long, score: Double = 8.6): Pair<GameState, GameRelease> {
+        val s = game(Lane.GAMES, seed)
+        s.cash = 1e8
+        val g = s.games!!
+        val r = s.fakeRelease(score, title = "Moss Knight").copy(week = s.week - REMASTER_AGE - 10)
+        g.releases[0] = r
+        return s to r
+    }
+
+    @Test
+    fun remastersNeedResearchAnOldHitAndOnlyOneEach() {
+        val (s, r) = classic(110)
+        assertEquals("Research remasters first.", s.remasterBlocker(r.id))
+        s.researched = s.researched + Research.SEQUELS + Research.REMASTERS
+        assertNull(s.remasterBlocker(r.id))
+        assertEquals(listOf(r), s.remasterable)
+        val fresh = s.fakeRelease(9.0, title = "New Thing")
+        assertTrue(s.remasterBlocker(fresh.id)!!.startsWith("Too recent."))
+        val (s2, weak) = classic(111, score = 6.0)
+        s2.researched = s2.researched + Research.REMASTERS
+        assertEquals("Only games that scored 7 or more are worth remastering.", s2.remasterBlocker(weak.id))
+    }
+
+    @Test
+    fun aRemasterIsHalfTheWorkAndSellsOnNostalgia() {
+        val (s, r) = classic(112)
+        s.researched = s.researched + Research.SEQUELS + Research.REMASTERS
+        val c = s.remasterConcept(r.id)
+        assertEquals("Moss Knight Remastered", c.title)
+        assertEquals(r.id, c.remasterOf)
+        assertEquals(r.concept.size.work * REMASTER_WORK, c.work, 1e-9)
+        assertEquals("A remaster keeps the original's topic, genre and size.", s.conceptBlocker(c.copy(genre = Genre.STRATEGY)))
+        s.startGame(c)
+        val g = s.games!!
+        assertEquals(c.work, g.project!!.work, 1e-9)
+        assertEquals("Moss Knight has already been remastered.", s.remasterBlocker(r.id))
+        var guard = 0
+        while (g.project?.isReady != true && guard++ < 100) s.play(1)
+        s.launchGame()
+        val remaster = g.releases.first()
+        assertEquals(r.id, remaster.concept.remasterOf)
+        assertTrue(remaster.report.any { it.startsWith("A remaster of Moss Knight") })
+        s.play(1)
+        assertTrue(Achievement.REMASTERED in s.achievements)
+        assertEquals("That's already a remaster.", s.remasterBlocker(remaster.id))
+    }
+}

@@ -47,6 +47,8 @@ import com.boot.core.expansionBlocker
 import com.boot.core.patchBlocker
 import com.boot.core.patchCost
 import com.boot.core.patchGame
+import com.boot.core.remasterBlocker
+import com.boot.core.remasterConcept
 import com.boot.core.sequelConcept
 import com.boot.core.startExpansion
 import com.boot.game.GameStore
@@ -73,7 +75,7 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Hint("THE REVIEWS ARE IN")
                 Spacer(Modifier.size(10.dp))
-                GameCover(r.concept, 132.dp, studio = r.publisher ?: state.companyName)
+                GameCover(r.concept, 132.dp, studio = r.developer ?: r.publisher ?: state.companyName)
                 Spacer(Modifier.size(12.dp))
                 Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
                 Spacer(Modifier.size(12.dp))
@@ -127,7 +129,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
     val g = state.games ?: return
     val r: GameRelease = g.release(releaseId) ?: return
     val colors = gameColors
-    val canSequel = Research.SEQUELS in state.researched && !g.busy
+    val canSequel = Research.SEQUELS in state.researched && !g.busy && r.developer == null && r.publisher == null
     Dialog(onDismissRequest = { store.openRelease = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
@@ -143,12 +145,13 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        GameCover(r.concept, 108.dp, studio = r.publisher ?: state.companyName)
+                        GameCover(r.concept, 108.dp, studio = r.developer ?: r.publisher ?: state.companyName)
                         Column {
                             Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
                             Hint(
                                 "${r.concept.size.title} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} · " +
-                                    r.concept.platforms.joinToString { it.title } + (r.publisher?.let { " · published by $it" } ?: ""),
+                                    r.concept.platforms.joinToString { it.title } + (r.publisher?.let { " · published by $it" } ?: "") +
+                                    (r.developer?.let { " · made by $it, published by you" } ?: ""),
                             )
                         }
                     }
@@ -197,6 +200,15 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                             store.designGame(seed)
                         }, Modifier.fillMaxWidth())
                     }
+                    if (r.developer == null && r.publisher == null && r.concept.remasterOf == null && Research.REMASTERS in state.researched) {
+                        val blocker = state.remasterBlocker(r.id)
+                        TonalButton("Remaster ${r.title}", {
+                            val seed = store.state?.remasterConcept(r.id)
+                            store.openRelease = null
+                            store.designGame(seed)
+                        }, Modifier.fillMaxWidth(), enabled = blocker == null && !g.busy)
+                        Hint(blocker ?: if (g.busy) "The main team is busy." else "Rebuild it for today's platforms at half the work. Its old fans come back for it.")
+                    }
                 }
             }
         }
@@ -206,7 +218,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
 /** Keep a game alive after launch: patch what shipped broken, and sell more to the people who loved it. */
 @Composable
 private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
-    if (r.publisher != null) return
+    if (r.publisher != null || r.developer != null) return
     val patch = state.patchBlocker(r.id)
     val expansion = state.expansionBlocker(r.id)
     GroupedSection(

@@ -35,6 +35,7 @@ import com.boot.core.Research
 import com.boot.core.LiveService
 import com.boot.core.GameRelease
 import com.boot.core.GameState
+import com.boot.core.stayFocused
 import com.boot.core.Combo
 import com.boot.core.Difficulty
 import com.boot.core.Goal
@@ -579,6 +580,74 @@ class GameFlowTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Game studio", ignoreCase = true))
         compose.waitForIdle()
         screen("56-office-two-games")
+    }
+
+    @Test
+    fun yourLabelPublishesAndOldHitsGetRemastered() {
+        val base = GameState.create("Lantern Label", "Ivy", Lane.GAMES, seed = 64)
+        val s = GameState.decode(
+            base.encode()
+                .replace(Regex("\"cash\":[-0-9.Ee+]+"), "\"cash\":5.0E7")
+                .replace(Regex("\"researchPoints\":[-0-9.Ee+]+"), "\"researchPoints\":100000.0"),
+        )
+        listOf(Research.MARKETING, Research.MEDIUM_GAMES, Research.SEQUELS, Research.REMASTERS, Research.PUBLISHING).forEach { s.research(it) }
+        val classic = GameConcept("Moss Knight", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+        s.games!!.releases.add(
+            0,
+            GameRelease(
+                id = 901, title = classic.title, concept = classic, week = s.week - 200, reviews = emptyList(), score = 8.7, weeklySales = 0.0,
+                netShare = 0.7, design = 60.0, tech = 40.0, bugs = 2.0, hype = 20.0, devCost = 9_000.0, report = emptyList(),
+                lifetimeSales = 400_000.0, unitsSold = 40_000.0,
+            ),
+        )
+        var guard = 0
+        while (s.games!!.pitches.size < 2 && guard++ < 60) {
+            s.advance()
+            while (s.needsDecision) if (s.pendingPivot != null) s.stayFocused() else s.choose(s.events[0].choices.size - 1)
+        }
+        File(RuntimeEnvironment.getApplication().filesDir, "autosave.json").writeText(s.encode())
+        launch()
+        compose.runOnIdle { store.openLane(Lane.GAMES) }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Pitches", ignoreCase = true))
+        compose.waitForIdle()
+        screen("58-label-pitches")
+
+        val pitch = store.state!!.games!!.pitches.first()
+        tapInList(pitch.title)
+        overlay("59-pitch")
+        compose.onNodeWithText("Sign").performClick()
+        compose.waitForIdle()
+        val g = store.state!!.games!!
+        assertEquals(pitch.id, g.signed.single().pitch.id)
+
+        // Fast-forward to its release.
+        compose.runOnIdle {
+            store.perform { games!!.signed.single().weeksLeft = 1 }
+            store.advance(1)
+        }
+        compose.waitForIdle()
+        assertEquals(pitch.title, store.state!!.games!!.published.single().title)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Published", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("60-label-published")
+
+        // An eight-year-old hit, ready for a remaster.
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Ready to remaster", ignoreCase = true))
+        compose.waitForIdle()
+        compose.onAllNodesWithText("Remaster")[0].performClick()
+        compose.waitForIdle()
+        assertTrue(store.designing)
+        assertEquals(901, store.draft?.remasterOf)
+        compose.onNodeWithText("Design a remaster").assertExists()
+        overlay("61-remaster-designer")
+        repeat(3) {
+            compose.onNodeWithText("Next").performClick()
+            compose.waitForIdle()
+        }
+        compose.onNodeWithText("Start development").performClick()
+        compose.waitForIdle()
+        assertEquals("Moss Knight Remastered", store.state!!.games!!.project!!.title)
     }
 
     @Test

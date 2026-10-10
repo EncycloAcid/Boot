@@ -186,6 +186,12 @@ class Autopilot(
     private fun manageGames(s: GameState) {
         val g = s.games ?: return
         g.unseenReview?.let { s.acknowledgeReview() }
+        // Back the pitches that look good, when there's money to spare.
+        for (pitch in g.pitches.toList()) {
+            val known = g.knownFit(pitch.topic, pitch.genre)
+            val promising = pitch.demo >= 2 && (pitch.lastScore ?: 6.5) >= 6.5 && known != Fit.BAD && known != Fit.OKAY
+            if (promising && s.signBlocker(pitch.id) == null && s.cash > pitch.funding * 6 + 100_000) attempt { s.signPitch(pitch.id) }
+        }
         // Keep live games fresh while they pay for it.
         for (r in g.liveGames) if (s.seasonBlocker(r.id) == null && s.cash > r.seasonCost() * 4) attempt { s.launchSeason(r.id) }
         // The second team makes smaller games alongside the main one.
@@ -229,7 +235,13 @@ class Autopilot(
         } else {
             null
         }
-        val concept = if (hit != null && fresh != null) s.sequelConcept(hit.id).copy(size = fresh.size) else fresh
+        // Bring back an old hit now and then: half the work.
+        val classic = s.remasterable.filter { it.score >= 8 }.maxByOrNull { it.score }
+        val concept = when {
+            hit != null && fresh != null -> s.sequelConcept(hit.id).copy(size = fresh.size)
+            classic != null && fresh != null && s.conceptBlocker(s.remasterConcept(classic.id)) == null -> s.remasterConcept(classic.id)
+            else -> fresh
+        }
         if (concept == null || s.conceptBlocker(concept) != null || (s.runwayWeeks < 12 && g.contractOffers.isNotEmpty())) {
             g.contractOffers.firstOrNull()?.let { attempt { s.takeGameContract(it.id) } }
             return
@@ -282,7 +294,7 @@ class Autopilot(
                     listOf(
                         Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.CUSTOM_ENGINES,
                         Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS, Research.MERCHANDISE,
-                        Research.EXPANSIONS, Research.GRAPHICS_3D_V1,
+                        Research.EXPANSIONS, Research.PUBLISHING, Research.GRAPHICS_3D_V1, Research.REMASTERS,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
                         Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.OPEN_WORLD,
                         Research.GRAPHICS_3D_V3,

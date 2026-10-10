@@ -178,6 +178,7 @@ private fun GameState.studioWeek() {
     if (GameClock.weekOfYear(week) == 26) enqueue(EventKind.Convention)
     marketWeek()
     subsidiaryWeek()
+    publishingWeek()
     // Pushy stores get noticed.
     if (week % 13 == 0 && g.liveGames.any { it.live!!.monetization == Monetization.AGGRESSIVE && it.live!!.players > 10_000 }) {
         reputation.scar(ScarKind.PREDATORY_MONETIZATION, 0.03, week, "Pay-to-win store")

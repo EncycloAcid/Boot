@@ -362,9 +362,14 @@ data class GameConcept(
     val price: PriceTier = PriceTier.STANDARD,
     /** A live game: seasons, in-game purchases and servers. */
     val live: Boolean = false,
+    /** The release this remasters: the same game rebuilt for today, at half the work. */
+    val remasterOf: Int? = null,
 ) {
     /** What a copy sells for. */
     val unitPrice: Double get() = size.price * price.multiplier
+
+    /** Work points to finish: a remaster starts from a finished game. */
+    val work: Double get() = size.work * (if (remasterOf != null) REMASTER_WORK else 1.0)
 
     val genreTitle: String get() = if (genre2 == null) genre.title else "${genre.title}-${genre2.title}"
     val genreLower: String get() = if (genre2 == null) genre.lower else "${genre.lower}-${genre2.lower}"

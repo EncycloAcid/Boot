@@ -198,6 +198,11 @@ private fun GameState.endingStory(): List<String> {
         if (g.market.wins > 0) story += "You won Game of the Year ${if (g.market.wins == 1) "once" else "${g.market.wins} times"}."
         if (stats.chartToppers > 0) story += "${plural(stats.chartToppers, "game")} topped the sales chart."
     }
+    games?.published?.takeIf { it.isNotEmpty() }?.let { pub ->
+        val best = pub.maxBy { it.score }
+        story += "Your label published ${plural(pub.size, "game")} by other developers. The best was ${best.title} by ${best.developer} " +
+            "(${String.format(java.util.Locale.US, "%.1f", best.score)})."
+    }
     games?.subsidiaries?.takeIf { it.isNotEmpty() }?.let { subs ->
         story += "You bought ${plural(subs.size, "studio")}: ${subs.joinToString(", ") { it.name }}."
     }

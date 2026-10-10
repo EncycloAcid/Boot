@@ -87,7 +87,7 @@ data class GameProject(
     var lastBugs: Double = 0.0,
 ) {
     val title: String get() = concept.title
-    val work: Double get() = concept.size.work
+    val work: Double get() = concept.work
     val isReady: Boolean get() = progress >= work
     val completion: Double get() = min(1.0, progress / work)
 
@@ -130,6 +130,8 @@ data class GameRelease(
     val salesHistory: MutableList<Double> = mutableListOf(),
     /** The community of a live game. */
     var live: LiveService? = null,
+    /** The indie who made it, when your label published it. */
+    val developer: String? = null,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -222,6 +224,11 @@ class GamesStudio {
     /** Studios you've bought. */
     val subsidiaries = mutableListOf<Subsidiary>()
 
+    /** Your label: pitches waiting for an answer, games you've funded, and the ones you've put out. */
+    val pitches = mutableListOf<IndiePitch>()
+    val signed = mutableListOf<SignedGame>()
+    val published = mutableListOf<GameRelease>()
+
     /** Releases whose fans have petitioned for a sequel, and the one you promised. */
     val petitions: MutableSet<Int> = mutableSetOf()
     var promisedSequel: Int? = null
@@ -229,7 +236,7 @@ class GamesStudio {
 
     internal fun nextId(): Int = nextId++
 
-    val weeklySales: Double get() = releases.sumOf { it.weeklySales * it.netShare }
+    val weeklySales: Double get() = releases.sumOf { it.weeklySales * it.netShare } + published.sumOf { it.weeklySales * it.netShare }
     val bestGame: GameRelease? get() = releases.maxByOrNull { it.score }
 
     fun engine(id: Int): Engine = engines.firstOrNull { it.id == id } ?: engines.first()
@@ -239,7 +246,8 @@ class GamesStudio {
     fun knownFit(platform: Platform, genre: Genre): Fit? = knownFits["PG:${platform.name}:${genre.name}"]
     fun knowsWeight(genre: Genre, area: FocusArea): Boolean = "${genre.name}:${area.name}" in insights
 
-    fun release(id: Int): GameRelease? = releases.firstOrNull { it.id == id }
+    /** One of your games, or one your label published. */
+    fun release(id: Int): GameRelease? = releases.firstOrNull { it.id == id } ?: published.firstOrNull { it.id == id }
 
     /** The first game of the series a release belongs to. */
     fun seriesRoot(r: GameRelease): GameRelease {
@@ -355,7 +363,7 @@ class GamesStudio {
         contractOffers.removeAll { it.expiresWeek < ctx.week }
         dealOffers.removeAll { it.expiresWeek < ctx.week }
 
-        for (r in releases) {
+        for (r in releases + published) {
             val l = r.live
             if (l != null && !l.closed) {
                 val (rev, cost) = l.week(ctx.week, r.wordOfMouth, ctx.marketDemand)
@@ -457,7 +465,7 @@ class GamesStudio {
         val bugPenalty = 1 - min(0.35, p.bugs / (p.work * 0.6) * 0.35)
         val polishBonus = 1 + min(0.06, 0.2 * p.polish / p.work)
         val last = releases.firstOrNull()
-        val repeated = c.sequelOf == null && last != null && last.concept.topic == c.topic && last.concept.genre == c.genre
+        val repeated = c.sequelOf == null && c.remasterOf == null && last != null && last.concept.topic == c.topic && last.concept.genre == c.genre
         val original = c.sequelOf?.let { release(it) }
         val rushedSequel = original != null && week - original.week < 52
         val onTrend = trend?.matches(c) == true
@@ -506,9 +514,12 @@ class GamesStudio {
         val fatigued = previous.size >= 3 && previous.last().score < previous[previous.size - 2].score - 0.5
         if (fatigued) sequelLift *= 0.95
         if (spinOff) sequelLift = 1 + (sequelLift - 1) / 2
+        // A remaster sells to the people who remember the original, and fewer of them than a new game finds.
+        val remastered = c.remasterOf?.let { release(it) }
+        val nostalgia = remastered?.let { remasterLift(it.score) } ?: 1.0
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0)
+            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 
@@ -554,6 +565,11 @@ class GamesStudio {
                 (if (pct >= 0) "brought its fans: +$pct% at launch." else "has worn thin: $pct% at launch.") +
                 (if (spinOff) " As a spin-off, it got half the series effect." else "") +
                 (if (fatigued) " Players are tiring of it." else "")
+        }
+        if (remastered != null) {
+            lines += "A remaster of ${remastered.title} (${String.format(java.util.Locale.US, "%.1f", remastered.score)}): " +
+                "it took half the work, and launch sales came in at ${(nostalgia * 100).roundToInt()}% of a new game's. " +
+                "The better the original, the more players come back."
         }
         val priceEffect = c.price.revenueFactor(avg)
         if (c.price != PriceTier.STANDARD) {

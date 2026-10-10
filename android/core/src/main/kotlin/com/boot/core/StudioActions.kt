@@ -66,6 +66,7 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: 
         if (g.contract != null) return "Finish the contract first."
         if (g.expansion != null) return "Finish the expansion first."
     }
+    c.sequelOf?.let { g.release(it) }?.let { if (it.developer != null) return "${it.title} belongs to ${it.developer}." }
     if (c.topic !in g.topics) return "Research ${c.topic.title} first."
     c.size.requires?.let { if (it !in researched) return "Research ${it.title} first." }
     if (teamSize(team) < c.size.minTeam) {
@@ -86,6 +87,13 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: 
         val original = g.release(id) ?: return "No such game."
         if (original.concept.topic != c.topic) return "A sequel or spin-off keeps the topic."
     }
+    c.remasterOf?.let { id ->
+        remasterBlocker(id)?.let { return it }
+        val original = g.release(id)!!
+        if (c.sequelOf != null || original.concept.topic != c.topic || original.concept.genre != c.genre || original.concept.size != c.size) {
+            return "A remaster keeps the original's topic, genre and size."
+        }
+    }
     if (c.live) {
         if (Research.LIVE_SERVICE !in researched) return "Research live service games first."
         if (c.size == GameSize.SMALL) return "Live games need to be medium or bigger."
@@ -98,6 +106,9 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: 
 /** Rough weeks to finish at the current team's pace. */
 fun GameState.estimatedWeeks(size: GameSize): Int = ceil(size.work / max(1.0, staffing(Lane.GAMES).output)).toInt()
 
+/** Weeks a concept takes with today's team: remasters take half as long. */
+fun GameState.estimatedWeeks(c: GameConcept): Int = ceil(c.work / max(1.0, staffing(Lane.GAMES).output)).toInt()
+
 fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> = evenFocus(), team: Int = 1) {
     val g = studio()
     conceptBlocker(concept, team = team)?.let { throw notAvailable(it) }
@@ -109,6 +120,7 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
         val loved = g.series(g.seriesRoot(original)).count { it.score >= 7 }
         hype += minOf(30.0, loved * 6.0 + if (original.score >= 8) 8.0 else 3.0)
     }
+    concept.remasterOf?.let { g.release(it) }?.let { hype += if (it.score >= 8) 15.0 else 8.0 }
     val promised = g.promisedSequel?.let { g.release(it) }
     if (original != null && promised != null && g.seriesRoot(promised).id == g.seriesRoot(original).id) {
         hype += 20.0
@@ -294,6 +306,7 @@ fun GameState.patchBlocker(id: Int): String? {
     val r = g.release(id) ?: return "That game is gone."
     if (r.patched) return "Already patched."
     if (r.publisher != null) return "${r.publisher} handles patches for that one."
+    if (r.developer != null) return "${r.developer} handles patches for that one."
     if (r.bugs < 2) return "Nothing worth patching."
     if (week - r.week > 52) return "Too long ago. Players have moved on."
     if (cash < r.patchCost()) return "A patch costs ${money(r.patchCost())}."
@@ -322,6 +335,7 @@ fun GameState.expansionBlocker(id: Int): String? {
     val r = g.release(id) ?: return "That game is gone."
     if (Research.EXPANSIONS !in researched) return "Research expansion packs first."
     if (r.publisher != null) return "${r.publisher} owns that one."
+    if (r.developer != null) return "${r.developer} owns that one."
     if (r.score < 6) return "Only games that scored 6 or more have an audience for more."
     if (r.expansions.size >= 2) return "Two expansions is plenty. Make a sequel."
     if (week - r.week > 104) return "Players have moved on."

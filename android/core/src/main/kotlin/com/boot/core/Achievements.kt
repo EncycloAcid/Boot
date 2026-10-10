@@ -32,6 +32,12 @@ enum class Achievement(val title: String, val detail: String, val tier: Tier, in
     DOUBLE_FEATURE("Double Feature", "Have two games in development at once.", Tier.SILVER, { games?.twoGames == true }),
     ENGINEER("Engine Builder", "Build your own game engine.", Tier.BRONZE, { (games?.engines?.size ?: 0) >= 2 }),
     MIDDLEWARE("Middleware", "License an engine to other studios.", Tier.SILVER, { games?.engines?.any { it.licensed } == true }),
+    REMASTERED("Back by Popular Demand", "Release a remaster.", Tier.BRONZE, { games?.releases?.any { it.concept.remasterOf != null } == true }),
+
+    // Your label
+    LABEL("Record Label", "Publish another developer's game.", Tier.BRONZE, { (games?.published?.size ?: 0) >= 1 }),
+    INDIE_DARLING("Indie Darling", "Publish a game that scores 8 or more.", Tier.SILVER, { games?.published?.any { it.score >= 8 } == true }),
+    TALENT_SCOUT("Talent Scout", "Publish five games that score 7 or more.", Tier.GOLD, { (games?.published?.count { it.score >= 7 } ?: 0) >= 5 }),
 
     // Live games
     LIVE("Games as a Service", "Launch a live game.", Tier.BRONZE, { games?.releases?.any { it.live != null } == true }),

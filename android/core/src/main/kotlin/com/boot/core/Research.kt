@@ -25,6 +25,11 @@ enum class Research(
     SEQUELS("Sequels", "Follow up a game with the same topic and genre. Fans come back.", Kind.STUDIO, 12),
     MERCHANDISE("Merchandise", "T-shirts, figures and plushies for your hits. Steady money from games that scored 8+.", Kind.STUDIO, 20, requires = MARKETING),
     EXPANSIONS("Expansion packs", "New content for a game that sold well. Everyone who bought it is a customer.", Kind.STUDIO, 18, requires = SEQUELS),
+    REMASTERS("Remasters", "Rebuild an old hit for today's platforms, at half the work of a new game.", Kind.STUDIO, 15, requires = SEQUELS),
+    PUBLISHING(
+        "Publishing label", "Small developers pitch you their games. Fund the ones you believe in and take a share of the sales.",
+        Kind.STUDIO, 40, requires = MARKETING,
+    ),
     CUSTOM_ENGINES("Custom engines", "Build engines from the features you've researched.", Kind.STUDIO, 15),
     MEDIUM_GAMES("Medium games", "Bigger games, bigger launches.", Kind.STUDIO, 20),
     MULTI_GENRE("Multi-genre games", "Mix two genres in one game.", Kind.STUDIO, 35),

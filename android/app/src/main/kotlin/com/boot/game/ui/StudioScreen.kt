@@ -114,6 +114,8 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
     if (g.franchises.isNotEmpty()) item { FranchisesSection(store, state, g) }
     if (g.releases.any { it.live?.closed == false }) item { LiveGamesSection(store, state, g) }
     item { ReleasesSection(store, g) }
+    if (Research.REMASTERS in state.researched) item { RemastersSection(store, state, g) }
+    if (Research.PUBLISHING in state.researched) item { LabelSection(store, state, g) }
     item { StudiosSection(store, state, g) }
     if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
     item { EnginesSection(store, state, g) }

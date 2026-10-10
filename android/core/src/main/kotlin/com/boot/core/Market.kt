@@ -89,10 +89,11 @@ internal fun GameState.marketWeek() {
     while (m.games.size > 60) m.games.removeAt(0)
 
     val entries = m.games.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, it.studio, it.weeklySales, it.score, owned = g.owns(it.studio)) } +
-        g.releases.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, companyName, it.weeklySales, it.score, it.id) }
+        g.releases.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, companyName, it.weeklySales, it.score, it.id) } +
+        g.published.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, "${it.developer} · $companyName", it.weeklySales, it.score, it.id) }
     val sorted = entries.sortedByDescending { it.weeklySales }
     m.chart = sorted.take(10)
-    for (r in g.releases) {
+    for (r in g.releases + g.published) {
         val rank = sorted.indexOfFirst { it.releaseId == r.id } + 1
         r.chartRank = rank
         if (rank > 0) {
