@@ -150,6 +150,15 @@ data class GameRelease(
     val onSale: Boolean get() = weeklySales > 0
 }
 
+/** One of your series: the first game and everything that followed it. */
+data class Franchise(val root: GameRelease, val entries: List<GameRelease>) {
+    val name: String get() = seriesName(root.title)
+    val latest: GameRelease get() = entries.last()
+    val averageScore: Double get() = entries.map { it.score }.average()
+    val lifetime: Double get() = entries.sumOf { it.lifetimeSales }
+    val copies: Double get() = entries.sumOf { it.unitsSold }
+}
+
 @Serializable
 class GamesStudio {
     var project: GameProject? = null
@@ -212,15 +221,45 @@ class GamesStudio {
 
     fun release(id: Int): GameRelease? = releases.firstOrNull { it.id == id }
 
-    /** Suggest a name nobody has used. */
-    internal fun suggestTitle(rng: SeededRNG): String {
-        val used = releases.map { it.title }.toSet() + listOfNotNull(project?.title)
-        repeat(20) {
-            val t = "${rng.pick(GameNames.first)} ${rng.pick(GameNames.second)}"
-            if (t !in used) return t
-        }
-        return "Untitled ${releases.size + 1}"
+    /** The first game of the series a release belongs to. */
+    fun seriesRoot(r: GameRelease): GameRelease {
+        var current = r
+        repeat(64) { current = current.concept.sequelOf?.let { release(it) } ?: return current }
+        return current
     }
+
+    /** Every game in a series, oldest first. */
+    fun series(root: GameRelease): List<GameRelease> = releases.filter { seriesRoot(it).id == root.id }.sortedBy { it.id }
+
+    /**
+     * What to call the next game in [releaseId]'s series: a numbered sequel, or a spin-off when the
+     * genre changes. Another [reroll] gives another way of numbering and subtitling it.
+     */
+    fun nextTitle(releaseId: Int, genre: Genre? = null, reroll: Int = 0): String {
+        val r = release(releaseId) ?: return "Untitled"
+        val entries = series(seriesRoot(r))
+        val latest = entries.last()
+        val name = seriesName(seriesRoot(r).title)
+        val n = entries.size + 1
+        val used = releases.map { it.title }.toSet()
+        val title = if (genre != null && genre != latest.concept.genre) {
+            spinOffTitle(name, genre, reroll)
+        } else {
+            sequelTitle(name, n, latest.concept.topic, latest.id.toLong() + reroll * 101L)
+        }
+        return if (title in used) "$name $n" else title
+    }
+
+    /** Your franchises: every first game that got at least one sequel or spin-off. */
+    val franchises: List<Franchise>
+        get() = releases.filter { it.concept.sequelOf == null }
+            .map { Franchise(it, series(it)) }
+            .filter { it.entries.size >= 2 }
+            .sortedByDescending { it.lifetime }
+
+    /** Suggest a name nobody has used, in the voice of the topic and genre. */
+    internal fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
+        gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title))
 
     // Weekly simulation
 
@@ -350,7 +389,7 @@ class GamesStudio {
 
     // Launch, reviews and the game report
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: RivalGame? = null): LaneReport {
+    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null): LaneReport {
         val p = project ?: throw invalid("No game in development.")
         if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
         val c = p.concept
@@ -416,10 +455,21 @@ class GamesStudio {
         // Launch week.
         val fanLift = 1 + 1.5 * fans / (fans + c.size.fanScale)
         val reachMult = reach.pow(0.75).clamped(0.25, 2.0)
-        val sequelLift = if (original != null && original.score >= 7) 1.15 else 1.0
+        // A series brings its fans along, and wears them out if it slips.
+        val previous = original?.let { series(seriesRoot(it)) } ?: emptyList()
+        val spinOff = original != null && original.concept.genre != c.genre
+        val seriesAvg = if (previous.isEmpty()) 0.0 else previous.map { it.score }.average()
+        var sequelLift = when {
+            previous.isEmpty() -> 1.0
+            seriesAvg >= 7 -> 1 + min(0.4, 0.1 * previous.size)
+            else -> 1 - min(0.2, 0.05 * previous.size)
+        }
+        val fatigued = previous.size >= 3 && previous.last().score < previous[previous.size - 2].score - 0.5
+        if (fatigued) sequelLift *= 0.95
+        if (spinOff) sequelLift = 1 + (sequelLift - 1) / 2
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (if (clash != null) 0.85 else 1.0) * c.price.revenueFactor(avg)
+            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg)
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 
@@ -457,6 +507,15 @@ class GamesStudio {
         if (bugPenalty < 0.95) lines += "Bugs cost you. Polish longer next time."
         if (dated) lines += "Your engine is behind the times. Research and build a new one."
         if (onTrend) lines += "Riding the ${trend?.title?.lowercase()} trend helped sales."
+        if (previous.isNotEmpty()) {
+            val name = seriesName(seriesRoot(original!!).title)
+            val pct = ((sequelLift - 1) * 100).roundToInt()
+            lines += "The $name series (${previous.size} game${if (previous.size > 1) "s" else ""} before this, averaging " +
+                String.format(java.util.Locale.US, "%.1f", seriesAvg) + ") " +
+                (if (pct >= 0) "brought its fans: +$pct% at launch." else "has worn thin: $pct% at launch.") +
+                (if (spinOff) " As a spin-off, it got half the series effect." else "") +
+                (if (fatigued) " Players are tiring of it." else "")
+        }
         val priceEffect = c.price.revenueFactor(avg)
         if (c.price != PriceTier.STANDARD) {
             lines += "At ${money(c.unitPrice)} (${c.price.title.lowercase()}), launch revenue came out " +
@@ -464,7 +523,12 @@ class GamesStudio {
                 " than at the standard price."
         }
         if (clash != null) {
-            lines += "${clash.title} by ${clash.studio} came out weeks earlier in the same genre and took some of your buyers."
+            val rival = clash.game
+            lines += if (clash.mega) {
+                "You launched days after ${rival.title}. Everyone was busy playing it, and your launch week suffered."
+            } else {
+                "${rival.title} by ${rival.studio} came out weeks earlier in the same genre and took some of your buyers."
+            }
         }
 
         val release = GameRelease(

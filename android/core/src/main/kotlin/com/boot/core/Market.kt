@@ -23,7 +23,12 @@ data class RivalGame(
     val week: Int,
     var weeklySales: Double,
     var lifetime: Double = 0.0,
-)
+    /** The real series it belongs to, if any. */
+    val franchise: String? = null,
+) {
+    /** The kind of release everyone stops to play. */
+    val mega: Boolean get() = size == GameSize.AAA && score >= 9
+}
 
 /** One line of the weekly sales chart. Your games carry their release id. */
 @Serializable
@@ -43,6 +48,13 @@ data class Award(val year: Int, val title: String, val studio: String, val score
 @Serializable
 class GameMarket {
     val games = mutableListOf<RivalGame>()
+
+    /** Announced releases, soonest first. */
+    val upcoming = mutableListOf<Announcement>()
+
+    /** When each real franchise next releases, and how many entries it has had this run. */
+    val franchiseNext = mutableMapOf<String, Int>()
+    val franchiseEntries = mutableMapOf<String, Int>()
     var chart: List<ChartEntry> = emptyList()
     val awards = mutableListOf<Award>()
     internal var nextId = 1
@@ -64,6 +76,9 @@ internal val RivalStudios = listOf(
     "Epic Games" to 0.6,
     "Bandai Namco" to 0.6,
     "Supercell" to 0.55,
+    "PlayStation Studios" to 0.85,
+    "Xbox Game Studios" to 0.7,
+    "Valve" to 0.85,
 )
 
 /** Week of the year the awards are held. */
@@ -77,7 +92,8 @@ internal fun GameState.marketWeek() {
     val g = games ?: return
     val m = g.market
     val rival = world.rival(Lane.GAMES)?.strength ?: 0.5
-    if (rng.chance(0.07 + 0.08 * rival)) releaseRivalGame(g)
+    franchiseWeek(m)
+    if (rng.chance(0.04 + 0.05 * rival)) releaseRivalGame(g)
 
     for (r in m.games) {
         if (r.weeklySales <= 0) continue
@@ -123,7 +139,7 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     val licensed = g.engines.filter { it.licensed }.maxOfOrNull { it.level } ?: 0
     val score = (rng.normal(6.2 + 1.2 * quality, 1.2) + licensed * 0.02).clamped(2.5, 9.7)
     val sales = size.launchSales * (score / 7).pow(3) * rng.range(0.7, 1.3) * world.era.demand(Lane.GAMES)
-    val title = "${rng.pick(GameNames.first)} ${rng.pick(GameNames.second)}"
+    val title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), m.games.map { it.title }.toSet())
     val game = RivalGame(m.nextId++, title, studio, topic, genre, size, score, week, sales)
     m.games += game
     if (score >= 8 || size >= GameSize.LARGE) {
@@ -132,11 +148,23 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     }
 }
 
-/** A strong rival game in the same genre, out in the last few weeks, takes buyers from yours. */
-fun GamesStudio.clashFor(concept: GameConcept, week: Int): RivalGame? =
-    market.games
-        .filter { week - it.week in 0..6 && it.score >= 7 && (it.genre == concept.genre || it.genre == concept.genre2) }
+/** What launching next to someone else's release costs you. */
+data class Clash(val game: RivalGame, val penalty: Double) {
+    val mega: Boolean get() = game.mega
+}
+
+/**
+ * A strong rival game in the same genre out in the last six weeks takes buyers from yours (-15%).
+ * A mega release (an AAA 9+) in the last three weeks takes everyone's attention, whatever the genre (-20%).
+ */
+fun GamesStudio.clashFor(concept: GameConcept, week: Int): Clash? {
+    val recent = market.games.filter { week - it.week in 0..6 }
+    recent.filter { it.mega && week - it.week <= 3 }.maxByOrNull { it.weeklySales }?.let { return Clash(it, 0.8) }
+    return recent
+        .filter { it.score >= 7.5 && (it.genre == concept.genre || it.genre == concept.genre2) }
         .maxByOrNull { it.score }
+        ?.let { Clash(it, 0.85) }
+}
 
 /** This year's best games, rivals' and yours. */
 fun GameState.awardNominees(): List<ChartEntry> {

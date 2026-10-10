@@ -59,7 +59,7 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null): Strin
     c.sequelOf?.let { id ->
         if (Research.SEQUELS !in researched) return "Research sequels first."
         val original = g.release(id) ?: return "No such game."
-        if (original.concept.topic != c.topic || original.concept.genre != c.genre) return "A sequel keeps the topic and genre."
+        if (original.concept.topic != c.topic) return "A sequel or spin-off keeps the topic."
     }
     val upfront = c.platforms.sumOf { it.fee } + c.size.weeklyBudget * 4
     if (cash < upfront) return "You need ${money(upfront)} for licence fees and the first month."
@@ -76,8 +76,12 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
     if (fees > 0) spend(fees, Lane.GAMES)
     val original = concept.sequelOf?.let { g.release(it) }
     var hype = minOf(25.0, g.fans / 4_000)
-    if (original != null) hype += if (original.score >= 8) 15.0 else 5.0
-    if (original != null && original.id == g.promisedSequel) {
+    if (original != null) {
+        val loved = g.series(g.seriesRoot(original)).count { it.score >= 7 }
+        hype += minOf(30.0, loved * 6.0 + if (original.score >= 8) 8.0 else 3.0)
+    }
+    val promised = g.promisedSequel?.let { g.release(it) }
+    if (original != null && promised != null && g.seriesRoot(promised).id == g.seriesRoot(original).id) {
         hype += 20.0
         g.promisedSequel = null
     }
@@ -146,7 +150,7 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
     val g = studio()
     val d = g.dealOffers.firstOrNull { it.id == id } ?: throw invalid("That deal is off the table.")
     val concept = GameConcept(
-        title = g.suggestTitle(rng), topic = d.topic, genre = d.genre, platforms = listOf(d.platform), size = d.size,
+        title = g.suggestTitle(rng, d.topic, d.genre), topic = d.topic, genre = d.genre, platforms = listOf(d.platform), size = d.size,
         engineId = g.engines.maxBy { it.level }.id,
     )
     val wasKnown = d.topic in g.topics
@@ -192,14 +196,17 @@ fun GameState.buildEngine() {
 }
 
 /** A sequel's concept, ready to tweak: same topic and genre, a numbered title. */
-fun GameState.sequelConcept(releaseId: Int): GameConcept {
+fun GameState.sequelConcept(releaseId: Int, genre: Genre? = null): GameConcept {
     val g = studio()
     val r = g.release(releaseId) ?: throw invalid("No such game.")
-    val base = r.title.replace(Regex(" \\d+$"), "")
-    val n = (Regex(" (\\d+)$").find(r.title)?.groupValues?.get(1)?.toInt() ?: 1) + 1
-    return r.concept.copy(
-        title = "$base $n", sequelOf = r.id, engineId = g.engines.maxBy { it.level }.id,
-        platforms = r.concept.platforms.filter { availablePlatform(it) }.ifEmpty { listOf(Platform.PC) },
+    val root = g.seriesRoot(r)
+    val entries = g.series(root)
+    val latest = entries.last()
+    val spinOff = genre != null && genre != latest.concept.genre
+    return latest.concept.copy(
+        title = g.nextTitle(releaseId, genre), sequelOf = latest.id, engineId = g.engines.maxBy { it.level }.id,
+        genre = genre ?: latest.concept.genre, genre2 = if (spinOff) null else latest.concept.genre2,
+        platforms = latest.concept.platforms.filter { availablePlatform(it) }.ifEmpty { listOf(Platform.PC) },
     )
 }
 

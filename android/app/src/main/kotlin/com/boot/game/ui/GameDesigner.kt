@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -68,6 +69,7 @@ import com.boot.core.PriceTier
 import com.boot.core.Research
 import com.boot.core.conceptBlocker
 import com.boot.core.estimatedWeeks
+import com.boot.core.gameTitle
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
 import com.boot.core.startGame
@@ -88,9 +90,20 @@ fun GameDesigner(store: GameStore, state: GameState) {
     val seed = store.draft
     val colors = gameColors
     var step by remember { mutableIntStateOf(0) }
-    var title by remember { mutableStateOf(seed?.title ?: g.suggestTitle()) }
     var topic by remember { mutableStateOf(seed?.topic ?: g.topics.first()) }
     var genre by remember { mutableStateOf(seed?.genre ?: Genre.ACTION) }
+    val sequel = seed?.sequelOf
+    val seriesGenre = sequel?.let { g.release(it)?.concept?.genre }
+    val salt = remember { state.week * 13L + g.releases.size }
+    var reroll by remember { mutableIntStateOf(0) }
+    // A name the player typed stays put; a suggested one follows the topic and genre.
+    var typed by remember { mutableStateOf(false) }
+    fun suggested(): String = if (sequel != null) {
+        g.nextTitle(sequel, genre, reroll)
+    } else {
+        gameTitle(topic, genre, salt + reroll, g.releases.map { it.title }.toSet())
+    }
+    var title by remember { mutableStateOf(seed?.title ?: suggested()) }
     var genre2 by remember { mutableStateOf(seed?.genre2) }
     var audience by remember { mutableStateOf(seed?.audience ?: Audience.EVERYONE) }
     val platforms = remember { mutableStateListOf<Platform>().apply { addAll(seed?.platforms ?: listOf(Platform.PC)) } }
@@ -98,7 +111,6 @@ fun GameDesigner(store: GameStore, state: GameState) {
     var engineId by remember { mutableIntStateOf(seed?.engineId ?: g.engines.maxBy { it.level }.id) }
     var price by remember { mutableStateOf(seed?.price ?: PriceTier.STANDARD) }
     val focus = remember { List(3) { mutableStateListOf(1.0, 1.0, 1.0) } }
-    val sequel = seed?.sequelOf
 
     val concept = GameConcept(
         title = title.trim().ifEmpty { "Untitled" }, topic = topic, genre = genre, genre2 = genre2, audience = audience,
@@ -115,7 +127,12 @@ fun GameDesigner(store: GameStore, state: GameState) {
                 Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { close() }) { Icon(Icons.Filled.Close, "Close") }
                     Column(Modifier.weight(1f)) {
-                        Text(if (sequel != null) "Design a sequel" else "Design a game", style = MaterialTheme.typography.titleMedium)
+                        val heading = when {
+                            sequel == null -> "Design a game"
+                            genre != seriesGenre -> "Design a spin-off"
+                            else -> "Design a sequel"
+                        }
+                        Text(heading, style = MaterialTheme.typography.titleMedium)
                         Hint("Step ${step + 1} of ${steps.size} · ${steps[step]}")
                     }
                 }
@@ -142,7 +159,13 @@ fun GameDesigner(store: GameStore, state: GameState) {
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
                         when (s) {
-                            0 -> ConceptStep(state, title, { title = it }, topic, { topic = it }, genre, { genre = it }, genre2, { genre2 = it }, audience, { audience = it }, sequel != null)
+                            0 -> ConceptStep(
+                                state,
+                                title, { title = it; typed = true }, { reroll += 1; typed = false; title = suggested() },
+                                topic, { topic = it; if (!typed) title = suggested() },
+                                genre, { genre = it; if (genre2 == it) genre2 = null; if (!typed) title = suggested() },
+                                genre2, { genre2 = it }, audience, { audience = it }, seriesGenre,
+                            )
                             1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it })
                             2 -> FocusStep(state, concept, focus)
                             else -> SummaryStep(state, concept) { price = it }
@@ -180,13 +203,14 @@ fun GameDesigner(store: GameStore, state: GameState) {
 @Composable
 private fun ConceptStep(
     state: GameState,
-    title: String, onTitle: (String) -> Unit,
+    title: String, onTitle: (String) -> Unit, onReroll: () -> Unit,
     topic: com.boot.core.Topic, onTopic: (com.boot.core.Topic) -> Unit,
     genre: Genre, onGenre: (Genre) -> Unit,
     genre2: Genre?, onGenre2: (Genre?) -> Unit,
     audience: Audience, onAudience: (Audience) -> Unit,
-    locked: Boolean,
+    seriesGenre: Genre?,
 ) {
+    val locked = seriesGenre != null
     val g = state.games!!
     val colors = gameColors
     GroupedSection("Name") {
@@ -201,11 +225,12 @@ private fun ConceptStep(
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                 modifier = Modifier.weight(1f),
             )
+            IconButton(onClick = onReroll) { Icon(Icons.Filled.Casino, "Another name", tint = MaterialTheme.colorScheme.primary) }
         }
     }
     GroupedSection(
         "Topic",
-        footer = if (locked) "A sequel keeps its topic and genre." else "Colors show combos you've learned from game reports. Research more topics in the Research tab.",
+        footer = if (locked) "A series keeps its topic. Pick another genre to make it a spin-off." else "Colors show combos you've learned from game reports. Research more topics in the Research tab.",
     ) {
         CardBlock {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -214,7 +239,8 @@ private fun ConceptStep(
                     val trending = g.trend?.topic == t
                     FilterChip(
                         selected = t == topic,
-                        onClick = { if (!locked) onTopic(t) },
+                        onClick = { onTopic(t) },
+                        enabled = !locked || t == topic,
                         label = { Text(t.title) },
                         leadingIcon = {
                             if (trending) {
@@ -228,14 +254,19 @@ private fun ConceptStep(
             }
         }
     }
-    GroupedSection("Genre", footer = g.knownFit(topic, genre)?.let { "${topic.title} + ${genre.title}: ${it.title.lowercase()} combination." }) {
+    val genreFooter = when {
+        seriesGenre != null && genre != seriesGenre ->
+            "A spin-off: the series in a new genre. Fans follow it, but only half as keenly as a true sequel."
+        else -> g.knownFit(topic, genre)?.let { "${topic.title} + ${genre.title}: ${it.title.lowercase()} combination." }
+    }
+    GroupedSection("Genre", footer = genreFooter) {
         CardBlock {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Genre.entries.forEach { gn ->
                     val fit = g.knownFit(topic, gn)
                     FilterChip(
                         selected = gn == genre,
-                        onClick = { if (!locked) onGenre(gn) },
+                        onClick = { onGenre(gn) },
                         label = { Text(gn.title) },
                         leadingIcon = { Box(Modifier.size(8.dp).background(fitColor(fit, colors), CircleShape)) },
                     )
@@ -427,16 +458,4 @@ private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceT
     ) {
         CardBlock { Segmented(PriceTier.entries, concept.price, { it.title }) { onPrice(it) } }
     }
-}
-
-private fun com.boot.core.GamesStudio.suggestTitle(): String {
-    val first = listOf("Neon", "Moss", "Iron", "Velvet", "Hollow", "Crimson", "Tiny", "Deep", "Paper", "Glitch", "Cinder", "Echo", "Lunar", "Pixel")
-    val second = listOf("Knight", "Courier", "Tactics", "Lantern", "Kingdom", "Saga", "Garden", "Drift", "Raiders", "Empire", "Odyssey", "Heist")
-    val used = releases.map { it.title }.toSet()
-    val n = releases.size + engines.size
-    for (i in 0 until 50) {
-        val t = "${first[(n * 7 + i * 3) % first.size]} ${second[(n * 5 + i) % second.size]}"
-        if (t !in used) return t
-    }
-    return "Untitled ${releases.size + 1}"
 }

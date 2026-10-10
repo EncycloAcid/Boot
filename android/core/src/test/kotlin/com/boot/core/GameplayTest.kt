@@ -23,10 +23,13 @@ private fun GameState.play(weeks: Int) {
 }
 
 /** A finished game to test what happens after launch. */
-private fun GameState.fakeRelease(score: Double, bugs: Double = 10.0, units: Double = 5_000.0): GameRelease {
+private fun GameState.fakeRelease(
+    score: Double, bugs: Double = 10.0, units: Double = 5_000.0, title: String = "Fake Quest", sequelOf: Int? = null, genre: Genre = Genre.RPG,
+): GameRelease {
     val g = games!!
     val r = GameRelease(
-        id = g.nextId(), title = "Fake Quest", concept = GameConcept("Fake Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL),
+        id = g.nextId(), title = title,
+        concept = GameConcept(title, Topic.FANTASY, genre, platforms = listOf(Platform.PC), size = GameSize.SMALL, sequelOf = sequelOf),
         week = week, reviews = emptyList(), score = score, weeklySales = 5_000.0, netShare = 0.7, design = 50.0, tech = 50.0,
         bugs = bugs, hype = 0.0, devCost = 5_000.0, report = emptyList(), unitsSold = units,
     )
@@ -128,7 +131,7 @@ class MarketTest {
         val concept = GameConcept("Mine", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL)
         assertNull(g.clashFor(concept, s.week))
         g.market.games += RivalGame(99, "Dragon Thing", "Nebula Forge", Topic.FANTASY, Genre.RPG, GameSize.MEDIUM, 8.8, s.week, 100_000.0)
-        assertEquals("Dragon Thing", g.clashFor(concept, s.week)?.title)
+        assertEquals("Dragon Thing", g.clashFor(concept, s.week)?.game?.title)
         assertNull(g.clashFor(concept.copy(genre = Genre.CASUAL), s.week))
         assertNull(g.clashFor(concept, s.week + 10))
     }
@@ -474,5 +477,118 @@ class TycoonTest {
         s.play(1)
         assertTrue(g.lastRoyalties > 0)
         assertTrue(g.lastMerch > 0)
+    }
+}
+
+class FranchiseTest {
+    @Test
+    fun titlesSoundLikeGames() {
+        assertEquals(gameTitle(Topic.RACING, Genre.SIMULATION, 1), gameTitle(Topic.RACING, Genre.SIMULATION, 1))
+        val many = (1L..20L).map { gameTitle(Topic.FANTASY, Genre.RPG, it) }.toSet()
+        assertTrue(many.size >= 8, "$many")
+        val first = gameTitle(Topic.SPACE, Genre.STRATEGY, 7)
+        assertTrue(gameTitle(Topic.SPACE, Genre.STRATEGY, 7, setOf(first)) != first)
+        for (topic in Topic.entries) for (genre in Genre.entries) assertTrue(gameTitle(topic, genre, 3).isNotBlank())
+
+        assertEquals("III", roman(3))
+        assertEquals("Moss Knight", seriesName("Moss Knight II: Reborn"))
+        assertEquals("Moss Knight", seriesName("Moss Knight 3"))
+        for (salt in 1L..12L) {
+            val t = sequelTitle("Moss Knight", 3, Topic.FANTASY, salt)
+            assertEquals("Moss Knight", seriesName(t), t)
+            assertTrue("3" in t || "III" in t, t)
+        }
+        assertEquals("Moss Knight Tactics", spinOffTitle("Moss Knight", Genre.STRATEGY))
+        assertEquals("Moss Knight Command", spinOffTitle("Moss Knight", Genre.STRATEGY, 1))
+    }
+
+    @Test
+    fun realSeriesAnnounceAndShipOnSchedule() {
+        val s = game(Lane.GAMES, 40)
+        s.cash = 10_000_000.0
+        val m = s.games!!.market
+        var announced = false
+        repeat(60) {
+            s.play(1)
+            if (m.upcoming.any { it.franchise == "Call of Duty" }) announced = true
+            assertEquals(m.upcoming.sortedBy { it.week }, m.upcoming)
+            assertTrue(m.upcoming.all { it.week >= s.week })
+        }
+        assertTrue(announced)
+        val fc = m.games.filter { it.franchise == "EA Sports FC" }
+        assertEquals(listOf("EA Sports FC 28"), fc.map { it.title })
+        assertEquals(37, fc.single().week)
+        assertTrue(m.games.any { it.franchise == "Call of Duty" && it.title.startsWith("Call of Duty: ") })
+        assertTrue(m.games.count { it.franchise != null } >= 4)
+        assertEquals(m.franchiseNext, GameState.decode(s.encode()).games!!.market.franchiseNext)
+    }
+
+    @Test
+    fun launchingNextToAGiantCostsPlayers() {
+        val s = game(Lane.GAMES, 41)
+        val g = s.games!!
+        val rpg = GameConcept("Mine", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+        assertNull(g.clashFor(rpg, s.week))
+        g.market.games += RivalGame(900, "Some Strategy Hit", "Ubisoft", Topic.MEDIEVAL, Genre.STRATEGY, GameSize.LARGE, 8.4, s.week, 1e5)
+        assertNull(g.clashFor(rpg, s.week))
+        g.market.games += RivalGame(901, "Some RPG Hit", "Bandai Namco", Topic.FANTASY, Genre.RPG, GameSize.LARGE, 8.1, s.week - 2, 1e5)
+        assertEquals(0.85, g.clashFor(rpg, s.week)!!.penalty)
+        g.market.games += RivalGame(902, "Grand Theft Auto VII", "Rockstar Games", Topic.CITY, Genre.ACTION, GameSize.AAA, 9.7, s.week - 1, 5e6, franchise = "Grand Theft Auto")
+        val clash = g.clashFor(rpg, s.week)!!
+        assertTrue(clash.mega)
+        assertEquals("Grand Theft Auto VII", clash.game.title)
+        assertNull(g.clashFor(rpg, s.week + 10))
+    }
+
+    @Test
+    fun sequelsAndSpinOffsBuildASeries() {
+        val s = game(Lane.GAMES, 42)
+        s.researched = s.researched + Research.SEQUELS
+        val g = s.games!!
+        val first = s.fakeRelease(8.6)
+        assertTrue(g.franchises.isEmpty())
+
+        val next = s.sequelConcept(first.id)
+        assertEquals(first.id, next.sequelOf)
+        assertEquals("Fake Quest", seriesName(next.title))
+        assertEquals(Topic.FANTASY, next.topic)
+        val spinOff = s.sequelConcept(first.id, Genre.STRATEGY)
+        assertEquals("Fake Quest Tactics", spinOff.title)
+        assertEquals(Genre.STRATEGY, spinOff.genre)
+        assertEquals("A sequel or spin-off keeps the topic.", s.conceptBlocker(next.copy(topic = Topic.SPACE)))
+
+        val second = s.fakeRelease(8.2, title = "Fake Quest II", sequelOf = first.id)
+        s.fakeRelease(7.0, title = "Fake Quest Tactics", sequelOf = second.id, genre = Genre.STRATEGY)
+        s.fakeRelease(6.0, title = "Unrelated")
+        val f = g.franchises.single()
+        assertEquals("Fake Quest", f.name)
+        assertEquals(3, f.entries.size)
+        assertEquals("Fake Quest Tactics", f.latest.title)
+        assertEquals((8.6 + 8.2 + 7.0) / 3, f.averageScore, 1e-9)
+        assertEquals(f.latest.id, s.sequelConcept(first.id).sequelOf)
+        assertTrue(seriesName(g.nextTitle(second.id)) == "Fake Quest")
+    }
+
+    @Test
+    fun aGoodSeriesSellsMoreThanItsFirstGame() {
+        fun launchWeek(withSeries: Boolean): Double {
+            val s = game(Lane.GAMES, 43)
+            s.cash = 1_000_000.0
+            s.researched = s.researched + Research.SEQUELS
+            val concept = if (withSeries) {
+                val a = s.fakeRelease(8.8, title = "Moss Knight")
+                val b = s.fakeRelease(8.5, title = "Moss Knight 2", sequelOf = a.id)
+                s.sequelConcept(b.id)
+            } else {
+                GameConcept("Moss Knight 3", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+            }
+            s.startGame(concept, List(3) { mutableListOf(1.0, 1.0, 1.0) })
+            while (s.games!!.project?.isReady != true) s.play(1)
+            s.launchGame()
+            val r = s.games!!.releases[0]
+            assertEquals(withSeries, r.report.any { "series" in it }, r.report.joinToString("\n"))
+            return r.weeklySales / r.score
+        }
+        assertTrue(launchWeek(true) > launchWeek(false))
     }
 }

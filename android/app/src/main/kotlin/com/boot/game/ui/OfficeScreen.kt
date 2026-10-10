@@ -72,6 +72,7 @@ fun OfficeScreen(store: GameStore, state: GameState) {
         }
         if (state.games != null) {
             item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openLane(Lane.GAMES) }) }) { store.openRelease = it } }
+            item { ComingSoonCard(state, limit = 3) }
         }
         item { Shortcuts(store, state) }
         item {

@@ -50,10 +50,12 @@ import com.boot.core.buildEngine
 import com.boot.core.setEngineLicensed
 import com.boot.core.buyCampaign
 import com.boot.core.cancelGame
+import com.boot.core.clashFor
 import com.boot.core.engineQuote
 import com.boot.core.launchGame
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
+import com.boot.core.sequelConcept
 import com.boot.core.setStageFocus
 import com.boot.core.takeGameContract
 import com.boot.game.GameStore
@@ -104,6 +106,8 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
     }
     item { StudioOverview(state, g) }
     item { ChartCard(state, limit = 10) { store.openRelease = it } }
+    item { ComingSoonCard(state, limit = 8) }
+    if (g.franchises.isNotEmpty()) item { FranchisesSection(store, state, g) }
     item { ReleasesSection(store, g) }
     if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
     item { EnginesSection(store, state, g) }
@@ -173,6 +177,18 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                         maxLines = 1,
                     )
                 }
+            }
+            if (p.isReady) {
+                val g = state.games!!
+                val clash = g.clashFor(c, state.week)
+                val giant = g.market.upcoming.firstOrNull { it.mega && it.week - state.week in 0..2 }
+                val warning = when {
+                    clash?.mega == true -> "${clash.game.title} just came out and everyone's playing it. Launching now costs you players."
+                    clash != null -> "${clash.game.title} is a fresh ${clash.game.genre.lower} hit. Launching now means sharing its audience."
+                    giant != null -> "${giant.title} lands ${if (giant.week == state.week) "this week" else "in ${Format.weeks(giant.week - state.week)}"}. Release before it hits, or wait it out."
+                    else -> null
+                }
+                warning?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.warn) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 PrimaryButton("Release ${p.title}", { store.perform { launchGame() } }, enabled = p.isReady)
@@ -300,6 +316,33 @@ private fun DealOffers(store: GameStore, g: GamesStudio) {
 }
 
 // Catalogue, engines, platforms and what you've learned
+
+@Composable
+private fun FranchisesSection(store: GameStore, state: GameState, g: GamesStudio) {
+    val canSequel = Research.SEQUELS in state.researched && !g.busy
+    GroupedSection(
+        "Your franchises",
+        footer = "A series that averages 7 or better sells more with every entry. Let it rest between games, and don't let quality slip.",
+    ) {
+        g.franchises.forEachIndexed { i, f ->
+            if (i > 0) RowDivider(72.dp)
+            val rest = state.week - f.latest.week
+            ListRow(
+                f.name,
+                subtitle = "${f.entries.size} games · " + if (rest == 0) "new this week" else "last out ${Format.weeks(rest)} ago",
+                leading = { ScoreBadge(f.averageScore, 44.dp) },
+                value = Format.money(f.lifetime),
+                valueDetail = "lifetime",
+                onClick = { store.openRelease = f.latest.id },
+                trailing = if (canSequel) {
+                    { PlainButton("Next", { store.designGame(state.sequelConcept(f.latest.id)) }) }
+                } else {
+                    null
+                },
+            )
+        }
+    }
+}
 
 @Composable
 private fun ReleasesSection(store: GameStore, g: GamesStudio) {

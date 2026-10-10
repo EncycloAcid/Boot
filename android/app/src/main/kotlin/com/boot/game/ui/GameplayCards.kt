@@ -16,8 +16,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.boot.core.ChartEntry
 import com.boot.core.Format
+import com.boot.core.GameClock
 import com.boot.core.GameState
 import com.boot.core.Goal
 import com.boot.core.currentGoals
@@ -203,6 +206,37 @@ private fun ChartRow(rank: Int, e: ChartEntry, onOpen: ((Int) -> Unit)?) {
 }
 
 /** Game of the Year, every year so far. */
+/** Real releases on the way. The giants pull players away from anything that launches next to them. */
+@Composable
+fun ComingSoonCard(state: GameState, limit: Int) {
+    val g = state.games ?: return
+    val soon = g.market.upcoming.take(limit)
+    if (soon.isEmpty()) return
+    val colors = gameColors
+    GroupedSection("Coming soon", footer = "The biggest launches steal players for a few weeks. Don't release yours right next to one.") {
+        soon.forEachIndexed { i, a ->
+            if (i > 0) RowDivider(56.dp)
+            val weeks = a.week - state.week
+            ListRow(
+                a.title,
+                subtitle = "${a.studio} · ${a.size.title} ${a.genre.lower}" + if (a.mega) " · the big one" else "",
+                leading = {
+                    Icon(
+                        if (a.mega) Icons.Filled.Whatshot else Icons.Filled.Event, null,
+                        tint = if (a.mega) colors.warn else MaterialTheme.colorScheme.outline, modifier = Modifier.size(24.dp),
+                    )
+                },
+                value = when (weeks) {
+                    0 -> "This week"
+                    1 -> "Next week"
+                    else -> "In $weeks weeks"
+                },
+                valueDetail = GameClock.label(a.week),
+            )
+        }
+    }
+}
+
 @Composable
 fun AwardsCard(state: GameState) {
     val g = state.games ?: return

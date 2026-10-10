@@ -36,6 +36,7 @@ import com.boot.core.acknowledgeReview
 import com.boot.core.advance
 import com.boot.core.startGame
 import com.boot.core.choose
+import com.boot.core.spinOffTitle
 import com.boot.game.ui.BootApp
 import com.boot.game.ui.BootTheme
 import org.junit.Assert.assertEquals
@@ -286,6 +287,48 @@ class GameFlowTest {
         compose.waitForIdle()
         compose.onNodeWithText("Make an expansion pack").performScrollTo()
         overlay("31-after-launch")
+    }
+
+    @Test
+    fun franchisesComingSoonAndSpinOffs() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Series Co", "Rae", Lane.GAMES, seed = 21)
+            val pilot = Autopilot()
+            store.perform {
+                while (week < 300 && !isOver && (games!!.franchises.isEmpty() || games!!.busy)) pilot.playWeek(this)
+                while (events.isNotEmpty()) choose(events[0].choices.size - 1)
+                acknowledgeReview()
+            }
+            store.openLane(Lane.GAMES)
+        }
+        val g = store.state!!.games!!
+        val f = g.franchises.first()
+        assertTrue(f.entries.size >= 2)
+        assertTrue(g.market.upcoming.isNotEmpty())
+        assertTrue(g.market.games.any { it.franchise != null })
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Coming soon", ignoreCase = true))
+        compose.waitForIdle()
+        compose.onNodeWithText(g.market.upcoming.first().title).assertExists()
+        screen("40-coming-soon")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(f.name))
+        compose.waitForIdle()
+        screen("41-franchises")
+
+        compose.onAllNodesWithText("Next").onFirst().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Design a sequel").assertExists()
+        compose.onNodeWithText(store.draft!!.title).assertExists()
+        overlay("42-sequel")
+        val other = Genre.entries.first { it != f.latest.concept.genre }
+        compose.onAllNodesWithText(other.title).onFirst().performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Design a spin-off").assertExists()
+        compose.onNodeWithText(spinOffTitle(f.name, other)).assertExists()
+        compose.onNodeWithContentDescription("Another name").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(spinOffTitle(f.name, other, 1)).assertExists()
+        overlay("43-spin-off")
     }
 
     @Test

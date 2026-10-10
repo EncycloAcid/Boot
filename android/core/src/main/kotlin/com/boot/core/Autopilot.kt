@@ -209,7 +209,14 @@ class Autopilot(
             val (features, cost, _) = s.engineQuote()
             if (features.sumOf { it.engineLevel } >= g.engines.maxOf { it.level } + 4 && s.cash > cost * 6) attempt { s.buildEngine() }
         }
-        val concept = bestConcept(s, g)
+        val fresh = bestConcept(s, g)
+        // Follow up a hit once its series has had a year off.
+        val hit = if (Research.SEQUELS in s.researched) {
+            g.releases.firstOrNull { it.score >= 8 && it.publisher == null && s.week - g.series(g.seriesRoot(it)).last().week >= 60 }
+        } else {
+            null
+        }
+        val concept = if (hit != null && fresh != null) s.sequelConcept(hit.id).copy(size = fresh.size) else fresh
         if (concept == null || s.conceptBlocker(concept) != null || (s.runwayWeeks < 12 && g.contractOffers.isNotEmpty())) {
             g.contractOffers.firstOrNull()?.let { attempt { s.takeGameContract(it.id) } }
             return
@@ -238,7 +245,7 @@ class Autopilot(
             Audience.EVERYONE
         }
         return GameConcept(
-            title = g.suggestTitle(s.rng), topic = topic, genre = genre, audience = audience, platforms = platforms,
+            title = g.suggestTitle(s.rng, topic, genre), topic = topic, genre = genre, audience = audience, platforms = platforms,
             size = size, engineId = g.engines.maxBy { it.level }.id,
         )
     }
