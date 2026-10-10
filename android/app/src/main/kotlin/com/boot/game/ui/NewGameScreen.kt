@@ -110,7 +110,7 @@ fun NewGameScreen(store: GameStore) {
                     preview, playing = false,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(170.dp)
+                        .height(230.dp)
                         .clip(RoundedCornerShape(28.dp)),
                 )
             }

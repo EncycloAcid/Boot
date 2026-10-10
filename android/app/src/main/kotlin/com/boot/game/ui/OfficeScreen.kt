@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -91,34 +92,46 @@ private fun OfficeCard(store: GameStore, state: GameState) {
     val colors = gameColors
     Surface(shape = RoundedCornerShape(28.dp), color = colors.card, modifier = Modifier.fillMaxWidth()) {
         Column {
-            OfficeScene(
-                state, store.playing,
-                Modifier
-                    .fillMaxWidth()
-                    .height(232.dp)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
-            )
             val crowded = state.staff.size > state.office.desks
-            Row(
+            Box(
                 Modifier
                     .fillMaxWidth()
-                    .clickable { store.tab = Tab.TEAM }
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .height(290.dp)
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .clickable { store.tab = Tab.TEAM },
             ) {
-                Text(
-                    state.office.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    "${state.staff.size}/${state.office.desks} desks" + if (crowded) " · crowded" else "",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (crowded) colors.bad else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 40.dp)
+                Row(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SceneChip(state.office.title)
+                    SceneChip(
+                        "${state.staff.size}/${state.office.desks} desks" + if (crowded) " · crowded" else "",
+                        icon = Icons.Filled.Groups,
+                        tint = if (crowded) colors.bad else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
             Ticker(store, state)
         }
+    }
+}
+
+/** A frosted label floating over the office. */
+@Composable
+private fun SceneChip(text: String, icon: ImageVector? = null, tint: Color = MaterialTheme.colorScheme.onSurface) {
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(gameColors.card.copy(alpha = 0.86f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        if (icon != null) Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
+        Text(text, style = MaterialTheme.typography.labelLarge, color = tint, maxLines = 1)
     }
 }
 
@@ -207,6 +220,8 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject) {
     val stage = if (p.isReady) "Polish" else listOf("Foundations", "Content", "Presentation")[p.stage]
     CardBlock {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            GameCover(c, 48.dp)
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Hint("${c.size.title} ${c.topic.title.lowercase()} ${c.genreLower} · ${c.platforms.joinToString { it.title }}")

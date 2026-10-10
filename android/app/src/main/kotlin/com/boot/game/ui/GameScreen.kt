@@ -65,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -211,7 +212,14 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
     val weekly = state.trailingProfit(weeks = 4) / 4
     Surface(color = colors.bar) {
         Column(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
-            Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(start = 12.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .clip(CircleShape)
+                        .clickable { store.tab = Tab.TEAM }
+                        .semantics { contentDescription = "You, ${state.founder.name}" },
+                ) { FounderPortrait(state, 42.dp) }
+                Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         state.companyName,

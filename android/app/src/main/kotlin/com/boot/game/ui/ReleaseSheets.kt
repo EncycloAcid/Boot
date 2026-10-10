@@ -72,6 +72,9 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
         ) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Hint("THE REVIEWS ARE IN")
+                Spacer(Modifier.size(10.dp))
+                GameCover(r.concept, 132.dp)
+                Spacer(Modifier.size(12.dp))
                 Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
                 Spacer(Modifier.size(12.dp))
                 ScoreSummary(r)
@@ -139,7 +142,8 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        GameCover(r.concept, 108.dp)
                         Column {
                             Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
                             Hint(

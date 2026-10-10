@@ -242,6 +242,9 @@ class GameFlowTest {
         screen("07-money")
         tab("Team")
         screen("06-team")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Next: ", substring = true))
+        compose.waitForIdle()
+        screen("44-next-office")
         tab("Office")
         screen("08-office-two-lanes")
     }

@@ -412,13 +412,16 @@ private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceT
     val colors = gameColors
     val fees = concept.platforms.sumOf { it.fee }
     val blocker = state.conceptBlocker(concept)
-    Column(Modifier.padding(horizontal = 4.dp)) {
-        Text(concept.title, style = MaterialTheme.typography.headlineMediumEmphasized)
-        Text(
-            "${concept.size.title} ${concept.topic.title.lowercase()} ${concept.genreLower} game " +
-                "for ${concept.audience.phrase} on ${concept.platforms.joinToString { it.title }}.",
-            style = MaterialTheme.typography.bodyLarge,
-        )
+    Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        GameCover(concept, 104.dp)
+        Column {
+            Text(concept.title, style = MaterialTheme.typography.headlineMediumEmphasized)
+            Text(
+                "${concept.size.title} ${concept.topic.title.lowercase()} ${concept.genreLower} game " +
+                    "for ${concept.audience.phrase} on ${concept.platforms.joinToString { it.title }}.",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
     }
     GroupedSection("What you know", footer = "Unknown combos are a gamble. That's how you learn.") {
         val tg = g.knownFit(concept.topic, concept.genre)

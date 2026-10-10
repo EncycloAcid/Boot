@@ -179,7 +179,7 @@ The ending screen tells the story of your run: where you started, what forced th
 
 - Multiple concurrent products per lane (a second app, two games in parallel).
 - Rival companies as full simulations, plus acquisitions you make yourself.
-- Art and sound. (The office is drawn in code: desks, people and rooms per office tier.)
+- Sound, and hand-drawn art. (Everything is drawn in code: the isometric office with each office tier, its perks and its people, the staff portraits, and box art generated for every game from its topic, genre, platform and rating.)
 - The studio update, the running clock, the removal of energy and the 0.5 gameplay update in the Swift (macOS and terminal) version.
 - Steam-style achievements per ending variant.
 - Proper tuning passes with real playtesters; the current numbers come from autopilot runs.

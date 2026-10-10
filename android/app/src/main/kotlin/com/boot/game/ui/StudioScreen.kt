@@ -150,11 +150,16 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
         footer = if (p.isReady) "Content complete. Every week now fixes bugs and adds polish. Ship when you're happy." else null,
     ) {
         CardBlock {
-            Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized)
-            Hint(
-                "${c.size.title} ${c.topic.title.lowercase()} ${c.genreLower} · ${c.platforms.joinToString { it.title }} · " +
-                    "for ${c.audience.phrase} · ${Format.weeks(p.weeksInDev)} in",
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                GameCover(c, 64.dp)
+                Column {
+                    Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized)
+                    Hint(
+                        "${c.size.title} ${c.topic.title.lowercase()} ${c.genreLower} · ${c.platforms.joinToString { it.title }} · " +
+                            "for ${c.audience.phrase} · ${Format.weeks(p.weeksInDev)} in",
+                    )
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 stageLabels.forEachIndexed { i, label ->
                     val on = i == current
@@ -325,12 +330,12 @@ private fun FranchisesSection(store: GameStore, state: GameState, g: GamesStudio
         footer = "A series that averages 7 or better sells more with every entry. Let it rest between games, and don't let quality slip.",
     ) {
         g.franchises.forEachIndexed { i, f ->
-            if (i > 0) RowDivider(72.dp)
+            if (i > 0) RowDivider(78.dp)
             val rest = state.week - f.latest.week
             ListRow(
                 f.name,
                 subtitle = "${f.entries.size} games · " + if (rest == 0) "new this week" else "last out ${Format.weeks(rest)} ago",
-                leading = { ScoreBadge(f.averageScore, 44.dp) },
+                leading = { CoverWithScore(f.latest.concept, f.averageScore) },
                 value = Format.money(f.lifetime),
                 valueDetail = "lifetime",
                 onClick = { store.openRelease = f.latest.id },
@@ -349,14 +354,14 @@ private fun ReleasesSection(store: GameStore, g: GamesStudio) {
     GroupedSection("Released games") {
         if (g.releases.isEmpty()) CardBlock { Hint("Nothing shipped yet. Your first game is waiting.") }
         g.releases.take(12).forEachIndexed { i, r ->
-            if (i > 0) RowDivider(72.dp)
+            if (i > 0) RowDivider(78.dp)
             ListRow(
                 r.title,
                 subtitle = "${r.verdict} · ${r.concept.topic.title} ${r.concept.genreTitle}" +
                     (if (r.chartRank > 0) " · #${r.chartRank} this week" else "") +
                     (if (r.expansions.isNotEmpty()) " · ${r.expansions.size} expansion${if (r.expansions.size > 1) "s" else ""}" else "") +
                     (if (r.patched) " · patched" else ""),
-                leading = { ScoreBadge(r.score, 44.dp) },
+                leading = { CoverWithScore(r.concept, r.score) },
                 value = if (r.onSale) (r.weeklySales * r.netShare).perWeek() else Format.money(r.lifetimeSales),
                 valueDetail = if (r.onSale) "on sale" else "lifetime",
                 chevron = true,

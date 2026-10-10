@@ -26,6 +26,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.boot.core.Employee
@@ -70,6 +77,12 @@ fun TeamScreen(store: GameStore, state: GameState) {
 private fun FounderSection(store: GameStore, state: GameState) {
     val f = state.founder
     GroupedSection("You, ${f.name}") {
+        ListRow(
+            f.name,
+            subtitle = "Founder and CEO · ${Format.percent(state.venture.founderEquity)} of ${state.companyName}",
+            leading = { FounderPortrait(state, 48.dp) },
+        )
+        RowDivider()
         state.lanes.forEachIndexed { i, lane ->
             if (i > 0) RowDivider()
             ValueRow("${lane.title} experience", String.format(Locale.US, "+%.1f output", f.skillBonus(lane)))
@@ -110,6 +123,20 @@ private fun OfficeSection(store: GameStore, state: GameState) {
         "Office",
         footer = if (state.staff.size > state.office.desks) "It's crowded in here. Morale drops every week until you move." else "Every hire needs a desk. Move up to grow.",
     ) {
+        if (next != null) {
+            Box(Modifier.fillMaxWidth().height(190.dp)) {
+                OfficePreview(state, next, Modifier.fillMaxSize(), insetTop = 34.dp)
+                Text(
+                    "Next: ${next.title}",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .clip(CircleShape)
+                        .background(gameColors.card.copy(alpha = 0.86f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+        }
         ValueRow(state.office.title, "${state.staff.size}/${state.office.desks} desks")
         RowDivider()
         ValueRow("Rent", state.office.rent.perWeek())
@@ -144,7 +171,7 @@ private fun HiringSection(store: GameStore, state: GameState) {
                 c.name,
                 subtitle = "${c.role.title} · skill ${c.skill} · ${c.askingSalary.perWeek()}\nDesign ${c.design} · Tech ${c.tech} · Research ${c.research}" +
                     (c.contestedBy?.let { "\n$it is circling" } ?: ""),
-                leading = { Initials(c.name, c.contestedBy != null) },
+                leading = { CandidatePortrait(c.id, 44.dp, ring = if (c.contestedBy != null) gameColors.warn else null) },
             ) {
                 if (state.lanes.size == 1) {
                     TonalButton("Hire", { store.perform { hire(c.id, state.lanes.first()) } })
@@ -156,24 +183,6 @@ private fun HiringSection(store: GameStore, state: GameState) {
     }
 }
 
-/** An iOS contacts-style monogram. */
-@Composable
-private fun Initials(name: String, contested: Boolean) {
-    val colors = gameColors
-    Box(
-        Modifier
-            .size(40.dp)
-            .background(if (contested) colors.warn.copy(alpha = 0.18f) else colors.fill, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            name.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString(""),
-            style = MaterialTheme.typography.titleSmall,
-            color = if (contested) colors.warn else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
 @Composable
 private fun TeamSection(store: GameStore, state: GameState) {
     var firing by remember { mutableStateOf<Employee?>(null) }
@@ -181,7 +190,7 @@ private fun TeamSection(store: GameStore, state: GameState) {
     val canTrain = Research.TRAINING in state.researched
     GroupedSection(
         "Staff",
-        footer = if (canTrain) "Tap the cap to send someone on a course." else "Research a training program to raise people's skills.",
+        footer = if (canTrain) "Tap ⋮ to move someone to another lane, send them on a course or let them go." else "Tap ⋮ to move someone to another lane. Research a training program to raise people's skills.",
     ) {
         if (state.staff.isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
         state.staff.forEachIndexed { i, e ->
@@ -220,17 +229,18 @@ private fun TeamSection(store: GameStore, state: GameState) {
 @Composable
 private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Unit, onFire: () -> Unit, onTrain: (() -> Unit)?) {
     val colors = gameColors
+    var menu by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Initials(e.name, false)
+        StaffPortrait(e, 48.dp)
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(e.name, style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.width(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(e.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
                 Pill("Lv ${e.level}", colors.milestone)
+                Pill(e.lane?.short ?: "Unassigned", e.lane?.let { colors.lane(it) } ?: MaterialTheme.colorScheme.outline)
             }
-            Text("${e.role.title} · skill ${e.skill} · ${e.salary.perWeek()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${e.role.title} · skill ${e.skill} · ${e.salary.perWeek()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             Text(
-                "Design ${e.design} · Tech ${e.tech} · Res ${e.research}",
+                "Design ${e.design} · Tech ${e.tech} · Research ${e.research}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
             )
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -238,11 +248,36 @@ private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Uni
                 MiniBar(if (e.maxLevel) "Max level" else "XP", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone)
             }
         }
-        MenuButton(e.lane?.short ?: "Unassigned", listOf<Lane?>(null) + lanes, { it?.businessName ?: "Unassigned" }, onPick = onAssign)
-        if (onTrain != null) {
-            IconButton(onClick = onTrain) { Icon(Icons.Filled.School, "Train ${e.name}", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Box {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Manage ${e.name}", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, shape = RoundedCornerShape(16.dp)) {
+                (listOf<Lane?>(null) + lanes).forEach { lane ->
+                    DropdownMenuItem(
+                        text = { Text(lane?.let { "Work in the ${it.businessName.lowercase()}" } ?: "Unassigned") },
+                        leadingIcon = { if (lane == e.lane) Icon(Icons.Filled.Check, null) else Spacer(Modifier.size(24.dp)) },
+                        onClick = {
+                            menu = false
+                            onAssign(lane)
+                        },
+                    )
+                }
+                HorizontalDivider()
+                if (onTrain != null) {
+                    DropdownMenuItem(text = { Text("Send on a course") }, leadingIcon = { Icon(Icons.Filled.School, null) }, onClick = {
+                        menu = false
+                        onTrain()
+                    })
+                }
+                DropdownMenuItem(
+                    text = { Text("Let ${e.name.substringBefore(' ')} go", color = colors.bad) },
+                    leadingIcon = { Icon(Icons.Filled.PersonRemove, null, tint = colors.bad) },
+                    onClick = {
+                        menu = false
+                        onFire()
+                    },
+                )
+            }
         }
-        IconButton(onClick = onFire) { Icon(Icons.Filled.PersonRemove, "Let ${e.name} go", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
