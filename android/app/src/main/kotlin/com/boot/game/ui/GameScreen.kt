@@ -1,5 +1,15 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -50,8 +60,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -139,25 +147,10 @@ private fun GameScreen(store: GameStore, state: GameState) {
     Scaffold(
         containerColor = colors.grouped,
         topBar = { Hud(store, state, onAbandon = { confirmAbandon = true }) },
-        bottomBar = {
-            Column {
-                HorizontalDivider(thickness = 0.5.dp, color = colors.separator)
-                ShortNavigationBar(containerColor = colors.bar) {
-                    for (t in tabs) {
-                        ShortNavigationBarItem(
-                            selected = store.tab == t.tab,
-                            onClick = { store.tab = t.tab },
-                            icon = { Icon(t.icon, null) },
-                            label = { Text(t.label) },
-                        )
-                    }
-                }
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         val motion = MaterialTheme.motionScheme
-        Box(Modifier.padding(padding).fillMaxSize()) {
+        // The content runs to the bottom of the screen and scrolls under the floating tab bar.
+        Box(Modifier.padding(top = padding.calculateTopPadding()).fillMaxSize()) {
             AnimatedContent(
                 targetState = store.tab,
                 transitionSpec = {
@@ -175,6 +168,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
                     Tab.NEWS -> NewsScreen(state)
                 }
             }
+            FloatingTabBar(store, Modifier.align(Alignment.BottomCenter), snackbar)
         }
     }
 
@@ -379,12 +373,77 @@ private fun WeekProgress(store: GameStore, state: GameState) {
     }
 }
 
+/** Height of the floating tab bar plus the gap under it, for content to clear. */
+private val FloatingBarClearance = 68.dp + 12.dp
+
+/**
+ * The tabs, on a pill that floats over the content: content scrolls underneath, fading out just
+ * behind it. Snackbars sit above it.
+ */
+@Composable
+private fun FloatingTabBar(store: GameStore, modifier: Modifier, snackbar: SnackbarHostState) {
+    val colors = gameColors
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        SnackbarHost(snackbar)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(colors.grouped.copy(alpha = 0f), colors.grouped.copy(alpha = 0.92f)))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = colors.card,
+                shadowElevation = 10.dp,
+                border = BorderStroke(0.5.dp, colors.separator),
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp)
+                    .widthIn(max = 480.dp)
+                    .fillMaxWidth(),
+            ) {
+                Row(Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
+                    for (t in tabs) FloatingTab(t, store.tab == t.tab, Modifier.weight(1f)) { store.tab = t.tab }
+                }
+            }
+        }
+    }
+}
+
+/** One tab: the icon on an expressive pill when selected, the label underneath. */
+@Composable
+private fun FloatingTab(t: TabSpec, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
+    val indicator by animateColorAsState(if (selected) scheme.secondaryContainer else Color.Transparent, motion.defaultEffectsSpec(), label = "tab")
+    val width by animateDpAsState(if (selected) 56.dp else 32.dp, motion.defaultSpatialSpec(), label = "tabWidth")
+    Column(
+        modifier
+            .clip(RoundedCornerShape(24.dp))
+            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Box(Modifier.width(width).height(30.dp).background(indicator, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(t.icon, null, tint = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        }
+        FitText(
+            t.label,
+            MaterialTheme.typography.labelMedium,
+            color = if (selected) scheme.onSurface else scheme.onSurfaceVariant,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        )
+    }
+}
+
 /** Standard scrolling body for a tab: grouped sections on the grouped background. */
 @Composable
 fun ScreenColumn(content: LazyListScope.() -> Unit) {
+    val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + FloatingBarClearance + 32.dp
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 32.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottom),
         verticalArrangement = Arrangement.spacedBy(20.dp),
         content = content,
     )

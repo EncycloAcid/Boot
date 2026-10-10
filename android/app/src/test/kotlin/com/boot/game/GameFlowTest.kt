@@ -16,6 +16,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -109,9 +111,12 @@ class GameFlowTest {
         roots[roots.fetchSemanticsNodes().size - 1].save(name)
     }
 
-    /** Scroll a button into view, then tap it. */
+    /**
+     * Scroll a button into view, then tap it. The tap goes through the button's click action
+     * rather than a touch, since scrolled-to content can sit under the floating tab bar.
+     */
     private fun tapInList(text: String) {
-        compose.onNodeWithText(text).performScrollTo().performClick()
+        compose.onNodeWithText(text).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
     }
 
@@ -342,7 +347,7 @@ class GameFlowTest {
         compose.waitForIdle()
         screen("41-franchises")
 
-        compose.onAllNodesWithText("Next").onFirst().performClick()
+        compose.onAllNodesWithText("Next").onFirst().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         compose.onNodeWithText("Design a sequel").assertExists()
         compose.onNodeWithText(store.draft!!.title).assertExists()
@@ -399,7 +404,7 @@ class GameFlowTest {
         assertNotNull(store.state!!.venture.board)
         tab("Lanes")
         screen("09-hardware")
-        compose.onNodeWithText("Start design").performClick()
+        tapInList("Start design")
         compose.waitForIdle()
         assertNotNull(store.state!!.hardware!!.design)
         compose.onNodeWithText("Launch the", substring = true).assertExists()
