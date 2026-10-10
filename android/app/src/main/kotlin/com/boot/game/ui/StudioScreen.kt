@@ -57,6 +57,9 @@ import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
 import com.boot.core.sequelConcept
 import com.boot.core.setStageFocus
+import com.boot.core.gameTeam
+import com.boot.core.teamSize
+import com.boot.core.setTeamSplit
 import com.boot.core.takeGameContract
 import com.boot.game.GameStore
 import java.util.Locale
@@ -104,6 +107,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             if (g.dealOffers.isNotEmpty()) item { DealOffers(store, g) }
         }
     }
+    if (Research.SECOND_TEAM in state.researched) secondTeamItems(store, state, g)
     item { StudioOverview(state, g) }
     item { ChartCard(state, limit = 10) { store.openRelease = it } }
     item { ComingSoonCard(state, limit = 8) }
@@ -141,14 +145,51 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
 
 // Development
 
+/** The second team: its game, or an invitation to start one, and how the staff split. */
+private fun LazyListScope.secondTeamItems(store: GameStore, state: GameState, g: GamesStudio) {
+    val p2 = g.project2
+    if (p2 != null) {
+        item { DevelopmentSection(store, state, p2, team = 2) }
+        if (!p2.isReady) item { FocusSection(store, g, p2, team = 2) }
+        item { HypeSection(store, state, p2, team = 2) }
+    } else {
+        item {
+            GroupedSection("Team 2") {
+                CardBlock {
+                    Text("Team 2 is free", style = MaterialTheme.typography.titleLargeEmphasized)
+                    Hint(
+                        "A second game alongside the first, by ${state.teamSize(2)} of your ${state.gameTeam} game staff. " +
+                            "Small, medium and large games; AAA needs the main team.",
+                    )
+                    PrimaryButton("Design a game for Team 2", { store.designGame(team = 2) }, Modifier.fillMaxWidth())
+                }
+            }
+        }
+    }
+    item {
+        GroupedSection(
+            "Teams",
+            footer = "While both teams are busy, the game staff split like this. A team working alone gets everyone. Bigger games need bigger teams.",
+        ) {
+            CardBlock {
+                CommitSlider(g.team2Share, { v ->
+                    val second = kotlin.math.round(state.gameTeam * v.toDouble().coerceIn(0.2, 0.8)).toInt()
+                    "Team 1: ${state.gameTeam - second} people · Team 2: $second people"
+                }) { v -> store.perform { setTeamSplit(v) } }
+            }
+        }
+    }
+}
+
 @Composable
-private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProject) {
+private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProject, team: Int = 1) {
     val colors = gameColors
     val c = p.concept
     val stageLabels = listOf("Foundations", "Content", "Presentation", "Polish")
     val current = if (p.isReady) 3 else p.stage
     GroupedSection(
-        if (p.deal != null) "In development for ${p.deal!!.publisher}" else "In development",
+        (if (team == 2) "Team 2 · " else if (state.games?.project2 != null) "Team 1 · " else "") +
+            if (p.deal != null) "In development for ${p.deal!!.publisher}" else "In development",
         footer = if (p.isReady) "Content complete. Every week now fixes bugs and adds polish. Ship when you're happy." else null,
     ) {
         CardBlock {
@@ -198,8 +239,8 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 warning?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.warn) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                PrimaryButton("Release ${p.title}", { store.perform { launchGame() } }, enabled = p.isReady)
-                if (p.deal == null) PlainButton("Cancel", { store.perform { cancelGame() } }, color = colors.bad)
+                PrimaryButton("Release ${p.title}", { store.perform { launchGame(team) } }, enabled = p.isReady)
+                if (p.deal == null) PlainButton("Cancel", { store.perform { cancelGame(team) } }, color = colors.bad)
             }
             Meter("Development", p.completion, wavy = !p.isReady)
             TileRow {
@@ -237,19 +278,19 @@ private fun PointTile(label: String, value: Double, delta: Double, color: Color,
 }
 
 @Composable
-private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject) {
+private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject, team: Int = 1) {
     val stage = p.stage
     val areas = FocusArea.forStage(stage)
     val alloc = p.focus[stage]
     GroupedSection(
-        "Focus · ${FocusArea.STAGES[stage]}",
+        (if (team == 2) "Team 2 · " else "") + "Focus · ${FocusArea.STAGES[stage]}",
         footer = "Split this stage's effort. Each genre cares about different things; game reports teach you which.",
     ) {
         CardBlock {
             areas.forEachIndexed { i, area ->
                 FocusSlider(area, alloc, i, insight(g, p.concept.genre, area)) { v ->
                     val next = alloc.toMutableList().also { it[i] = v }
-                    store.perform { setStageFocus(stage, next) }
+                    store.perform { setStageFocus(stage, next, team) }
                 }
             }
         }
@@ -276,10 +317,10 @@ fun FocusSlider(area: FocusArea, alloc: List<Double>, index: Int, insight: Strin
 }
 
 @Composable
-private fun HypeSection(store: GameStore, state: GameState, p: GameProject) {
+private fun HypeSection(store: GameStore, state: GameState, p: GameProject, team: Int = 1) {
     val colors = gameColors
     val marketing = Research.MARKETING in state.researched
-    GroupedSection("Hype", footer = if (!marketing) "Research marketing campaigns to buy hype. Summer Game Fest each June helps too." else "Hype sells launch weeks. Overhype a weak game and fans feel misled.") {
+    GroupedSection(if (team == 2) "Team 2 · Hype" else "Hype", footer = if (!marketing) "Research marketing campaigns to buy hype. Summer Game Fest each June helps too." else "Hype sells launch weeks. Overhype a weak game and fans feel misled.") {
         CardBlock { Meter("Hype", p.hype / 100, colors.warn, "${p.hype.toInt()}/100") }
         if (marketing) {
             Campaign.entries.forEach { c ->
@@ -288,7 +329,7 @@ private fun HypeSection(store: GameStore, state: GameState, p: GameProject) {
                 ActionRow(
                     c.title, "${Format.money(c.cost)} · +${c.hype.toInt()} hype",
                     if (done) "Done" else "Run", enabled = !done && state.cash >= c.cost,
-                ) { store.perform { buyCampaign(c) } }
+                ) { store.perform { buyCampaign(c, team) } }
             }
         }
     }

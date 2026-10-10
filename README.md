@@ -4,6 +4,12 @@ A company management game for Android and macOS. You start solo in a cramped apa
 
 The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
+**New in 1.1 (Android):** two development teams. Research a second team once you're on a studio floor and make two games at once, Game Dev Tycoon style.
+- While both teams are busy, a slider splits your game staff between them; a team working alone gets everyone. Team 1 can still take contracts and expansions while Team 2 makes a game.
+- Team 2 can make small, medium and large games; AAA needs the main team, and size limits count each team's own people.
+- Each team has its own development, focus and hype panels, its own release button, and its own card on the office screen, and points float up for both.
+- There's a new "Double Feature" achievement.
+
 **New in 1.0 (Android):** the empire update.
 - **Buy studios.** Every studio on the games market is for sale, from indies like Team Cherry, ConcernedApe and Larian to the giants: Rockstar, Nintendo, EA, PlayStation Studios, Valve.
   - A studio you own keeps making games under its own name. Its real series (GTA, Mario, Zelda, Call of Duty, FIFA and the rest) count as yours on the chart and stop competing with you.

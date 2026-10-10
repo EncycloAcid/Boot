@@ -188,6 +188,17 @@ class Autopilot(
         g.unseenReview?.let { s.acknowledgeReview() }
         // Keep live games fresh while they pay for it.
         for (r in g.liveGames) if (s.seasonBlocker(r.id) == null && s.cash > r.seasonCost() * 4) attempt { s.launchSeason(r.id) }
+        // The second team makes smaller games alongside the main one.
+        g.project2?.let { p2 ->
+            if (p2.isReady && (p2.bugs < p2.work * 0.08 || p2.weeksInDev > p2.work / 2 + 30)) attempt { s.launchGame(2) }
+        }
+        if (Research.SECOND_TEAM in s.researched && g.project2 == null && s.gameTeam >= 16 && s.runwayWeeks > 26) {
+            if (g.team2Share != 0.3) attempt { s.setTeamSplit(0.3) }
+            bestConcept(s, g)?.let { c ->
+                val c2 = c.copy(size = minOf(c.size, GameSize.MEDIUM), live = false)
+                if (s.conceptBlocker(c2, team = 2) == null) attempt { s.startGame(c2, idealFocus(c2), 2) }
+            }
+        }
         val p = g.project
         if (p != null) {
             // Market a game that's worth it, then ship once the bugs are mostly gone.
@@ -276,7 +287,7 @@ class Autopilot(
                         Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.OPEN_WORLD,
                         Research.GRAPHICS_3D_V3,
                         Research.AAA_GAMES, Research.SPATIAL_AUDIO, Research.GRAPHICS_3D_V4, Research.CROSS_PLAY, Research.NEURAL_NPCS,
-                        Research.PHOTOREAL,
+                        Research.PHOTOREAL, Research.SECOND_TEAM,
                     ),
                 )
             }

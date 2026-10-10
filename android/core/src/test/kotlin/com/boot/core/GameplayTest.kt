@@ -736,3 +736,66 @@ class AchievementTest {
         assertEquals(s.log.count { it.text.startsWith("Achievement unlocked: Hello, World") }, 1)
     }
 }
+
+class SecondTeamTest {
+    private fun studioWithStaff(seed: Long, people: Int): GameState {
+        val s = game(Lane.GAMES, seed)
+        s.cash = 1e8
+        s.researchPoints = 10_000.0
+        while (s.office < Office.STUDIO) s.moveOffice()
+        var guard = 0
+        while (s.gameTeam < people && guard++ < 80) {
+            s.candidates.toList().forEach { if (s.gameTeam < people) runCatching { s.hire(it.id, Lane.GAMES) } }
+            if (s.gameTeam < people) s.play(1)
+        }
+        return s
+    }
+
+    private fun concept(title: String, size: GameSize = GameSize.SMALL) =
+        GameConcept(title, Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = size)
+
+    @Test
+    fun theSecondTeamNeedsResearchAndPeople() {
+        val s = studioWithStaff(70, 8)
+        assertEquals("Research a second team first.", s.conceptBlocker(concept("B"), team = 2))
+        s.researched = s.researched + Research.LARGE_GAMES + Research.MEDIUM_GAMES
+        s.research(Research.SECOND_TEAM)
+        assertNull(s.conceptBlocker(concept("B"), team = 2))
+        assertEquals("AAA games need the main team.", s.conceptBlocker(concept("B", GameSize.AAA), team = 2))
+        // Alone, either team gets everyone; together they split.
+        assertEquals(s.gameTeam, s.teamSize(1))
+        s.startGame(concept("A"))
+        // Team 1 keeps everyone until team 2 starts something; team 2 would get its share.
+        assertEquals(s.gameTeam, s.teamSize(1))
+        assertTrue(s.teamSize(2) in 1 until s.gameTeam)
+        s.setTeamSplit(0.9)
+        assertEquals(0.8, s.games!!.team2Share)
+    }
+
+    @Test
+    fun twoGamesShipSideBySide() {
+        val s = studioWithStaff(71, 8)
+        s.researched = s.researched + Research.LARGE_GAMES + Research.MEDIUM_GAMES + Research.SECOND_TEAM
+        val g = s.games!!
+        s.startGame(concept("Alpha Quest"))
+        s.startGame(concept("Beta Tactics"), team = 2)
+        assertTrue(g.twoGames)
+        assertEquals("A game is already in development.", s.conceptBlocker(concept("C")))
+        assertEquals("Team 2 already has a game.", s.conceptBlocker(concept("C"), team = 2))
+        s.play(2)
+        val a = g.project!!.progress
+        val b = g.project2!!.progress
+        assertTrue(a > 0 && b > 0)
+        assertTrue(a > b, "the bigger team works faster: $a vs $b")
+        assertTrue(Achievement.DOUBLE_FEATURE in s.achievements)
+        val saved = GameState.decode(s.encode()).games!!
+        assertEquals("Beta Tactics", saved.project2!!.title)
+        while (g.project2?.isReady != true) s.play(1)
+        s.launchGame(2)
+        assertNull(g.project2)
+        assertEquals("Beta Tactics", g.releases.first().title)
+        assertEquals("Alpha Quest", g.project!!.title)
+        s.cancelGame()
+        assertNull(g.project)
+    }
+}

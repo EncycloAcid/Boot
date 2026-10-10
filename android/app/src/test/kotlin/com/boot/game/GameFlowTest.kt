@@ -22,6 +22,10 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import com.boot.core.Autopilot
+import com.boot.core.gameTeam
+import com.boot.core.hire
+import com.boot.core.moveOffice
+import com.boot.core.Office
 import com.boot.core.seasonCost
 import com.boot.core.research
 import com.boot.core.acquire
@@ -517,6 +521,54 @@ class GameFlowTest {
         compose.waitForIdle()
         assertTrue(Achievement.FIRST_STUDIO in store.state!!.achievements)
         screen("48-achievements")
+    }
+
+    @Test
+    fun twoTeamsMakeTwoGames() {
+        val base = GameState.create("Twin Studio", "Ada", Lane.GAMES, seed = 62)
+        val s = GameState.decode(
+            base.encode()
+                .replace(Regex("\"cash\":[-0-9.Ee+]+"), "\"cash\":5.0E7")
+                .replace(Regex("\"researchPoints\":[-0-9.Ee+]+"), "\"researchPoints\":100000.0"),
+        )
+        while (s.office < Office.STUDIO) s.moveOffice()
+        listOf(Research.MEDIUM_GAMES, Research.LARGE_GAMES, Research.SECOND_TEAM).forEach { s.research(it) }
+        var guard = 0
+        while (s.gameTeam < 8 && guard++ < 60) {
+            s.candidates.toList().forEach { if (s.gameTeam < 8) runCatching { s.hire(it.id, Lane.GAMES) } }
+            s.advance()
+            while (s.needsDecision) s.choose(s.events[0].choices.size - 1)
+        }
+        s.startGame(GameConcept("Moss Knight", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.MEDIUM))
+        File(RuntimeEnvironment.getApplication().filesDir, "autosave.json").writeText(s.encode())
+        launch()
+        compose.runOnIdle { store.openLane(Lane.GAMES) }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Design a game for Team 2"))
+        compose.waitForIdle()
+        screen("57-team-two-free")
+        tapInList("Design a game for Team 2")
+        assertTrue(store.designing)
+        assertEquals(2, store.designTeam)
+        repeat(3) {
+            compose.onNodeWithText("Next").performClick()
+            compose.waitForIdle()
+        }
+        compose.onNodeWithText("Start development").performClick()
+        compose.waitForIdle()
+        val g = store.state!!.games!!
+        assertNotNull(g.project2)
+        assertEquals("Moss Knight", g.project!!.title)
+        compose.runOnIdle { store.advance(2) }
+        compose.waitForIdle()
+        assertTrue(store.state!!.games!!.project2!!.progress > 0)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Team 2 · In development", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("55-team-two")
+        tab("Office")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Game studio", ignoreCase = true))
+        compose.waitForIdle()
+        screen("56-office-two-games")
     }
 
     @Test

@@ -258,7 +258,7 @@ private fun androidx.compose.ui.unit.Density.spawnBubbles(
         n++
     }
 
-    state.games?.project?.let { p ->
+    listOfNotNull(state.games?.project, state.games?.project2).forEach { p ->
         val desks = seatsOn(Lane.GAMES).ifEmpty { listOf(0) }
         val k = min(desks.size, 3)
         val start = state.week % desks.size

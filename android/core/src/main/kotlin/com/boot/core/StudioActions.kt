@@ -34,18 +34,43 @@ internal val GameState.factoryLeadTime: Int get() = if (Research.SUPPLY_CHAIN in
 /** Staff assigned to the game studio. */
 val GameState.gameTeam: Int get() = staff.count { it.lane == Lane.GAMES }
 
+/** People on a team: while both teams are busy the game staff split by the slider; a team alone gets everyone. */
+fun GameState.teamSize(team: Int): Int {
+    val g = games ?: return 0
+    if (Research.SECOND_TEAM !in researched) return if (team == 1) gameTeam else 0
+    val second = kotlin.math.round(gameTeam * g.team2Share).toInt()
+    val team1Busy = g.project != null || g.contract != null || g.expansion != null
+    return if (team == 2) (if (team1Busy) second else gameTeam) else (if (g.project2 != null) gameTeam - second else gameTeam)
+}
+
+/** Split the game staff between the two teams. */
+fun GameState.setTeamSplit(share: Double) {
+    val g = studio()
+    if (Research.SECOND_TEAM !in researched) throw notAvailable("Research a second team first.")
+    g.team2Share = share.clamped(0.2, 0.8)
+}
+
 /** A balanced starting split: a third each. */
 fun evenFocus(): List<MutableList<Double>> = List(3) { mutableListOf(1.0, 1.0, 1.0) }
 
 /** Why a concept can't be started, or null if it can. */
-fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null): String? {
+fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: Int = 1): String? {
     val g = games ?: return "You don't run a game studio."
-    if (g.project != null) return "A game is already in development."
-    if (g.contract != null) return "Finish the contract first."
-    if (g.expansion != null) return "Finish the expansion first."
+    if (team == 2) {
+        if (Research.SECOND_TEAM !in researched) return "Research a second team first."
+        if (g.project2 != null) return "Team 2 already has a game."
+        if (teamSize(2) < 2) return "Team 2 needs at least two people. Put more staff on games."
+        if (c.size > GameSize.LARGE) return "AAA games need the main team."
+    } else {
+        if (g.project != null) return "A game is already in development."
+        if (g.contract != null) return "Finish the contract first."
+        if (g.expansion != null) return "Finish the expansion first."
+    }
     if (c.topic !in g.topics) return "Research ${c.topic.title} first."
     c.size.requires?.let { if (it !in researched) return "Research ${it.title} first." }
-    if (gameTeam < c.size.minTeam) return "${c.size.title} games need ${c.size.minTeam} people on the game team. You have $gameTeam."
+    if (teamSize(team) < c.size.minTeam) {
+        return "${c.size.title} games need ${c.size.minTeam} people on the team. ${if (team == 2) "Team 2 has" else "You have"} ${teamSize(team)}."
+    }
     if (c.genre2 != null) {
         if (Research.MULTI_GENRE !in researched) return "Research multi-genre games first."
         if (c.genre2 == c.genre) return "Pick two different genres."
@@ -73,9 +98,9 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null): Strin
 /** Rough weeks to finish at the current team's pace. */
 fun GameState.estimatedWeeks(size: GameSize): Int = ceil(size.work / max(1.0, staffing(Lane.GAMES).output)).toInt()
 
-fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> = evenFocus()) {
+fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> = evenFocus(), team: Int = 1) {
     val g = studio()
-    conceptBlocker(concept)?.let { throw notAvailable(it) }
+    conceptBlocker(concept, team = team)?.let { throw notAvailable(it) }
     val fees = concept.platforms.sumOf { it.fee }
     if (fees > 0) spend(fees, Lane.GAMES)
     val original = concept.sequelOf?.let { g.release(it) }
@@ -89,9 +114,9 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
         hype += 20.0
         g.promisedSequel = null
     }
-    g.project = GameProject(concept, focus.map { it.toMutableList() }, week, hype = hype)
+    g.setProject(team, GameProject(concept, focus.map { it.toMutableList() }, week, hype = hype))
     addLog(
-        "Started ${concept.title}: ${Format.a(concept.size.lower)} ${concept.topic.title.lowercase()} " +
+        (if (team == 2) "Team 2 started " else "Started ") + "${concept.title}: ${Format.a(concept.size.lower)} ${concept.topic.title.lowercase()} " +
             "${concept.genreLower} game for ${concept.platforms.joinToString { it.title }}." +
             (if (fees > 0) " Licence fees: ${money(fees)}." else ""),
         LogTone.NEUTRAL, Lane.GAMES,
@@ -99,24 +124,24 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
 }
 
 /** Set how the team splits its time in one stage. Values are relative weights. */
-fun GameState.setStageFocus(stage: Int, allocation: List<Double>) {
-    val p = studio().project ?: throw invalid("Nothing in development.")
+fun GameState.setStageFocus(stage: Int, allocation: List<Double>, team: Int = 1) {
+    val p = studio().projectOf(team) ?: throw invalid("Nothing in development.")
     if (stage !in 0..2 || allocation.size != 3) throw invalid("Three areas per stage.")
     p.focus[stage].clear()
     p.focus[stage].addAll(allocation.map { it.clamped(0.0, 1.0) })
 }
 
-fun GameState.cancelGame() {
+fun GameState.cancelGame(team: Int = 1) {
     val g = studio()
-    val p = g.project ?: throw invalid("Nothing in development.")
-    g.project = null
+    val p = g.projectOf(team) ?: throw invalid("Nothing in development.")
+    g.setProject(team, null)
     addLog("Cancelled ${p.title} after ${p.weeksInDev} weeks.", LogTone.BAD, Lane.GAMES)
 }
 
-fun GameState.buyCampaign(c: Campaign) {
+fun GameState.buyCampaign(c: Campaign, team: Int = 1) {
     val g = studio()
     if (Research.MARKETING !in researched) throw notAvailable("Research marketing campaigns first.")
-    val p = g.project ?: throw invalid("Nothing to market.")
+    val p = g.projectOf(team) ?: throw invalid("Nothing to market.")
     if (c in p.campaigns) throw busy("You've already run a ${c.title.lowercase()} for ${p.title}.")
     if (cash < c.cost) throw insufficientFunds("${c.title} costs ${money(c.cost)}.")
     spend(c.cost, Lane.GAMES)
@@ -125,11 +150,11 @@ fun GameState.buyCampaign(c: Campaign) {
     addLog("${c.title} for ${p.title}. Hype is building.", LogTone.NEUTRAL, Lane.GAMES)
 }
 
-fun GameState.launchGame() {
+fun GameState.launchGame(team: Int = 1) {
     val g = studio()
-    val p = g.project ?: throw invalid("No game in development.")
+    val p = g.projectOf(team) ?: throw invalid("No game in development.")
     val suited = p.concept.platforms.any { it.suits(p.concept.audience) }
-    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week))
+    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team)
     cash += report.revenue - report.expenses
     recordRevenue(report.revenue, Lane.GAMES)
     recordCost(report.expenses, Lane.GAMES)

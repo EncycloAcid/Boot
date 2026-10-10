@@ -174,7 +174,7 @@ internal fun GameState.boardReview() {
 private fun GameState.pickBoardDemand(): BoardDemand {
     if (runwayWeeks < 20 && staff.size >= 5) return BoardDemand.LAYOFFS
     if (social != null || apps != null || crossover(Combo.APPS_GAMES)?.built == true) return BoardDemand.MONETIZE
-    if (games?.project != null || hardware?.design != null) return BoardDemand.CRUNCH
+    if (games?.project != null || games?.project2 != null || hardware?.design != null) return BoardDemand.CRUNCH
     return BoardDemand.GROWTH_HIRES
 }
 

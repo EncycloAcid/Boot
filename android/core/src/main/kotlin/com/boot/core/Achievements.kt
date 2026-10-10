@@ -29,6 +29,7 @@ enum class Achievement(val title: String, val detail: String, val tier: Tier, in
         games?.let { g -> g.releases.any { r -> r.concept.sequelOf?.let { g.release(it) }?.concept?.genre?.let { it != r.concept.genre } == true } } == true
     }),
     EXPANDED("More of a Good Thing", "Release an expansion pack.", Tier.BRONZE, { games?.releases?.any { it.expansions.isNotEmpty() } == true }),
+    DOUBLE_FEATURE("Double Feature", "Have two games in development at once.", Tier.SILVER, { games?.twoGames == true }),
     ENGINEER("Engine Builder", "Build your own game engine.", Tier.BRONZE, { (games?.engines?.size ?: 0) >= 2 }),
     MIDDLEWARE("Middleware", "License an engine to other studios.", Tier.SILVER, { games?.engines?.any { it.licensed } == true }),
 

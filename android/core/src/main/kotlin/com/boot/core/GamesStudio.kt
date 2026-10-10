@@ -164,6 +164,21 @@ data class Franchise(val root: GameRelease, val entries: List<GameRelease>) {
 @Serializable
 class GamesStudio {
     var project: GameProject? = null
+
+    /** The second team's game, once researched. */
+    var project2: GameProject? = null
+
+    /** Share of the game staff on the second team while both teams have a game. */
+    var team2Share = 0.4
+
+    fun projectOf(team: Int): GameProject? = if (team == 2) project2 else project
+
+    internal fun setProject(team: Int, p: GameProject?) {
+        if (team == 2) project2 = p else project = p
+    }
+
+    /** Both teams have a game on. */
+    val twoGames: Boolean get() = project != null && project2 != null
     var contract: GameContract? = null
     var expansion: GameExpansion? = null
 
@@ -264,7 +279,7 @@ class GamesStudio {
 
     /** Suggest a name nobody has used, in the voice of the topic and genre. */
     internal fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
-        gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title))
+        gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title, project2?.title))
 
     // Weekly simulation
 
@@ -285,52 +300,17 @@ class GamesStudio {
             }
         }
 
-        project?.let { p ->
-            lastWork = work
-            p.weeksInDev += 1
-            val engineMult = engine(p.concept.engineId).multiplier
-            if (!p.isReady) {
-                val stage = p.stage
-                val alloc = p.focus[stage]
-                val total = alloc.sum().takeIf { it > 0 } ?: 1.0
-                val areas = FocusArea.forStage(stage)
-                val designShare = areas.indices.sumOf { alloc[it] / total * areas[it].designShare }
-                val d = work * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
-                val t = work * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
-                val b = work * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0)
-                p.design += d
-                p.tech += t
-                p.bugs += b
-                p.lastDesign = d
-                p.lastTech = t
-                p.lastBugs = b
-                p.matchSum += focusMatch(p.concept, stage, alloc) * work
-                p.matchWork += work
-                val wasStage = stage
-                p.progress += work
-                if (p.isReady) {
-                    report.log("${p.title} is content complete. Fix bugs and polish, or ship it now.", LogTone.GOOD)
-                } else if (p.stage != wasStage) {
-                    report.log("${p.title} moves on to ${FocusArea.STAGES[p.stage].lowercase()}.")
-                }
-            } else {
-                // Bug fixing and polish once the content is in.
-                val fixed = min(p.bugs, work * 0.6)
-                p.bugs -= fixed
-                p.polish = min(p.work * 0.4, p.polish + work * 0.5 * ctx.polishEfficiency)
-                p.lastDesign = 0.0
-                p.lastTech = 0.0
-                p.lastBugs = -fixed
-            }
-            p.hype *= 0.99
-            val budget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0) * (if (p.concept.live) 1.25 else 1.0)
-            p.spent += budget
-            report.expenses += budget
-        }
+        // With both teams busy, each gets its share of the staff; a team on its own gets everyone.
+        val team1Busy = project != null || contract != null || expansion != null
+        val share2 = if (project2 == null) 0.0 else if (team1Busy) team2Share else 1.0
+        val work1 = work * (1 - share2)
+        project?.let { develop(it, work1, ctx, report) }
+        project2?.let { develop(it, work * share2, ctx, report) }
+        if (project != null || project2 != null) lastWork = work
 
         contract?.let { c ->
             lastWork = work
-            c.done += work
+            c.done += work1
             c.weeksElapsed += 1
             if (c.done >= c.work) {
                 report.revenue += c.pay
@@ -355,7 +335,7 @@ class GamesStudio {
 
         expansion?.let { x ->
             lastWork = work
-            x.done += work
+            x.done += work1
             x.weeks += 1
             val budget = x.weeklyBudget * ctx.mods.cost
             report.expenses += budget
@@ -404,10 +384,52 @@ class GamesStudio {
         return report
     }
 
+    private fun develop(p: GameProject, work: Double, ctx: LaneContext, report: LaneReport) {
+        p.weeksInDev += 1
+        val engineMult = engine(p.concept.engineId).multiplier
+        if (!p.isReady) {
+            val stage = p.stage
+            val alloc = p.focus[stage]
+            val total = alloc.sum().takeIf { it > 0 } ?: 1.0
+            val areas = FocusArea.forStage(stage)
+            val designShare = areas.indices.sumOf { alloc[it] / total * areas[it].designShare }
+            val d = work * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
+            val t = work * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
+            val b = work * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0)
+            p.design += d
+            p.tech += t
+            p.bugs += b
+            p.lastDesign = d
+            p.lastTech = t
+            p.lastBugs = b
+            p.matchSum += focusMatch(p.concept, stage, alloc) * work
+            p.matchWork += work
+            val wasStage = stage
+            p.progress += work
+            if (p.isReady) {
+                report.log("${p.title} is content complete. Fix bugs and polish, or ship it now.", LogTone.GOOD)
+            } else if (p.stage != wasStage) {
+                report.log("${p.title} moves on to ${FocusArea.STAGES[p.stage].lowercase()}.")
+            }
+        } else {
+            // Bug fixing and polish once the content is in.
+            val fixed = min(p.bugs, work * 0.6)
+            p.bugs -= fixed
+            p.polish = min(p.work * 0.4, p.polish + work * 0.5 * ctx.polishEfficiency)
+            p.lastDesign = 0.0
+            p.lastTech = 0.0
+            p.lastBugs = -fixed
+        }
+        p.hype *= 0.99
+        val budget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0) * (if (p.concept.live) 1.25 else 1.0)
+        p.spent += budget
+        report.expenses += budget
+    }
+
     // Launch, reviews and the game report
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null): LaneReport {
-        val p = project ?: throw invalid("No game in development.")
+    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1): LaneReport {
+        val p = projectOf(team) ?: throw invalid("No game in development.")
         if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
         val c = p.concept
         val report = LaneReport()
@@ -559,7 +581,7 @@ class GamesStudio {
             lines += "It launched as a live game with ${Format.count(release.live!!.players)} players. Keep them with a new season every few months."
         }
         releases.add(0, release)
-        project = null
+        setProject(team, null)
         unseenReview = release.id
         topQuality = max(topQuality, q)
         topScore = max(topScore, avg)
@@ -644,9 +666,10 @@ class GamesStudio {
 
     val statusLine: String
         get() {
-            project?.let { p ->
-                return "${p.title} (${p.concept.size.title} ${p.concept.genreTitle}) ${(p.completion * 100).toInt()}%" +
-                    if (p.isReady) ", polishing" else ""
+            listOfNotNull(project, project2).takeIf { it.isNotEmpty() }?.let { ps ->
+                return ps.joinToString("; ") { p ->
+                    "${p.title} (${p.concept.size.title} ${p.concept.genreTitle}) ${(p.completion * 100).toInt()}%" + if (p.isReady) ", polishing" else ""
+                }
             }
             contract?.let { return "Contract: ${it.title} ${(it.completion * 100).toInt()}%" }
             expansion?.let { return "Expansion: ${it.title} ${(it.completion * 100).toInt()}%" }

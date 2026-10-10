@@ -191,8 +191,14 @@ private fun StudioNow(store: GameStore, state: GameState) {
     val c = g.contract
     val x = g.expansion
     GroupedSection("Game studio", action = { PlainButton("Studio", { store.openLane(Lane.GAMES) }) }) {
+        g.project2?.let { p2 -> ProjectCard(store, state, p2, team = 2) }
+        if (g.project2 != null && (p != null || c != null || x != null)) RowDivider()
         when {
             p != null -> ProjectCard(store, state, p)
+            g.project2 != null && c == null && x == null -> CardBlock {
+                Hint("Team 1 is free.")
+                TonalButton("Design a game for Team 1", { store.designGame() }, Modifier.fillMaxWidth())
+            }
             x != null -> CardBlock {
                 Text(x.title, style = MaterialTheme.typography.titleLargeEmphasized)
                 Hint("Expansion pack. Everyone who bought the original is a potential customer.")
@@ -222,7 +228,7 @@ private fun StudioNow(store: GameStore, state: GameState) {
 }
 
 @Composable
-private fun ProjectCard(store: GameStore, state: GameState, p: GameProject) {
+private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team: Int = 1) {
     val colors = gameColors
     val c = p.concept
     val stage = if (p.isReady) "Polish" else listOf("Foundations", "Content", "Presentation")[p.stage]
@@ -232,7 +238,7 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject) {
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(p.title, style = MaterialTheme.typography.titleLargeEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Hint("${c.size.title} ${c.topic.title.lowercase()} ${c.genreLower} · ${c.platforms.joinToString { it.title }}")
+                Hint((if (team == 2) "Team 2 · " else "") + "${c.size.title} ${c.topic.title.lowercase()} ${c.genreLower} · ${c.platforms.joinToString { it.title }}")
             }
             Text(
                 stage,
@@ -256,11 +262,11 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject) {
             MiniStat("Hype", "${p.hype.toInt()}", colors.warn, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            PrimaryButton("Release", { store.perform { launchGame() } }, Modifier.weight(1f), enabled = p.isReady)
+            PrimaryButton("Release", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady)
             if (Research.MARKETING in state.researched) {
                 val open = Campaign.entries.filter { it !in p.campaigns }
                 MenuButton("Market", open, { "${it.title} · ${Format.money(it.cost)}" }, enabled = open.isNotEmpty()) { camp ->
-                    store.perform { buyCampaign(camp) }
+                    store.perform { buyCampaign(camp, team) }
                 }
             }
             if (!p.isReady) TonalButton("Focus", { store.openLane(Lane.GAMES) })

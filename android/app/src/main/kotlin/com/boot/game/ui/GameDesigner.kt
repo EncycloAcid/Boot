@@ -88,6 +88,7 @@ private val steps = listOf("Concept", "Platform & size", "Focus", "Summary")
 fun GameDesigner(store: GameStore, state: GameState) {
     val g = state.games ?: return
     val seed = store.draft
+    val team = store.designTeam
     val colors = gameColors
     var step by remember { mutableIntStateOf(0) }
     var topic by remember { mutableStateOf(seed?.topic ?: g.topics.first()) }
@@ -130,6 +131,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                     IconButton(onClick = { close() }) { Icon(Icons.Filled.Close, "Close") }
                     Column(Modifier.weight(1f)) {
                         val heading = when {
+                            team == 2 && sequel == null -> "Design a game for Team 2"
                             sequel == null -> "Design a game"
                             genre != seriesGenre -> "Design a spin-off"
                             else -> "Design a sequel"
@@ -170,7 +172,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                             )
                             1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it })
                             2 -> FocusStep(state, concept, focus)
-                            else -> SummaryStep(state, concept, { price = it }, { live = it })
+                            else -> SummaryStep(state, concept, team, { price = it }, { live = it })
                         }
                     }
                 }
@@ -188,11 +190,11 @@ fun GameDesigner(store: GameStore, state: GameState) {
                     if (step < steps.lastIndex) {
                         PrimaryButton("Next", { step += 1 }, enabled = platforms.isNotEmpty())
                     } else {
-                        val blocker = state.conceptBlocker(concept)
+                        val blocker = state.conceptBlocker(concept, team = team)
                         PrimaryButton("Start development", {
                             val split = focus.map { it.toMutableList() }
-                            store.perform { startGame(concept, split) }
-                            if (store.state?.games?.project != null) close()
+                            store.perform { startGame(concept, split, team) }
+                            if (store.state?.games?.projectOf(team) != null) close()
                         }, enabled = blocker == null)
                     }
                 }
@@ -409,11 +411,11 @@ private fun FocusStep(state: GameState, concept: GameConcept, focus: List<Mutabl
 }
 
 @Composable
-private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceTier) -> Unit, onLive: (Boolean) -> Unit) {
+private fun SummaryStep(state: GameState, concept: GameConcept, team: Int, onPrice: (PriceTier) -> Unit, onLive: (Boolean) -> Unit) {
     val g = state.games!!
     val colors = gameColors
     val fees = concept.platforms.sumOf { it.fee }
-    val blocker = state.conceptBlocker(concept)
+    val blocker = state.conceptBlocker(concept, team = team)
     Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         GameCover(concept, 104.dp, studio = state.companyName)
         Column {

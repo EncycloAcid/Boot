@@ -31,6 +31,10 @@ enum class Research(
     MULTI_PLATFORM("Multi-platform releases", "Ship on up to three platforms at once.", Kind.STUDIO, 35),
     LARGE_GAMES("Large games", "Needs a team of four on the game.", Kind.STUDIO, 70, requires = MEDIUM_GAMES),
     AAA_GAMES("AAA games", "Needs a team of ten on the game.", Kind.STUDIO, 180, requires = LARGE_GAMES),
+    SECOND_TEAM(
+        "Second team", "Make two games at once: split your game staff into two teams. Needs a studio floor or bigger.",
+        Kind.STUDIO, 110, requires = LARGE_GAMES,
+    ),
 
     // Engine features
     GRAPHICS_2D_V2("2D graphics V2", "Crisper sprites.", Kind.ENGINE, 8, engineLevel = 1),
@@ -144,6 +148,7 @@ fun GameState.researchBlocker(r: Research): String? {
     if (r in researched) return "Already researched."
     r.requires?.let { if (it !in researched) return "Needs ${it.title} first." }
     if (r == Research.RD_LAB && office < Office.STUDIO) return "Needs a studio floor or bigger office."
+    if (r == Research.SECOND_TEAM && office < Office.STUDIO) return "Needs a studio floor or bigger office."
     if (researchPoints < r.rp) return "Needs ${r.rp} RP. You have ${researchPoints.toInt()}."
     if (cash < r.cash) return "Costs ${money(r.cash)}."
     return null

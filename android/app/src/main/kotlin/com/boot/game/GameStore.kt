@@ -146,6 +146,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
             return
         }
         val wasReady = before.games?.project?.isReady == true
+        val wasReady2 = before.games?.project2?.isReady == true
         val wasSolvent = before.cash >= 0
         advance(1)
         val now = state ?: return
@@ -153,6 +154,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         val reason = when {
             !canAdvance -> ""
             !wasReady && project?.isReady == true -> "${project.title} is ready to ship. Release it, or keep polishing."
+            !wasReady2 && now.games?.project2?.isReady == true -> "Team 2's ${now.games?.project2?.title} is ready to ship."
             wasSolvent && now.cash < 0 -> "You're overdrawn. ${now.difficulty.redWeeks} weeks in the red and it's over. A bank loan can buy time."
             else -> null
         }
@@ -162,9 +164,13 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun designGame(seed: GameConcept? = null) {
+    /** Which team the designer is planning for. */
+    var designTeam by mutableIntStateOf(1)
+
+    fun designGame(seed: GameConcept? = null, team: Int = 1) {
         pause()
         draft = seed
+        designTeam = team
         designing = true
     }
 
