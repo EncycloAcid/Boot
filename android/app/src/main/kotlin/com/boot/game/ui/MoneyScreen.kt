@@ -68,7 +68,7 @@ private fun OwnershipSection(store: GameStore, state: GameState) {
             RowDivider()
             CardBlock(spacing = 10.dp) {
                 Text(
-                    "Investors would put in ${Format.money(o.amount)} for ${Format.percent(o.dilution)} of the company.",
+                    "${o.lead.ifEmpty { "Investors" }} would lead a ${Format.money(o.amount)} ${o.name} for ${Format.percent(o.dilution)} of the company.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 PrimaryButton("Raise a ${o.name}", { store.perform { raiseRound() } }, Modifier.fillMaxWidth())

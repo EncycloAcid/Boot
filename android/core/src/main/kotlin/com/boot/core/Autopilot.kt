@@ -94,7 +94,7 @@ class Autopilot(
         }
         // Fall back to whatever works.
         for (lane in s.pivotChoices) {
-            for (m in PivotMode.entries) {
+            for (m in PivotMode.intoNewLane) {
                 for (venture in listOf(false, true)) {
                     if (s.pivotBlocker(lane, m, venture) == null) {
                         attempt { s.resolvePivot(lane, m, venture) }

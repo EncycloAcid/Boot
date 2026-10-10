@@ -80,12 +80,12 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
     val price = max(laneValue(lane) * t.saleMultiplier, 20_000.0).roundToLong().toDouble()
     return when (t) {
         PivotTrigger.BUYOUT_OFFER -> {
-            val bidder = world.rival(lane)?.name ?: "MegaCorp Holdings"
+            val bidder = world.rival(lane)?.name ?: "Microsoft"
             PivotOffer(
                 t, week,
                 headline = "$bidder wants to buy your $business.",
                 body = "$bidder has offered ${money(price)} for the $business. You can take the money and go all in on " +
-                    "something new, keep it and expand into a second lane, or sell everything and walk away.",
+                    "something new, keep it and expand into a second lane, turn it down and stay focused, or sell everything and walk away.",
                 salePrice = price, bidder = bidder,
             )
         }
@@ -93,7 +93,7 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
             t, week,
             headline = "${world.era.title} has gutted the ${lane.title.lowercase()} market.",
             body = "Demand in your lane has collapsed. The business would only fetch about ${money(price)} right now, " +
-                "but staying put means riding out the slump. Time to pick a second lane.",
+                "but staying put means riding out the slump. Pick a second lane, or stay focused and wait it out.",
             salePrice = price,
         )
         PivotTrigger.VIRAL_ACCIDENT -> {
@@ -113,7 +113,7 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
                 t, week,
                 headline = "Something went viral by accident.",
                 body = "$story Lean into ${suggestion.title.lowercase()} and you start with a head start. " +
-                    "Or take the attention somewhere else entirely.",
+                    "Or take the attention somewhere else entirely, or let the moment pass and stay focused.",
                 salePrice = price, suggestedLane = suggestion,
             )
         }
@@ -150,6 +150,7 @@ fun GameState.ventureForLane(lane: Lane): Result<RoundOffer> = roundOffer().map 
 }
 
 fun GameState.resolvePivot(lane: Lane, mode: PivotMode, fundWithVenture: Boolean = false) {
+    if (mode == PivotMode.STAY) return stayFocused()
     val offer = pendingPivot ?: throw notAvailable("There's no Pivot Point to resolve.")
     pivotBlocker(lane, mode, fundWithVenture)?.let { throw notAvailable(it) }
     val from = startingLane
@@ -170,6 +171,7 @@ fun GameState.resolvePivot(lane: Lane, mode: PivotMode, fundWithVenture: Boolean
             addLog("You sold the ${from.businessName.lowercase()} for ${money(offer.salePrice)} and went all in on ${lane.title}.$detail", LogTone.MILESTONE)
             if (stayed > 0) addLog("$stayed staff stayed on with the buyer.")
         }
+        PivotMode.STAY -> {}
         PivotMode.EXPAND -> {
             spend(lane.setupCost, lane)
             openLane(lane)
@@ -181,6 +183,25 @@ fun GameState.resolvePivot(lane: Lane, mode: PivotMode, fundWithVenture: Boolean
     stats.profitableStreak = 0
     pivot = PivotRecord(offer.trigger, week, from, lane, mode, if (mode == PivotMode.PIVOT) offer.salePrice else null)
     pendingPivot = null
+}
+
+/** Turn the Pivot Point down: no second lane, for now. You can still expand later once you're profitable. */
+fun GameState.stayFocused() {
+    val offer = pendingPivot ?: throw notAvailable("There's no Pivot Point to resolve.")
+    if (ending != null) throw gameOver()
+    pendingPivot = null
+    if (offer.trigger == PivotTrigger.BUYOUT_OFFER) stats.buyoutsDeclined += 1
+    pivot = PivotRecord(offer.trigger, week, startingLane, startingLane, PivotMode.STAY)
+    stats.profitableStreak = 0
+    val business = startingLane.businessName.lowercase()
+    addLog(
+        when (offer.trigger) {
+            PivotTrigger.BUYOUT_OFFER -> "You turned down ${offer.bidder ?: "the buyer"}. The $business stays yours, and stays your only business."
+            PivotTrigger.MARKET_CRASH -> "You're riding out the slump with the $business. No second lane, no distractions."
+            PivotTrigger.VIRAL_ACCIDENT -> "You let the viral moment pass. All hands on the $business."
+        },
+        LogTone.MILESTONE,
+    )
 }
 
 /** Only for a buyout: sell the whole company and walk away. */
@@ -209,7 +230,7 @@ private fun GameState.applyViralHeadStart(lane: Lane) {
 
 // Later expansion and the ecosystem
 
-/** Third lane (or a second after a clean pivot) unlocks once every lane you run is profitable. */
+/** Another lane (a second if you stayed focused or pivoted, or a third) unlocks once every lane you run is profitable. */
 val GameState.expansionBlocker: String?
     get() {
         if (pivot == null) return "Expansion opens up after the Pivot Point."

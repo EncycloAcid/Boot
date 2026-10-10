@@ -38,7 +38,7 @@ fun LazyListScope.combosItems(store: GameStore, state: GameState) {
             )
         }
         if (state.crossovers.isEmpty()) {
-            item { GroupedSection(null) { CardBlock { Hint("You run one lane. Your first combo unlocks at the Pivot Point, when you take on a second.") } } }
+            item { GroupedSection(null) { CardBlock { Hint("You run one lane. Combos unlock when you take on a second, at the Pivot Point or later.") } } }
         }
         state.crossovers.forEach { c -> item(key = c.combo.name) { CrossoverSection(store, c) } }
         item { AllCombosSection(state) }

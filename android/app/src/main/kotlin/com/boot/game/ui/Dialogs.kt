@@ -72,6 +72,7 @@ import com.boot.core.choose
 import com.boot.core.pivotBlocker
 import com.boot.core.pivotChoices
 import com.boot.core.resolvePivot
+import com.boot.core.stayFocused
 import com.boot.game.GameStore
 
 private val fullScreen = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false)
@@ -138,7 +139,7 @@ private fun ChoiceButton(choice: EventChoice, primary: Boolean, onClick: () -> U
     }
 }
 
-/** The mid-game choice, as a full-screen page: pick a second lane, then expand into it or pivot into it. */
+/** The mid-game choice, as a full-screen page: pick a second lane and expand or pivot into it, or stay focused. */
 @Composable
 fun PivotDialog(store: GameStore, state: GameState) {
     val offer = state.pendingPivot ?: return
@@ -166,7 +167,7 @@ fun PivotDialog(store: GameStore, state: GameState) {
                         Text(offer.headline, style = MaterialTheme.typography.headlineLarge)
                         Text(offer.body, style = MaterialTheme.typography.bodyLarge)
                     }
-                    GroupedSection("Pick a second lane") {
+                    GroupedSection("Pick a second lane", footer = "Or stay focused: a second lane is optional, and you can still add one later once you're profitable.") {
                         state.pivotChoices.forEachIndexed { i, l ->
                             if (i > 0) RowDivider(68.dp)
                             PivotLaneRow(state, l, selected = l == lane, suggested = l == offer.suggestedLane) { lane = l }
@@ -179,9 +180,10 @@ fun PivotDialog(store: GameStore, state: GameState) {
                                 "${mode.summary} The ${state.startingLane.businessName.lowercase()} sells for " +
                                     "${Format.money(offer.salePrice)}. People whose skills carry over come with you."
                             PivotMode.EXPAND -> "${mode.summary} Setup costs ${Format.money(lane?.setupCost ?: 0.0)}."
+                            PivotMode.STAY -> mode.summary
                         },
                     ) {
-                        CardBlock { Segmented(PivotMode.entries, mode, { it.title }) { mode = it } }
+                        CardBlock { Segmented(PivotMode.intoNewLane, mode, { it.title }) { mode = it } }
                         RowDivider()
                         ToggleRow("Fund it with venture money", useVenture, "Hardware and AI need millions. A round brings a board.") {
                             useVenture = it
@@ -197,6 +199,11 @@ fun PivotDialog(store: GameStore, state: GameState) {
                         { lane?.let { l -> store.perform { resolvePivot(l, mode, useVenture) } } },
                         Modifier.fillMaxWidth(),
                         enabled = lane != null && blocker == null,
+                    )
+                    TonalButton(
+                        "Stay focused on the ${state.startingLane.businessName.lowercase()}",
+                        { store.perform { stayFocused() } },
+                        Modifier.fillMaxWidth(),
                     )
                     if (offer.trigger == PivotTrigger.BUYOUT_OFFER) {
                         PlainButton("Sell the whole company and walk away", { confirmSale = true }, Modifier.fillMaxWidth(), colors.bad)

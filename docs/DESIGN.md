@@ -1,6 +1,6 @@
 # Boot: Design
 
-A company management game for Android and macOS. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point forces you to take on a second lane. Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
+A company management game for Android and macOS. You start solo in a cramped apartment with $25k in savings and pick one of six lanes. Each lane plays like a different kind of management game. Mid-game, the Pivot Point offers you a second lane (on Android you can turn it down and stay focused). Every pairing of lanes unlocks its own crossover product and its own problems. There's no single win condition: you can IPO, get acquired, stay indie, go bankrupt or get fired by your own board, and the ending you get reflects how you got there.
 
 This document describes the design as it is implemented in `Sources/BootCore` (Swift) and its Kotlin port in `android/core`, which share the same rules and numbers, except for the studio update (the Games studio, research, offices and training), the removal of founder energy and the 0.5 gameplay update (difficulty, goals, the games market, patches and expansions, staff levels, loans and the newer events), which so far exist only in the Kotlin version. Numbers here are first-pass tuning, checked with the autopilot balance run (`swift run boot-cli balance`).
 
@@ -39,14 +39,15 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - **Three stages, nine focus areas.** Engine, gameplay and story/quests; then dialogues, level design and AI; then world design, graphics and sound. You split each stage's effort with sliders, and each genre rewards a different split.
 - **Points.** Every week the team produces **design** and **tech** points, weighted by their talents, the genre's preferred design/tech ratio and the engine. Work also creates **bugs**. Once the content is done the team fixes bugs and adds **polish**. Crunch speeds things up but makes more bugs.
 - **Hype** builds during development, at the yearly convention and from marketing campaigns (once researched): a press release, an ad campaign or a TV blitz.
-- **Reviews.** Four outlets (Pixel Gazette, GameSpotty, Critical Hit, The Loading Screen) each score the game out of 10. Scores compare the game against your own best so far, so you have to keep getting better to keep scoring well, the way Game Dev Tycoon does.
+- **Reviews.** Six outlets review every game: IGN (generous, loves big hyped releases), GameSpot (straight, hard on bugs), Game Informer (big on action, RPGs and adventures, scores in quarter points), Eurogamer (champions small creative games, stars), PC Gamer (only PC games; strategy, simulation and tech, percentages) and Edge (hard to please). Each writes a quote built from what stood out. Scores compare the game against your own best so far, so you have to keep getting better to keep scoring well, the way Game Dev Tycoon does.
+- **Metascore, players and the breakdown.** The critics' average shows as a Metascore. Players score separately: they care most about gameplay and bugs, remember being overhyped, and reward fan trust; their score decides how slowly sales fade after launch week. Each game gets a breakdown (gameplay, story and world, visuals, sound, polish) from where the effort went against what the genre needs, the engine and the bugs, plus the good and the bad.
 - **Sales** follow the score, hype, fans and how many players own the platforms you picked, with a weekly sales chart that decays after launch. Platforms come and go by year, each with a licence fee, a player base and a market share curve; late in the game you can build your own handheld.
 - **Game reports** after each launch reveal what worked (fits, focus splits, the design/tech ratio) and store it in a notebook the game designer reads from, so you learn the rules by playing.
 - **Engines.** Engine research items (2D/3D graphics, sound, AI, physics, multiplayer, open world and more) can be built into a custom engine for RP and cash; better engines make every game's points go further.
 - **Contracts and publishers.** Contract jobs for other companies pay cash and a few research points if you deliver on time. Publisher deals pay half an advance up front for a game to spec, with the rest only if it scores well enough.
 - **Sequels** (once researched) keep the topic and genre, start with hype from the original and sell better if it scored 7 or more. A sequel within a year of the original is marked down as rushed, and repeating your last topic and genre without calling it a sequel is marked down too.
-- **Trends** come and go (a genre or topic everyone wants), and a **yearly convention** asks whether to book a small booth, a big booth or a keynote, or skip it.
-- **The market.** Seven rival studios (Gigaplay Interactive, Nebula Forge, Redshift Games and others) release games of their own, bigger as the years go by. Every game on sale, theirs and yours, competes on a weekly top-10 sales chart. Launching within six weeks of a rival's 7+ game in the same genre costs you about 15% of your launch sales, and the game report says so.
+- **Trends** come and go (a genre or topic everyone wants), and **Summer Game Fest** each June asks whether to book a small booth, a big booth or a keynote, or skip it.
+- **The market.** Twelve real studios (Electronic Arts, Ubisoft, Rockstar Games, Nintendo, Capcom, FromSoftware, CD Projekt Red and others, each with its own typical quality) release games of their own, bigger as the years go by. Every game on sale, theirs and yours, competes on a weekly top-10 sales chart. Launching within six weeks of a rival's 7+ game in the same genre costs you about 15% of your launch sales, and the game report says so.
 - **Game of the Year** is decided every December from the year's four best-reviewed games. If you're nominated you can fly the team out (a small boost to your odds and to morale) or watch the stream. Winning brings fans, fan trust, reputation, a sales bump and hype for whatever you're making next.
 - **After launch.** A patch fixes the bugs a game shipped with, for a fee: fans notice and its sales hold up longer. Expansion packs (once researched) are small projects for games that scored 6 or more; owners of the original buy them and its sales pick up. Two per game at most.
 - **Fan moments.** Streamers pick up your games, early builds leak, and fans petition for sequels to the ones they loved; a promised sequel starts with extra hype.
@@ -112,14 +113,15 @@ Between year 2 and year 4, something forces a choice:
 | Market crash | The current era has gutted your lane | Sells for 0.65× value |
 | Viral by accident | Random | Suggests a lane; picking it comes with a head start |
 
-You pick a second lane and how to take it on:
+You pick a second lane and how to take it on, or decline:
 
 - **Expand:** keep the first business and run both, with shared staff and cash and your attention split.
 - **Pivot:** sell the first business, take the lump sum and your skills, and go all in. People whose skills carry over to the new lane come with you; the rest stay with the buyer.
+- **Stay focused** (Android): turn it all down and keep running the one business. A second lane is still available later through expansion.
 
 ## Later expansion and the ecosystem company
 
-- Once every lane you run has been profitable for 12 straight weeks, you can add another lane, up to three.
+- After the Pivot Point, once every lane you run has been profitable for 12 straight weeks, you can add another lane, up to three. If you stayed focused, that's how a second lane arrives, if you ever want one.
 - **Ecosystem company:** Hardware plus software (Apps or Games) plus services (AI, Social or Websites). It boosts demand across all three and the valuation, but antitrust pressure builds the whole time you hold it.
 - Holding a profitable ecosystem for a full year is the prestige goal and changes your ending.
 
@@ -148,7 +150,7 @@ Every pairing of two lanes (15 in all) unlocks a crossover product only that com
 ## The world
 
 - **Eras** last 1.5 to 2.5 years and shift demand per lane, GPU prices and investor appetite: The Bootstrap Years, The AI Gold Rush, The VR Hype Cycle, Crypto Winter, The Remote Work Boom, The Privacy Panic, The Creator Economy, The Retro Revival, The Metaverse Hangover.
-- **Rival studios**, one per lane (Gigaplay Interactive, Pixelsmith Collective, Appetite Inc, Fritter, Pear Computing, Hyperion Labs), squeeze your demand, launch competing products and poach your people.
+- **Rivals**, one main rival per lane (Electronic Arts, Squarespace, Google, Meta, Apple, OpenAI on Android; parody names in the Swift version), squeeze your demand, launch competing products and poach your people. The news also mentions the other big names in each lane.
 - **Reputation carries across everything.** Scars (predatory monetization, flops, privacy breaches, scandals, recalls, antitrust, layoffs) fade at different speeds and make each lane's audience suspicious in different ways. Ship a predatory mobile game and your social app launches to suspicion.
 
 ## Endings

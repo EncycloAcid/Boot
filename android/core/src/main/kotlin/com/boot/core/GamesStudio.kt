@@ -122,10 +122,21 @@ data class GameRelease(
     /** A patch went out: bugs fixed, sales hold up a little longer. */
     var patched: Boolean = false,
     val expansions: MutableList<String> = mutableListOf(),
+    /** What players think, 1...10. Word of mouth: it decides how long the game keeps selling. -1 on old saves. */
+    val userScore: Double = -1.0,
+    val aspects: Map<ReviewAspect, Double> = emptyMap(),
+    val pros: List<String> = emptyList(),
+    val cons: List<String> = emptyList(),
     val salesHistory: MutableList<Double> = mutableListOf(),
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
+
+    /** The critics' average on a 100-point scale, the way aggregators show it. */
+    val metascore: Int get() = (score * 10).roundToInt().coerceIn(1, 100)
+
+    /** The score word of mouth runs on: players' if known, otherwise the critics'. */
+    val wordOfMouth: Double get() = if (userScore > 0) userScore else score
 
     val verdict: String
         get() = when {
@@ -315,7 +326,7 @@ class GamesStudio {
             r.unitsSold += r.weeklySales / r.concept.size.price
             r.salesHistory += r.weeklySales
             if (r.salesHistory.size > 52) r.salesHistory.removeAt(0)
-            r.weeklySales *= salesDecay(age, r.score) * (if (r.patched) 1.01 else 1.0)
+            r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) * (if (r.patched) 1.01 else 1.0)
             if (r.weeklySales < 40) {
                 r.weeklySales = 0.0
                 r.chartRank = 0
@@ -373,48 +384,21 @@ class GamesStudio {
         val stepBack = topQuality > 0 && ratio < 0.85
         val record = q > topQuality && releases.isNotEmpty()
 
-        // Four outlets, four opinions.
+        // The critics, and then the players.
         val areas = FocusArea.entries
         val weakest = areas.maxByOrNull { a -> c.idealShare(a) - p.focus[a.stage][a.ordinal % 3] / max(0.01, p.focus[a.stage].sum()) }!!
-        val candidates = mutableListOf<Pair<Double, String>>()
-        when (c.topic.fit(c.genre)) {
-            Fit.GREAT -> candidates += 2.0 to "${c.topic.title} and ${c.genre.lower} games were made for each other."
-            Fit.BAD -> candidates += 3.0 to "Who asked for ${Format.a(c.topic.title.lowercase())} ${c.genre.lower} game?"
-            else -> {}
-        }
-        if (designRatio < c.idealDesignShare - 0.12) candidates += 2.0 to "All tech, no soul."
-        if (designRatio > c.idealDesignShare + 0.12) candidates += 2.0 to "Thin on the technical side."
-        if (p.focusMatch < 0.55) candidates += 2.0 to "${weakest.title} felt like an afterthought."
-        if (p.focusMatch > 0.85) candidates += 1.5 to "Every part of it pulls its weight."
-        if (bugPenalty < 0.9) candidates += 3.0 to "Crashed twice in the first hour."
-        if (dated) candidates += 2.0 to "Looks like it came out five years ago."
-        if (onTrend) candidates += 1.0 to "Right on trend."
-        if (repeated) candidates += 2.0 to "Haven't we played this before?"
-        if (rushedSequel) candidates += 2.0 to "A rushed sequel."
-        if (stepBack) candidates += 2.5 to "A step back from their last game."
-        if (record && score >= 8) candidates += 2.0 to "Their best work yet."
-        if (audienceFit < 0.9) candidates += 1.5 to "Made for the wrong crowd."
-        candidates += 1.0 to when {
-            score >= 9 -> rng.pick(listOf("A must-play.", "An instant classic."))
-            score >= 7 -> rng.pick(listOf("Really fun.", "Easy to recommend."))
-            score >= 5 -> rng.pick(listOf("Solid, if unremarkable.", "Has its moments."))
-            else -> rng.pick(listOf("Hard to recommend.", "Skip it."))
-        }
-        val reviews = Outlet.entries.map { outlet ->
-            val s = (score + outlet.bias(c, 1 - designRatio) + rng.normal(sd = 0.45)).roundToInt().clamped(1, 10)
-            val total = candidates.sumOf { it.first }
-            var roll = rng.unit() * total
-            var comment = candidates.last().second
-            for ((w, text) in candidates) {
-                roll -= w
-                if (roll <= 0) {
-                    comment = text
-                    break
-                }
-            }
-            Review(outlet, s, comment)
-        }
-        val avg = reviews.map { it.score }.average()
+        val verdict = writeReviews(
+            ReviewInputs(
+                title = p.title, concept = c, focus = p.focus, score = score, designRatio = designRatio, focusMatch = p.focusMatch,
+                bugPenalty = bugPenalty, polish = p.polish / p.work, engineLevel = engine.level, engineStandard = standard,
+                hype = p.hype, fanTrust = fanTrust, onTrend = onTrend, repeated = repeated, rushedSequel = rushedSequel,
+                worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
+                wrongCrowd = audienceFit < 0.9, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD },
+            ),
+            rng,
+        )
+        val reviews = verdict.reviews
+        val avg = verdict.average
 
         // Launch week.
         val fanLift = 1 + 1.5 * fans / (fans + c.size.fanScale)
@@ -468,6 +452,7 @@ class GamesStudio {
             id = nextId(), title = p.title, concept = c, week = week, reviews = reviews, score = avg, weeklySales = gross,
             netShare = netShare, design = p.design, tech = p.tech, bugs = p.bugs, hype = p.hype, devCost = p.spent,
             report = lines, publisher = p.deal?.publisher,
+            userScore = verdict.userScore, aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons,
         )
         releases.add(0, release)
         project = null
@@ -524,8 +509,8 @@ class GamesStudio {
             val work = rng.range(15.0, 45.0) * (1 + output / 40)
             val title = rng.pick(
                 listOf(
-                    "Port a puzzle game to the grPhone", "An advergame for ${rng.pick(GameNames.clients)}",
-                    "Bug-fix sprint for Gigaplay", "A level pack for a rival", "A tech demo for ${rng.pick(GameNames.clients)}",
+                    "Port a puzzle game to the iPhone", "An advergame for ${rng.pick(GameNames.clients)}",
+                    "Bug-fix sprint for Ubisoft", "A level pack for Electronic Arts", "A tech demo for ${rng.pick(GameNames.clients)}",
                     "An educational game for ${rng.pick(GameNames.clients)}",
                 ),
             )

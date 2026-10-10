@@ -152,6 +152,11 @@ internal object Names {
         "Saltwater Surf", "Tidy Home Cleaning", "Umber Gallery", "Vela Bikes", "Wick Candles", "Yonder Tours",
         "Zest Juicery", "Acme Logistics", "Bolt Couriers", "Civic Credit Union", "Driftwood Hotels",
     )
+    /** Big brands, for the agency's biggest briefs. */
+    val brands = listOf(
+        "Nike", "Spotify", "Airbnb", "Tesla", "Coca-Cola", "IKEA", "Starbucks", "Netflix", "Adidas", "Red Bull",
+        "LEGO", "Shopify", "Patagonia", "Uber", "Duolingo", "Peloton", "Sephora", "Delta Air Lines",
+    )
     val games = listOf(
         "Moss Knight", "Neon Courier", "Tiny Tactics", "Hollow Lantern", "Pocket Kingdom", "Starfold",
         "Rust & Rhyme", "Deep Shift", "Paper Moon Racing", "Last Orchard", "Glitch Garden", "Cinder Saga",

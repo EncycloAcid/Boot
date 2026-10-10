@@ -88,7 +88,7 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
                 isLive = true
                 quality = shippedQuality(buildProgress * ctx.polishEfficiency, buildWork, ctx.staffing.averageSkill, ctx.mods.quality)
                 users = 1_500 * ctx.reception * ctx.marketDemand
-                report.log("$name is live on the store. ${count(users)} installs in launch week.", LogTone.MILESTONE)
+                report.log("$name is live on the App Store and Google Play. ${count(users)} installs in launch week.", LogTone.MILESTONE)
                 report.add(Incident.Stat(StatKey.RELEASE))
             }
             return report
@@ -132,7 +132,7 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
         report.expenses += (users * 0.004 + 150) * ctx.mods.cost
 
         if (rank < 10 && rng.chance(0.05)) {
-            report.log("$name is sitting at #${rank.toInt()} in the store.", LogTone.GOOD)
+            report.log("$name is sitting at #${rank.toInt()} on the App Store.", LogTone.GOOD)
         }
         return report
     }

@@ -162,11 +162,13 @@ private fun GameState.endingStory(): List<String> {
             PivotTrigger.MARKET_CRASH -> "a market crash"
             PivotTrigger.VIRAL_ACCIDENT -> "an accidental viral hit"
         }
-        val how = if (p.mode == PivotMode.PIVOT) {
-            val forPrice = p.salePrice?.let { " for ${money(it)}" } ?: ""
-            "sold the ${p.from.businessName.lowercase()}$forPrice and went all in on ${p.to.title}"
-        } else {
-            "kept it and expanded into ${p.to.title}"
+        val how = when (p.mode) {
+            PivotMode.PIVOT -> {
+                val forPrice = p.salePrice?.let { " for ${money(it)}" } ?: ""
+                "sold the ${p.from.businessName.lowercase()}$forPrice and went all in on ${p.to.title}"
+            }
+            PivotMode.EXPAND -> "kept it and expanded into ${p.to.title}"
+            PivotMode.STAY -> "turned it all down and stayed focused on the ${p.from.businessName.lowercase()}"
         }
         story += "In year ${GameClock.year(p.week)}, $why forced the question. You $how."
     } else {

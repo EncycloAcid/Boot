@@ -52,13 +52,18 @@ class GameMarket {
 
 /** Rival game studios and how good they usually are. */
 internal val RivalStudios = listOf(
-    "Gigaplay Interactive" to 0.6,
-    "Nebula Forge" to 0.75,
-    "Tinybit Games" to 0.45,
-    "Ironclad Studios" to 0.65,
-    "Moonpie Entertainment" to 0.5,
-    "Arcadia Works" to 0.55,
-    "Redshift Games" to 0.7,
+    "Electronic Arts" to 0.6,
+    "Ubisoft" to 0.55,
+    "Activision Blizzard" to 0.65,
+    "Rockstar Games" to 0.9,
+    "Nintendo" to 0.85,
+    "Capcom" to 0.75,
+    "FromSoftware" to 0.85,
+    "CD Projekt Red" to 0.75,
+    "Square Enix" to 0.65,
+    "Epic Games" to 0.6,
+    "Bandai Namco" to 0.6,
+    "Supercell" to 0.55,
 )
 
 /** Week of the year the awards are held. */

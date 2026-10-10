@@ -7,7 +7,7 @@ import kotlin.math.min
 import kotlin.math.roundToLong
 
 @Serializable
-data class FundingRound(val name: String, val amount: Double, val preMoney: Double, val week: Int) {
+data class FundingRound(val name: String, val amount: Double, val preMoney: Double, val week: Int, val lead: String = "") {
     val postMoney: Double get() = preMoney + amount
 }
 
@@ -42,7 +42,7 @@ class Venture {
 
     internal fun take(offer: RoundOffer, week: Int) {
         founderEquity *= 1 - offer.dilution
-        rounds += FundingRound(offer.name, offer.amount, offer.preMoney, week)
+        rounds += FundingRound(offer.name, offer.amount, offer.preMoney, week, offer.lead)
         val b = board
         if (b == null) {
             board = Board(lastReviewWeek = week)
@@ -54,8 +54,24 @@ class Venture {
     }
 }
 
-data class RoundOffer(val name: String, val amount: Double, val preMoney: Double) {
+data class RoundOffer(val name: String, val amount: Double, val preMoney: Double, val lead: String = "") {
     val dilution: Double get() = amount / (preMoney + amount)
+}
+
+/** Who leads each stage of round. */
+private val leadInvestors = listOf(
+    listOf("Y Combinator", "First Round Capital", "SV Angel", "Initialized Capital"),
+    listOf("Sequoia Capital", "Andreessen Horowitz", "Benchmark", "Accel"),
+    listOf("Lightspeed Venture Partners", "Kleiner Perkins", "Index Ventures", "General Catalyst"),
+    listOf("Tiger Global", "Coatue", "Thrive Capital", "Insight Partners"),
+    listOf("SoftBank Vision Fund", "Fidelity", "T. Rowe Price"),
+    listOf("SoftBank Vision Fund", "BlackRock", "Mubadala"),
+)
+
+/** The lead for the next round. Picked from the seed so the offer doesn't change every time you look at it. */
+internal fun GameState.nextLead(): String {
+    val pool = leadInvestors[minOf(venture.rounds.size, leadInvestors.lastIndex)]
+    return pool[Math.floorMod(seed + venture.rounds.size * 7919L, pool.size.toLong()).toInt()]
 }
 
 /** Things a nervous board insists on. */
@@ -114,7 +130,7 @@ fun GameState.roundOffer(): Result<RoundOffer> {
     if (pre < 250_000) {
         return Result.failure(notAvailable("Investors pass. Come back when the company is worth more than ${money(250_000.0)}."))
     }
-    return Result.success(RoundOffer(name, (pre / 3).roundToLong().toDouble(), pre.roundToLong().toDouble()))
+    return Result.success(RoundOffer(name, (pre / 3).roundToLong().toDouble(), pre.roundToLong().toDouble(), nextLead()))
 }
 
 /** The board's quarterly verdict. */

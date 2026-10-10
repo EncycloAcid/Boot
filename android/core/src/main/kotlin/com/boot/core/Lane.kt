@@ -101,13 +101,27 @@ enum class PivotMode {
     EXPAND,
 
     /** Sell the first business, take the lump sum and your skills, go all in on the new one. */
-    PIVOT;
+    PIVOT,
 
-    val title: String get() = if (this == EXPAND) "Expand" else "Pivot"
+    /** Turn it all down and keep doing the one thing. A second lane can still come later. */
+    STAY;
+
+    val title: String
+        get() = when (this) {
+            EXPAND -> "Expand"
+            PIVOT -> "Pivot"
+            STAY -> "Stay focused"
+        }
 
     val summary: String
         get() = when (this) {
             EXPAND -> "Run both lanes with shared staff and cash. Your attention is split between them."
             PIVOT -> "Sell the first business, take the lump sum and your skills, and go all in on the new one."
+            STAY -> "Keep doing the one thing you do. You can still add a lane later, once the business is profitable."
         }
+
+    companion object {
+        /** The ways to take on a second lane. */
+        val intoNewLane = listOf(EXPAND, PIVOT)
+    }
 }

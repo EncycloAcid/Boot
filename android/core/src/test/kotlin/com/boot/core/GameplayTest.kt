@@ -258,3 +258,105 @@ class NewEventsTest {
         }
     }
 }
+
+class ReviewTest {
+    @Test
+    fun outletsScoreInTheirOwnStyle() {
+        assertEquals("★★★★☆", Outlet.EUROGAMER.format(8.2))
+        assertEquals("84%", Outlet.PC_GAMER.format(8.4))
+        assertEquals("8.25", Outlet.GAME_INFORMER.format(8.2))
+        assertEquals("8.5", Outlet.GAME_INFORMER.format(8.45))
+        assertEquals("8", Outlet.IGN.format(8.2))
+    }
+
+    @Test
+    fun launchesGetFullReviews() {
+        val samples = mutableListOf<String>()
+        for (seed in 1L..4L) {
+            val s = game(Lane.GAMES, seed)
+            s.cash = 1_000_000.0
+            s.startGame(
+                GameConcept("Review Me $seed", Topic.FANTASY, if (seed % 2 == 0L) Genre.RPG else Genre.SIMULATION, platforms = listOf(Platform.PC), size = GameSize.SMALL),
+                evenFocus(),
+            )
+            while (s.games!!.project?.isReady != true) s.play(1)
+            s.play(6)
+            s.launchGame()
+            val r = s.games!!.releases.first()
+            assertEquals(Outlet.entries.size, r.reviews.size, "PC games get PC Gamer too")
+            assertTrue(r.reviews.all { it.comment.length > 10 && it.comment.endsWith(".") })
+            assertEquals(ReviewAspect.entries.toSet(), r.aspects.keys)
+            assertTrue(r.userScore in 1.0..10.0)
+            assertTrue(r.metascore in 1..100)
+            assertTrue(r.pros.size + r.cons.size > 0)
+            samples += "${r.title}: meta ${r.metascore}, players ${r.userScore}, aspects ${r.aspects}, pros ${r.pros}, cons ${r.cons}"
+            r.reviews.forEach { samples += "  ${it.outlet.title} ${it.formatted}${it.outlet.scale}: ${it.comment}" }
+        }
+        println(samples.joinToString("\n"))
+    }
+
+    @Test
+    fun consoleOnlyGamesSkipPcGamer() {
+        val s = game(Lane.GAMES, 20)
+        s.cash = 1_000_000.0
+        val console = s.platformsOnSale.first { it != Platform.PC }
+        s.startGame(GameConcept("Couch", Topic.SPORTS, Genre.CASUAL, platforms = listOf(console), size = GameSize.SMALL), evenFocus())
+        while (s.games!!.project?.isReady != true) s.play(1)
+        s.launchGame()
+        assertTrue(s.games!!.releases.first().reviews.none { it.outlet == Outlet.PC_GAMER })
+    }
+}
+
+class StayFocusedTest {
+    @Test
+    fun youCanTurnDownTheSecondLane() {
+        val s = game(Lane.GAMES, 21)
+        s.cash = 2_000_000.0
+        while (s.pendingPivot == null) s.play(1)
+        s.stayFocused()
+        assertNull(s.pendingPivot)
+        assertEquals(listOf(Lane.GAMES), s.lanes)
+        assertEquals(PivotMode.STAY, s.pivot?.mode)
+        s.play(20)
+        assertEquals(listOf(Lane.GAMES), s.lanes)
+        assertNull(s.pendingPivot, "the Pivot Point doesn't come back")
+        assertEquals(1, s.lanes.size)
+        // A second lane can still come later, once the business is profitable.
+        assertTrue(s.expansionBlocker == null || "profitable" in s.expansionBlocker!!)
+        val story = GameState.decode(s.encode()).pivot
+        assertEquals(PivotMode.STAY, story?.mode)
+    }
+}
+
+class RealCompaniesTest {
+    @Test
+    fun theWorldIsReal() {
+        val s = game(Lane.GAMES, 22)
+        assertEquals("Electronic Arts", s.world.rival(Lane.GAMES)?.name)
+        assertEquals("OpenAI", s.world.rival(Lane.AI)?.name)
+        assertEquals("PlayStation 5", Platform.PLAYSYSTEM_5.title)
+        assertEquals("Nintendo", Platform.SWITCHEROO_2.maker)
+        assertTrue(Outlet.entries.map { it.title }.containsAll(listOf("IGN", "GameSpot", "Eurogamer")))
+    }
+
+    @Test
+    fun oldSavesGetRealRivalsAndOutlets() {
+        val s = game(Lane.GAMES, 23)
+        val old = s.encode().replace("\"Electronic Arts\"", "\"Gigaplay Interactive\"").replace("\"OpenAI\"", "\"Hyperion Labs\"")
+        assertTrue("Gigaplay Interactive" in old)
+        val loaded = GameState.decode(old)
+        assertEquals("Electronic Arts", loaded.world.rival(Lane.GAMES)?.name)
+        assertEquals("OpenAI", loaded.world.rival(Lane.AI)?.name)
+        // Reviews from parody outlets map onto real ones.
+        val review = kotlinx.serialization.json.Json.decodeFromString(Review.serializer(), """{"outlet":"PIXEL_GAZETTE","score":7,"comment":"Fun."}""")
+        assertEquals(Outlet.IGN, review.outlet)
+        assertEquals(7.0, review.exact)
+    }
+
+    @Test
+    fun roundsHaveRealLeads() {
+        val s = game(Lane.AI, 24)
+        assertTrue(s.venture.rounds.first().lead.isNotEmpty())
+        assertTrue(s.log.any { "led by" in it.text })
+    }
+}

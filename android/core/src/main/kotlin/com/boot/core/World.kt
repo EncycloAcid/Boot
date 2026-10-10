@@ -99,7 +99,7 @@ enum class Era {
 @Serializable
 data class Rival(
     val id: Int,
-    val name: String,
+    var name: String,
     val lane: Lane,
     /** 0...1 market muscle in their lane. */
     var strength: Double,
@@ -118,12 +118,32 @@ class World {
 
     companion object {
         internal fun makeRivals() = listOf(
-            Rival(1, "Gigaplay Interactive", Lane.GAMES, strength = 0.5, aggression = 0.5),
-            Rival(2, "Pixelsmith Collective", Lane.WEBSITES, strength = 0.4, aggression = 0.3),
-            Rival(3, "Appetite Inc", Lane.APPS, strength = 0.5, aggression = 0.4),
-            Rival(4, "Fritter", Lane.SOCIAL, strength = 0.6, aggression = 0.5),
-            Rival(5, "Pear Computing", Lane.HARDWARE, strength = 0.7, aggression = 0.4),
-            Rival(6, "Hyperion Labs", Lane.AI, strength = 0.6, aggression = 0.8),
+            Rival(1, "Electronic Arts", Lane.GAMES, strength = 0.5, aggression = 0.5),
+            Rival(2, "Squarespace", Lane.WEBSITES, strength = 0.4, aggression = 0.3),
+            Rival(3, "Google", Lane.APPS, strength = 0.5, aggression = 0.4),
+            Rival(4, "Meta", Lane.SOCIAL, strength = 0.6, aggression = 0.5),
+            Rival(5, "Apple", Lane.HARDWARE, strength = 0.7, aggression = 0.4),
+            Rival(6, "OpenAI", Lane.AI, strength = 0.6, aggression = 0.8),
+        )
+
+        /** The other big names in each lane, for the news. The main rival is one of them. */
+        fun peers(lane: Lane): List<String> = when (lane) {
+            Lane.GAMES -> listOf("Electronic Arts", "Ubisoft", "Activision Blizzard", "Take-Two", "Nintendo", "Sony Interactive")
+            Lane.WEBSITES -> listOf("Squarespace", "Wix", "Webflow", "WordPress.com", "Shopify")
+            Lane.APPS -> listOf("Google", "Duolingo", "Spotify", "Calm", "Strava", "Notion")
+            Lane.SOCIAL -> listOf("Meta", "TikTok", "X", "Snap", "Reddit", "Discord")
+            Lane.HARDWARE -> listOf("Apple", "Samsung", "Google", "Sony", "Nothing", "Microsoft")
+            Lane.AI -> listOf("OpenAI", "Google DeepMind", "Anthropic", "Meta AI", "xAI", "Mistral AI")
+        }
+
+        /** Earlier versions used made-up rivals; saves from then get the real ones. */
+        internal val renamed = mapOf(
+            "Gigaplay Interactive" to "Electronic Arts",
+            "Pixelsmith Collective" to "Squarespace",
+            "Appetite Inc" to "Google",
+            "Fritter" to "Meta",
+            "Pear Computing" to "Apple",
+            "Hyperion Labs" to "OpenAI",
         )
     }
 
@@ -134,4 +154,5 @@ class World {
     }
 
     fun rival(lane: Lane): Rival? = rivals.firstOrNull { it.lane == lane }
+
 }

@@ -122,7 +122,7 @@ fun NewGameScreen(store: GameStore) {
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Hint(
-                        "Mid-game, the Pivot Point forces a second lane. Every pairing unlocks its own crossover. " +
+                        "Mid-game, the Pivot Point offers a second lane; take it or stay focused. Every pairing unlocks its own crossover. " +
                             "Hardware, software and services together make an ecosystem company. " +
                             "IPO, sell, stay indie or go bust: the ending reflects how you got there.",
                     )

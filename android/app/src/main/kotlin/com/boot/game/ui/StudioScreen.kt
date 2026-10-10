@@ -249,7 +249,7 @@ fun FocusSlider(area: FocusArea, alloc: List<Double>, index: Int, insight: Strin
 private fun HypeSection(store: GameStore, state: GameState, p: GameProject) {
     val colors = gameColors
     val marketing = Research.MARKETING in state.researched
-    GroupedSection("Hype", footer = if (!marketing) "Research marketing campaigns to buy hype. BootCon each summer helps too." else "Hype sells launch weeks. Overhype a weak game and fans feel misled.") {
+    GroupedSection("Hype", footer = if (!marketing) "Research marketing campaigns to buy hype. Summer Game Fest each June helps too." else "Hype sells launch weeks. Overhype a weak game and fans feel misled.") {
         CardBlock { Meter("Hype", p.hype / 100, colors.warn, "${p.hype.toInt()}/100") }
         if (marketing) {
             Campaign.entries.forEach { c ->

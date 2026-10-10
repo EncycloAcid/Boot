@@ -52,7 +52,7 @@ import com.boot.core.startExpansion
 import com.boot.game.GameStore
 import java.util.Locale
 
-/** Launch day: four outlets give their verdicts, one after another. */
+/** Launch day: the critics give their verdicts one after another, then the players weigh in. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
@@ -73,9 +73,9 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Hint("THE REVIEWS ARE IN")
                 Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
-                Spacer(Modifier.size(8.dp))
-                ScoreBadge(r.score, 88.dp)
-                Spacer(Modifier.size(6.dp))
+                Spacer(Modifier.size(12.dp))
+                ScoreSummary(r)
+                Spacer(Modifier.size(10.dp))
                 Text(
                     "${r.verdict} · launch week ${Format.money(r.salesHistory.firstOrNull() ?: r.weeklySales)}" +
                         if (r.chartRank > 0) " · #${r.chartRank} on the charts" else "",
@@ -83,12 +83,13 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            GroupedSection(null) {
+            GroupedSection("Critics") {
                 r.reviews.forEachIndexed { i, review ->
-                    if (i > 0) RowDivider(72.dp)
+                    if (i > 0) RowDivider()
                     RevealedReview(review, i)
                 }
             }
+            ProsCons(r.pros, r.cons)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TonalButton("Game report", {
                     store.openRelease = r.id
@@ -109,20 +110,12 @@ private fun RevealedReview(review: Review, index: Int) {
         kotlinx.coroutines.delay(250L * index)
         reveal.animateTo(1f, spec)
     }
-    Row(
+    ReviewRow(
+        review,
         Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .alpha(reveal.value.coerceIn(0f, 1f)),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.scale(0.6f + 0.4f * reveal.value)) { ScoreBadge(review.score.toDouble(), 48.dp) }
-        Spacer(Modifier.width(14.dp))
-        Column {
-            Text(review.outlet.title, style = MaterialTheme.typography.titleSmall)
-            Text("“${review.comment}”", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
+            .alpha(reveal.value.coerceIn(0f, 1f))
+            .scale(0.92f + 0.08f * reveal.value),
+    )
 }
 
 /** Everything about a released game: reviews, sales, and the report that teaches you for next time. */
@@ -147,8 +140,6 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        ScoreBadge(r.score, 72.dp)
-                        Spacer(Modifier.width(14.dp))
                         Column {
                             Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
                             Hint(
@@ -157,6 +148,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                             )
                         }
                     }
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { ScoreSummary(r) }
                     GroupedSection("Sales") {
                         Column(Modifier.padding(8.dp)) {
                             TileRow {
@@ -174,12 +166,14 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                             if (r.lifetimeSales >= r.devCost) colors.good else colors.bad,
                         )
                     }
-                    GroupedSection("Reviews") {
+                    GroupedSection("Critics") {
                         r.reviews.forEachIndexed { i, review ->
-                            if (i > 0) RowDivider(72.dp)
-                            ListRow(review.outlet.title, subtitle = "“${review.comment}”", leading = { ScoreBadge(review.score.toDouble(), 44.dp) })
+                            if (i > 0) RowDivider()
+                            ReviewRow(review)
                         }
                     }
+                    AspectBreakdown(r.aspects)
+                    ProsCons(r.pros, r.cons)
                     GroupedSection(
                         "What you learned",
                         footer = String.format(Locale.US, "Design %.0f · Tech %.0f · Hype %.0f · ", r.design, r.tech, r.hype) +

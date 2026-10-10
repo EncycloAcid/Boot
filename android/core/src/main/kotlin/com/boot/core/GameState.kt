@@ -79,7 +79,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             return s
         }
 
-        fun decode(text: String): GameState = json.decodeFromString(serializer(), text)
+        fun decode(text: String): GameState = json.decodeFromString(serializer(), text).apply {
+            for (r in world.rivals) World.renamed[r.name]?.let { r.name = it }
+        }
     }
 
     fun encode(): String = json.encodeToString(serializer(), this)
@@ -323,7 +325,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         venture.take(offer, week)
         cash += offer.amount
         addLog(
-            "Closed a ${money(offer.amount)} ${offer.name} at a ${money(offer.preMoney)} pre-money valuation. " +
+            "Closed a ${money(offer.amount)} ${offer.name}" + (if (offer.lead.isNotEmpty()) " led by ${offer.lead}" else "") +
+                " at a ${money(offer.preMoney)} pre-money valuation. " +
                 "You now own ${Format.percent(venture.founderEquity)}.",
             LogTone.MILESTONE,
         )

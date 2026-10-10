@@ -141,7 +141,7 @@ private fun QuickStats(state: GameState) {
 private fun LanesSection(store: GameStore, state: GameState) {
     val colors = gameColors
     val footer = when {
-        state.pivot == null -> "The Pivot Point arrives between year 2 and year 4."
+        state.pivot == null -> "The Pivot Point arrives between year 2 and year 4. A second lane is optional."
         state.expansionBlocker == null -> "Every lane is profitable. You can expand under Money."
         else -> null
     }

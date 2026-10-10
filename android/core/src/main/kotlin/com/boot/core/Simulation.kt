@@ -141,7 +141,8 @@ private fun GameState.updateRivals() {
 
         if (r.lane in lanes && rng.chance(0.008)) {
             r.strength = min(1.0, r.strength + 0.1)
-            val move = "${r.name} launched something big in ${r.lane.title.lowercase()}. Your market just got tougher."
+            val who = if (rng.chance(0.5)) r.name else rng.pick(World.peers(r.lane))
+            val move = "$who launched something big in ${r.lane.title.lowercase()}. Your market just got tougher."
             r.lastMove = move
             addLog(move, LogTone.BAD, r.lane)
         }
@@ -186,7 +187,7 @@ private fun GameState.rollWorldEvents() {
         val bidder = if (rng.chance(0.5)) {
             rng.pick(world.rivals).name
         } else {
-            rng.pick(listOf("MegaCorp Holdings", "Blackstone-ish Capital", "Conglomo"))
+            rng.pick(listOf("Microsoft", "Tencent", "Amazon", "Blackstone", "Sony"))
         }
         enqueue(EventKind.Buyout(bidder, Math.round(valuation * rng.range(1.1, 1.6)).toDouble()))
     }

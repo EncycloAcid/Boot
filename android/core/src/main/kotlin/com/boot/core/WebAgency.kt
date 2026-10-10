@@ -82,7 +82,7 @@ class WebAgency {
             val work = value / RATE_PER_POINT * rng.range(0.8, 1.2)
             val pace = max(3.0, ctx.staffing.output * 0.8)
             offers += Contract(
-                id = nextId, client = rng.pick(Names.clients), value = value.roundToLong().toDouble(), work = work,
+                id = nextId, client = rng.pick(if (value >= 25_000) Names.brands else Names.clients), value = value.roundToLong().toDouble(), work = work,
                 weeksAllowed = ceil(work / pace).toInt() + 2, expiresWeek = ctx.week + 2,
             )
             nextId += 1

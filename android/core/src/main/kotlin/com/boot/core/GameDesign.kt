@@ -282,18 +282,19 @@ enum class Platform(
     private val bad: String,
     private val audiences: String,
 ) {
-    PC("Personal Computer", "Everyone", -2_000, 100_000, 55.0, 1.0, 0.0, "TSR", "", "EM"),
-    PLAYSYSTEM_5("Playsystem 5", "Sunny", -150, 330, 50.0, 1.0, 80_000.0, "AVR", "T", "EM"),
-    MBOX_Z("mBox Series Z", "Megasoft", -150, 330, 28.0, 1.0, 80_000.0, "AS", "C", "M"),
-    SWITCHEROO("Nuu Switcheroo", "Ninvento", -300, 260, 42.0, 0.9, 50_000.0, "CVA", "ST", "YE"),
-    GRPHONE("grPhone & friends", "Fruit Co", -2_000, 100_000, 400.0, 0.08, 2_000.0, "C", "TS", "YE"),
-    VAPOR_DECK("Vapor Deck", "Vapor", 30, 560, 9.0, 1.1, 0.0, "RTA", "", "EM"),
-    STRATOS("Stratos Cloud", "Googol", 90, 230, 6.0, 0.7, 20_000.0, "A", "T", "E"),
-    VISOR_VR("Visor VR", "Metaverse Inc", 120, 620, 14.0, 1.1, 30_000.0, "AS", "TR", "EM"),
-    SWITCHEROO_2("Nuu Switcheroo 2", "Ninvento", 230, 100_000, 60.0, 0.9, 70_000.0, "CVA", "ST", "YE"),
-    PLAYSYSTEM_6("Playsystem 6", "Sunny", 320, 100_000, 65.0, 1.0, 120_000.0, "AVR", "T", "EM"),
-    MBOX_INFINITY("mBox Infinity", "Megasoft", 335, 100_000, 34.0, 1.0, 120_000.0, "AS", "C", "M"),
-    SPECTACLE_AR("Spectacle AR", "Fruit Co", 470, 100_000, 30.0, 0.8, 50_000.0, "CA", "T", "YE"),
+    // Enum names are kept from earlier versions so old saves still load.
+    PC("PC", "Valve (Steam)", -2_000, 100_000, 55.0, 1.0, 0.0, "TSR", "", "EM"),
+    PLAYSYSTEM_5("PlayStation 5", "Sony", -150, 330, 50.0, 1.0, 80_000.0, "AVR", "T", "EM"),
+    MBOX_Z("Xbox Series X|S", "Microsoft", -150, 330, 28.0, 1.0, 80_000.0, "AS", "C", "M"),
+    SWITCHEROO("Nintendo Switch", "Nintendo", -450, 160, 42.0, 0.9, 50_000.0, "CVA", "ST", "YE"),
+    GRPHONE("iPhone & Android", "Apple and Google", -2_000, 100_000, 400.0, 0.08, 2_000.0, "C", "TS", "YE"),
+    VAPOR_DECK("Steam Deck", "Valve", -200, 560, 9.0, 1.1, 0.0, "RTA", "", "EM"),
+    STRATOS("Amazon Luna", "Amazon", -60, 230, 6.0, 0.7, 20_000.0, "A", "T", "E"),
+    VISOR_VR("Meta Quest", "Meta", -250, 620, 14.0, 1.1, 30_000.0, "AS", "TR", "EM"),
+    SWITCHEROO_2("Nintendo Switch 2", "Nintendo", -60, 100_000, 60.0, 0.9, 70_000.0, "CVA", "ST", "YE"),
+    PLAYSYSTEM_6("PlayStation 6", "Sony", 110, 100_000, 65.0, 1.0, 120_000.0, "AVR", "T", "EM"),
+    MBOX_INFINITY("Next-gen Xbox", "Microsoft", 100, 100_000, 34.0, 1.0, 120_000.0, "AS", "C", "M"),
+    SPECTACLE_AR("Apple Vision", "Apple", 300, 100_000, 30.0, 0.8, 50_000.0, "CA", "T", "YE"),
 
     /** Your own handheld, once Games and Hardware have built the Handheld Console crossover. */
     OWN_CONSOLE("Your handheld", "You", -2_000, 100_000, 0.0, 1.2, 0.0, "AVRSTC", "", "YEM");
@@ -326,31 +327,6 @@ data class Trend(val topic: Topic? = null, val genre: Genre? = null, val until: 
 
     fun matches(c: GameConcept): Boolean = (topic != null && c.topic == topic) || (genre != null && (c.genre == genre || c.genre2 == genre))
 }
-
-/** Parody review outlets. Each has its own taste. */
-@Serializable
-enum class Outlet {
-    PIXEL_GAZETTE, GAMESPOTTY, CRITICAL_HIT, LOADING_SCREEN;
-
-    val title: String
-        get() = when (this) {
-            PIXEL_GAZETTE -> "Pixel Gazette"
-            GAMESPOTTY -> "GameSpotty"
-            CRITICAL_HIT -> "Critical Hit"
-            LOADING_SCREEN -> "The Loading Screen"
-        }
-
-    /** Score nudge from this outlet's taste. */
-    internal fun bias(concept: GameConcept, techShare: Double): Double = when (this) {
-        PIXEL_GAZETTE -> if (techShare > 0.55) 0.35 else -0.1
-        GAMESPOTTY -> -0.3
-        CRITICAL_HIT -> if (concept.genre == Genre.RPG || concept.genre == Genre.ADVENTURE) 0.35 else 0.0
-        LOADING_SCREEN -> 0.2
-    }
-}
-
-@Serializable
-data class Review(val outlet: Outlet, val score: Int, val comment: String)
 
 /** Everything decided before development starts. */
 @Serializable
@@ -406,10 +382,13 @@ internal object GameNames {
         "Knight", "Courier", "Tactics", "Lantern", "Kingdom", "Saga", "Garden", "Drift", "Raiders", "Empire",
         "Laundry", "Commute", "Rush", "Orchard", "Planet", "Frontier", "Legends", "Heist", "Odyssey", "Protocol",
     )
-    val clients = listOf("Gigaplay", "a cereal brand", "a bank", "a theme park", "a sneaker company", "a soda brand", "a car maker", "a museum")
+    val clients = listOf("Electronic Arts", "Kellogg's", "JPMorgan Chase", "Disney", "Nike", "Coca-Cola", "Toyota", "the Smithsonian", "LEGO", "McDonald's")
     val expansions = listOf(
         "Rising Tide", "The Lost Isles", "Frozen Throne", "Second Wind", "Afterglow", "Echoes", "The Deep End",
         "Dark Harvest", "New Horizons", "Overtime", "Reloaded", "Wild Card",
     )
-    val publishers = listOf("Megapublish", "Blue Comet Games", "Overdrive Media", "Lantern & Co", "Northstar Interactive")
+    val publishers = listOf(
+        "Electronic Arts", "Ubisoft", "Bandai Namco", "Devolver Digital", "Annapurna Interactive", "Take-Two Interactive",
+        "Sega", "THQ Nordic", "Square Enix", "Xbox Game Studios",
+    )
 }

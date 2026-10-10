@@ -155,7 +155,7 @@ private fun GameState.describe(kind: EventKind): Description? = when (kind) {
     }
     EventKind.ComponentShortage -> Description(
         "Component shortage",
-        "Your supplier can't get enough chips. Your factory orders are stuck.",
+        "TSMC can't make enough chips and Foxconn's lines are idle. Your factory orders are stuck.",
         listOf(
             choice("Pay the spot premium", "${money(shortagePremium)} to keep deliveries on time."),
             choice("Accept the delay", "Every pending order slips 8 weeks."),
@@ -317,8 +317,8 @@ private fun GameState.describe(kind: EventKind): Description? = when (kind) {
         val about = project?.let { "Show off ${it.title} and build hype before launch." } ?: "You've nothing in development, but fans still want to meet you."
         val keynote = (games?.fans ?: 0.0) >= 100_000
         Description(
-            "BootCon is next week",
-            "The biggest games convention of the year. $about",
+            "Summer Game Fest is next week",
+            "The biggest games showcase of the summer. $about",
             listOfNotNull(
                 choice("Small booth", "${money(15_000.0)}. A little hype, a few new fans."),
                 choice("Big booth", "${money(120_000.0)}. Real hype, lots of new fans."),
@@ -625,7 +625,7 @@ private fun GameState.resolve(kind: EventKind, choice: Int) {
             val keynote = g.fans >= 100_000
             val options = listOfNotNull(Triple(15_000.0, 8.0, 0.02), Triple(120_000.0, 20.0, 0.05), if (keynote) Triple(600_000.0, 35.0, 0.1) else null)
             val pick = options.getOrNull(choice) ?: run {
-                addLog("You skipped BootCon this year.", LogTone.NEUTRAL, Lane.GAMES)
+                addLog("You skipped Summer Game Fest this year.", LogTone.NEUTRAL, Lane.GAMES)
                 return
             }
             val (cost, hype, fanGain) = pick
@@ -634,7 +634,7 @@ private fun GameState.resolve(kind: EventKind, choice: Int) {
             g.fans += max(500.0, g.fans * fanGain)
             if (choice == 2) reputation.adjust(2.0)
             addLog(
-                "BootCon went well. " + (g.project?.let { "Hype for ${it.title} is up. " } ?: "") + "New fans signed up.",
+                "Summer Game Fest went well. " + (g.project?.let { "Hype for ${it.title} is up. " } ?: "") + "New fans signed up.",
                 LogTone.GOOD, Lane.GAMES,
             )
         }
