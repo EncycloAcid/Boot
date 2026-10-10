@@ -61,12 +61,14 @@ class Stats {
     var chartToppers = 0
     var awards = 0
     var loans = 0
+    var ipoRaise = 0.0
     val erasSeen = mutableListOf(Era.BOOTSTRAP_YEARS)
 }
 
 /** IPO-ready, or the reason you aren't. */
 val GameState.ipoBlocker: String?
     get() {
+        if (listing != null) return "You're already public."
         if (week < IPO_EARLIEST_WEEK) return "Bankers won't take you public before year ${IPO_EARLIEST_WEEK / 52 + 1}."
         if (enterpriseValue < IPO_VALUATION) {
             return "Bankers want the business valued at ${money(IPO_VALUATION)}, not counting cash. You're at ${money(enterpriseValue)}."
@@ -79,14 +81,9 @@ val GameState.ipoBlocker: String?
         return null
     }
 
-fun GameState.goPublic() {
-    ipoBlocker?.let { throw notAvailable(it) }
-    end(EndingKind.IPO)
-}
-
 internal fun GameState.end(kind: EndingKind, price: Double? = null, buyer: String? = null) {
     if (ending != null) return
-    val value = price ?: valuation
+    val value = price ?: listing?.marketCap ?: valuation
     stats.peakValuation = max(stats.peakValuation, valuation)
     val equity = venture.founderEquity
     val takeHome = when (kind) {
@@ -105,7 +102,7 @@ internal fun GameState.end(kind: EndingKind, price: Double? = null, buyer: Strin
 
 private val GameState.isPredatory: Boolean get() = reputation.has(ScarKind.PREDATORY_MONETIZATION, 0.15)
 
-private fun plural(n: Int, word: String) = "$n $word${if (n == 1) "" else "s"}"
+internal fun plural(n: Int, word: String) = "$n $word${if (n == 1) "" else "s"}"
 
 private fun GameState.endingTitle(kind: EndingKind, buyer: String?): String {
     val titan = stats.ecosystemWeeks >= 52
@@ -136,13 +133,18 @@ private fun GameState.endingTitle(kind: EndingKind, buyer: String?): String {
 private fun GameState.endingSummary(kind: EndingKind, value: Double, buyer: String?): String {
     val stake = Format.percent(venture.founderEquity)
     return when (kind) {
-        EndingKind.IPO ->
-            "$companyName went public at a ${money(value)} valuation. Your $stake stake is worth ${money(value * venture.founderEquity)}."
+        EndingKind.IPO -> listing?.let { l ->
+            "You stepped down after ${plural((week - l.ipoWeek) / 52, "year")} as a public company. ${l.ticker} is worth ${money(value)}, " +
+                "and your $stake stake ${money(value * venture.founderEquity)}."
+        } ?: "$companyName went public at a ${money(value)} valuation. Your $stake stake is worth ${money(value * venture.founderEquity)}."
         EndingKind.ACQUIRED ->
             "${buyer ?: "A buyer"} acquired $companyName for ${money(value)}. You walk away with ${money(value * venture.founderEquity)}."
-        EndingKind.INDIE ->
+        EndingKind.INDIE -> if (freeplay) {
+            "You stepped away after ${plural(week / 52, "year")}. $companyName is worth ${money(valuation)}."
+        } else {
             "Fifteen years in, $companyName is still yours${if (venture.isBacked) ", more or less" else ""}. " +
                 "Worth ${money(valuation)} and answering to ${if (venture.board == null) "nobody" else "a board"}."
+        }
         EndingKind.BANKRUPT ->
             "$companyName couldn't make payroll for two months straight. The lights went out in ${GameClock.label(week)}."
         EndingKind.OUSTED -> "The board lost confidence and replaced you as CEO of the company you started."

@@ -1,6 +1,7 @@
 package com.boot.core
 
 import kotlinx.serialization.Serializable
+import kotlin.math.pow
 import kotlin.math.max
 import kotlin.math.min
 
@@ -328,6 +329,23 @@ data class Trend(val topic: Topic? = null, val genre: Genre? = null, val until: 
     fun matches(c: GameConcept): Boolean = (topic != null && c.topic == topic) || (genre != null && (c.genre == genre || c.genre2 == genre))
 }
 
+/** What you charge for a game. Great games can charge more; weak ones sell better cheap. */
+@Serializable
+enum class PriceTier(val title: String, val multiplier: Double) {
+    BUDGET("Budget", 0.6),
+    STANDARD("Standard", 1.0),
+    PREMIUM("Premium", 1.4);
+
+    /**
+     * How the price changes launch revenue for a game of this score. Buyers are price sensitive,
+     * less so for great games: a 9 sells nearly as many copies at a premium; a 5 loses a lot.
+     */
+    fun revenueFactor(score: Double): Double {
+        val elasticity = (2.2 - 0.18 * score).coerceIn(0.4, 1.9)
+        return multiplier.pow(1 - elasticity)
+    }
+}
+
 /** Everything decided before development starts. */
 @Serializable
 data class GameConcept(
@@ -341,7 +359,11 @@ data class GameConcept(
     val engineId: Int = 0,
     /** The release this is a sequel to. */
     val sequelOf: Int? = null,
+    val price: PriceTier = PriceTier.STANDARD,
 ) {
+    /** What a copy sells for. */
+    val unitPrice: Double get() = size.price * price.multiplier
+
     val genreTitle: String get() = if (genre2 == null) genre.title else "${genre.title}-${genre2.title}"
     val genreLower: String get() = if (genre2 == null) genre.lower else "${genre.lower}-${genre2.lower}"
 

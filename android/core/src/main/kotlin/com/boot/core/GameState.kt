@@ -122,6 +122,14 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         internal set
     var loan: Loan? = null
         internal set
+
+    /** Listed on the stock market and still running. */
+    var listing: Listing? = null
+        internal set
+
+    /** Playing on past an ending: no year-15 cutoff. */
+    var freeplay = false
+        internal set
     var crunch = false
         internal set
     val reputation = Reputation()
@@ -149,6 +157,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var researchPoints = 0.0
         internal set
     var researched: Set<Research> = emptySet()
+        internal set
+
+    /** What's in the office besides desks. */
+    var perks: Set<Perk> = emptySet()
         internal set
 
     /** Goals reached so far, in the order you reached them. */
@@ -369,7 +381,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
 
     internal fun makeCandidate(role: Role? = null, star: Boolean = false): Candidate {
         val r = role ?: pickRole()
-        val skill = if (star) rng.int(8, 10) else rng.normal(5.0, 1.8).roundToInt().clamped(1, 10)
+        val appeal = if (has(Perk.CHEF)) 0.5 else 0.0
+        val skill = if (star) rng.int(8, 10) else rng.normal(5.0 + appeal, 1.8).roundToInt().clamped(1, 10)
         var salary = r.baseSalary * (0.5 + skill * 0.1) * rng.range(0.9, 1.15)
         if (r == Role.RESEARCHER && world.era == Era.AI_GOLD_RUSH) salary *= 1.6
         var contested: String? = null
@@ -408,6 +421,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             if (c.expiresWeek < week && c.contestedBy != null) addLog("${c.name} signed with ${c.contestedBy}.")
         }
         candidates = candidates.filter { it.expiresWeek >= week }
+        if (has(Perk.ROOFTOP) && rng.chance(0.25) && candidates.none { it.skill >= 8 }) candidates = candidates + makeCandidate(star = true)
         while (candidates.size < 5) candidates = candidates + makeCandidate()
     }
 

@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.Office
+import com.boot.core.Perk
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.min
@@ -139,6 +140,7 @@ fun OfficeScene(state: GameState, playing: Boolean, modifier: Modifier = Modifie
 
         Canvas(Modifier.fillMaxSize()) {
             drawRoom(state, palette, night, measurer)
+            drawPerks(state.perks, size.height * (if (state.office.shownDesks > 3) 0.53f else 0.6f), palette, night)
             for (i in layout.indices) {
                 val worker = people.getOrNull(i)
                 val shirt = when {
@@ -353,6 +355,10 @@ private fun DrawScope.drawRoom(state: GameState, p: RoomPalette, night: Boolean,
     }
 
     val name = state.companyName
+    if (Perk.PLANTS in state.perks) {
+        plant(w * 0.035f, floorTop + 4f, h / 300f)
+        plant(w * 0.5f, floorTop + 2f, h / 380f)
+    }
     when (state.office) {
         Office.APARTMENT -> {
             window(0.62f, 0.9f, 0.1f, 0.42f)
@@ -388,6 +394,101 @@ private fun DrawScope.drawRoom(state: GameState, p: RoomPalette, night: Boolean,
             window(0.04f, 0.96f, 0.16f, 0.46f, trees = true)
             sign(name, w * 0.5f, h * 0.075f)
         }
+    }
+}
+
+/** The office perks you've bought, along the back wall. */
+private fun DrawScope.drawPerks(perks: Set<Perk>, floorTop: Float, p: RoomPalette, night: Boolean) {
+    val w = size.width
+    val h = size.height
+    val u = h / 100f
+    if (Perk.ROOFTOP in perks) {
+        // String lights across the top of the room.
+        val bulbs = listOf(Color(0xFFFFD27A), Color(0xFFFF7A9C), Color(0xFF7AD1FF), Color(0xFFB4FF7A))
+        val path = Path().apply {
+            moveTo(0f, 4 * u)
+            quadraticTo(w / 4, 12 * u, w / 2, 4 * u)
+            quadraticTo(w * 3 / 4, 12 * u, w, 4 * u)
+        }
+        drawPath(path, Color(0xFF3A3A3A), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5f * u))
+        for (k in 0 until 14) {
+            val t = (k + 0.5f) / 14
+            val x = w * t
+            val y = 4 * u + 8 * u * (1 - (2 * ((t * 2) % 1f) - 1).let { it * it })
+            drawCircle(bulbs[k % bulbs.size].copy(alpha = if (night) 1f else 0.85f), 1.2f * u, Offset(x, y))
+            if (night) drawCircle(bulbs[k % bulbs.size].copy(alpha = 0.2f), 3f * u, Offset(x, y))
+        }
+    }
+    val items = Perk.entries.filter { it in perks && it != Perk.ROOFTOP && it != Perk.PLANTS }
+    var x = w - 4 * u
+    fun box(x0: Float, y0: Float, bw: Float, bh: Float, c: Color, r: Float = 1f) =
+        drawRoundRect(c, Offset(x0, y0), Size(bw, bh), CornerRadius(r * u))
+    for (perk in items) {
+        val base = floorTop
+        when (perk) {
+            Perk.COFFEE -> {
+                val bw = 12 * u
+                x -= bw
+                box(x, base - 9 * u, bw, 9 * u, p.deskDark)
+                box(x + 2 * u, base - 17 * u, 6 * u, 8 * u, Color(0xFF2B2B30), 1.5f)
+                drawCircle(Color(0xFFFF453A), 0.7f * u, Offset(x + 6.5f * u, base - 15 * u))
+                box(x + 9 * u, base - 12 * u, 2.2f * u, 3 * u, Color.White, 0.6f)
+            }
+            Perk.ARCADE -> {
+                val bw = 9 * u
+                x -= bw
+                box(x, base - 24 * u, bw, 24 * u, Color(0xFF5B2EBF), 1.5f)
+                box(x + 1.5f * u, base - 21 * u, bw - 3 * u, 7 * u, if (night) Color(0xFF7AF0FF) else Color(0xFF2DD4E8), 1f)
+                box(x + 1 * u, base - 12 * u, bw - 2 * u, 2 * u, Color(0xFF2B2B30), 0.5f)
+                drawCircle(Color(0xFFFF453A), 0.9f * u, Offset(x + 3 * u, base - 11 * u))
+            }
+            Perk.CHEF -> {
+                val bw = 16 * u
+                x -= bw
+                box(x, base - 10 * u, bw, 10 * u, Color(0xFFE5E5EA))
+                box(x + 3 * u, base - 15 * u, 7 * u, 5 * u, Color(0xFF8E8E93), 1f)
+                for (k in 0..2) drawCircle(Color.White.copy(alpha = 0.6f), 1.2f * u, Offset(x + (5 + k * 1.6f) * u, base - (17 + k * 2) * u))
+            }
+            Perk.NAP_PODS -> {
+                val bw = 18 * u
+                x -= bw
+                box(x, base - 11 * u, bw, 11 * u, Color(0xFFF2F2F7), 5f)
+                box(x + 3 * u, base - 8 * u, bw - 8 * u, 5 * u, Color(0xFF3A3F4B), 2.5f)
+            }
+            Perk.LIBRARY -> {
+                val bw = 14 * u
+                x -= bw
+                box(x, base - 26 * u, bw, 26 * u, p.deskDark, 1f)
+                val spines = listOf(Color(0xFFFF453A), Color(0xFF0A84FF), Color(0xFF30D158), Color(0xFFFF9F0A), Color(0xFFBF5AF2))
+                for (row in 0..2) {
+                    val y = base - (24 - row * 8) * u
+                    for (k in 0..5) box(x + (1.2f + k * 2f) * u, y, 1.6f * u, 6 * u, spines[(row + k) % spines.size], 0.3f)
+                }
+            }
+            Perk.GYM -> {
+                val bw = 14 * u
+                x -= bw
+                box(x + 1 * u, base - 14 * u, 1.2f * u, 14 * u, Color(0xFF6E7380))
+                box(x + bw - 2.2f * u, base - 14 * u, 1.2f * u, 14 * u, Color(0xFF6E7380))
+                for (k in 0..1) {
+                    val y = base - (12 - k * 6) * u
+                    box(x + 1 * u, y, bw - 2 * u, 0.8f * u, Color(0xFF6E7380))
+                    drawCircle(Color(0xFF2B2B30), 2.2f * u, Offset(x + 4 * u, y + 0.4f * u))
+                    drawCircle(Color(0xFF2B2B30), 2.2f * u, Offset(x + bw - 4 * u, y + 0.4f * u))
+                }
+            }
+            Perk.DAYCARE -> {
+                val bw = 12 * u
+                x -= bw
+                val blocks = listOf(Color(0xFFFF453A), Color(0xFFFFD60A), Color(0xFF0A84FF), Color(0xFF30D158))
+                box(x, base - 5 * u, 5 * u, 5 * u, blocks[0], 0.5f)
+                box(x + 5.5f * u, base - 5 * u, 5 * u, 5 * u, blocks[1], 0.5f)
+                box(x + 2.7f * u, base - 10.5f * u, 5 * u, 5 * u, blocks[2], 0.5f)
+                drawCircle(blocks[3], 2.2f * u, Offset(x + 10.5f * u, base - 2.2f * u))
+            }
+            else -> {}
+        }
+        x -= 3 * u
     }
 }
 

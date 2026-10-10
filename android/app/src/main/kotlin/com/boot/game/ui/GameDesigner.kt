@@ -64,6 +64,7 @@ import com.boot.core.GameSize
 import com.boot.core.GameState
 import com.boot.core.Genre
 import com.boot.core.Platform
+import com.boot.core.PriceTier
 import com.boot.core.Research
 import com.boot.core.conceptBlocker
 import com.boot.core.estimatedWeeks
@@ -95,12 +96,13 @@ fun GameDesigner(store: GameStore, state: GameState) {
     val platforms = remember { mutableStateListOf<Platform>().apply { addAll(seed?.platforms ?: listOf(Platform.PC)) } }
     var size by remember { mutableStateOf(seed?.size ?: GameSize.SMALL) }
     var engineId by remember { mutableIntStateOf(seed?.engineId ?: g.engines.maxBy { it.level }.id) }
+    var price by remember { mutableStateOf(seed?.price ?: PriceTier.STANDARD) }
     val focus = remember { List(3) { mutableStateListOf(1.0, 1.0, 1.0) } }
     val sequel = seed?.sequelOf
 
     val concept = GameConcept(
         title = title.trim().ifEmpty { "Untitled" }, topic = topic, genre = genre, genre2 = genre2, audience = audience,
-        platforms = platforms.toList(), size = size, engineId = engineId, sequelOf = sequel,
+        platforms = platforms.toList(), size = size, engineId = engineId, sequelOf = sequel, price = price,
     )
     fun close() {
         store.designing = false
@@ -143,7 +145,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                             0 -> ConceptStep(state, title, { title = it }, topic, { topic = it }, genre, { genre = it }, genre2, { genre2 = it }, audience, { audience = it }, sequel != null)
                             1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it })
                             2 -> FocusStep(state, concept, focus)
-                            else -> SummaryStep(state, concept)
+                            else -> SummaryStep(state, concept) { price = it }
                         }
                     }
                 }
@@ -374,7 +376,7 @@ private fun FocusStep(state: GameState, concept: GameConcept, focus: List<Mutabl
 }
 
 @Composable
-private fun SummaryStep(state: GameState, concept: GameConcept) {
+private fun SummaryStep(state: GameState, concept: GameConcept, onPrice: (PriceTier) -> Unit) {
     val g = state.games!!
     val colors = gameColors
     val fees = concept.platforms.sumOf { it.fee }
@@ -414,8 +416,16 @@ private fun SummaryStep(state: GameState, concept: GameConcept) {
         ValueRow("Budget", concept.size.weeklyBudget.perWeek())
         RowDivider()
         ValueRow("Licence fees", if (fees > 0) Format.money(fees) else "None")
-        RowDivider()
-        ValueRow("Price", Format.money(concept.size.price))
+    }
+    GroupedSection(
+        "Price · ${Format.money(concept.unitPrice)} a copy",
+        footer = when (concept.price) {
+            PriceTier.BUDGET -> "Cheap sells more copies and players love a bargain, but every copy earns less. Best for games you're not sure about."
+            PriceTier.STANDARD -> "The going rate for a ${concept.size.title.lowercase()} game."
+            PriceTier.PREMIUM -> "Only great games hold up at a premium. A weak one sells far fewer copies, and critics call it overpriced."
+        },
+    ) {
+        CardBlock { Segmented(PriceTier.entries, concept.price, { it.title }) { onPrice(it) } }
     }
 }
 

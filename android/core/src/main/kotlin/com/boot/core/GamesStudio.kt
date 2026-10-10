@@ -189,6 +189,10 @@ class GamesStudio {
     /** Rival games, the sales chart and the awards. */
     val market = GameMarket()
 
+    /** Side income last week, for the studio screen. */
+    var lastRoyalties = 0.0
+    var lastMerch = 0.0
+
     /** Releases whose fans have petitioned for a sequel, and the one you promised. */
     val petitions: MutableSet<Int> = mutableSetOf()
     var promisedSequel: Int? = null
@@ -296,6 +300,15 @@ class GamesStudio {
             }
         }
 
+        // Other studios building on your engines.
+        val royalties = engines.filter { it.licensed }.sumOf { it.royalty(ctx.week) } * ctx.marketDemand
+        if (royalties > 0) {
+            report.revenue += royalties
+            lastRoyalties = royalties
+        } else {
+            lastRoyalties = 0.0
+        }
+
         expansion?.let { x ->
             lastWork = work
             x.done += work
@@ -323,7 +336,7 @@ class GamesStudio {
             val age = ctx.week - r.week
             report.revenue += r.weeklySales * r.netShare
             r.lifetimeSales += r.weeklySales * r.netShare
-            r.unitsSold += r.weeklySales / r.concept.size.price
+            r.unitsSold += r.weeklySales / r.concept.unitPrice
             r.salesHistory += r.weeklySales
             if (r.salesHistory.size > 52) r.salesHistory.removeAt(0)
             r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) * (if (r.patched) 1.01 else 1.0)
@@ -393,7 +406,7 @@ class GamesStudio {
                 bugPenalty = bugPenalty, polish = p.polish / p.work, engineLevel = engine.level, engineStandard = standard,
                 hype = p.hype, fanTrust = fanTrust, onTrend = onTrend, repeated = repeated, rushedSequel = rushedSequel,
                 worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
-                wrongCrowd = audienceFit < 0.9, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD },
+                wrongCrowd = audienceFit < 0.9, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
             ),
             rng,
         )
@@ -406,7 +419,7 @@ class GamesStudio {
         val sequelLift = if (original != null && original.score >= 7) 1.15 else 1.0
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (if (clash != null) 0.85 else 1.0)
+            (if (clash != null) 0.85 else 1.0) * c.price.revenueFactor(avg)
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 
@@ -444,6 +457,12 @@ class GamesStudio {
         if (bugPenalty < 0.95) lines += "Bugs cost you. Polish longer next time."
         if (dated) lines += "Your engine is behind the times. Research and build a new one."
         if (onTrend) lines += "Riding the ${trend?.title?.lowercase()} trend helped sales."
+        val priceEffect = c.price.revenueFactor(avg)
+        if (c.price != PriceTier.STANDARD) {
+            lines += "At ${money(c.unitPrice)} (${c.price.title.lowercase()}), launch revenue came out " +
+                (if (priceEffect >= 1) "${((priceEffect - 1) * 100).roundToInt()}% higher" else "${((1 - priceEffect) * 100).roundToInt()}% lower") +
+                " than at the standard price."
+        }
         if (clash != null) {
             lines += "${clash.title} by ${clash.studio} came out weeks earlier in the same genre and took some of your buyers."
         }
@@ -461,7 +480,7 @@ class GamesStudio {
         topScore = max(topScore, avg)
         report.add(Incident.Stat(StatKey.RELEASE))
 
-        val buyers = gross / c.size.price
+        val buyers = gross / c.unitPrice
         val scoreText = String.format(java.util.Locale.US, "%.1f", avg)
         when {
             avg >= 8 -> {

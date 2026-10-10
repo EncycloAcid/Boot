@@ -37,6 +37,14 @@ data class Contract(
     val isOverdue: Boolean get() = weeksElapsed > weeksAllowed
 }
 
+/** What the agency charges. Cheap fills the calendar; premium picks the best clients. */
+@Serializable
+enum class AgencyRate(val title: String, val volume: Double, val value: Double, val blurb: String) {
+    BUDGET("Budget", 1.35, 0.7, "More briefs, smaller budgets."),
+    STANDARD("Standard", 1.0, 1.0, "The going rate."),
+    PREMIUM("Premium", 0.65, 1.45, "Fewer briefs, bigger budgets."),
+}
+
 @Serializable
 class WebAgency {
     val offers = mutableListOf<Contract>()
@@ -45,6 +53,7 @@ class WebAgency {
     /** 0...1 word of mouth. Bigger, better clients come to agencies with standing. */
     var standing = 0.25
     var policy = ScopePolicy.ABSORB
+    var rate = AgencyRate.STANDARD
     var completed = 0
 
     /** Clients pull back once they notice you sell competing software (Web + Apps). */
@@ -74,11 +83,11 @@ class WebAgency {
         offers.removeAll { it.expiresWeek < ctx.week }
 
         // New briefs.
-        val mean = (0.5 + standing * 1.5 + ctx.staffing.marketing * 0.06) * ctx.marketDemand * (1 - clientWariness * 0.6)
+        val mean = (0.5 + standing * 1.5 + ctx.staffing.marketing * 0.06) * ctx.marketDemand * (1 - clientWariness * 0.6) * rate.volume
         repeat(min(rng.poisson(mean), 3)) {
             if (offers.size >= 5) return@repeat
             val size = (1 + standing * 2) * (1 + 0.4 * log2(1 + ctx.staffing.output / 6))
-            val value = min(rng.range(2_500.0, 8_000.0) * size * ctx.mods.demand, 60_000.0)
+            val value = min(rng.range(2_500.0, 8_000.0) * size * ctx.mods.demand, 60_000.0) * rate.value
             val work = value / RATE_PER_POINT * rng.range(0.8, 1.2)
             val pace = max(3.0, ctx.staffing.output * 0.8)
             offers += Contract(

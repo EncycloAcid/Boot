@@ -17,6 +17,7 @@ object Format {
         val sign = if (v < 0) "-" else ""
         val a = abs(v)
         return when {
+            a >= 1e12 -> "$sign\$${f("%.2f", a / 1e12)}T"
             a >= 1_000_000_000 -> "$sign\$${f("%.2f", a / 1_000_000_000)}B"
             a >= 1_000_000 -> "$sign\$${f("%.2f", a / 1_000_000)}M"
             a >= 10_000 -> "$sign\$${f("%.0f", a / 1_000)}k"

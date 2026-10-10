@@ -13,6 +13,10 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - Eight straight weeks with negative cash is bankruptcy (twelve on Easy, six on Hard).
 - **Difficulty** is picked at the start. Easy: $60k savings, 20% more demand, cheaper running costs, softer rivals, cheap loans. Hard: $12k, 15% less demand, 12% higher costs, tougher rivals, dear loans.
 - **Goals** run from "Ship your first game" to "Be worth $1B": 43 in all, roughly in the order a run meets them. Lane goals only count while you run that lane. The next three unfinished ones are always on the office screen, and each pays out cash, research points, fans or reputation.
+- **Going public** doesn't have to end the run. Ring the bell and retire (the classic IPO ending), or list the company and keep running it: the public buys a fifth of the company, the share price follows the business, and each quarter's revenue growth against the market's 3% expectation moves it. Public companies can issue new shares (raise a tenth of market cap, once every six months) or buy shares back, and the CEO can step down at any time. Runs that reach year 15, or retired IPOs, can also keep playing.
+- **Industry rankings** place you in a league table of real tech and games companies by value, from Ubisoft up to the trillion-dollar giants. Their values drift with the eras.
+- **Quarterly results** land in the news every 13 weeks (earnings, for public companies), and the Company overview shows the last four quarters.
+- **Office perks** are bought once and paid for every week. Each lifts where morale settles, and some do more: the arcade speeds up game developers' learning, free lunch brings better candidates, nap pods soften crunch, the research library adds 10% research points, the gym speeds up levelling, the rooftop bar attracts star candidates, and daycare halves quitting. Each office fits more perks than the last (1, 3, 5, 7, 9), and they're drawn in the office.
 - **Bank loans** lend against a year's revenue and what the business is worth, repaid weekly over a year at 6% (Easy), 10% or 16% (Hard) interest. One at a time; paying early saves some interest; debt counts against your valuation.
 
 ### You, the founder
@@ -41,6 +45,7 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - **Hype** builds during development, at the yearly convention and from marketing campaigns (once researched): a press release, an ad campaign or a TV blitz.
 - **Reviews.** Six outlets review every game: IGN (generous, loves big hyped releases), GameSpot (straight, hard on bugs), Game Informer (big on action, RPGs and adventures, scores in quarter points), Eurogamer (champions small creative games, stars), PC Gamer (only PC games; strategy, simulation and tech, percentages) and Edge (hard to please). Each writes a quote built from what stood out. Scores compare the game against your own best so far, so you have to keep getting better to keep scoring well, the way Game Dev Tycoon does.
 - **Metascore, players and the breakdown.** The critics' average shows as a Metascore. Players score separately: they care most about gameplay and bugs, remember being overhyped, and reward fan trust; their score decides how slowly sales fade after launch week. Each game gets a breakdown (gameplay, story and world, visuals, sound, polish) from where the effort went against what the genre needs, the engine and the bugs, plus the good and the bad.
+- **Price.** Every game is budget (60% of the usual price), standard or premium (140%). Buyers are price sensitive, less so for great games: a 9 earns more at a premium; a 5 earns more cheap. Players reward a bargain and critics call weak premium games overpriced.
 - **Sales** follow the score, hype, fans and how many players own the platforms you picked, with a weekly sales chart that decays after launch. Platforms come and go by year, each with a licence fee, a player base and a market share curve; late in the game you can build your own handheld.
 - **Game reports** after each launch reveal what worked (fits, focus splits, the design/tech ratio) and store it in a notebook the game designer reads from, so you learn the rules by playing.
 - **Engines.** Engine research items (2D/3D graphics, sound, AI, physics, multiplayer, open world and more) can be built into a custom engine for RP and cash; better engines make every game's points go further.
@@ -51,9 +56,11 @@ This document describes the design as it is implemented in `Sources/BootCore` (S
 - **Game of the Year** is decided every December from the year's four best-reviewed games. If you're nominated you can fly the team out (a small boost to your odds and to morale) or watch the stream. Winning brings fans, fan trust, reputation, a sales bump and hype for whatever you're making next.
 - **After launch.** A patch fixes the bugs a game shipped with, for a fee: fans notice and its sales hold up longer. Expansion packs (once researched) are small projects for games that scored 6 or more; owners of the original buy them and its sales pick up. Two per game at most.
 - **Fan moments.** Streamers pick up your games, early builds leak, and fans petition for sequels to the ones they loved; a promised sequel starts with extra hype.
+- **Side income.** License any engine but the starter kit to other studios for weekly royalties (rival games get slightly better on your tech), and once you've researched merchandise, games that scored 8 or more sell T-shirts and figures for a couple of years.
 - **Fans** amplify future launches. **Fan trust** drops with every flop and only hits bring it back: the fanbase never forgets.
 
 ### Websites: an agency sim
+- **Rates.** Budget brings more, smaller briefs; premium fewer, bigger ones.
 - Client briefs arrive weekly. Accept or pass. 40% is paid up front, the rest on delivery.
 - **Scope creep:** clients change the brief at 11pm. Your policy is to absorb it (happy clients, thin margins) or bill for changes (paid, but clients bristle and some walk).
 - Overcommit and every project slips past its deadline. **Standing** (word of mouth) brings bigger clients.

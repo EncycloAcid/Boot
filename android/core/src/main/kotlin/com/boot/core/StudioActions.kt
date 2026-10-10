@@ -235,6 +235,19 @@ fun GameState.train(employeeId: Int) {
     addLog("${e.name} finished a training course. Skill ${e.skill}.", LogTone.GOOD, e.lane)
 }
 
+/** License an engine to other studios: weekly royalties, but rival games get a little better. */
+fun GameState.setEngineLicensed(id: Int, on: Boolean) {
+    requireLive()
+    val g = studio()
+    val e = g.engines.firstOrNull { it.id == id } ?: throw invalid("That engine is gone.")
+    if (e.level == 0) throw notAvailable("Nobody will pay for the starter kit.")
+    e.licensed = on
+    addLog(
+        if (on) "${e.name} is now licensed to other studios. Royalties start next week." else "You stopped licensing ${e.name}.",
+        LogTone.NEUTRAL, Lane.GAMES,
+    )
+}
+
 // After launch
 
 /** A patch: a few weeks of fixing what shipped broken. */

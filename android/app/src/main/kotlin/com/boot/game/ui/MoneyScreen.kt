@@ -1,12 +1,17 @@
 package com.boot.game.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,28 +21,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.boot.core.Combo
+import com.boot.core.EXPECTED_QUARTERLY_GROWTH
 import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.GameState
 import com.boot.core.IPO_ANNUAL_REVENUE
 import com.boot.core.IPO_VALUATION
+import com.boot.core.LOAN_TERM_WEEKS
 import com.boot.core.Lane
+import com.boot.core.buyBack
+import com.boot.core.buybackCost
 import com.boot.core.expand
 import com.boot.core.expansionBlocker
+import com.boot.core.founderNetWorth
 import com.boot.core.goPublic
 import com.boot.core.ipoBlocker
 import com.boot.core.isEcosystem
-import com.boot.core.raiseRound
-import com.boot.core.roundOffer
-import com.boot.core.LOAN_TERM_WEEKS
+import com.boot.core.issueShares
 import com.boot.core.loanBlocker
 import com.boot.core.loanLimit
 import com.boot.core.loanOffer
 import com.boot.core.loanPayoff
+import com.boot.core.offeringBlocker
+import com.boot.core.raiseRound
 import com.boot.core.repayLoan
+import com.boot.core.retire
+import com.boot.core.roundOffer
 import com.boot.core.takeLoan
 import com.boot.game.GameStore
-import androidx.compose.foundation.lazy.LazyListScope
 
 fun LazyListScope.moneyItems(store: GameStore, state: GameState) {
     run {
@@ -156,9 +167,13 @@ private fun ExpansionSection(store: GameStore, state: GameState) {
 
 @Composable
 private fun ExitSection(store: GameStore, state: GameState) {
+    if (state.listing != null) return StockSection(store, state)
     var confirm by remember { mutableStateOf(false) }
     val blocker = state.ipoBlocker
-    GroupedSection("Exit", footer = blocker ?: "Going public ends the game. Or stay private: reach year 15 and you stay independent.") {
+    GroupedSection(
+        "Going public",
+        footer = blocker ?: "List the company and keep running it, or ring the bell and retire. Stay private and you can play on past year 15.",
+    ) {
         CardBlock {
             Meter("Toward an IPO valuation", state.enterpriseValue / IPO_VALUATION, caption = "${Format.money(state.enterpriseValue)} of ${Format.money(IPO_VALUATION)}")
             val annual = state.trailingRevenue(weeks = 52)
@@ -167,12 +182,73 @@ private fun ExitSection(store: GameStore, state: GameState) {
         }
     }
     if (confirm) {
+        AlertDialog(
+            onDismissRequest = { confirm = false },
+            title = { Text("Ring the bell?") },
+            text = {
+                Text(
+                    "The public buys a fifth of ${state.companyName}. Keep running it as a public company with a share price " +
+                        "and quarterly earnings, or cash out and retire, which ends the run.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirm = false
+                    store.perform { goPublic(keepRunning = true) }
+                }) { Text("Go public and keep going") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    confirm = false
+                    store.perform { goPublic() }
+                }) { Text("Retire") }
+            },
+        )
+    }
+}
+
+/** A listed company: the share price, the last earnings, and the levers a CEO has. */
+@Composable
+private fun StockSection(store: GameStore, state: GameState) {
+    val l = state.listing ?: return
+    val colors = gameColors
+    var retiring by remember { mutableStateOf(false) }
+    val change = l.changeSinceIpo
+    GroupedSection(
+        "Stock · ${l.ticker}",
+        footer = l.lastEarnings ?: "The market expects revenue to grow about ${(EXPECTED_QUARTERLY_GROWTH * 100).toInt()}% a quarter. Beat it and the shares rise.",
+    ) {
+        Column(Modifier.padding(8.dp)) {
+            TileRow {
+                StatTile(
+                    "Share price", "\$" + String.format(java.util.Locale.US, "%.2f", l.price), Modifier.weight(1f),
+                    (if (change >= 0) "+" else "") + Format.percent(change) + " since IPO",
+                    if (change >= 0) colors.good else colors.bad,
+                )
+                StatTile("Market cap", Format.money(l.marketCap), Modifier.weight(1f), "your stake ${Format.money(state.founderNetWorth)}")
+            }
+        }
+        if (l.history.size > 1) CardBlock { AreaChart(l.history, MaterialTheme.colorScheme.primary, { v -> "\$" + String.format(java.util.Locale.US, "%.0f", v) }) }
+        RowDivider()
+        val offering = state.offeringBlocker()
+        ActionRow(
+            "Issue new shares", offering ?: "Raise ${Format.money(l.marketCap * 0.1)}. Your stake shrinks a little.", "Issue", enabled = offering == null,
+        ) { store.perform { issueShares() } }
+        RowDivider()
+        ActionRow(
+            "Buy back shares", "Spend ${Format.money(state.buybackCost)} to own more of your company.", "Buy back",
+            enabled = state.cash >= state.buybackCost,
+        ) { store.perform { buyBack() } }
+        RowDivider()
+        ActionRow("Step down", "Cash out and retire. Ends the run.", "Retire") { retiring = true }
+    }
+    if (retiring) {
         ConfirmDialog(
-            title = "Ring the bell?",
-            text = "${state.companyName} goes public and the game ends.",
-            confirm = "Go public",
-            onConfirm = { store.perform { goPublic() } },
-            onDismiss = { confirm = false },
+            title = "Step down?",
+            text = "Your stake is worth ${Format.money(state.founderNetWorth)}. The run ends here.",
+            confirm = "Retire",
+            onConfirm = { store.perform { retire() } },
+            onDismiss = { retiring = false },
         )
     }
 }

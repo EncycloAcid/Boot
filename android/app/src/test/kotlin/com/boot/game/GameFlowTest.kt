@@ -289,6 +289,40 @@ class GameFlowTest {
     }
 
     @Test
+    fun goPublicKeepPlayingAndSeeTheStock() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Tally Apps", "Jin", Lane.APPS, seed = 9)
+            store.perform { Autopilot().playToEnd(this) }
+        }
+        val ending = store.state!!.ending!!
+        if (ending.kind != EndingKind.IPO) return
+        compose.onNodeWithText("Keep playing", substring = true).assertExists()
+        overlay("32-ending-keep-playing")
+        compose.onNodeWithText("Keep playing", substring = true).performClick()
+        compose.waitForIdle()
+        val s = store.state!!
+        assertNull(s.ending)
+        assertNotNull(s.listing)
+        compose.runOnIdle { store.perform { while (events.isNotEmpty()) choose(events[0].choices.size - 1) } }
+        screen("33-office-public")
+        tab("Company")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Industry rankings", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("34-rankings")
+        scrollToTop()
+        compose.onNodeWithText("Money").performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Stock", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("35-stock")
+        tab("Team")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Perks", substring = true, ignoreCase = true))
+        compose.waitForIdle()
+        screen("36-perks")
+    }
+
+    @Test
     fun hardwareLaneDesignsADevice() {
         launch()
         compose.runOnIdle { store.newGame("Pebble Works", "Ari", Lane.HARDWARE, seed = 3) }

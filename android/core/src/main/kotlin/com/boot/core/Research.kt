@@ -23,6 +23,7 @@ enum class Research(
     TARGET_AUDIENCE("Target audience", "Pick who a game is for: young, everyone or mature.", Kind.STUDIO, 8),
     MARKETING("Marketing campaigns", "Buy hype before launch: press releases, ads, TV.", Kind.STUDIO, 10),
     SEQUELS("Sequels", "Follow up a game with the same topic and genre. Fans come back.", Kind.STUDIO, 12),
+    MERCHANDISE("Merchandise", "T-shirts, figures and plushies for your hits. Steady money from games that scored 8+.", Kind.STUDIO, 20, requires = MARKETING),
     EXPANSIONS("Expansion packs", "New content for a game that sold well. Everyone who bought it is a customer.", Kind.STUDIO, 18, requires = SEQUELS),
     CUSTOM_ENGINES("Custom engines", "Build engines from the features you've researched.", Kind.STUDIO, 15),
     MEDIUM_GAMES("Medium games", "Bigger games, bigger launches.", Kind.STUDIO, 20),
@@ -78,8 +79,11 @@ enum class Research(
 
 /** A game engine: the features it was built with set its tech level. */
 @Serializable
-data class Engine(val id: Int, val name: String, val features: List<Research>, val builtWeek: Int) {
+data class Engine(val id: Int, val name: String, val features: List<Research>, val builtWeek: Int, var licensed: Boolean = false) {
     val level: Int get() = features.sumOf { it.engineLevel }
+
+    /** What other studios pay a week to build on it, before the market's mood. */
+    fun royalty(week: Int): Double = level * 900.0 * (1 + 0.1 * week / 52)
 
     /** Points multiplier for games built on this engine. */
     val multiplier: Double get() = 1 + 0.05 * level
@@ -166,6 +170,7 @@ internal fun GameState.weeklyResearch(gameWork: Double): Double {
     for (e in staff) rp += e.research * 0.04 * e.moraleFactor
     rp += gameWork * 0.07
     if (Research.RD_LAB in researched) rp *= 1.5
+    if (has(Perk.LIBRARY)) rp *= 1.1
     return rp
 }
 

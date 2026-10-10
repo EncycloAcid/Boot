@@ -45,6 +45,7 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.expansionBlocker
 import com.boot.core.isEcosystem
+import com.boot.core.rankings
 import com.boot.game.GameStore
 import kotlin.math.abs
 
@@ -53,7 +54,9 @@ fun LazyListScope.overviewItems(store: GameStore, state: GameState) {
     item { Hero(state) }
     item { QuickStats(state) }
     item { LanesSection(store, state) }
+    item { RankingsSection(state) }
     item { RevenueSection(state) }
+    item { QuarterlySection(state) }
     item { EraSection(state) }
     item { ReputationSection(state) }
 }
@@ -78,9 +81,13 @@ private fun Hero(state: GameState) {
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
             )
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Valuation", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                val listing = state.listing
                 Text(
-                    Format.money(state.valuation),
+                    listing?.let { "${it.ticker} · \$" + String.format(java.util.Locale.US, "%.2f", it.price) + " a share" } ?: "Valuation",
+                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    Format.money(listing?.marketCap ?: state.valuation),
                     style = MaterialTheme.typography.displaySmallEmphasized,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
@@ -263,4 +270,78 @@ private fun ReputationSection(state: GameState) {
             }
         }
     }
+}
+
+/** The league table: the top of the industry, and the companies around you. */
+@Composable
+private fun RankingsSection(state: GameState) {
+    val colors = gameColors
+    val all = state.rankings()
+    val me = all.indexOfFirst { it.mine }
+    val shown = (all.take(3).indices + ((me - 2)..(me + 1)).filter { it in all.indices }).distinct().sorted()
+    val next = all.getOrNull(me - 1)
+    GroupedSection(
+        "Industry rankings · you're #${me + 1} of ${all.size}",
+        footer = next?.let { "Next to beat: ${it.name}, worth ${Format.money(it.value)}." } ?: "You're the biggest company in the world.",
+    ) {
+        var last = -1
+        for (i in shown) {
+            if (last >= 0) {
+                if (i > last + 1) {
+                    RowDivider()
+                    Text("⋯", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                }
+                RowDivider()
+            }
+            val c = all[i]
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (c.mine) colors.milestone.copy(alpha = 0.1f) else Color.Transparent)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("${i + 1}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(32.dp))
+                Text(
+                    (c.lane?.emoji?.let { "$it  " } ?: "⭐  ") + c.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (c.mine) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(Format.money(c.value), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            last = i
+        }
+    }
+}
+
+/** The last four quarters, like an annual report. */
+@Composable
+private fun QuarterlySection(state: GameState) {
+    val colors = gameColors
+    val quarters = (0 until 4).map { q -> Triple(q, state.trailingRevenue(weeks = 13, offset = q * 13), state.trailingProfitAt(q)) }
+        .filter { it.second > 0 || it.third != 0.0 }
+    if (quarters.isEmpty()) return
+    GroupedSection("Quarterly results", footer = "Most recent first. Each quarter is 13 weeks.") {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text("", modifier = Modifier.weight(1f))
+            Text("Revenue", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(96.dp))
+            Text("Profit", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(96.dp))
+        }
+        quarters.forEach { (q, revenue, profit) ->
+            RowDivider()
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(if (q == 0) "Last 13 weeks" else "${q * 13}–${q * 13 + 13} weeks ago", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(Format.money(revenue), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(96.dp))
+                Text(Format.signedMoney(profit), style = MaterialTheme.typography.bodyMedium, color = if (profit >= 0) colors.good else colors.bad, modifier = Modifier.width(96.dp))
+            }
+        }
+    }
+}
+
+private fun GameState.trailingProfitAt(quarter: Int): Double {
+    val w = ledger
+    val end = w.size - quarter * 13
+    if (end <= 0) return 0.0
+    return w.subList(maxOf(0, end - 13), end).sumOf { it.profit }
 }

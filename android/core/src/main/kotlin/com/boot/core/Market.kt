@@ -119,7 +119,9 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     }
     val genre = rng.pick(Genre.entries)
     val topic = rng.pick(Topic.entries.filter { it.fit(genre) != Fit.BAD })
-    val score = rng.normal(6.2 + 1.2 * quality, 1.2).clamped(2.5, 9.7)
+    // Licensing your engine helps them too.
+    val licensed = g.engines.filter { it.licensed }.maxOfOrNull { it.level } ?: 0
+    val score = (rng.normal(6.2 + 1.2 * quality, 1.2) + licensed * 0.02).clamped(2.5, 9.7)
     val sales = size.launchSales * (score / 7).pow(3) * rng.range(0.7, 1.3) * world.era.demand(Lane.GAMES)
     val title = "${rng.pick(GameNames.first)} ${rng.pick(GameNames.second)}"
     val game = RivalGame(m.nextId++, title, studio, topic, genre, size, score, week, sales)

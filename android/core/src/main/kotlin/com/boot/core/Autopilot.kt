@@ -115,6 +115,13 @@ class Autopilot(
         }
 
         if (s.runwayWeeks < 20 && s.roundOffer().isSuccess) attempt { s.raiseRound() }
+        // Perks once the business can carry them.
+        val weeklyRevenue = s.trailingRevenue(weeks = 13) / 13
+        for (perk in Perk.entries) {
+            if (s.perkBlocker(perk) == null && s.cash > perk.cost * 20 && s.perkUpkeep + perk.weeklyCost(s.staff.size) < weeklyRevenue * 0.02) {
+                attempt { s.buyPerk(perk) }
+            }
+        }
         // A bank loan as a last resort, and paid off early once the money's there.
         if (s.cash < s.weeklyBurn * 3 && s.loanBlocker == null) attempt { s.takeLoan() }
         s.loanPayoff?.let { if (s.cash > it * 4 && s.runwayWeeks > 52) attempt { s.repayLoan() } }
@@ -189,6 +196,9 @@ class Autopilot(
             if (p.isReady && (polished || s.runwayWeeks < 10)) attempt { s.launchGame() }
             return
         }
+        // License every engine but the newest.
+        val newest = g.engines.maxBy { it.level }
+        for (e in g.engines) if (e !== newest && e.level > 0 && !e.licensed) attempt { s.setEngineLicensed(e.id, true) }
         if (g.contract != null || g.expansion != null) return
         // Patch what shipped broken, and expand what sold well.
         for (r in g.releases.take(3)) if (s.patchBlocker(r.id) == null && s.cash > r.patchCost() * 5) attempt { s.patchGame(r.id) }
@@ -250,7 +260,7 @@ class Autopilot(
                 addAll(
                     listOf(
                         Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.CUSTOM_ENGINES,
-                        Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS,
+                        Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS, Research.MERCHANDISE,
                         Research.EXPANSIONS, Research.GRAPHICS_3D_V1,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
                         Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.OPEN_WORLD, Research.GRAPHICS_3D_V3,
@@ -270,6 +280,8 @@ class Autopilot(
 
     private fun manageWeb(s: GameState) {
         val w = s.web ?: return
+        val rate = if (w.standing > 0.6) AgencyRate.PREMIUM else AgencyRate.STANDARD
+        if (w.rate != rate) attempt { s.setAgencyRate(rate) }
         val capacity = max(1, (s.staffing(Lane.WEBSITES).output / 5).toInt())
         for (offer in w.offers.sortedByDescending { it.value / it.work }) {
             if ((s.web?.active?.size ?: 0) >= capacity) break

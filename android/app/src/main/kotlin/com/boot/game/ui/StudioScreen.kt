@@ -47,6 +47,7 @@ import com.boot.core.Research
 import com.boot.core.Topic
 import com.boot.core.acceptDeal
 import com.boot.core.buildEngine
+import com.boot.core.setEngineLicensed
 import com.boot.core.buyCampaign
 import com.boot.core.cancelGame
 import com.boot.core.engineQuote
@@ -122,6 +123,12 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
                 StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), "${g.releases.size} games")
                 StatTile("Research", "${state.researchPoints.toInt()}", Modifier.weight(1f), "RP to spend")
             }
+        }
+        if (g.lastRoyalties > 0 || g.lastMerch > 0) {
+            RowDivider()
+            if (g.lastRoyalties > 0) ValueRow("Engine royalties", g.lastRoyalties.perWeek(), gameColors.good)
+            if (g.lastRoyalties > 0 && g.lastMerch > 0) RowDivider()
+            if (g.lastMerch > 0) ValueRow("Merchandise", g.lastMerch.perWeek(), gameColors.good)
         }
     }
 }
@@ -358,6 +365,12 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
         g.engines.sortedByDescending { it.level }.forEachIndexed { i, e ->
             if (i > 0) RowDivider()
             ListRow(e.name, subtitle = if (e.features.isEmpty()) "No features" else e.features.joinToString { it.title }, value = "level ${e.level}")
+            if (e.level > 0) {
+                ToggleRow(
+                    "License to other studios", e.licensed,
+                    "About ${e.royalty(state.week).perWeek()} in royalties. Rival games get a little better on your tech.",
+                ) { on -> store.perform { setEngineLicensed(e.id, on) } }
+            }
         }
         g.engineBuild?.let { b ->
             RowDivider()

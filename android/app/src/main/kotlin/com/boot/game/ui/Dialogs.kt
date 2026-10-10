@@ -71,6 +71,7 @@ import com.boot.core.acceptPivotBuyout
 import com.boot.core.choose
 import com.boot.core.pivotBlocker
 import com.boot.core.pivotChoices
+import com.boot.core.keepPlaying
 import com.boot.core.resolvePivot
 import com.boot.core.stayFocused
 import com.boot.game.GameStore
@@ -296,8 +297,17 @@ fun EndingDialog(store: GameStore, state: GameState) {
                         }
                     }
                 }
-                Box(Modifier.background(colors.bar).padding(16.dp)) {
-                    PrimaryButton("New game", { store.abandon() }, Modifier.fillMaxWidth())
+                Column(Modifier.background(colors.bar).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (e.kind == EndingKind.IPO || e.kind == EndingKind.INDIE) {
+                        PrimaryButton(
+                            if (e.kind == EndingKind.IPO && state.listing == null) "Keep playing as a public company" else "Keep playing",
+                            { store.perform { keepPlaying() } },
+                            Modifier.fillMaxWidth(),
+                        )
+                        TonalButton("New game", { store.abandon() }, Modifier.fillMaxWidth())
+                    } else {
+                        PrimaryButton("New game", { store.abandon() }, Modifier.fillMaxWidth())
+                    }
                 }
             }
         }

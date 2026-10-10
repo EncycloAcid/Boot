@@ -100,6 +100,11 @@ fun GameState.setScopePolicy(policy: ScopePolicy) {
     web!!.policy = policy
 }
 
+fun GameState.setAgencyRate(rate: AgencyRate) {
+    require(Lane.WEBSITES)
+    web!!.rate = rate
+}
+
 // Apps
 
 fun GameState.setMonetization(m: AppMonetization) {

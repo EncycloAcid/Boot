@@ -32,12 +32,18 @@ import com.boot.core.Employee
 import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.Perk
 import com.boot.core.Research
 import com.boot.core.assign
+import com.boot.core.buyPerk
 import com.boot.core.fire
 import com.boot.core.freeDesks
 import com.boot.core.hire
 import com.boot.core.moveOffice
+import com.boot.core.perkBlocker
+import com.boot.core.perkSlots
+import com.boot.core.perkUpkeep
+import com.boot.core.removePerk
 import com.boot.core.setCrunch
 import com.boot.core.setFocus
 import com.boot.core.setFreelancing
@@ -54,6 +60,7 @@ fun TeamScreen(store: GameStore, state: GameState) {
         item { TeamSection(store, state) }
         item { HiringSection(store, state) }
         item { OfficeSection(store, state) }
+        item { PerksSection(store, state) }
         item { FounderSection(store, state) }
         if (state.lanes.size > 1) item { AttentionSection(store, state) }
     }
@@ -259,5 +266,43 @@ private fun MiniBar(label: String, value: Double, color: androidx.compose.ui.gra
                     .background(color, CircleShape),
             )
         }
+    }
+}
+
+/** Office perks: bought once, paid for every week, felt in morale, learning and hiring. */
+@Composable
+private fun PerksSection(store: GameStore, state: GameState) {
+    val colors = gameColors
+    var removing by remember { mutableStateOf<Perk?>(null) }
+    GroupedSection(
+        "Perks · ${state.perks.size} of ${state.office.perkSlots}",
+        footer = "${state.perkUpkeep.perWeek()} upkeep. Bigger offices fit more perks.",
+    ) {
+        Perk.entries.forEachIndexed { i, perk ->
+            if (i > 0) RowDivider()
+            val owned = perk in state.perks
+            val blocker = state.perkBlocker(perk)
+            ListRow(
+                perk.title,
+                subtitle = if (owned) perk.blurb else (blocker?.takeIf { state.office < perk.minOffice } ?: perk.blurb) +
+                    "\n${Format.money(perk.cost)} + ${perk.weeklyCost(state.staff.size).perWeek()}",
+            ) {
+                if (owned) {
+                    PlainButton("Remove", { removing = perk }, color = colors.bad)
+                } else {
+                    TonalButton("Buy", { store.perform { buyPerk(perk) } }, enabled = blocker == null)
+                }
+            }
+        }
+    }
+    removing?.let { perk ->
+        ConfirmDialog(
+            title = "Remove the ${perk.title.lowercase()}?",
+            text = "No refund, and people will miss it.",
+            confirm = "Remove",
+            destructive = true,
+            onConfirm = { store.perform { removePerk(perk) } },
+            onDismiss = { removing = null },
+        )
     }
 }

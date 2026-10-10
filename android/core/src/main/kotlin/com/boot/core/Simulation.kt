@@ -40,7 +40,7 @@ fun GameState.advance() {
 
     // Unassigned staff still get paid.
     val idle = staff.filter { it.lane == null }.sumOf { it.salary }
-    spend(idle + headquarters.rent, null)
+    spend(idle + headquarters.rent + perkUpkeep, null)
     payLoan()
 
     updateCrossovers(fx)
@@ -53,6 +53,8 @@ fun GameState.advance() {
 
     stats.peakCash = max(stats.peakCash, cash)
     stats.peakValuation = max(stats.peakValuation, valuation)
+    tradeWeek()
+    if (listing == null) quarterlyResults()
     ledger.last().cash = cash
 
     updateFounder()
@@ -174,6 +176,16 @@ private fun GameState.studioWeek() {
     }
     if (GameClock.weekOfYear(week) == 26) enqueue(EventKind.Convention)
     marketWeek()
+    // Merchandise for the hits, fading over a couple of years.
+    if (Research.MERCHANDISE in researched) {
+        val merch = g.releases.filter { it.score >= 8 && it.publisher == null }
+            .sumOf { it.unitsSold * 0.006 * kotlin.math.exp(-(week - it.week) / 104.0) }
+        g.lastMerch = merch
+        if (merch > 0) {
+            cash += merch
+            recordRevenue(merch, Lane.GAMES)
+        }
+    }
     val output = staffing(Lane.GAMES).output
     g.refreshOffers(week, output, rng, unlockedSizes, Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE })
 }
@@ -281,19 +293,35 @@ private fun GameState.updateStaff(fx: ComboEffects) {
     val quitters = mutableListOf<Employee>()
     for (e in staff) {
         var m = e.morale
-        m += (0.7 - m) * 0.05
-        if (crunch) m -= 0.025
+        val settle = minOf(0.95, 0.7 + perks.sumOf { it.morale })
+        m += (settle - m) * 0.05
+        if (crunch) m -= if (has(Perk.NAP_PODS)) 0.0125 else 0.025
         if (cash < 0) m -= 0.03
         if (e.lane == Lane.WEBSITES) m -= fx.moraleDrain
         if (staff.size > office.desks) m -= 0.02
         e.morale = m.clamped(0.0, 1.0)
-        if (e.morale < 0.3 && rng.chance(0.04)) quitters += e
+        if (e.morale < 0.3 && rng.chance(if (has(Perk.DAYCARE)) 0.02 else 0.04)) quitters += e
     }
     gainExperience()
     for (q in quitters) {
         staff = staff.filterNot { it.id == q.id }
         addLog("${q.name} quit. Morale had been low for a while.", LogTone.BAD, q.lane)
     }
+}
+
+/** At the end of each quarter, the numbers. (Listed companies report earnings instead.) */
+private fun GameState.quarterlyResults() {
+    if (week % GameClock.WEEKS_PER_QUARTER != 0 || week < GameClock.WEEKS_PER_QUARTER) return
+    val revenue = trailingRevenue(weeks = 13)
+    if (revenue <= 0) return
+    val previous = trailingRevenue(weeks = 13, offset = 13)
+    val profit = trailingProfit(weeks = 13)
+    val quarter = (GameClock.weekOfYear(week - 1) - 1) / 13 + 1
+    val growth = if (previous > 0) " (${if (revenue >= previous) "+" else ""}${((revenue / previous - 1) * 100).toInt()}%)" else ""
+    addLog(
+        "Q$quarter results: revenue ${money(revenue)}$growth, ${if (profit >= 0) "profit" else "loss"} ${money(kotlin.math.abs(profit))}.",
+        if (profit >= 0) LogTone.GOOD else LogTone.NEUTRAL,
+    )
 }
 
 /** People get better by doing the work. */
@@ -306,6 +334,8 @@ private fun GameState.gainExperience() {
         var gain = 0.6 + 0.4 * e.morale
         if (crunch) gain *= 1.3
         if (lane == Lane.GAMES && shipping) gain += 0.3
+        if (lane == Lane.GAMES && has(Perk.ARCADE)) gain *= 1.2
+        if (has(Perk.GYM)) gain *= 1.1
         e.xp += gain
         if (e.xp < e.xpToNext) continue
         e.xp -= e.xpToNext
@@ -363,5 +393,5 @@ private fun GameState.checkEndings() {
     } else {
         stats.weeksInRed = 0
     }
-    if (week >= GameState.LENGTH_WEEKS) end(EndingKind.INDIE)
+    if (week >= GameState.LENGTH_WEEKS && !freeplay) end(if (listing != null) EndingKind.IPO else EndingKind.INDIE)
 }

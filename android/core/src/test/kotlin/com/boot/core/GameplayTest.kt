@@ -360,3 +360,119 @@ class RealCompaniesTest {
         assertTrue(s.log.any { "led by" in it.text })
     }
 }
+
+class TycoonTest {
+    @Test
+    fun priceMattersMoreForWeakGames() {
+        assertTrue(PriceTier.PREMIUM.revenueFactor(9.0) > 1.0, "great games can charge more")
+        assertTrue(PriceTier.PREMIUM.revenueFactor(5.0) < 1.0, "weak games can't")
+        assertTrue(PriceTier.BUDGET.revenueFactor(4.0) > 1.0, "cheap helps a weak game")
+        assertEquals(1.0, PriceTier.STANDARD.revenueFactor(6.0))
+        val c = GameConcept("X", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.MEDIUM, price = PriceTier.PREMIUM)
+        assertEquals(GameSize.MEDIUM.price * 1.4, c.unitPrice, 1e-9)
+    }
+
+    @Test
+    fun agencyRatesTradeVolumeForValue() {
+        val s = game(Lane.WEBSITES, 30)
+        s.setAgencyRate(AgencyRate.PREMIUM)
+        assertEquals(AgencyRate.PREMIUM, s.web!!.rate)
+        assertEquals(AgencyRate.PREMIUM, GameState.decode(s.encode()).web!!.rate)
+    }
+
+    @Test
+    fun perksNeedRoomAndPayOff() {
+        val s = game(Lane.WEBSITES, 31)
+        s.cash = 5_000_000.0
+        assertNotNull(s.perkBlocker(Perk.GYM), "a gym won't fit in the apartment")
+        s.buyPerk(Perk.COFFEE)
+        assertNotNull(s.perkBlocker(Perk.PLANTS), "the apartment fits one perk")
+        s.moveOffice()
+        s.buyPerk(Perk.PLANTS)
+        s.buyPerk(Perk.ARCADE)
+        assertEquals(3, s.perks.size)
+        assertTrue(s.perkUpkeep > 0)
+        val e = s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.WEBSITES)
+        e.morale = 0.7
+        s.play(30)
+        assertTrue(s.staff.first { it.id == e.id }.morale > 0.72, "morale settles higher with perks")
+        s.removePerk(Perk.ARCADE)
+        assertTrue(Perk.ARCADE !in s.perks)
+    }
+
+    @Test
+    fun goingPublicCanKeepTheGameGoing() {
+        val s = game(Lane.WEBSITES, 32)
+        s.cash = 1_000_000.0
+        s.week = IPO_EARLIEST_WEEK + 1
+        s.list()
+        val l = s.listing!!
+        assertNull(s.ending)
+        assertTrue(s.venture.founderEquity < 1.0)
+        assertNotNull(s.venture.board)
+        l.lastQuarterRevenue = 1_000.0
+        repeat(30) {
+            if (s.pendingPivot != null) s.stayFocused()
+            s.play(1)
+        }
+        assertTrue(l.history.size >= 20)
+        assertTrue(s.log.any { "Quarterly earnings" in it.text })
+        assertTrue(s.founderNetWorth > 0)
+        val equity = s.venture.founderEquity
+        s.cash = 1e12
+        s.buyBack()
+        assertTrue(s.venture.founderEquity > equity)
+        s.issueShares()
+        assertNotNull(s.offeringBlocker())
+        s.retire()
+        assertEquals(EndingKind.IPO, s.ending?.kind)
+        assertTrue("public company" in s.ending!!.summary)
+    }
+
+    @Test
+    fun youCanPlayPastYearFifteen() {
+        val s = game(Lane.WEBSITES, 33)
+        s.cash = 1e9
+        s.week = GameState.LENGTH_WEEKS - 1
+        if (s.pendingPivot == null) s.pendingPivot = PivotOffer(PivotTrigger.VIRAL_ACCIDENT, s.week, "h", "b", 0.0)
+        s.stayFocused()
+        s.play(2)
+        assertEquals(EndingKind.INDIE, s.ending?.kind)
+        s.keepPlaying()
+        assertNull(s.ending)
+        assertTrue(s.freeplay)
+        repeat(10) {
+            if (s.pendingPivot != null) s.stayFocused()
+            s.play(1)
+        }
+        assertNull(s.ending)
+        assertTrue(s.week > GameState.LENGTH_WEEKS)
+        assertFailsWith<GameException> { game(Lane.WEBSITES, 34).keepPlaying() }
+    }
+
+    @Test
+    fun theIndustryTableRanksYou() {
+        val s = game(Lane.GAMES, 35)
+        val table = s.rankings()
+        assertEquals(table.sortedByDescending { it.value }, table)
+        assertEquals(table.size, s.rank)
+        assertEquals("Ubisoft", s.nextToBeat?.name)
+        s.cash = 5e12
+        assertEquals(1, s.rank)
+    }
+
+    @Test
+    fun licensingAndMerchPay() {
+        val s = game(Lane.GAMES, 36)
+        s.cash = 1_000_000.0
+        val g = s.games!!
+        g.engines += Engine(99, "Ember", listOf(Research.GRAPHICS_2D_V2, Research.SOUND_STEREO), 0)
+        assertFailsWith<GameException> { s.setEngineLicensed(g.engines.first().id, true) }
+        s.setEngineLicensed(99, true)
+        s.researched = s.researched + Research.MARKETING + Research.MERCHANDISE
+        s.fakeRelease(8.6, units = 200_000.0)
+        s.play(1)
+        assertTrue(g.lastRoyalties > 0)
+        assertTrue(g.lastMerch > 0)
+    }
+}

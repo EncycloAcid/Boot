@@ -122,6 +122,7 @@ internal data class ReviewInputs(
     val record: Boolean,
     val wrongCrowd: Boolean,
     val awkwardPlatform: Platform?,
+    val price: PriceTier = PriceTier.STANDARD,
 )
 
 internal data class ReviewResult(
@@ -195,6 +196,12 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     if (i.stepBack) cons += Point(1.8, "A step back", listOf("it's a step back from their last game", "it falls short of what came before"))
     if (i.wrongCrowd) cons += Point(1.2, "Made for the wrong crowd", listOf("it's aimed at the wrong crowd", "it's not clear who it's for"))
     i.awkwardPlatform?.let { cons += Point(1.0, "Awkward on ${it.title}", listOf("it feels awkward on ${it.title}", "it's a poor fit for ${it.title}")) }
+    if (i.price == PriceTier.PREMIUM && i.score < 7) {
+        cons += Point(1.7, "Overpriced", listOf("it's hard to justify the premium price", "at this price, it needed to be much better"))
+    }
+    if (i.price == PriceTier.BUDGET && i.score >= 6) {
+        pros += Point(1.3, "Great value", listOf("at this price it's a steal", "it's terrific value for money"))
+    }
     if (i.focusMatch < 0.55) {
         val weakest = FocusArea.entries.maxBy { a ->
             val stage = i.focus[a.stage]
@@ -222,6 +229,8 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     if (i.hype > 60 && average < 7) user -= 1.0
     if (i.bugPenalty < 0.9) user -= 0.8
     if (i.worthySequel) user += 0.3
+    if (i.price == PriceTier.PREMIUM && average < 7.5) user -= 0.6
+    if (i.price == PriceTier.BUDGET) user += 0.4
     user += rng.normal(sd = 0.35)
     val userScore = (user.coerceIn(1.0, 10.0) * 10).roundToInt() / 10.0
 

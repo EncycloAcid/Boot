@@ -44,6 +44,7 @@ import com.boot.core.GameClock
 import com.boot.core.GameState
 import com.boot.core.HardwareLab
 import com.boot.core.Lane
+import com.boot.core.AgencyRate
 import com.boot.core.ScopePolicy
 import com.boot.core.TrainingSize
 import com.boot.core.UpdateStyle
@@ -57,6 +58,7 @@ import com.boot.core.setAIFocus
 import com.boot.core.setAdLoad
 import com.boot.core.setModeration
 import com.boot.core.setMonetization
+import com.boot.core.setAgencyRate
 import com.boot.core.setScopePolicy
 import com.boot.core.setUpdateStyle
 import com.boot.core.startDevice
@@ -156,6 +158,12 @@ private fun LazyListScope.webItems(store: GameStore, state: GameState) {
                 Segmented(ScopePolicy.entries, w.policy, { if (it == ScopePolicy.ABSORB) "Absorb it" else "Bill for it" }) { p ->
                     store.perform { setScopePolicy(p) }
                 }
+            }
+            RowDivider()
+            CardBlock(spacing = 8.dp) {
+                Text("Your rates", style = MaterialTheme.typography.bodyMedium)
+                Segmented(AgencyRate.entries, w.rate, { it.title }) { r -> store.perform { setAgencyRate(r) } }
+                Hint(w.rate.blurb)
             }
         }
     }
