@@ -385,8 +385,8 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
         val about = project?.let { "Show off ${it.title} and build hype before launch." } ?: "You've nothing in development, but fans still want to meet you."
         val keynote = (games?.fans ?: 0.0) >= 100_000
         Description(
-            "Summer Game Fest is next week",
-            "The biggest games showcase of the summer. $about",
+            "${gamesShowIn(calendarYear).replaceFirstChar { it.uppercase() }} is next week",
+            "The biggest games showcase of the year. $about",
             listOfNotNull(
                 choice("Small booth", "${money(15_000.0)}. A little hype, a few new fans."),
                 choice("Big booth", "${money(120_000.0)}. Real hype, lots of new fans."),

@@ -176,7 +176,12 @@ internal fun GameState.rollDecisions() {
     // Opportunities, for the inbox.
     if (freeDesks >= 2 && rng.chance(0.006)) offer(Interns, 6)
     if (week > 26 && rng.chance(0.005)) {
-        offer(ConferenceTalk(rng.pick(listOf("Web Summit", "SXSW", "GDC", "TechCrunch Disrupt", "Collision", "Slush", "Google I/O", "WWDC"))), 4)
+        // Only the conferences that existed that year.
+        val conferences = listOf(
+            "CES" to 1967, "COMDEX" to 1979, "WWDC" to 1983, "SXSW" to 1987, "GDC" to 1988, "Slush" to 2008, "Google I/O" to 2008,
+            "Web Summit" to 2009, "TechCrunch Disrupt" to 2010,
+        ).filter { calendarYear >= it.second && (it.first != "COMDEX" || calendarYear < 2004) }.map { it.first }
+        offer(ConferenceTalk(rng.pick(conferences)), 4)
     }
     val earning = lanes.filter { trailingRevenue(it, 4) > 0 }
     if (earning.isNotEmpty() && rng.chance(0.006)) {
@@ -194,7 +199,11 @@ internal fun GameState.rollDecisions() {
         offer(AngelCheck(rng.pick(Names.angels), rng.int(10, 30) * 10_000.0, rng.int(5, 9) / 100.0), 4)
     }
     if (reputation.score >= 40 && stats.releases > 0 && rng.chance(0.005)) {
-        offer(Interview(rng.pick(listOf("Bloomberg TV", "The Verge's podcast", "CNBC", "Wired", "a big YouTube channel", "the BBC"))), 3)
+        val outlets = listOfNotNull(
+            "the BBC", "Byte".takeIf { calendarYear < 1998 }, "CNBC".takeIf { calendarYear >= 1989 }, "Bloomberg TV".takeIf { calendarYear >= 1994 },
+            "Wired".takeIf { calendarYear >= 1993 }, "a big YouTube channel".takeIf { calendarYear >= 2010 }, "The Verge's podcast".takeIf { calendarYear >= 2012 },
+        )
+        offer(Interview(rng.pick(outlets)), 3)
     }
 }
 

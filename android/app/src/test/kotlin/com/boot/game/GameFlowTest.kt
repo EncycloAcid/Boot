@@ -872,6 +872,15 @@ class GameFlowTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("From 2023"))
         compose.waitForIdle()
         screen("74-decades-timeline")
+        tab("Research")
+        scrollToTop()
+        compose.onNodeWithText("Only in the 8-bit console wars", substring = true, ignoreCase = true).assertExists()
+        screen("74b-decades-research")
+        compose.onNodeWithText("Engine").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Not invented until", substring = true))
+        compose.waitForIdle()
+        screen("74c-decades-engine-research")
     }
 
     @Test

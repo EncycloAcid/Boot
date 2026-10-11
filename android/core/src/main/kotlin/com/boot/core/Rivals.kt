@@ -143,7 +143,8 @@ private fun GameState.hasProduct(lane: Lane): Boolean = when (lane) {
 }
 
 private fun GameState.raidTargets(lane: Lane): List<Int> =
-    staff.filter { it.lane == lane && it.skill >= 6 && it.trait != Trait.LOYAL }.sortedByDescending { it.skill }.take(2).map { it.id }
+    staff.filter { it.lane == lane && it.skill >= 6 && it.trait != Trait.LOYAL }.sortedByDescending { it.skill }
+        .take(if (Research.STOCK_OPTIONS in researched) 1 else 2).map { it.id }
 
 /** What a rival does, weighted by what suits the market. */
 private fun GameState.pickMove(r: Rival): RivalMoveKind {

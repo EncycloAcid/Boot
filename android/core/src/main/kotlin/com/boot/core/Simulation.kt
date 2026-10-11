@@ -153,7 +153,7 @@ private fun GameState.updateEra() {
             EraPhase.FADING -> {
                 val next = pickNextEra()
                 w.nextEra = next
-                publish(NewsDesk.INDUSTRY, "The Economist", "Is ${w.era.title.removePrefix("The ").lowercase()} over?", "What people are talking about now: ${next.rumor}")
+                publish(NewsDesk.INDUSTRY, "The Economist", "Is ${w.era.inSentence} over?", "What people are talking about now: ${next.rumor}")
                 addLog("${w.era.title} is fading. The talk is of something new: ${next.rumor}", LogTone.NEUTRAL)
             }
             EraPhase.DAWN -> {}
@@ -162,7 +162,7 @@ private fun GameState.updateEra() {
     // While an era fades, the rumours of the next get louder.
     val next = w.nextEra
     if (phase == EraPhase.FADING && next != null && rng.chance(0.05)) {
-        publish(NewsDesk.INDUSTRY, techOutlet(null, rng), "What comes after ${w.era.title.removePrefix("The ").lowercase()}?", next.rumor)
+        publish(NewsDesk.INDUSTRY, techOutlet(null, rng), "What comes after ${w.era.inSentence}?", next.rumor)
     }
 }
 
@@ -193,6 +193,7 @@ private fun GameState.startNextEra() {
         else -> LogTone.NEUTRAL
     }
     addLog("A new era begins: ${next.title}. ${next.blurb}", tone)
+    announceEraResearch()
     publish(NewsDesk.INDUSTRY, "The Economist", "${next.emoji} ${next.title} begins", next.blurb, tone, lead = true)
 }
 
@@ -215,7 +216,7 @@ private fun GameState.updateRivals() {
 
         // Rivals compete for the same talent.
         val best = staff.filter { it.lane == r.lane && it.skill >= 6 && it.trait != Trait.LOYAL }.maxByOrNull { it.skill }
-        if (best != null && rng.chance(r.aggression * 0.006)) {
+        if (best != null && rng.chance(r.aggression * 0.006 * (if (Research.STOCK_OPTIONS in researched) 0.4 else 1.0))) {
             enqueue(EventKind.Poach(best.id, r.name))
         }
     }
@@ -296,7 +297,8 @@ private fun GameState.rollSmallEvents() {
     }
     games?.let { g ->
         val hot = g.releases.filter { it.weeklySales > 0 && it.score >= 6.5 }
-        if (hot.isNotEmpty() && rng.chance(0.01)) {
+        // Streamers came along with YouTube and Twitch.
+        if (hot.isNotEmpty() && calendarYear >= 2007 && rng.chance(0.01)) {
             enqueue(EventKind.Streamer(rng.pick(hot).id, rng.pick(listOf("xXPixelQueenXx", "Big Dave Plays", "Mira Streams", "TheLagWizard", "Cozy Kat"))))
         }
         val p = g.project

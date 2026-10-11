@@ -69,6 +69,26 @@ internal val Lane.industry: String
         Lane.AI -> "AI"
     }
 
+/** Research only this era offers. */
+val Era.research: List<Research> get() = Research.entries.filter { it.era == this }
+
+/** Tell the player what this era lets them research, while it lasts. */
+internal fun GameState.announceEraResearch() {
+    val items = world.era.research.filter { it !in researched }
+    if (items.isEmpty()) return
+    addLog("New research, only while ${world.era.inSentence} lasts: ${items.joinToString(" and ") { it.title.lowercase() }}.", LogTone.MILESTONE)
+}
+
+/** An era's name mid-sentence: "the home computer revolution", "Web 2.0". */
+val Era.inSentence: String get() = if (title.startsWith("The ")) "the " + title.removePrefix("The ").lowercase() else title
+
+/** What the big summer games show was called in [year]. */
+internal fun gamesShowIn(year: Int): String = when {
+    year < 1995 -> "the Consumer Electronics Show"
+    year < 2020 -> "E3"
+    else -> "Summer Game Fest"
+}
+
 /** Is this a run that started in the past? */
 val GameState.isDecades: Boolean get() = startYear != null
 
@@ -189,7 +209,7 @@ internal fun seriesNameIn(name: String, year: Int): String = when {
 /** The year each studio opened, and the year it closed if it did. */
 internal val StudioYears = mapOf(
     "Electronic Arts" to 1982, "Ubisoft" to 1986, "Activision Blizzard" to 1979, "Rockstar Games" to 1998, "Nintendo" to 1889,
-    "Capcom" to 1979, "FromSoftware" to 1986, "CD Projekt Red" to 1994, "Square Enix" to 1986, "Epic Games" to 1991,
+    "Capcom" to 1979, "FromSoftware" to 1986, "CD Projekt Red" to 2002, "Square Enix" to 1986, "Epic Games" to 1991,
     "Bandai Namco" to 1955, "Supercell" to 2010, "PlayStation Studios" to 1993, "Xbox Game Studios" to 2000, "Valve" to 1996,
     "ConcernedApe" to 2011, "Team Cherry" to 2014, "Mega Crit" to 2013, "Playdead" to 2006, "Innersloth" to 2015,
     "Supergiant Games" to 2009, "Thatgamecompany" to 2006, "Hello Games" to 2008, "Re-Logic" to 2011, "Klei Entertainment" to 2005,

@@ -217,6 +217,12 @@ A run can start today or at one of tech's revolutions, and play through to the p
 
 **Balance.** With the autopilot, historical starts land in the same range as a run started today (median peak valuations of $650M-$1.2B). The exceptions are hardware in 1995, which rides the dot-com bubble, and social and hardware in 2007, which spend the smartphone years before any bad era and peak at $3-4B.
 
+## Research through time
+
+Every research item has the year it became possible (from 1978 for sequels, procedural generation and basic AI to 2023 for photoreal rendering, neural NPCs and AI site builders). A run started today has them all; a run set in the past can't research anything before its year. Twenty era items can only be researched while their era is on (one for each era but the Bootstrap Years) and stay for good: their effects are lane modifiers (demand, costs, output, quality, risk, compute) or, for full-motion video, VR support and cloud streaming, engine features worth two levels.
+
+Reviewers' expectations (craft points per unit of work, and the engine level they expect) rise for the first fifteen years of a run and then hold, so a fifty-year Decades run stays playable.
+
 ## Rivals
 
 Each lane has a main rival with a strength (their market muscle, which also sets how much of the market they take from you) and a heat: how much they want to hurt you. Heat rises each week you run the lane, faster the more you earn relative to the lane's scale (Games $300k a week, Websites $60k, Apps $100k, Social $150k, Hardware $600k, AI $400k), and cools slowly. Calm below 0.3, wary to 0.6, hostile above.

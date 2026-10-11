@@ -232,7 +232,7 @@ private fun GameState.publish(s: SignedGame) {
             focus = List(3) { stage -> FocusArea.forStage(stage).map { c.idealShare(it) * p.talent + (1 - p.talent) / 3 } },
             score = base, designRatio = c.idealDesignShare, focusMatch = 0.5 + 0.4 * p.talent,
             bugPenalty = 0.88 + 0.1 * p.talent, polish = 0.25 * p.talent,
-            engineLevel = (week / 20.0 - 2 + 3 * p.talent).toInt(), engineStandard = week / 20.0,
+            engineLevel = (engineStandard(week) - 2 + 3 * p.talent).toInt(), engineStandard = engineStandard(week),
             hype = s.hype, fanTrust = 1.0, onTrend = onTrend, repeated = false, rushedSequel = false, worthySequel = false,
             stepBack = false, record = false, wrongCrowd = false, awkwardPlatform = p.platforms.firstOrNull { it.fit(p.genre) == Fit.BAD },
             year = ctx.year,

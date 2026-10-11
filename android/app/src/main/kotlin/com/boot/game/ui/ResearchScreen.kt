@@ -1,5 +1,8 @@
 package com.boot.game.ui
 
+import com.boot.core.calendarYear
+import com.boot.core.inSentence
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,29 +50,44 @@ fun ResearchScreen(store: GameStore, state: GameState) {
     val current = page.takeIf { it in pages } ?: pages.first()
     ScreenColumn {
         item { PointsHero(state) }
+        // What only this era offers: gone when it ends.
+        val eraOnly = state.world.era.research.filter { it !in state.researched && (it.kind != Research.Kind.ENGINE || state.games != null) }
+        if (eraOnly.isNotEmpty()) {
+            item {
+                ResearchList(
+                    store, state, "Only in ${state.world.era.inSentence}", eraOnly,
+                    footer = "These can only be researched while ${state.world.era.inSentence} lasts. Once you have them, they're yours for good.",
+                )
+            }
+        }
         if (pages.size > 1) item { Segmented(pages, current, { it.title }) { page = it } }
         when (current) {
-            ResearchPage.STUDIO -> item { ResearchList(store, state, "Game studio", Research.entries.filter { it.kind == Research.Kind.STUDIO }) }
+            ResearchPage.STUDIO -> item { ResearchList(store, state, "Game studio", Research.entries.filter { it.kind == Research.Kind.STUDIO }.visible(state)) }
             ResearchPage.ENGINE -> {
                 item {
                     ResearchList(
                         store, state, "Engine features",
-                        Research.entries.filter { it.kind == Research.Kind.ENGINE },
+                        Research.entries.filter { it.kind == Research.Kind.ENGINE }.visible(state),
                         footer = "Features do nothing until you build them into an engine. Build engines in the Lanes tab under your game studio.",
                     )
                 }
             }
             ResearchPage.TOPICS -> item { TopicList(store, state) }
             ResearchPage.COMPANY -> {
-                item { ResearchList(store, state, "Company", Research.entries.filter { it.kind == Research.Kind.COMPANY }) }
+                item { ResearchList(store, state, "Company", Research.entries.filter { it.kind == Research.Kind.COMPANY }.visible(state)) }
+                val pastEras = Research.entries.filter { it.kind == Research.Kind.ERA && it in state.researched }
+                if (pastEras.isNotEmpty()) item { ResearchList(store, state, "From past eras", pastEras) }
                 for (lane in state.lanes) {
-                    val items = Research.entries.filter { it.lane == lane }
+                    val items = Research.entries.filter { it.lane == lane }.visible(state)
                     if (items.isNotEmpty()) item { ResearchList(store, state, lane.businessName, items) }
                 }
             }
         }
     }
 }
+
+/** Era research only shows in its own section, or once you have it. */
+private fun List<Research>.visible(state: GameState): List<Research> = filter { it.era == null || it in state.researched }
 
 @Composable
 private fun PointsHero(state: GameState) {
@@ -98,7 +116,11 @@ private fun ResearchList(store: GameStore, state: GameState, header: String, ite
             val cost = "${r.rp} RP" + if (r.cash > 0) " + ${Format.money(r.cash)}" else ""
             ListRow(
                 r.title,
-                subtitle = r.detail + if (locked) "\nNeeds ${r.requires!!.title}." else "",
+                subtitle = r.detail + when {
+                    !done && r.year > state.calendarYear -> "\nNot invented until ${r.year}."
+                    locked -> "\nNeeds ${r.requires!!.title}."
+                    else -> ""
+                },
                 leading = {
                     Icon(
                         when {

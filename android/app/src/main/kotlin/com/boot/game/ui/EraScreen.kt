@@ -27,6 +27,7 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.MODERN_YEAR
 import com.boot.core.historyAhead
+import com.boot.core.research
 import com.boot.core.laneOpen
 import com.boot.core.arrives
 import kotlin.math.abs
@@ -51,6 +52,13 @@ fun EraCard(state: GameState) {
                     }
                 }
                 Text(era.blurb, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                val only = era.research.filter { it !in state.researched }
+                if (only.isNotEmpty()) {
+                    Text(
+                        "Research only this era: " + only.joinToString { it.title.lowercase() } + ".",
+                        style = MaterialTheme.typography.labelLarge, color = colors.milestone,
+                    )
+                }
                 if (era != com.boot.core.Era.BOOTSTRAP_YEARS) {
                     // Dawn, peak, fading: where the era is in its life.
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

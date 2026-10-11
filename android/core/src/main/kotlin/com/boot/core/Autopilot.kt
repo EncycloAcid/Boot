@@ -14,6 +14,8 @@ class Autopilot(
     private val sellsOnOffer: Boolean = false,
     /** How hard to push combo dials. */
     private val comboIntensity: Double = 0.5,
+    /** List the company and keep running it, rather than ringing the bell and retiring. */
+    private val staysPublic: Boolean = false,
 ) {
     /** Make this week's decisions, then advance one week. */
     fun playWeek(s: GameState) {
@@ -182,7 +184,7 @@ class Autopilot(
     private fun manage(s: GameState) {
         if (s.crunch) attempt { s.setCrunch(false) }
         if (s.ipoBlocker == null) {
-            attempt { s.goPublic() }
+            attempt { s.goPublic(keepRunning = staysPublic) }
             return
         }
 

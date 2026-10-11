@@ -71,6 +71,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             s.world.rivals += World.makeRivals().onEach { it.strength = (it.strength + difficulty.rivalStrength).clamped(0.05, 1.0) }
             s.world.eraLength = s.rng.int(70, 110)
             start.year?.let { s.world.startAt(it); s.adoptHistory() }
+            s.announceEraResearch()
             s.ledger = listOf(WeekLedger(0, cash = s.cash))
             s.openLane(lane)
             s.refreshTalentPool()
@@ -438,7 +439,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     internal fun makeCandidate(role: Role? = null, star: Boolean = false): Candidate {
         val r = role ?: pickRole()
         val appeal = if (has(Perk.CHEF)) 0.5 else 0.0
-        val skill = if (star) rng.int(8, 10) else rng.normal(5.0 + appeal, 1.8).roundToInt().clamped(1, 10)
+        val skill = if (star) rng.int(8, 10) else rng.normal(5.0 + appeal + (if (Research.HIRING_PIPELINE in researched) 0.8 else 0.0), 1.8).roundToInt().clamped(1, 10)
         var salary = r.baseSalary * (0.5 + skill * 0.1) * rng.range(0.9, 1.15)
         if (r == Role.RESEARCHER && world.era == Era.AI_GOLD_RUSH) salary *= 1 + 0.6 * world.eraIntensity
         salary *= world.salaries

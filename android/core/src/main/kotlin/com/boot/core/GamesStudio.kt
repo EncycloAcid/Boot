@@ -167,7 +167,13 @@ data class ScorePart(val label: String, val points: Double, val note: String = "
 const val SCORE_BASELINE = 5.0
 
 /** Design and tech points per unit of work that a decent team makes in a given week: it rises 10% a year. */
-internal fun craftBenchmark(week: Int): Double = 2.0 * 1.1.pow(week / 52.0)
+internal fun craftBenchmark(week: Int): Double = 2.0 * 1.1.pow(min(week / 52.0, BENCHMARK_YEARS))
+
+/** Expectations stop rising after this many years, so a long run (a Decades run lasts 50) stays playable. */
+internal const val BENCHMARK_YEARS = 15.0
+
+/** The engine level reviewers expect in a given week, rising until [BENCHMARK_YEARS]. */
+internal fun engineStandard(week: Int): Double = min(week / 20.0, BENCHMARK_YEARS * 52 / 20)
 
 /** Above 8, every extra point counts half: a 10 needs everything to go right. */
 internal fun softCap(raw: Double): Double = if (raw > 8) 8 + (raw - 8) * 0.5 else raw
@@ -500,7 +506,7 @@ class GamesStudio {
         val bugPenalty = 1 - min(0.35, p.bugs / (p.work * 0.6) * 0.35)
         part("Bugs", -(1 - bugPenalty) * 7, "${p.bugs.roundToInt()} bug${if (p.bugs.roundToInt() == 1) "" else "s"} shipped.")
         part("Polish", 0.4 * min(1.0, p.polish / (p.work * 0.4)), "Weeks spent polishing after content was done.")
-        val standard = week / 20.0
+        val standard = engineStandard(week)
         val dated = engine.level < standard - 5
         part("Engine", when {
             dated -> -(0.12 * (standard - 5 - engine.level)).clamped(0.0, 1.2)
@@ -515,7 +521,7 @@ class GamesStudio {
         val original = c.sequelOf?.let { release(it) }
         val rushedSequel = original != null && week - original.week < 52
         if (rushedSequel) part("Rushed sequel", -0.6, "Less than a year after ${original!!.title}.")
-        part("Your people", ctx.mods.quality / 15, "Perfectionists on the team.")
+        part("Studio craft", ctx.mods.quality / 15, "Perfectionists, playtesting and the like.")
         // Critics expect a studio to keep its level, but only a real drop is held against it.
         val recent = releases.filter { it.developer == null }.take(3).map { it.score }
         val before = SCORE_BASELINE + parts.sumOf { it.points }

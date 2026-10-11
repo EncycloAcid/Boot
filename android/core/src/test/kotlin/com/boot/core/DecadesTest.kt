@@ -133,4 +133,70 @@ class DecadesTest {
         assertFalse(Outlet.IGN in outlets)
         assertTrue(outlets.all { s.games!!.releases.any { r -> s.yearAt(r.week) in it.years } })
     }
+
+    @Test
+    fun researchWaitsForItsInvention() {
+        val s = start(StartPoint.HOME_COMPUTERS)
+        s.researchPoints = 10_000.0
+        assertEquals("Not invented until 1992.", s.researchBlocker(Research.GRAPHICS_3D_V1))
+        assertTrue(s.researchBlocker(Research.LIVE_SERVICE)!!.contains("2010"))
+        assertNull(s.researchBlocker(Research.TARGET_AUDIENCE))
+        // A run started today has every invention.
+        val today = GameState.create("Now", "Ada", Lane.GAMES, seed = 7)
+        today.researchPoints = 10_000.0
+        assertTrue(Research.entries.none { today.researchBlocker(it)?.startsWith("Not invented") == true })
+        assertTrue(Research.entries.all { it.year <= MODERN_YEAR })
+    }
+
+    @Test
+    fun eraResearchOnlyWhileItsEraLasts() {
+        val s = start(StartPoint.HOME_COMPUTERS)
+        s.researchPoints = 10_000.0
+        assertNull(s.researchBlocker(Research.COPY_PROTECTION))
+        assertTrue(s.researchBlocker(Research.MASCOT)!!.startsWith("Only during"))
+        val demand = s.context(Lane.GAMES).mods.demand
+        s.research(Research.COPY_PROTECTION)
+        assertEquals(demand * 1.06, s.context(Lane.GAMES).mods.demand, 1e-9)
+        assertTrue(s.log.any { it.text.startsWith("New research, only while the home computer revolution lasts") })
+        // Nearly every era has something of its own.
+        assertTrue(Era.entries.filter { it != Era.BOOTSTRAP_YEARS }.count { it.research.isNotEmpty() } >= 18)
+        // Modern eras have theirs too.
+        val today = GameState.create("Now", "Ada", Lane.GAMES, seed = 7)
+        today.researchPoints = 10_000.0
+        assertTrue(today.researchBlocker(Research.COPILOTS)!!.startsWith("Only during"))
+        today.world.era = Era.AI_GOLD_RUSH
+        assertNull(today.researchBlocker(Research.COPILOTS))
+    }
+
+    @Test
+    fun expectationsStopRisingInALongRun() {
+        assertEquals(craftBenchmark(52 * 15), craftBenchmark(52 * 50), 1e-9)
+        assertEquals(engineStandard(52 * 15), engineStandard(52 * 50), 1e-9)
+        assertTrue(craftBenchmark(52 * 5) < craftBenchmark(52 * 10))
+    }
+
+    @Test
+    fun namesOfTheDay() {
+        assertEquals("the home computer revolution", Era.HOME_COMPUTERS.inSentence)
+        assertEquals("Web 2.0", Era.WEB_2_0.inSentence)
+        assertEquals("the Consumer Electronics Show", gamesShowIn(1985))
+        assertEquals("E3", gamesShowIn(2005))
+        assertEquals("Summer Game Fest", gamesShowIn(2027))
+        assertFalse(studioActive("CD Projekt Red", 1998))
+    }
+
+    @Test
+    fun aLongRunKeepsScoringSensibly() {
+        // Play deep into a 1977 run, staying focused, and check late games still score like games.
+        val s = start(StartPoint.HOME_COMPUTERS, Lane.GAMES, seed = 3)
+        val pilot = Autopilot(staysPublic = true)
+        while (!s.isOver && s.week < 52 * 45) {
+            if (s.pendingPivot != null) s.stayFocused()
+            pilot.playWeek(s)
+        }
+        val late = s.games?.releases?.filter { s.week - it.week < 52 * 10 }.orEmpty()
+        println("Long run: ${s.dateLabel}, ${s.games?.releases?.size} games, late average ${late.map { it.score }.average()}, ending ${s.ending?.kind}")
+        if (late.size >= 3) assertTrue(late.map { it.score }.average() > 4.0, "late games average ${late.map { it.score }.average()}")
+        assertTrue(s.researched.all { it.year <= s.calendarYear })
+    }
 }
