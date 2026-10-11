@@ -471,7 +471,7 @@ fun CommitSlider(value: Double, label: (Float) -> String, onCommit: (Double) -> 
 /** iOS switch cell. The switch goes iOS green when on. */
 @Composable
 fun ToggleRow(title: String, checked: Boolean, detail: String? = null, onChange: (Boolean) -> Unit) {
-    ListRow(title, subtitle = detail) {
+    ListRow(title, subtitle = detail, onClick = { onChange(!checked) }) {
         Switch(
             checked = checked,
             onCheckedChange = onChange,

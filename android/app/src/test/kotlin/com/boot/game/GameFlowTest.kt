@@ -156,8 +156,12 @@ class GameFlowTest {
         compose.onNodeWithText("Hard").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Games"))
         compose.onNodeWithText("Games").performSemanticsAction(SemanticsActions.OnClick)
+        // No tutorial this time.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Show me the ropes"))
+        compose.onNodeWithText("Show me the ropes").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithText("Start your game studio").performClick()
         assertEquals(Difficulty.HARD, store.state!!.difficulty)
+        assertNull(store.state!!.tutorial)
 
         compose.onNodeWithText("The studio is free").assertExists()
         assertEquals(listOf(Lane.GAMES), store.state!!.lanes)
