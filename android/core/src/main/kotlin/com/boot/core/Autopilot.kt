@@ -85,6 +85,8 @@ class Autopilot(
             is ModelReady -> 0
             is EraMoment -> if (cashy && s.cash > 200_000) 0 else e.choices.lastIndex
             is ScenarioOver -> 0
+            is RaiderStake -> 0
+            is TakeoverOffer -> 1
             is EventKind.Poach -> if (cashy) 0 else 1
             is EventKind.Buyout -> if (sellsOnOffer) 0 else 1
             is EventKind.BoardDemandEvent -> 0

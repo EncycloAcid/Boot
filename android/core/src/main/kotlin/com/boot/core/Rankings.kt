@@ -8,7 +8,7 @@ import kotlin.math.sin
  * you're big enough to notice. Their values drift with the eras and the years, and wobble a little.
  */
 
-data class RankedCompany(val name: String, val value: Double, val lane: Lane?, val mine: Boolean)
+data class RankedCompany(val name: String, val value: Double, val lane: Lane?, val mine: Boolean, val key: String = name)
 
 /** Rough values at the start of a run, and the lane each mostly lives in. */
 private val Industry = listOf(
@@ -48,23 +48,35 @@ private val Industry = listOf(
     Triple("Ubisoft", 0.002e12, Lane.GAMES),
 )
 
-/** Everyone, biggest first, you included. */
-fun GameState.rankings(): List<RankedCompany> {
+/** Everyone else in the industry today, keyed by the name they go by now (Alphabet, not Google). */
+internal fun GameState.industry(): List<RankedCompany> {
     val years = week / 52.0
     // Companies you've bought aren't on the table any more: they're part of you.
-    val owned = games?.subsidiaries?.map { if (it.name == "CD Projekt Red") "CD Projekt" else it.name }.orEmpty().toSet()
+    val owned = games?.subsidiaries?.map { if (it.name == "CD Projekt Red") "CD Projekt" else it.name }.orEmpty().toSet() +
+        portfolio.owned.map { it.key }
     val year = (startYear ?: MODERN_YEAR) + years
-    val others = Industry.filter { it.first !in owned && (IndustryFounded[it.first] ?: 0) <= year }.mapIndexed { i, (name, base, lane) ->
+    val today = Industry.filter { it.first !in owned && (IndustryFounded[it.first] ?: 0) <= year }.mapIndexed { i, (name, base, lane) ->
         val era = world.demand(lane).pow(1.5)
         val wobble = 1 + 0.06 * sin(week / 9.0 + i * 1.7)
-        RankedCompany(companyNameIn(name, year.toInt()), base * era * industryGrowth * wobble, lane, mine = false)
-    } + (if (isDecades) HistoricCompanies else emptyList()).mapNotNull { (name, lane, points) ->
-        // The giants of the past, at what they were really worth.
-        historicValue(points, year)?.let { RankedCompany(name, it * world.demand(lane).pow(1.5), lane, mine = false) }
+        RankedCompany(companyNameIn(name, year.toInt()), base * era * industryGrowth * wobble * mood(name), lane, mine = false, key = name)
     }
-    val me = RankedCompany(companyName, listing?.marketCap ?: valuation, null, mine = true)
-    return (others + me).sortedByDescending { it.value }
+    val past = (if (isDecades) HistoricCompanies else emptyList()).filter { it.first !in owned }.mapNotNull { (name, lane, points) ->
+        // The giants of the past, at what they were really worth.
+        historicValue(points, year)?.let { RankedCompany(name, it * world.demand(lane).pow(1.5) * mood(name), lane, mine = false) }
+    }
+    return today + past
 }
+
+/** Everyone, biggest first, you included. */
+fun GameState.rankings(): List<RankedCompany> {
+    val me = RankedCompany(companyName, listing?.marketCap ?: valuation, null, mine = true)
+    return (industry() + me).sortedByDescending { it.value }
+}
+
+/** Where today's companies started, and the lane each mostly lives in, for the market. */
+internal fun industryBase(key: String): Pair<Double, Lane>? =
+    Industry.firstOrNull { it.first == key }?.let { it.second to it.third }
+        ?: HistoricCompanies.firstOrNull { it.first == key }?.let { (_, lane, points) -> points.maxOf { it.second } to lane }
 
 /** Your place in the table, 1-based. */
 val GameState.rank: Int get() = rankings().indexOfFirst { it.mine } + 1

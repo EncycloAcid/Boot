@@ -186,6 +186,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
         store.designing && state.games != null -> GameDesigner(store, state)
         store.openRelease != null -> ReleaseSheet(store, state, store.openRelease!!)
         store.guideOpen -> GuideSheet(store, state)
+        store.openStock != null -> StockSheet(store, state, store.openStock!!)
     }
 
     if (confirmAbandon) {

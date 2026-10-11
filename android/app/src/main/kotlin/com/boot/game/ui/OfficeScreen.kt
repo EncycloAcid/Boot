@@ -76,14 +76,14 @@ fun OfficeScreen(store: GameStore, state: GameState) {
         if (others.isNotEmpty()) item { LanesNow(store, state, others) }
         item {
             GoalsCard(state) {
-                store.companyPage = 3
+                store.companyPage = 4
                 store.tab = Tab.COMPANY
             }
         }
         if (state.achievements.isNotEmpty()) {
             item {
                 RecentAchievements(state) {
-                    store.companyPage = 3
+                    store.companyPage = 4
                     store.tab = Tab.COMPANY
                 }
             }

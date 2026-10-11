@@ -124,6 +124,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     /** Sandbox: no bankruptcy, no Hall of Fame. */
     var sandbox = false
 
+    /** Shares you hold, companies you took over, and raiders at the gate. */
+    var portfolio = Portfolio()
+
     /** The mentor's lessons, while they last. */
     var tutorial: Tutorial? = null
         internal set
@@ -290,10 +293,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     }
 
     /** What the businesses are worth, excluding cash in the bank. */
-    val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0) + subsidiaryValue
+    val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0) + subsidiaryValue + ownedCompaniesValue
 
     /** Enterprise value plus cash, less what you owe the bank. What a buyer or the market would pay. */
-    val valuation: Double get() = max(0.0, enterpriseValue + max(0.0, cash) - (loan?.balance ?: 0.0))
+    val valuation: Double get() = max(0.0, enterpriseValue + max(0.0, cash) + portfolioValue - (loan?.balance ?: 0.0))
 
     fun staff(lane: Lane): List<Employee> = staff.filter { it.lane == lane }
 

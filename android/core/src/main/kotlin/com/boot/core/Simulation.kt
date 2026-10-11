@@ -60,6 +60,7 @@ fun GameState.advance() {
     stats.peakCash = max(stats.peakCash, cash)
     stats.peakValuation = max(stats.peakValuation, valuation)
     tradeWeek()
+    stockMarketWeek()
     if (listing == null) quarterlyResults()
     ledger.last().cash = cash
 

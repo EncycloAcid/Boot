@@ -67,6 +67,9 @@ class Stats {
     var finals = 0
     var rivalMoves = 0
     var rivalsBeaten = 0
+
+    /** Companies taken over on the stock market. */
+    var takeovers = 0
     var counterMoves = 0
     var inboxAnswered = 0
     var eraChallengesWon = 0
