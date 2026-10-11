@@ -65,10 +65,13 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             year: Int? = start.year,
             /** A billion dollars and no bankruptcy. */
             sandbox: Boolean = false,
+            /** Walk a first-time founder through the basics. */
+            tutorial: Boolean = false,
         ): GameState {
             val s = GameState(seed, lane)
             s.startYear = year
             s.sandbox = sandbox
+            if (tutorial) s.tutorial = Tutorial()
             GameClock.startYear = year
             s.companyName = companyName
             s.founder = Founder(founderName)
@@ -120,6 +123,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
 
     /** Sandbox: no bankruptcy, no Hall of Fame. */
     var sandbox = false
+
+    /** The mentor's lessons, while they last. */
+    var tutorial: Tutorial? = null
         internal set
 
     /** The year a Decades run started in, or null for a run that starts today. */

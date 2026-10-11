@@ -86,6 +86,9 @@ fun nextStep(state: GameState): NextStep? {
     return null
 }
 
+/** Next steps worth interrupting the tutorial for. */
+val urgentSteps = setOf("overdrawn", "runway")
+
 /** The next step, as a card on the office screen. */
 @Composable
 fun NextStepCard(store: GameStore, state: GameState) {

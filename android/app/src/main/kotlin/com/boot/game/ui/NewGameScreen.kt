@@ -75,6 +75,7 @@ import androidx.compose.ui.draw.alpha
 import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.MENTOR
 import com.boot.game.GameStore
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -86,6 +87,7 @@ fun NewGameScreen(store: GameStore) {
     var difficulty by rememberSaveable { mutableStateOf(Difficulty.NORMAL) }
     var start by rememberSaveable { mutableStateOf(StartPoint.TODAY) }
     var mode by rememberSaveable { mutableStateOf(GameMode.CAREER) }
+    var tutorial by rememberSaveable { mutableStateOf(store.hall.isEmpty()) }
     var scenario by rememberSaveable { mutableStateOf(Scenario.GARAGE_TO_GLORY) }
     val colors = gameColors
     val companyName = company.trim().ifEmpty { "Garage Labs" }
@@ -121,7 +123,7 @@ fun NewGameScreen(store: GameStore) {
                             )
                             GameMode.CAREER -> PrimaryButton(
                                 "Start your ${lane.businessName.lowercase()}",
-                                { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start) },
+                                { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start, tutorial = tutorial) },
                                 Modifier.fillMaxWidth(),
                             )
                         }
@@ -190,6 +192,14 @@ fun NewGameScreen(store: GameStore) {
                     Column(Modifier.padding(8.dp)) {
                         Segmented(Difficulty.entries, difficulty, { it.title }) { difficulty = it }
                     }
+                }
+            }
+            if (mode == GameMode.CAREER) item(span = { GridItemSpan(maxLineSpan) }) {
+                GroupedSection(null) {
+                    ToggleRow(
+                        "Show me the ropes", tutorial,
+                        "$MENTOR, a founder who's done it all before, walks you through your first weeks.",
+                    ) { tutorial = it }
                 }
             }
             if (mode != GameMode.SCENARIOS) item(span = { GridItemSpan(maxLineSpan) }) {

@@ -65,6 +65,8 @@ import com.boot.core.spinOffTitle
 import com.boot.game.ui.BootApp
 import com.boot.game.ui.BootTheme
 import org.junit.Assert.assertEquals
+import com.boot.core.TutorialStep
+import com.boot.core.lesson
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -978,6 +980,67 @@ class GameFlowTest {
         assertTrue(store.state!!.cash >= 900_000_000.0)
         scrollToTop()
         screen("82-sandbox")
+    }
+
+    @Test
+    fun rosaShowsTheRopesAndTheGuideExplains() {
+        launch()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Show me the ropes"))
+        compose.waitForIdle()
+        screen("83-new-game-tutorial")
+        compose.onNodeWithText("Start your game studio").performClick()
+        compose.waitForIdle()
+        assertNotNull(store.state!!.tutorial)
+
+        val list = compose.onAllNodes(hasScrollAction()).onFirst()
+        list.performScrollToNode(hasText("Let's go"))
+        compose.onNodeWithText("Welcome to Garage Labs").assertExists()
+        screen("84-lesson-welcome")
+        compose.onNodeWithText("Let's go").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+
+        // Make a game: the lesson's button opens the designer.
+        list.performScrollToNode(hasText("Develop a game"))
+        compose.onNodeWithText("Make your first game").assertExists()
+        compose.onNodeWithText("Develop a game").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        assertTrue(store.designing)
+        repeat(3) {
+            compose.onNodeWithText("Next").performClick()
+            compose.waitForIdle()
+        }
+        compose.onNodeWithText("Start development").performClick()
+        compose.waitForIdle()
+        assertEquals(TutorialStep.PLAY, store.state!!.lesson()!!.step)
+        list.performScrollToNode(hasText("Play a week"))
+        compose.waitForIdle()
+        screen("85-lesson-play")
+        compose.onNodeWithText("Play a week").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        assertEquals(1, store.state!!.week)
+        assertEquals(TutorialStep.HIRE, store.state!!.lesson()!!.step)
+
+        // How to play, from the menu.
+        compose.onNodeWithContentDescription("More", substring = true).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("How to play").performClick()
+        compose.waitForIdle()
+        assertTrue(store.guideOpen)
+        overlay("86-guide")
+        compose.onNodeWithText("A studio in the Game Dev Tycoon mould", substring = true).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        compose.onNodeWithText("Design a game", substring = true).assertExists()
+        overlay("87-guide-games")
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitForIdle()
+        assertFalse(store.guideOpen)
+
+        // Skipping ends the lessons.
+        list.performScrollToNode(hasText("Skip tutorial"))
+        compose.onNodeWithText("Skip tutorial").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        assertNull(store.state!!.tutorial)
     }
 
     @Test

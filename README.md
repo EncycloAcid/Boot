@@ -6,6 +6,11 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.4 (Android):** a tutorial and a How to play guide.
+
+- **Rosa shows you the ropes.** A new career can start with a mentor: Rosa, a founder who's started four companies and sold three, walks you through your first weeks in seven lessons on the office screen. Make your first thing (design a game, take a contract, design a device, start a training run, or watch your app or platform being built), let time run, hire, read your numbers and spend research points. Each lesson ticks itself off when you do it, its button takes you to the right place, and you can skip the lot. It's on by default for your first run and a switch on the new game screen after that.
+- **How to play.** A guide in the menu, with a page for the basics, each of the six businesses (yours listed first), people, research, money and investors, the Pivot Point, eras, rivals, goals and the Hall of Fame, and scenarios. You can bring Rosa's lessons back from there.
+
 **New in 3.3 (Android):** scenarios and a sandbox, the two modes every tycoon game has.
 
 - **Scenarios.** Twelve handcrafted challenges, each with a start, an objective and a deadline: make a 9/10 game from a garage, win half a million fans from 1977, be worth $50M after the crash of '83, sell a million consoles from 1985, ride the dot-com boom, stay profitable through the bust, grow a social network from 2004, get on every home screen in 2008, make $20M a year from free-to-play games, train a frontier model, drive Electronic Arts out of your market, and make money through crypto winter. Meet the objective in the first half of the time for gold, three quarters for silver or by the deadline for bronze, then keep playing or retire on top. The office shows the scenario's progress and deadlines, and the picker shows your best medal in each.

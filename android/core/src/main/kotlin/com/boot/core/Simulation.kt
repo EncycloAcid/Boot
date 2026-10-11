@@ -71,6 +71,7 @@ fun GameState.advance() {
 
     rollWorldEvents()
     scenarioWeek()
+    tutorialWeek()
     boardReview()
     checkPivotPoint()
     updateStreaks()

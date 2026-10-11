@@ -63,8 +63,12 @@ import com.boot.game.Tab
 fun OfficeScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { OfficeCard(store, state) }
+        if (state.tutorial != null) item { LessonCard(store, state) }
         if (state.scenario != null) item { ScenarioCard(state) }
-        if (nextStep(state)?.let { it.key != store.dismissedStep } == true) item { NextStepCard(store, state) }
+        // While the tutorial runs, the next step only speaks up about money.
+        if (nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true) {
+            item { NextStepCard(store, state) }
+        }
         if (state.inbox.isNotEmpty()) item { InboxSection(store, state) }
         if (Lane.GAMES in state.lanes) item { StudioNow(store, state) }
         val others = state.lanes.filter { it != Lane.GAMES }

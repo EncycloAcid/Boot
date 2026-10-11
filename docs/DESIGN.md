@@ -229,6 +229,10 @@ Each era but the Bootstrap Years has a challenge, picked from its preferred kind
 
 When an era reaches its peak, its moment comes round once: a decision with effects for the rest of the era or longer, mostly as demand, output or cost changes on your businesses for 13 to 52 weeks. Game trends follow the era three times in four. When an era ends, its span in the timeline records what you earned, your value at the start and end, and whether you met the challenge, and the paper runs a review.
 
+## Tutorial and How to play
+
+A career can start with the tutorial (on by default when the Hall of Fame is empty). Rosa, a mentor, gives seven lessons on the office screen: welcome, make your first thing (by business: start a game, take a contract, start a device design or a training run; for apps and social, a look at the build), let time run, hire, read the money, spend research points, and a sign-off. Lessons tick themselves off when the game sees you've done the thing (in any order), the reading-only ones when their button is pressed; each button goes where the lesson points. While the tutorial runs, the Next step card only appears for money trouble. How to play, in the menu, has fifteen pages and can restart the lessons.
+
 ## Scenarios and sandbox
 
 Besides a career there are two more ways to play, picked under How to play on the new game screen.

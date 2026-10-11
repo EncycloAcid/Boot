@@ -185,6 +185,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
         state.games?.unseenReview != null -> ReviewSheet(store, state, state.games!!.unseenReview!!)
         store.designing && state.games != null -> GameDesigner(store, state)
         store.openRelease != null -> ReleaseSheet(store, state, store.openRelease!!)
+        store.guideOpen -> GuideSheet(store, state)
     }
 
     if (confirmAbandon) {
@@ -284,6 +285,10 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                         DropdownMenuItem(text = { Text(if (unread > 0) "News · $unread new" else "News") }, onClick = {
                             menuOpen = false
                             store.tab = Tab.NEWS
+                        })
+                        DropdownMenuItem(text = { Text("How to play") }, onClick = {
+                            menuOpen = false
+                            store.guideOpen = true
                         })
                         DropdownMenuItem(text = { Text("Abandon run and start over") }, onClick = {
                             menuOpen = false

@@ -78,6 +78,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var designing by mutableStateOf(false)
     var draft by mutableStateOf<GameConcept?>(null)
 
+    /** How to play is open. */
+    var guideOpen by mutableStateOf(false)
+
     /** A released game whose report is open. */
     var openRelease by mutableStateOf<Int?>(null)
 
@@ -102,7 +105,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
 
     /** A full-screen page that holds the clock while it's open. */
-    val holdsClock: Boolean get() = designing || openRelease != null
+    val holdsClock: Boolean get() = designing || openRelease != null || guideOpen
 
     fun newGame(
         company: String,
@@ -112,8 +115,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         difficulty: Difficulty = Difficulty.NORMAL,
         start: StartPoint = StartPoint.TODAY,
         sandbox: Boolean = false,
+        tutorial: Boolean = false,
     ) {
-        begin(GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start, sandbox = sandbox))
+        begin(GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start, sandbox = sandbox, tutorial = tutorial))
     }
 
     /** Start one of the scenarios. */
