@@ -44,6 +44,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         /** Fifteen years. */
         const val LENGTH_WEEKS = 780
         const val STARTING_CASH = 25_000.0
+        const val SANDBOX_CASH = 1_000_000_000.0
 
         private val json = Json {
             encodeDefaults = true
@@ -60,17 +61,22 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             difficulty: Difficulty = Difficulty.NORMAL,
             legacy: List<LegacyPerk> = emptyList(),
             start: StartPoint = StartPoint.TODAY,
+            /** A start year that isn't one of the start points, for scenarios. */
+            year: Int? = start.year,
+            /** A billion dollars and no bankruptcy. */
+            sandbox: Boolean = false,
         ): GameState {
             val s = GameState(seed, lane)
-            s.startYear = start.year
-            GameClock.startYear = start.year
+            s.startYear = year
+            s.sandbox = sandbox
+            GameClock.startYear = year
             s.companyName = companyName
             s.founder = Founder(founderName)
             s.difficulty = difficulty
-            s.cash = difficulty.startingCash
+            s.cash = if (sandbox) SANDBOX_CASH else difficulty.startingCash
             s.world.rivals += World.makeRivals().onEach { it.strength = (it.strength + difficulty.rivalStrength).clamped(0.05, 1.0) }
             s.world.eraLength = s.rng.int(70, 110)
-            start.year?.let { s.world.startAt(it); s.adoptHistory() }
+            year?.let { s.world.startAt(it); s.adoptHistory() }
             s.announceEraResearch()
             s.ledger = listOf(WeekLedger(0, cash = s.cash))
             s.openLane(lane)
@@ -78,7 +84,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             s.addLog("Day one. A laptop, a cramped apartment, and ${money(s.cash)} in savings.", LogTone.MILESTONE)
             s.applyLegacy(legacy)
             s.ledger = listOf(WeekLedger(0, cash = s.cash))
-            if (lane.isCapitalIntensive) {
+            if (lane.isCapitalIntensive && !sandbox) {
                 s.ventureForLane(lane).getOrNull()?.let { round ->
                     s.takeRound(round)
                     s.addLog("${lane.title} eats money. You raised a ${money(round.amount)} seed round and gained a board.")
@@ -106,6 +112,14 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         internal set
     internal var rng = SeededRNG.fromSeed(seed)
     var week = 0
+        internal set
+
+    /** A scenario's objective and deadline, when this run is one. */
+    var scenario: ScenarioRun? = null
+        internal set
+
+    /** Sandbox: no bankruptcy, no Hall of Fame. */
+    var sandbox = false
         internal set
 
     /** The year a Decades run started in, or null for a run that starts today. */

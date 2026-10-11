@@ -63,6 +63,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boot.core.Difficulty
 import com.boot.core.StartPoint
+import com.boot.core.Scenario
+import com.boot.core.Medal
+import com.boot.core.bestMedals
 import com.boot.core.era
 import com.boot.core.laneOpen
 import com.boot.core.years
@@ -82,7 +85,11 @@ fun NewGameScreen(store: GameStore) {
     var lane by rememberSaveable { mutableStateOf(Lane.GAMES) }
     var difficulty by rememberSaveable { mutableStateOf(Difficulty.NORMAL) }
     var start by rememberSaveable { mutableStateOf(StartPoint.TODAY) }
+    var mode by rememberSaveable { mutableStateOf(GameMode.CAREER) }
+    var scenario by rememberSaveable { mutableStateOf(Scenario.GARAGE_TO_GLORY) }
     val colors = gameColors
+    val companyName = company.trim().ifEmpty { "Garage Labs" }
+    val founderName = founder.trim().ifEmpty { "You" }
 
     Scaffold(
         containerColor = colors.grouped,
@@ -97,17 +104,27 @@ fun NewGameScreen(store: GameStore) {
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        if (lane.isCapitalIntensive) {
+                        if (mode == GameMode.CAREER && lane.isCapitalIntensive) {
                             Hint(
                                 "Hard mode: ${lane.title} starts with a seed round and a board that can overrule you, or fire you.",
                                 colors.warn,
                             )
                         }
-                        PrimaryButton(
-                            "Start your ${lane.businessName.lowercase()}",
-                            { store.newGame(company.trim().ifEmpty { "Garage Labs" }, founder.trim().ifEmpty { "You" }, lane, difficulty = difficulty, start = start) },
-                            Modifier.fillMaxWidth(),
-                        )
+                        when (mode) {
+                            GameMode.SCENARIOS -> PrimaryButton(
+                                "Play ${scenario.title}", { store.newScenario(scenario, companyName, founderName) }, Modifier.fillMaxWidth(),
+                            )
+                            GameMode.SANDBOX -> PrimaryButton(
+                                "Start your sandbox ${lane.businessName.lowercase()}",
+                                { store.newGame(companyName, founderName, lane, start = start, sandbox = true) },
+                                Modifier.fillMaxWidth(),
+                            )
+                            GameMode.CAREER -> PrimaryButton(
+                                "Start your ${lane.businessName.lowercase()}",
+                                { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start) },
+                                Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }
@@ -154,38 +171,46 @@ fun NewGameScreen(store: GameStore) {
                 }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
+                GroupedSection("How to play", footer = mode.blurb) {
+                    Column(Modifier.padding(8.dp)) { Segmented(GameMode.entries, mode, { it.title }) { mode = it } }
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 GroupedSection("Your company") {
                     FormRow("Company", company, "Garage Labs", ImeAction.Next) { company = it }
                     RowDivider()
                     FormRow("Founder", founder, "You", ImeAction.Done) { founder = it }
                 }
             }
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            if (mode == GameMode.SCENARIOS) {
+                item(span = { GridItemSpan(maxLineSpan) }) { ScenarioList(scenario, store.hall.bestMedals()) { scenario = it } }
+            }
+            if (mode == GameMode.CAREER) item(span = { GridItemSpan(maxLineSpan) }) {
                 GroupedSection("Difficulty", footer = difficulty.blurb) {
                     Column(Modifier.padding(8.dp)) {
                         Segmented(Difficulty.entries, difficulty, { it.title }) { difficulty = it }
                     }
                 }
             }
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            if (mode != GameMode.SCENARIOS) item(span = { GridItemSpan(maxLineSpan) }) {
                 StartSection(start) { picked ->
                     start = picked
                     // A business that hasn't been invented yet can't be started.
                     if (!picked.laneOpen(lane)) lane = Lane.GAMES
                 }
             }
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            if (mode != GameMode.SCENARIOS) item(span = { GridItemSpan(maxLineSpan) }) {
                 Text(
                     "Pick a lane",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(start = 4.dp, top = 8.dp),
                 )
             }
-            items(Lane.entries) { l ->
+            if (mode != GameMode.SCENARIOS) items(Lane.entries) { l ->
                 val open = start.laneOpen(l)
                 LaneTile(l, selected = l == lane, arrives = if (open) null else l.arrives) { if (open) lane = l }
             }
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            if (mode != GameMode.SCENARIOS) item(span = { GridItemSpan(maxLineSpan) }) {
                 val motion = MaterialTheme.motionScheme
                 AnimatedContent(
                     targetState = lane,
@@ -262,6 +287,48 @@ private fun LaneTile(lane: Lane, selected: Boolean, arrives: Int? = null, onClic
             )
         }
     }
+}
+
+/** Career, a scenario, or a sandbox. */
+private enum class GameMode(val title: String, val blurb: String) {
+    CAREER("Career", "Build a company your way, today or from any point in tech history. Your runs go in the Hall of Fame."),
+    SCENARIOS("Scenarios", "A starting situation, an objective and a deadline. Beat it in half the time for gold."),
+    SANDBOX("Sandbox", "A billion dollars and no bankruptcy. Just build. Sandbox runs don't go in the Hall of Fame and don't earn achievements."),
+}
+
+/** The scenarios, with your best medal in each. */
+@Composable
+private fun ScenarioList(selected: Scenario, medals: Map<Scenario, Medal>, onPick: (Scenario) -> Unit) {
+    val colors = gameColors
+    GroupedSection("Scenarios", footer = "Gold for meeting the objective in the first half of the time, silver in three quarters, bronze by the deadline.") {
+        Scenario.entries.forEachIndexed { i, sc ->
+            if (i > 0) RowDivider(68.dp)
+            val on = sc == selected
+            ListRow(
+                sc.title,
+                subtitle = sc.blurb + "\n" + sc.goal + " in ${sc.years} years · " + sc.lane.businessName +
+                    (sc.year?.let { " · from $it" } ?: "") + if (sc.difficulty == Difficulty.HARD) " · hard" else "",
+                leading = { LaneBadge(sc.lane, 40.dp) },
+                onClick = { onPick(sc) },
+                trailing = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        medals[sc]?.let { m -> Pill(m.title, medalColor(m, colors)) }
+                        Icon(
+                            if (on) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked, null,
+                            tint = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                },
+            )
+        }
+    }
+}
+
+/** A medal's colour. */
+fun medalColor(m: Medal, colors: GameColors): androidx.compose.ui.graphics.Color = when (m) {
+    Medal.GOLD -> androidx.compose.ui.graphics.Color(0xFFC9A227)
+    Medal.SILVER -> androidx.compose.ui.graphics.Color(0xFF8E9AAF)
+    Medal.BRONZE -> androidx.compose.ui.graphics.Color(0xFFB0703C)
 }
 
 /** When the run starts: today, or at one of tech's revolutions, playing through to the present. */

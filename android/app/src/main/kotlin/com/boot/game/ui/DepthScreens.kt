@@ -24,6 +24,7 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.RivalStance
 import com.boot.core.answer
+import com.boot.core.scenarioProgress
 import com.boot.core.bookKeynote
 import com.boot.core.counter
 import com.boot.core.counterBlocker
@@ -285,5 +286,34 @@ fun LazyListScope.depthItems(store: GameStore, state: GameState, lane: Lane) {
             }
         }
         Lane.GAMES -> {}
+    }
+}
+
+// Scenarios
+
+/** The scenario's objective, progress and deadline, on the office. */
+@Composable
+fun ScenarioCard(state: GameState) {
+    val run = state.scenario ?: return
+    val colors = gameColors
+    val sc = run.scenario
+    val left = run.deadlineWeek - state.week
+    GroupedSection(
+        "Scenario",
+        footer = if (run.decided) null else
+            "Gold by ${GameClock.label(run.deadlineWeek / 2)}, silver by ${GameClock.label(run.deadlineWeek * 3 / 4)}, bronze by ${GameClock.label(run.deadlineWeek)}.",
+    ) {
+        CardBlock(spacing = 8.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(sc.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                when {
+                    run.medal != null -> Pill("${run.medal!!.title} medal", medalColor(run.medal!!, colors))
+                    run.failed -> Pill("Out of time", colors.bad)
+                    else -> Pill("${Format.weeks(left)} left", if (left < 26) colors.warn else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Hint(sc.goal + " by ${GameClock.label(run.deadlineWeek)}.")
+            Meter("Progress", state.scenarioProgress(), if (run.medal != null) colors.good else MaterialTheme.colorScheme.primary)
+        }
     }
 }

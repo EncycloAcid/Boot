@@ -81,6 +81,8 @@ enum class Achievement(val title: String, val detail: String, val tier: Tier, in
 }
 
 internal fun GameState.checkAchievements() {
+    // Sandbox money doesn't earn trophies.
+    if (sandbox) return
     for (a in Achievement.entries) {
         if (a in achievements) continue
         if (!a.met(this)) continue

@@ -70,6 +70,7 @@ fun GameState.advance() {
     candidates = candidates.filterNot { it.contestedBy != null && it.expiresWeek < week }
 
     rollWorldEvents()
+    scenarioWeek()
     boardReview()
     checkPivotPoint()
     updateStreaks()
@@ -469,7 +470,7 @@ private fun GameState.updateStreaks() {
 
 private fun GameState.checkEndings() {
     if (ending != null) return
-    if (cash < 0) {
+    if (cash < 0 && !sandbox) {
         stats.weeksInRed += 1
         if (stats.weeksInRed == 1) addLog("You're overdrawn. ${difficulty.redWeeks} weeks in the red and it's over.", LogTone.BAD)
         if (stats.weeksInRed >= difficulty.redWeeks) {

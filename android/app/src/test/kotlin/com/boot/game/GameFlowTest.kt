@@ -940,6 +940,47 @@ class GameFlowTest {
     }
 
     @Test
+    fun scenariosWinMedalsAndSandboxHasNoLimits() {
+        launch()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Scenarios"))
+        compose.onNodeWithText("Scenarios").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Survive the Bust"))
+        compose.onNodeWithText("Survive the Bust").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        screen("79-scenarios")
+        compose.onNodeWithText("Play Survive the Bust").performClick()
+        compose.waitForIdle()
+        val run = store.state!!.scenario!!
+        assertEquals(com.boot.core.Scenario.SURVIVE_THE_BUST, run.scenario)
+        assertEquals(2000, store.state!!.startYear)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Gold by", substring = true))
+        compose.waitForIdle()
+        screen("80-scenario-card")
+
+        // Win it, and decide whether to keep going.
+        compose.runOnIdle {
+            store.perform {
+                scenario!!.medal = com.boot.core.Medal.GOLD
+                Sandbox.enqueue(this, com.boot.core.ScenarioOver(won = true))
+            }
+        }
+        compose.waitForIdle()
+        overlay("81-scenario-won")
+        compose.onNodeWithText("Keep playing").performClick()
+        compose.waitForIdle()
+        assertFalse(store.state!!.isOver)
+
+        // Sandbox: a billion dollars, and you can't go bust.
+        compose.runOnIdle { store.newGame("Toy Co", "Ada", Lane.HARDWARE, sandbox = true) }
+        compose.waitForIdle()
+        assertTrue(store.state!!.sandbox)
+        assertTrue(store.state!!.cash >= 900_000_000.0)
+        scrollToTop()
+        screen("82-sandbox")
+    }
+
+    @Test
     fun autosaveSurvivesARestart() {
         launch()
         compose.runOnIdle {

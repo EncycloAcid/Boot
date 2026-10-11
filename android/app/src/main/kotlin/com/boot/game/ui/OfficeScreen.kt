@@ -63,6 +63,7 @@ import com.boot.game.Tab
 fun OfficeScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { OfficeCard(store, state) }
+        if (state.scenario != null) item { ScenarioCard(state) }
         if (nextStep(state)?.let { it.key != store.dismissedStep } == true) item { NextStepCard(store, state) }
         if (state.inbox.isNotEmpty()) item { InboxSection(store, state) }
         if (Lane.GAMES in state.lanes) item { StudioNow(store, state) }

@@ -139,7 +139,7 @@ internal fun GameState.eraWeek() {
             publish(NewsDesk.YOU, techOutlet(null, rng), "$companyName rides ${w.era.inSentence}", c.title + ".", LogTone.GOOD)
         }
     }
-    if (!w.momentDone && w.phase == EraPhase.PEAK && w.era != Era.BOOTSTRAP_YEARS && week > 4) {
+    if (!w.momentDone && w.phase == EraPhase.PEAK && w.era != Era.BOOTSTRAP_YEARS && week > 26) {
         w.momentDone = true
         enqueue(EraMoment(w.era))
     }
@@ -172,11 +172,14 @@ internal fun GameState.eraTrend(): Trend? = when (world.era) {
 
 // The era's moment.
 
+/** What a moment's deals cost and pay: a few weeks of revenue, small for a small company. */
+private val GameState.momentStake: Double get() = max(5_000.0, trailingRevenue(null, 4) / 4)
+
 @Serializable @SerialName("eraMoment")
 data class EraMoment(val era: Era) : EventKind
 
 internal fun GameState.describeMoment(k: EraMoment): Description? {
-    val s = stake(null)
+    val s = momentStake
     val games = games != null
     return when (k.era) {
         Era.HOME_COMPUTERS -> Description(
@@ -293,7 +296,7 @@ private fun GameState.boostAll(title: String, demand: Double, weeks: Int, output
 }
 
 internal fun GameState.resolveMoment(k: EraMoment, choice: Int) {
-    val s = stake(null)
+    val s = momentStake
     val yes = choice == 0
     when (k.era) {
         Era.HOME_COMPUTERS -> if (yes) {

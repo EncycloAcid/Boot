@@ -6,6 +6,8 @@ import com.boot.core.encodeHall
 import com.boot.core.decodeHall
 import com.boot.core.LegacyPerk
 import com.boot.core.StartPoint
+import com.boot.core.Scenario
+import com.boot.core.scenario
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -109,8 +111,18 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         seed: Long = Random.nextLong(),
         difficulty: Difficulty = Difficulty.NORMAL,
         start: StartPoint = StartPoint.TODAY,
+        sandbox: Boolean = false,
     ) {
-        val s = GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start)
+        begin(GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start, sandbox = sandbox))
+    }
+
+    /** Start one of the scenarios. */
+    fun newScenario(scenario: Scenario, company: String, founder: String, seed: Long = Random.nextLong()) {
+        begin(GameState.scenario(scenario, company, founder, seed, LegacyPerk.earned(hall)))
+    }
+
+    private fun begin(s: GameState) {
+        val lane = s.startingLane
         state = s
         newsSeen = 0
         playing = false
@@ -209,7 +221,8 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     }
 
     private fun save(s: GameState) {
-        s.runRecord()?.let { record ->
+        // Sandbox runs stay out of the Hall of Fame.
+        s.runRecord()?.takeIf { !s.sandbox }?.let { record ->
             if (record !in hall) {
                 hall = hall.with(record)
                 val text = encodeHall(hall)

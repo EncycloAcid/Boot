@@ -79,7 +79,7 @@ class EraLifeTest {
     fun theErasMomentComesAtItsHeight() {
         val s = game(start = StartPoint.THE_WEB)
         s.world.eraStartWeek = s.week - s.world.eraLength / 2
-        s.week += 10
+        s.week += 30
         s.advance()
         assertTrue(s.events.any { it.kind is EraMoment } || s.world.momentDone)
         assertTrue(s.world.momentDone)

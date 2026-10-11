@@ -27,6 +27,9 @@ data class RunRecord(
     val achievements: Int,
     /** The run's seed: a run that ends, plays on and ends again keeps one entry. */
     val seed: Long = 0,
+    /** The scenario played, and the medal won, if any. */
+    val scenario: Scenario? = null,
+    val medal: Medal? = null,
 )
 
 /** This run as a Hall of Fame entry, once it has ended. */
@@ -34,9 +37,13 @@ fun GameState.runRecord(): RunRecord? = ending?.let { e ->
     RunRecord(
         company = companyName, founder = founder.name, lane = startingLane, kind = e.kind, title = e.title, week = e.week,
         valuation = e.valuation, takeHome = e.founderTakeHome, ecosystem = e.ecosystem, difficulty = difficulty, achievements = achievements.size,
-        seed = seed,
+        seed = seed, scenario = scenario?.scenario, medal = scenario?.medal,
     )
 }
+
+/** Your best medal in each scenario you've played. */
+fun List<RunRecord>.bestMedals(): Map<Scenario, Medal> =
+    filter { it.scenario != null && it.medal != null }.groupBy { it.scenario!! }.mapValues { (_, runs) -> runs.maxOf { it.medal!! } }
 
 /** Head starts earned in earlier runs. */
 @Serializable

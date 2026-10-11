@@ -6,6 +6,12 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.3 (Android):** scenarios and a sandbox, the two modes every tycoon game has.
+
+- **Scenarios.** Twelve handcrafted challenges, each with a start, an objective and a deadline: make a 9/10 game from a garage, win half a million fans from 1977, be worth $50M after the crash of '83, sell a million consoles from 1985, ride the dot-com boom, stay profitable through the bust, grow a social network from 2004, get on every home screen in 2008, make $20M a year from free-to-play games, train a frontier model, drive Electronic Arts out of your market, and make money through crypto winter. Meet the objective in the first half of the time for gold, three quarters for silver or by the deadline for bronze, then keep playing or retire on top. The office shows the scenario's progress and deadlines, and the picker shows your best medal in each.
+- **Sandbox.** A billion dollars and no bankruptcy, from today or any point in history. Sandbox runs earn no achievements and stay out of the Hall of Fame.
+- **Fairer era moments.** An era's one-off deal now costs a few weeks of your revenue rather than a fixed sum, so an invitation to the App Store's first day can't bankrupt a three-person startup, and moments wait until an era is at least six months old.
+
 **New in 3.2 (Android):** eras that play differently.
 
 - **Era challenges.** Every era but the Bootstrap Years sets a goal in its own spirit: ship a hit in the console wars or the retro revival, stay profitable for six months through the crash, the bust, crypto winter or the metaverse hangover, grow your valuation two and a half times in the dot-com boom or the AI gold rush, master the era's new tech in the multimedia age or the smartphone revolution, grow the team in the remote work boom, or earn a target amount. Meet it before the era ends for cash, 25 research points and reputation. The era card shows the challenge and your progress, and there are two new achievements for meeting them.

@@ -229,6 +229,31 @@ Each era but the Bootstrap Years has a challenge, picked from its preferred kind
 
 When an era reaches its peak, its moment comes round once: a decision with effects for the rest of the era or longer, mostly as demand, output or cost changes on your businesses for 13 to 52 weeks. Game trends follow the era three times in four. When an era ends, its span in the timeline records what you earned, your value at the start and end, and whether you met the challenge, and the paper runs a review.
 
+## Scenarios and sandbox
+
+Besides a career there are two more ways to play, picked under How to play on the new game screen.
+
+A **scenario** is a fixed start, an objective and a deadline. Meet the objective in the first half of the time for gold, by three quarters for silver, or by the deadline for bronze. When the scenario is decided (won, or out of time) a decision asks whether to keep playing or end the run there. The Hall of Fame records the scenario and medal, and the picker shows your best medal in each.
+
+| Scenario | Business | Starts | Objective | Time |
+| --- | --- | --- | --- | --- |
+| Garage to Glory | Games | Today | Ship a game that scores 9 | 5 years |
+| Cult Following | Games | 1977 | 500k fans | 10 years |
+| The Crash of '83 | Games | 1983, $60k | Be worth $50M | 6 years |
+| Console Kings | Hardware | 1985 | Sell 1M devices | 8 years |
+| Dot-com Gold Rush | Websites | 1995 | Be worth $200M | 5 years |
+| Survive the Bust | Websites | 2000, $300k, three staff, standing and two retainers | 26 profitable weeks in a row | 3 years |
+| The Social Network | Social | 2004 | 20M people | 6 years |
+| There's an App for That | Apps | 2008 | 500k app users | 4 years |
+| Whale Watching | Games | 2012 | Earn $20M in a year | 6 years |
+| Frontier Lab | AI | Today | Capability 100 | 8 years |
+| Giant Slayer | Games | Today | Drive your rival out of the market | 8 years |
+| Winter Is Here | Websites | Today, in crypto winter | 52 profitable weeks in a row | 3 years |
+
+A **sandbox** run starts with $1B and can't go bankrupt (cash can go negative). It can start at any point in history like a career, but it earns no achievements and stays out of the Hall of Fame.
+
+Era moments are priced at a quarter of the last four weeks' revenue (at least $5k), so a small company can afford them, and they wait until an era is at least half a year old.
+
 ## Rivals
 
 Each lane has a main rival with a strength (their market muscle, which also sets how much of the market they take from you) and a heat: how much they want to hurt you. Heat rises each week you run the lane, faster the more you earn relative to the lane's scale (Games $300k a week, Websites $60k, Apps $100k, Social $150k, Hardware $600k, AI $400k), and cools slowly. Calm below 0.3, wary to 0.6, hostile above.

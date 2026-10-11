@@ -83,7 +83,8 @@ class Autopilot(
             is BigPitch -> if (s.cash > k.cost * 10) 0 else 1
             is ExperimentResult -> if (k.better) 0 else 1
             is ModelReady -> 0
-            is EraMoment -> if (cashy) 0 else e.choices.lastIndex
+            is EraMoment -> if (cashy && s.cash > 200_000) 0 else e.choices.lastIndex
+            is ScenarioOver -> 0
             is EventKind.Poach -> if (cashy) 0 else 1
             is EventKind.Buyout -> if (sellsOnOffer) 0 else 1
             is EventKind.BoardDemandEvent -> 0
