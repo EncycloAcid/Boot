@@ -217,6 +217,36 @@ A run can start today or at one of tech's revolutions, and play through to the p
 
 **Balance.** With the autopilot, historical starts land in the same range as a run started today (median peak valuations of $650M-$1.2B). The exceptions are hardware in 1995, which rides the dot-com bubble, and social and hardware in 2007, which spend the smartphone years before any bad era and peak at $3-4B.
 
+## Rivals
+
+Each lane has a main rival with a strength (their market muscle, which also sets how much of the market they take from you) and a heat: how much they want to hurt you. Heat rises each week you run the lane, faster the more you earn relative to the lane's scale (Games $300k a week, Websites $60k, Apps $100k, Social $150k, Hardware $600k, AI $400k), and cools slowly. Calm below 0.3, wary to 0.6, hostile above.
+
+From week 30, once you have something on sale, a rival can move at most every 16 weeks, more likely the hotter, stronger and more aggressive they are. Moves suit the market (price wars for agencies and devices, copycats for apps and social, lawsuits for hardware and AI, exclusive deals for games):
+
+| Move | Choices |
+| --- | --- |
+| Copycat | Rush out something better (3 weeks' revenue; -5% demand for 12 weeks), outspend them (1.5 weeks'; -8% for 16), or ignore it (-15% for 26) |
+| Price war | Match (-10% for 13 weeks, and they lose strength), hold (-20% for 17), or go upmarket (-12% for 17, +2 reputation) |
+| Ad blitz | Counter (2 weeks' revenue; -3% for 6) or ride it out (-12% for 10) |
+| Talent raid | Match their offers (30% raises), offer equity (0.4% each) or let your two best people go |
+| Lawsuit | Settle (6 weeks' revenue) or fight (1.5 weeks' in fees; 55% you win costs back and they lose strength, otherwise 9 weeks' in damages and an injunction) |
+| Exclusive deal | Outbid them (4 weeks' revenue) or -10% for 26 weeks |
+| Smear | Answer it (usually works) or stay above it (-4 reputation) |
+
+Your counter-moves, each with a 13-week cooldown per rival: **undercut** (+15% demand and 12% higher costs for 13 weeks), **poach a star** (a skill 8-10 hire at a premium) and **attack ads** (+5% demand for 8 weeks, -1 reputation). All hit the rival's strength and raise their heat. A rival pushed below 12% strength retreats for a year.
+
+## The inbox and consequences
+
+Decisions now come in two kinds. Crises, people and rivals' moves stop the clock as before. Opportunities go to the inbox, wait 3 to 6 weeks and don't stop the clock; ignoring one takes the last choice. Some decisions schedule consequences: a quiet security patch leaks 45% of the time (a fine of 6 weeks' revenue and two scars), someone who pushes through burnout quits half the time, a star refused equity often leaves for the rival, a lawsuit is decided in 13 to 26 weeks, a client taken to court pays 70% of what they owed 60% of the time.
+
+## Deeper businesses
+
+- **Agency.** A client who finishes happy (satisfaction over 75%) offers a retainer 30% of the time: 5% of the project's value a week, taking about 1.15 points of work a week per $400. Retainers come before projects; fall well behind and they leave. Agencies with standing get invitations to pitch for big-brand projects ($120k-$600k): the pitch costs 6% of the value, and the odds rise with standing.
+- **Apps.** A price level (cheap, standard, premium) trades installs and churn against revenue per user. Six experiments, one at a time and each once, run for four weeks on a slice of users and report a lift on installs, churn or revenue per user that can be negative; roll it out or back.
+- **Social.** A creator fund (+4% or +8% growth, paid per user, a little more mess), a premium tier (3% of real users at $0.60 a week once mature, slightly slower growth, fewer bots) and house rules: open (+4% growth, more toxicity, advertisers pay 15% less), balanced, or strict (-5% growth, less toxicity, +12% from advertisers).
+- **Hardware.** The device on sale can be priced 20% under to 20% over list; demand moves with the price to the power -2.2. A livestream ($50k) or keynote ($400k) booked during design adds launch hype.
+- **AI.** A finished training run waits for your call: ship it now, safety-test it for six weeks (regulator heat -0.25, +2 reputation, 10% more capability), or release the weights (+4 reputation, +20 RP, less regulator attention; subscribers -10% and API demand -40%, enterprise +15%). GPUs can be reserved for a year at 40% under rent, used first after your own.
+
 ## Endings
 
 | Ending | How | Variants |

@@ -112,9 +112,16 @@ class DecadesTest {
         val expected = order.filter { it in seen }
         assertEquals(expected, seen.filter { it in order }.distinct())
         // Real series came out under their real names, and no rival game was AAA before its time.
-        val m = s.games!!.market
+        // A studio that stays focused on games, so the market is there to look at.
+        val g = start(StartPoint.SMARTPHONES, Lane.GAMES, seed = 11)
+        val pilot = Autopilot()
+        while (!g.isOver && g.week < 52 * 5) {
+            if (g.pendingPivot != null) g.stayFocused()
+            pilot.playWeek(g)
+        }
+        val m = g.games!!.market
         assertTrue(m.games.any { it.title == "Call of Duty: Black Ops" || it.title.startsWith("Super Mario Galaxy") || it.title.startsWith("Halo") })
-        assertTrue(m.games.none { it.size == GameSize.AAA && s.yearAt(it.week) < 2005 })
+        assertTrue(m.games.none { it.size == GameSize.AAA && g.yearAt(it.week) < 2005 })
     }
 
     @Test

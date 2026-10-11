@@ -37,6 +37,10 @@ data class Contract(
     val isOverdue: Boolean get() = weeksElapsed > weeksAllowed
 }
 
+/** A client on a monthly plan: steady money for a steady slice of the team's week. */
+@Serializable
+data class Retainer(val client: String, val weekly: Double, val load: Double, val since: Int)
+
 /** What the agency charges. Cheap fills the calendar; premium picks the best clients. */
 @Serializable
 enum class AgencyRate(val title: String, val volume: Double, val value: Double, val blurb: String) {
@@ -55,6 +59,12 @@ class WebAgency {
     var policy = ScopePolicy.ABSORB
     var rate = AgencyRate.STANDARD
     var completed = 0
+
+    /** Happy clients on monthly plans. */
+    val retainers = mutableListOf<Retainer>()
+
+    /** Work points a week the retainers take before any project gets a look in. */
+    val retainerLoad: Double get() = retainers.sumOf { it.load }
 
     /** Clients pull back once they notice you sell competing software (Web + Apps). */
     var clientWariness = 0.0
@@ -98,10 +108,25 @@ class WebAgency {
         }
 
         report.expenses += (80 + 40.0 * active.size) * ctx.mods.cost
+
+        // Retainers come first: steady money for a steady slice of the week.
+        report.revenue += retainers.sumOf { it.weekly } * ctx.mods.demand.coerceAtMost(1.2)
+        val free = max(0.0, ctx.workOutput - retainerLoad)
+        if (retainers.isNotEmpty() && ctx.workOutput < retainerLoad * 0.8 && rng.chance(0.06)) {
+            val lost = retainers.removeAt(0)
+            standing = max(0.0, standing - 0.03)
+            report.log("${lost.client} ended their retainer. You couldn't keep up with them.", LogTone.BAD)
+        }
+
+        // Now and then a big brand wants pitches for a major project.
+        if (standing >= 0.35 && rng.chance(0.006)) {
+            val value = Math.round(rng.range(120_000.0, 400_000.0) * (0.5 + standing) / 10_000.0) * 10_000.0
+            report.add(Incident.Inbox(BigPitch(rng.pick(Names.brands), value, Math.round(value * 0.06 / 1_000.0) * 1_000.0, (0.15 + 0.5 * standing).coerceAtMost(0.7)), 4))
+        }
         if (active.isEmpty()) return report
 
         // Work is spread evenly; overcommit and everything slips.
-        val share = ctx.workOutput / active.size
+        val share = free / active.size
         val finished = mutableListOf<Contract>()
         val walked = mutableListOf<Contract>()
         for (c in active) {
@@ -146,13 +171,28 @@ class WebAgency {
             if (c.satisfaction > 0.8 && rng.chance(0.4)) {
                 report.log("${c.client} loved the site and is telling everyone.", LogTone.GOOD)
             }
+            // Happy clients sometimes want to keep you on.
+            if (c.satisfaction > 0.75 && retainers.size < 4 && retainers.none { it.client == c.client } && rng.chance(0.3)) {
+                val weekly = Math.round(c.value * 0.05 * rate.value / 100.0) * 100.0
+                report.add(Incident.Inbox(RetainerOffer(c.client, weekly, weekly / RATE_PER_POINT * 1.15), 4))
+            }
         }
         val gone = (finished + walked).map { it.id }.toSet()
         active.removeAll { it.id in gone }
         return report
     }
 
-    internal val assetValue: Double get() = standing * 150_000 + completed * 2_000.0
+    /** A won pitch: a big project straight onto the books. */
+    internal fun addBigProject(client: String, value: Double, week: Int, output: Double) {
+        val work = value / RATE_PER_POINT * 0.9
+        active += Contract(
+            id = nextId, client = client, value = value, work = work,
+            weeksAllowed = ceil(work / max(3.0, output * 0.8)).toInt() + 4, expiresWeek = week, satisfaction = 0.75,
+        )
+        nextId += 1
+    }
+
+    internal val assetValue: Double get() = standing * 150_000 + completed * 2_000.0 + retainers.sumOf { it.weekly } * 40
 
     val statusLine: String get() = "${active.size} active, ${offers.size} offers, standing ${(standing * 100).toInt()}"
 }

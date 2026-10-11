@@ -64,6 +64,8 @@ sealed interface Incident {
     data class Event(val kind: EventKind) : Incident
     data class Stat(val key: StatKey) : Incident
     data class Research(val points: Double) : Incident
+    /** Something for the inbox, open for [weeks]. */
+    data class Inbox(val kind: EventKind, val weeks: Int) : Incident
 }
 
 enum class StatKey { HIT, FLOP, RECALL, SCANDAL, RELEASE, SOLD_OUT, OVERSTOCK }

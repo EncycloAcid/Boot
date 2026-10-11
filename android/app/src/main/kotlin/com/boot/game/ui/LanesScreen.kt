@@ -81,6 +81,8 @@ fun LanesScreen(store: GameStore, state: GameState) {
             Lane.HARDWARE -> hardwareItems(store, state)
             Lane.AI -> aiItems(store, state)
         }
+        depthItems(store, state, lane)
+        item { RivalSection(store, state, lane) }
         if (lane != Lane.GAMES) item { RoadmapSection(store, state, lane) }
     }
 }
@@ -242,7 +244,7 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
             }
         }
     }
-    if (a.isLive) {
+    if (a.isLive && a.userHistory.size >= 2) {
         item { GroupedSection("Users") { CardBlock { AreaChart(a.userHistory, gameColors.lane(Lane.APPS), Format::count) } } }
         item { GroupedSection("Weekly churn") { CardBlock { LineChart(a.churnHistory, gameColors.bad, { Format.percent(it, 1) }) } } }
     }
@@ -295,7 +297,7 @@ private fun LazyListScope.socialItems(store: GameStore, state: GameState) {
             }
         }
     }
-    if (s.isLive) {
+    if (s.isLive && s.userHistory.size >= 2) {
         item { GroupedSection("Accounts") { CardBlock { AreaChart(s.userHistory, gameColors.lane(Lane.SOCIAL), Format::count) } } }
     }
 }

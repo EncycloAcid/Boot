@@ -97,6 +97,8 @@ data class Employee(
     var level: Int = 1,
     var lastRaiseWeek: Int = -1_000,
     val trait: Trait? = null,
+    /** Away (a break, a course) until this week. They're paid but do no work. */
+    var leaveUntil: Int = -1,
 ) {
     internal val moraleFactor: Double get() = 0.5 + 0.5 * morale
 
@@ -207,4 +209,6 @@ internal object Names {
     val socials = listOf("Chirp", "Hive", "Murmur", "Campfire", "Loopd", "Echo", "Plaza", "Huddle")
     val devices = listOf("Arc", "Pebble", "Halo", "Nova", "Slate", "Ember", "Prism", "Orbit", "Volt", "Aura")
     val models = listOf("Sage", "Atlas", "Muse", "Lumen", "Oracle", "Scribe", "Echo", "Vector")
+    val startups = listOf("Fieldnote", "Brightwire", "Tinker Labs", "Northstar Bits", "Paperplane", "Quokka", "Kiln", "Lantern & Co", "Bitwise", "Moonshot Garage")
+    val angels = listOf("Elena Marsh", "Raj Patel", "Sofia Lindgren", "Marcus Bell", "Yuki Sato", "Amara Okoye", "Tom Hadley")
 }

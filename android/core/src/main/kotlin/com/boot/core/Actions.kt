@@ -6,7 +6,7 @@ internal fun GameState.requireLive() {
     if (ending != null) throw gameOver()
 }
 
-private fun GameState.require(lane: Lane) {
+internal fun GameState.require(lane: Lane) {
     requireLive()
     if (lane !in lanes) throw notAvailable("You don't run a ${lane.businessName.lowercase()}.")
 }

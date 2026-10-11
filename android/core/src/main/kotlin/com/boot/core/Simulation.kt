@@ -14,6 +14,8 @@ fun GameState.advance() {
     updateEra()
     updateHistoricRivals()
     updateRivals()
+    rivalWeek()
+    inboxWeek()
 
     // Combos first: they shape every lane's week.
     val fx = ComboEffects()
@@ -104,6 +106,7 @@ internal fun GameState.handle(incidents: List<Incident>, lane: Lane?) {
             is Incident.Reputation -> reputation.adjust(incident.delta)
             is Incident.Scar -> reputation.scar(incident.kind, incident.severity, week, incident.note)
             is Incident.Event -> enqueue(incident.kind)
+            is Incident.Inbox -> offer(incident.kind, incident.weeks)
             is Incident.Research -> researchPoints += incident.points
             is Incident.Stat -> when (incident.key) {
                 StatKey.HIT -> stats.hits += 1
@@ -263,6 +266,7 @@ private fun GameState.rollWorldEvents() {
         if (rng.chance(0.0025) && hasLiveProduct(lane)) enqueue(EventKind.ViralMoment(lane))
     }
     rollSmallEvents()
+    rollDecisions()
     if (pivot != null && valuation >= 2_000_000 && rng.chance(0.005)) {
         val bidder = if (rng.chance(0.5)) {
             rng.pick(world.rivals).name

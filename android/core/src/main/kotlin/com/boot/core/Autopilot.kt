@@ -47,6 +47,31 @@ class Autopilot(
         val e = s.events.firstOrNull() ?: return
         val cashy = s.cash > 26 * s.weeklyBurn
         val choice = when (val k = e.kind) {
+            is RivalMove -> {
+                val stake = s.stake(k.lane)
+                when (k.move) {
+                    RivalMoveKind.COPYCAT -> if (s.cash > stake * 30) 0 else if (s.cash > stake * 10) 1 else 2
+                    RivalMoveKind.PRICE_WAR -> 0
+                    RivalMoveKind.AD_BLITZ -> if (s.cash > stake * 20) 0 else 1
+                    RivalMoveKind.TALENT_RAID -> if (cashy) 0 else 2
+                    RivalMoveKind.LAWSUIT -> if (s.cash > stake * 30) 0 else 1
+                    RivalMoveKind.EXCLUSIVE_DEAL -> if (s.cash > stake * 40) 0 else 1
+                    RivalMoveKind.SMEAR -> if (cashy) 0 else 1
+                }
+            }
+            is Burnout -> 0
+            is StaffClash -> if (cashy) 2 else 0
+            is EquityAsk -> 1
+            RemoteWork -> 0
+            is SideProject -> 0
+            is DataBreach -> if (cashy) 0 else 1
+            is ViralComplaint -> if (cashy) 0 else 1
+            is ClientBankrupt -> if (cashy) 1 else 0
+            is Opportunity -> 0
+            is RetainerOffer -> 0
+            is BigPitch -> if (s.cash > k.cost * 10) 0 else 1
+            is ExperimentResult -> if (k.better) 0 else 1
+            is ModelReady -> 0
             is EventKind.Poach -> if (cashy) 0 else 1
             is EventKind.Buyout -> if (sellsOnOffer) 0 else 1
             is EventKind.BoardDemandEvent -> 0
@@ -80,6 +105,40 @@ class Autopilot(
             }
         }
         attempt { s.choose(choice) }
+    }
+
+    /** Say yes to what's affordable in the inbox; let the rest lapse. */
+    private fun answerInbox(s: GameState) {
+        for (item in s.inbox.toList()) {
+            val yes = when (val k = item.kind) {
+                Interns -> s.freeDesks >= 2
+                is ConferenceTalk -> s.cash > 100_000
+                is Partnership -> true
+                is Acquihire -> s.cash > k.price * 3 && s.freeDesks >= 3
+                is AngelCheck -> s.cash < 100_000
+                is Interview -> true
+                is RetainerOffer -> true
+                is BigPitch -> s.cash > k.cost * 10
+                is ExperimentResult -> k.better
+                else -> false
+            }
+            if (yes) attempt { s.answer(item.id, 0) }
+        }
+    }
+
+    /** Run app experiments, and hit back at a hostile rival when there's money to spare. */
+    private fun useNewLevers(s: GameState) {
+        s.apps?.let { a ->
+            if (a.isLive && a.experiment == null) {
+                ExperimentKind.entries.firstOrNull { s.experimentBlocker(it) == null }
+                    ?.let { if (s.cash > s.experimentCost * 10) attempt { s.startExperiment(it) } }
+            }
+        }
+        for (r in s.yourRivals) {
+            if (r.stance == RivalStance.HOSTILE && s.cash > s.counterCost(r, CounterMove.ATTACK_ADS) * 15 && s.counterBlocker(r, CounterMove.ATTACK_ADS) == null) {
+                attempt { s.counter(r.name, CounterMove.ATTACK_ADS) }
+            }
+        }
     }
 
     /** Build the cheapest useful roadmap feature for each business once there's money to spare. */
@@ -171,6 +230,8 @@ class Autopilot(
         }
 
         research(s)
+        answerInbox(s)
+        useNewLevers(s)
         if (s.freeDesks <= 0) s.office.next?.let { if (s.cash > it.moveCost * 4 + 26 * s.weeklyBurn) attempt { s.moveOffice() } }
         hire(s)
     }

@@ -345,6 +345,13 @@ data class Rival(
     /** 0...1 how often they poach and bid for talent. */
     val aggression: Double,
     var lastMove: String? = null,
+    /** 0...1 how much they want to hurt you. Rises as you take their market. */
+    var heat: Double = 0.0,
+    var lastMoveWeek: Int = -100,
+    /** When you can next make a move against them. */
+    var counterReadyWeek: Int = 0,
+    /** Beaten back: they make no moves until this week. */
+    var quietUntil: Int = 0,
 )
 
 /** Where an era is in its life: arriving, at its height, or fading. */
@@ -379,6 +386,9 @@ class World {
     val salaries: Double get() = scaled(era.salaries)
     val hardwareCost: Double get() = scaled(era.hardwareCost)
     val rivals = mutableListOf<Rival>()
+
+    /** Rivals' campaigns against you, and yours against them. */
+    val pressures = mutableListOf<Pressure>()
 
     companion object {
         internal fun makeRivals() = listOf(

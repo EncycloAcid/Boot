@@ -45,6 +45,7 @@ import com.boot.core.PrizePool
 import com.boot.core.Engine
 import com.boot.core.stayFocused
 import com.boot.core.Combo
+import com.boot.core.Sandbox
 import com.boot.core.Era
 import com.boot.core.calendarYear
 import com.boot.core.Difficulty
@@ -871,6 +872,62 @@ class GameFlowTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("From 2023"))
         compose.waitForIdle()
         screen("74-decades-timeline")
+    }
+
+    @Test
+    fun rivalsTheInboxAndDeeperBusinesses() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Rival Co", "Ada", Lane.WEBSITES, seed = 31)
+            store.perform {
+                Sandbox.setCash(this, 2_000_000.0)
+                Sandbox.offer(this, com.boot.core.Interview("Wired"), 3)
+                Sandbox.offer(this, com.boot.core.RetainerOffer("Kettle Cafe", 600.0, 1.5), 4)
+            }
+        }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Decline"))
+        compose.waitForIdle()
+        screen("75-inbox")
+        compose.onAllNodesWithText("Choose")[0].performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        assertEquals(1, store.state!!.inbox.size)
+
+        // A rival strikes, as a decision.
+        compose.runOnIdle {
+            store.perform { Sandbox.enqueue(this, com.boot.core.RivalMove("Squarespace", Lane.WEBSITES, com.boot.core.RivalMoveKind.PRICE_WAR)) }
+        }
+        compose.waitForIdle()
+        overlay("76-rival-move")
+        compose.onNodeWithText("Hold your prices").performClick()
+        compose.waitForIdle()
+        assertTrue(store.state!!.events.isEmpty())
+
+        tab("Lanes")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Attack ads"))
+        compose.waitForIdle()
+        screen("77-rival-card")
+        compose.onAllNodesWithText("Go")[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        assertTrue(store.state!!.world.pressures.any { it.mine })
+
+        // The app studio's new levers.
+        compose.runOnIdle {
+            store.newGame("App Co", "Ada", Lane.APPS, seed = 32)
+            store.perform {
+                Sandbox.setCash(this, 2_000_000.0)
+                apps!!.isLive = true
+                apps!!.users = 40_000.0
+            }
+            store.tab = Tab.LANES
+        }
+        compose.waitForIdle()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Experiments", ignoreCase = true))
+        compose.waitForIdle()
+        screen("78-app-experiments")
+        compose.onAllNodesWithText("Run")[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        assertNotNull(store.state!!.apps!!.experiment)
     }
 
     @Test

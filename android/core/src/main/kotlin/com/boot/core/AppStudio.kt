@@ -53,6 +53,33 @@ enum class UpdateStyle {
     internal val qualityGain: Double get() = if (this == SMALL) 1.5 else 5.5
 }
 
+/** How much the app charges, whatever the model: cheap grows, premium earns. */
+@Serializable
+enum class AppPricing(val title: String, val detail: String, internal val arpu: Double, internal val appeal: Double, internal val churn: Double) {
+    LOW("Cheap", "More installs and fewer leave, less money from each.", 0.7, 1.25, 0.95),
+    STANDARD("Standard", "The going rate.", 1.0, 1.0, 1.0),
+    HIGH("Premium", "More from each user, fewer installs, and more of them leave.", 1.4, 0.75, 1.08),
+}
+
+/** What an experiment moves. */
+@Serializable
+enum class Metric(val title: String) { INSTALLS("installs"), CHURN("churn"), ARPU("revenue per user") }
+
+/** An A/B test you can run on the app. Nobody knows how it'll go until it's run. */
+@Serializable
+enum class ExperimentKind(val title: String, val detail: String, val metric: Metric, internal val mean: Double, internal val spread: Double) {
+    ONBOARDING("New onboarding", "A shorter first-run flow. Fewer people give up on day one.", Metric.CHURN, 0.95, 0.04),
+    NUDGES("Push nudges", "Remind lapsed users to come back. Some find it annoying.", Metric.CHURN, 0.99, 0.07),
+    SCREENSHOTS("New store page", "Fresh screenshots and a video for the store listing.", Metric.INSTALLS, 1.06, 0.05),
+    REFERRAL_BONUS("Invite bonus", "Reward people who bring friends.", Metric.INSTALLS, 1.04, 0.06),
+    EARLY_PAYWALL("Earlier paywall", "Ask for money sooner. More pay; some leave.", Metric.ARPU, 1.07, 0.08),
+    BUNDLE("Annual bundle", "A discounted yearly plan.", Metric.ARPU, 1.04, 0.04),
+}
+
+/** An experiment running on part of the user base. */
+@Serializable
+data class Experiment(val kind: ExperimentKind, var weeksLeft: Int, val lift: Double)
+
 @Serializable
 class AppStudio(val name: String, var monetization: AppMonetization) {
     var isLive = false
@@ -70,6 +97,15 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
     var updateStyle = UpdateStyle.SMALL
     var lastChurn = 0.0
     var lastInstalls = 0.0
+
+    var pricing = AppPricing.STANDARD
+    var experiment: Experiment? = null
+    val experimentsRun = mutableListOf<ExperimentKind>()
+
+    /** What kept experiments have done, multiplied together. */
+    var installLift = 1.0
+    var churnLift = 1.0
+    var arpuLift = 1.0
 
     /** Last 26 weeks of churn, for the chart everyone stares at. */
     val churnHistory = mutableListOf<Double>()
@@ -106,10 +142,18 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
             }
         }
 
+        experiment?.let { x ->
+            x.weeksLeft -= 1
+            if (x.weeksLeft <= 0) {
+                experiment = null
+                report.add(Incident.Inbox(ExperimentResult(x.kind, x.lift), 4))
+            }
+        }
+
         val stale = 0.003 * max(0, weeksSinceUpdate - 4)
-        val churn = ((monetization.baseChurn * (1.6 - quality / 100) + stale) * ctx.mods.churn).clamped(0.006, 0.3)
+        val churn = ((monetization.baseChurn * (1.6 - quality / 100) + stale) * ctx.mods.churn * churnLift * pricing.churn).clamped(0.006, 0.3)
         val organic = 200_000 / max(rank, 1.0)
-        val appeal = (quality / 60).pow(2) * monetization.installAppeal
+        val appeal = (quality / 60).pow(2) * monetization.installAppeal * installLift * pricing.appeal
         val installs = (organic + ctx.staffing.marketing * 80) * appeal * ctx.reception * ctx.marketDemand
 
         users = max(0.0, users * (1 - churn) + installs)
@@ -127,8 +171,8 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
         if (churnHistory.size > 26) churnHistory.removeAt(0)
         if (userHistory.size > 52) userHistory.removeAt(0)
 
-        report.revenue += users * monetization.arpu
-        if (monetization == AppMonetization.PAID) report.revenue += installs * 2.99 * 0.7
+        report.revenue += users * monetization.arpu * arpuLift * pricing.arpu
+        if (monetization == AppMonetization.PAID) report.revenue += installs * 2.99 * 0.7 * arpuLift * pricing.arpu
         report.expenses += (users * 0.004 + 150) * ctx.mods.cost
 
         if (rank < 10 && rng.chance(0.05)) {

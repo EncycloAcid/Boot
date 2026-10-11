@@ -65,6 +65,10 @@ data class TrainingRun(val codename: String, val size: TrainingSize, var weeksDo
     val completion: Double get() = weeksDone.toDouble() / size.weeks
 }
 
+/** A finished model waiting on your call: ship it, test it first, or give it away. */
+@Serializable
+data class PendingModel(val codename: String, val gain: Double, val roll: Double, var releaseWeek: Int = -1)
+
 @Serializable
 class AILab {
     var training: TrainingRun? = null
@@ -85,13 +89,26 @@ class AILab {
     var regulatoryHeat = 0.0
     var failedRuns = 0
 
+    /** A trained model you haven't released yet. */
+    var pendingModel: PendingModel? = null
+
+    /** The live model's weights are public: developers love it, the API earns less. */
+    var openWeights = false
+
+    /** GPU units on a year's contract at a discount, paid for whether used or not. */
+    var reservedUnits = 0
+    var reservedUntil = 0
+    var reservedRate = 0.0
+
     companion object {
         const val RENT_PER_UNIT = 15_000.0
         const val GPU_UNIT_PRICE = 400_000.0
     }
 
     internal fun weeklyComputeCost(units: Int, ctx: LaneContext): Double {
-        val rented = max(0, units - gpusOwned)
+        // Owned GPUs first, then reserved ones (already paid for), then the spot market.
+        val reserved = if (ctx.week < reservedUntil) reservedUnits else 0
+        val rented = max(0, units - gpusOwned - reserved)
         val owned = min(units, gpusOwned)
         return (rented * RENT_PER_UNIT * ctx.gpuPrice + owned * 1_000.0) * ctx.mods.computeCost
     }
@@ -115,6 +132,21 @@ class AILab {
 
         // Owned GPUs draw power whether or not they're training.
         if (training == null) report.expenses += gpusOwned * 1_000.0
+        if (reservedUnits > 0) {
+            if (ctx.week < reservedUntil) {
+                report.expenses += reservedUnits * reservedRate
+            } else {
+                report.log("Your reserved compute contract ran out.")
+                reservedUnits = 0
+            }
+        }
+        pendingModel?.let { p ->
+            if (p.releaseWeek in 0..ctx.week) {
+                pendingModel = null
+                report.log(release(p, extra = 1.1), LogTone.MILESTONE)
+                report.add(Incident.Stat(StatKey.RELEASE))
+            }
+        }
 
         if (capability <= 0) return report
         val reach = ctx.reception * ctx.marketDemand * ctx.marketingBoost
@@ -122,11 +154,12 @@ class AILab {
 
         // Every product grows toward its potential; the focused one gets the push.
         fun push(p: AIProduct) = if (p == focus) 1.0 else 0.25
-        val subTarget = c.pow(2.5) * 120_000 * reach * push(AIProduct.CHATBOT)
+        val open = if (openWeights) 1.0 else 0.0
+        val subTarget = c.pow(2.5) * 120_000 * reach * push(AIProduct.CHATBOT) * (1 - 0.1 * open)
         subscribers += (subTarget - subscribers) * 0.08
-        val apiTarget = c.pow(2.7) * 12_000 * reach * push(AIProduct.API)
+        val apiTarget = c.pow(2.7) * 12_000 * reach * push(AIProduct.API) * (1 - 0.4 * open)
         apiVolume += (apiTarget - apiVolume) * 0.10
-        val entTarget = c.pow(2) * (2 + ctx.staffing.marketing * 0.5) * ctx.marketDemand * push(AIProduct.ENTERPRISE)
+        val entTarget = c.pow(2) * (2 + ctx.staffing.marketing * 0.5) * ctx.marketDemand * push(AIProduct.ENTERPRISE) * (1 + 0.15 * open)
         if (enterpriseClients < floor(entTarget) && rng.chance(0.15)) {
             enterpriseClients += 1
             report.log("Signed a new enterprise client.", LogTone.GOOD)
@@ -155,16 +188,23 @@ class AILab {
             report.log("${run.codename} finished training and it's... worse. The run was a write-off.", LogTone.BAD)
             return
         }
-        capability += gain
+        // A finished model waits for your call: ship it, test it, or open it up.
+        pendingModel = PendingModel(run.codename, gain, roll)
+        report.log("${run.codename} finished training. It's ready when you are.", LogTone.GOOD)
+        report.add(Incident.Event(ModelReady(run.codename)))
+    }
+
+    /** Put a trained model live. [extra] scales its gain (safety testing finds a few things to fix). Returns the log line. */
+    internal fun release(p: PendingModel, extra: Double = 1.0): String {
+        capability += p.gain * extra
         generation += 1
-        modelName = run.codename
-        report.add(Incident.Stat(StatKey.RELEASE))
+        modelName = p.codename
         val verdict = when {
-            roll > 1.3 -> "It's far better than anyone expected."
-            roll < 0.6 -> "It's underwhelming."
+            p.roll > 1.3 -> "It's far better than anyone expected."
+            p.roll < 0.6 -> "It's underwhelming."
             else -> "Solid gains."
         }
-        report.log("${run.codename} is done. Capability now ${capability.toInt()}. $verdict", if (roll < 0.6) LogTone.NEUTRAL else LogTone.MILESTONE)
+        return "${p.codename} is live. Capability now ${capability.toInt()}. $verdict"
     }
 
     internal val assetValue: Double get() = capability.pow(2) * 8_000 + gpusOwned * GPU_UNIT_PRICE * 0.6

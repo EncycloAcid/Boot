@@ -157,6 +157,18 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         internal set
     var events: List<PendingEvent> = emptyList()
         internal set
+
+    /** Decisions that don't stop the clock. Each has a deadline; ignore it and the last choice is taken for you. */
+    var inbox: List<PendingEvent> = emptyList()
+        internal set
+
+    /** Consequences waiting to land: a cover-up found out, a lawsuit decided, a burnt-out hire quitting. */
+    var followUps: List<FollowUp> = emptyList()
+        internal set
+
+    /** The team works from home some days: happier, a little slower. */
+    var hybrid = false
+        internal set
     var log: List<LogEntry> = emptyList()
         internal set
 
@@ -270,6 +282,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         var weight = 0.0
         for (e in staff) {
             if (e.lane != lane) continue
+            if (e.leaveUntil > week) continue
             // Night owls come alive in crunch.
             val owl = if (crunch && e.trait == Trait.NIGHT_OWL) 1.3 else 1.0
             s.output += e.output(lane) * owl
@@ -314,6 +327,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         val mods = effects?.mods?.get(lane)?.copy() ?: LaneModifiers()
         applyResearch(lane, mods)
         applyRoadmap(lane, mods)
+        applyPressures(lane, mods)
         val people = staffing(lane)
         mods.quality += minOf(6.0, people.traitQuality)
         mods.demand *= people.traitDemand

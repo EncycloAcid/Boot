@@ -97,6 +97,12 @@ class HardwareLab {
     var lifetimeUnits = 0
     var lastDemand = 0.0
     var productionHaltedUntil = 0
+
+    /** -0.2...0.2: discount or markup on the model on sale. */
+    var priceShift = 0.0
+
+    /** The launch event booked for the next device: 0 none, 1 a livestream, 2 a big keynote. */
+    var keynote = 0
     private var nextId = 1
     private val usedNames = mutableListOf<String>()
 
@@ -149,7 +155,15 @@ class HardwareLab {
             report.log("Stuck with $inventory units of the ${old.name}. Cleared at 70% off for ${money(clearance)}.", LogTone.BAD)
         }
         val quality = shippedQuality(d.polish, d.work, ctx.staffing.averageSkill, ctx.mods.quality)
-        onMarket = Device(d.name, d.spec, quality, ctx.week, hype = 2 + 0.05 * ctx.staffing.marketing)
+        val event = when (keynote) {
+            1 -> 0.6
+            2 -> 1.4
+            else -> 0.0
+        }
+        onMarket = Device(d.name, d.spec, quality, ctx.week, hype = 2 + 0.05 * ctx.staffing.marketing + event)
+        if (keynote > 0) report.log(if (keynote == 2) "The keynote was a hit. Everyone's talking about the ${d.name}." else "The launch livestream drew a crowd.", LogTone.GOOD)
+        keynote = 0
+        priceShift = 0.0
         inventory = d.preorderedStock
         design = null
         modelsShipped += 1
@@ -191,14 +205,14 @@ class HardwareLab {
 
         val age = (ctx.week - m.launchWeek).toDouble()
         val demand = m.spec.category.baseDemand * m.spec.tier.demandMultiplier * (m.quality / 70).pow(2) * brandAwareness *
-            ctx.reception * ctx.marketDemand * m.hype * 0.97.pow(age) * ctx.marketingBoost
+            ctx.reception * ctx.marketDemand * m.hype * 0.97.pow(age) * ctx.marketingBoost * (1 + priceShift).pow(-2.2)
         val sold = min(demand.toInt(), inventory)
         inventory -= sold
         m.unitsSold += sold
         lifetimeUnits += sold
         m.hype = 1 + (m.hype - 1) * 0.85
         lastDemand = demand
-        report.revenue += sold * m.spec.price
+        report.revenue += sold * m.spec.price * (1 + priceShift)
 
         if (sold < demand * 0.8 && age < 30) {
             m.soldOutWeeks += 1

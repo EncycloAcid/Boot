@@ -103,9 +103,11 @@ data class PendingEvent(
     val body: String,
     val choices: List<EventChoice>,
     val lane: Lane? = null,
+    /** For the inbox: the last week it can be answered. -1 for decisions that stop the clock. */
+    val expiresWeek: Int = -1,
 )
 
-private data class Description(val title: String, val body: String, val choices: List<EventChoice>, val lane: Lane? = null)
+internal data class Description(val title: String, val body: String, val choices: List<EventChoice>, val lane: Lane? = null)
 
 internal fun GameState.enqueue(kind: EventKind) {
     if (events.any { it.kind == kind }) return
@@ -113,7 +115,7 @@ internal fun GameState.enqueue(kind: EventKind) {
     events = events + PendingEvent(nextId(), week, kind, d.title, d.body, d.choices, d.lane)
 }
 
-private fun choice(label: String, detail: String) = EventChoice(label, detail)
+internal fun choice(label: String, detail: String) = EventChoice(label, detail)
 
 /** Emergency servers cost more the bigger you are. */
 private fun GameState.outageCost(lane: Lane): Double = max(10_000.0, trailingRevenue(lane, 4) / 4 * 0.5)
@@ -126,7 +128,11 @@ private val GameState.offsiteCost: Double get() = 1_500.0 * staff.size
 /** What flying the whole team to the awards costs. */
 private val GameState.awardsTrip: Double get() = 4_000.0 + 1_500.0 * staff.size
 
-private fun GameState.describe(kind: EventKind): Description? = when (kind) {
+internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
+    is RivalEvent -> describeRival(kind)
+    is DramaEvent -> describeDrama(kind)
+    is Opportunity -> describeOpportunity(kind)
+    is LaneDecision -> describeLane(kind)
     is EventKind.Poach -> {
         val e = staff.firstOrNull { it.id == kind.employeeId }
         if (e == null) {
@@ -408,8 +414,12 @@ fun GameState.choose(index: Int) {
     resolve(event.kind, index)
 }
 
-private fun GameState.resolve(kind: EventKind, choice: Int) {
+internal fun GameState.resolve(kind: EventKind, choice: Int) {
     when (kind) {
+        is RivalEvent -> resolveRival(kind, choice)
+        is DramaEvent -> resolveDrama(kind, choice)
+        is Opportunity -> resolveOpportunity(kind, choice)
+        is LaneDecision -> resolveLane(kind, choice)
         is EventKind.Poach -> {
             val e = staff.firstOrNull { it.id == kind.employeeId } ?: return
             if (choice == 0) {
@@ -879,6 +889,6 @@ private fun GameState.rideOut(combo: Combo) {
     }
 }
 
-private fun GameState.strengthenRival(name: String, amount: Double) {
+internal fun GameState.strengthenRival(name: String, amount: Double) {
     world.rivals.firstOrNull { it.name == name }?.let { it.strength = min(1.0, it.strength + amount) }
 }
