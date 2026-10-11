@@ -193,7 +193,7 @@ private fun TeamSection(store: GameStore, state: GameState) {
     val canTrain = Research.TRAINING in state.researched
     GroupedSection(
         "Staff",
-        footer = if (canTrain) "Tap ⋮ to move someone to another lane, send them on a course or let them go." else "Tap ⋮ to move someone to another lane. Research a training program to raise people's skills.",
+        footer = if (canTrain) "Tap the three dots beside someone to move them to another lane, send them on a course or let them go." else "Tap the three dots beside someone to move them to another lane. Research a training program to raise people's skills.",
     ) {
         if (state.staff.isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
         state.staff.forEachIndexed { i, e ->

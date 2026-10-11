@@ -230,10 +230,10 @@ private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolea
             val shirt = when {
                 worker == null -> Color.Transparent
                 worker.founder -> primary
-                worker.lane == null -> Color(0xFF9AA0A6)
-                else -> colors.lane(worker.lane)
+                else -> worker.look.top.let { if (night) it.shade(0.8f) else it }
             }
-            station(props, iso, i, seat, worker, shirt, palette, night, if (playing) anim + i * 0.37f else null)
+            val badge = worker?.takeIf { !it.founder }?.let { w -> w.lane?.let { colors.lane(it) } ?: Color(0xFF9AA0A6) }
+            station(props, iso, i, seat, worker, shirt, badge, palette, night, if (playing) anim + i * 0.37f else null)
         }
         props.sortBy { it.depth }
         for (prop in props) prop.draw(this)
@@ -397,9 +397,46 @@ private fun DrawScope.solid(iso: Iso, x0: Float, y0: Float, z0: Float, x1: Float
     quad(iso.p(x0, y0, z1), iso.p(x1, y0, z1), iso.p(x1, y1, z1), iso.p(x0, y1, z1), top)
 }
 
-/** A soft shadow on the floor. */
+/** A soft shadow on the floor: darkest in the middle, fading out at the edges. */
 private fun DrawScope.shadow(iso: Iso, cx: Float, cy: Float, rx: Float, ry: Float, alpha: Float = 0.14f) {
-    quad(iso.p(cx - rx, cy - ry), iso.p(cx + rx, cy - ry), iso.p(cx + rx, cy + ry), iso.p(cx - rx, cy + ry), Color.Black.copy(alpha = alpha))
+    val c = iso.p(cx, cy)
+    // The footprint's width on screen; a floor ellipse is half as tall as it is wide.
+    val r = (rx + ry) * iso.t * 1.15f
+    withTransform({ scale(1f, 0.5f, pivot = c) }) {
+        drawCircle(
+            Brush.radialGradient(listOf(Color.Black.copy(alpha = alpha * 1.6f), Color.Black.copy(alpha = alpha * 0.8f), Color.Transparent), c, r),
+            r, c,
+        )
+    }
+}
+
+/** Sunlight through a window on the back wall, falling across the floor. */
+private fun DrawScope.sunOnFloor(iso: Iso, room: Room, x0: Float, x1: Float, z0: Float, z1: Float, night: Boolean) {
+    val k = 0.9f
+    val slant = 0.45f
+    val light = if (night) Color(0xFF9FB8FF).copy(alpha = 0.05f) else Color(0xFFFFF1C9).copy(alpha = 0.22f)
+    val floor = quadPath(iso.p(0f, 0f), iso.p(room.w, 0f), iso.p(room.w, room.d), iso.p(0f, room.d))
+    clipPath(floor) {
+        val a = iso.p(x0 + slant * z0, z0 * k)
+        val b = iso.p(x1 + slant * z0, z0 * k)
+        val c = iso.p(x1 + slant * z1, z1 * k)
+        val d = iso.p(x0 + slant * z1, z1 * k)
+        drawPath(quadPath(a, b, c, d), Brush.linearGradient(listOf(light, light.copy(alpha = light.alpha * 0.35f)), a, d))
+    }
+}
+
+/** Soft shade where the floor meets the walls. */
+private fun DrawScope.wallShade(iso: Iso, room: Room, night: Boolean) {
+    val dark = Color.Black.copy(alpha = if (night) 0.22f else 0.1f)
+    val e = 0.45f
+    drawPath(
+        quadPath(iso.p(0f, 0f), iso.p(room.w, 0f), iso.p(room.w, e), iso.p(0f, e)),
+        Brush.linearGradient(listOf(dark, Color.Transparent), iso.p(room.w / 2, 0f), iso.p(room.w / 2, e)),
+    )
+    drawPath(
+        quadPath(iso.p(0f, 0f), iso.p(e, 0f), iso.p(e, room.d), iso.p(0f, room.d)),
+        Brush.linearGradient(listOf(dark, Color.Transparent), iso.p(0f, room.d / 2), iso.p(e, room.d / 2)),
+    )
 }
 
 private class Prop(val depth: Float, val draw: DrawScope.() -> Unit)
@@ -453,6 +490,16 @@ private fun DrawScope.drawShell(iso: Iso, room: Room, model: SceneModel, p: Room
     // The floor slab, then its surface.
     solid(iso, 0f, 0f, -0.25f, w, d, 0f, p.slab, top = p.floorA)
     drawFloor(iso, room, p)
+    wallShade(iso, room, night)
+    when (model.office) {
+        Office.APARTMENT -> sunOnFloor(iso, room, 1.5f, w - 0.6f, 0.75f, 1.65f, night)
+        Office.COWORKING -> {
+            sunOnFloor(iso, room, 1.2f, 2.9f, 0.7f, 1.7f, night)
+            sunOnFloor(iso, room, 3.4f, w - 0.5f, 0.7f, 1.7f, night)
+        }
+        Office.STUDIO -> sunOnFloor(iso, room, 1.0f, w - 2.4f, 0.7f, 1.7f, night)
+        else -> sunOnFloor(iso, room, 0.3f, w - 0.3f, 0.35f, 1.85f, night)
+    }
 
     // Walls with a cap along the top.
     quad(iso.p(0f, 0f), iso.p(0f, d), iso.p(0f, d, h), iso.p(0f, 0f, h), p.wall.shade(0.9f))
@@ -996,7 +1043,7 @@ private fun laneTint(lane: Lane?): Color = when (lane) {
     null -> Color(0xFF8E8E93)
 }
 
-private fun station(props: MutableList<Prop>, iso: Iso, index: Int, seat: Seat, worker: Worker?, shirt: Color, p: RoomPalette, night: Boolean, phase: Float?) {
+private fun station(props: MutableList<Prop>, iso: Iso, index: Int, seat: Seat, worker: Worker?, shirt: Color, badge: Color?, p: RoomPalette, night: Boolean, phase: Float?) {
     val cx = seat.cx
     val cy = seat.cy
     val front = seat.facing == Facing.FRONT
@@ -1023,7 +1070,7 @@ private fun station(props: MutableList<Prop>, iso: Iso, index: Int, seat: Seat, 
     val hands = iso.p(cx - 0.1f, ky + 0.05f, DESK_Z + 0.03f) to iso.p(cx + 0.08f, ky + 0.05f, DESK_Z + 0.03f)
     if (worker != null) {
         props += Prop(cx + cy) {
-            drawSeated(hip, iso.zpx, worker.look, shirt, seat.facing, phase, crown = worker.founder, hands = hands)
+            drawSeated(hip, iso.zpx, worker.look, shirt, seat.facing, phase, crown = worker.founder, hands = hands, badge = badge)
         }
     }
     if (!front) {

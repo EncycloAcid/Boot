@@ -32,14 +32,27 @@ import kotlin.math.sin
 
 internal enum class HairStyle { SHORT, SWEPT, LONG, BUN, CURLY, BALD, PONYTAIL, BOB }
 
+/** What someone wears. */
+internal enum class Outfit { HOODIE, TEE, COLLAR, SWEATER, BLAZER }
+
 internal data class Look(
     val skin: Color,
     val hair: Color,
     val style: HairStyle,
     val glasses: Boolean,
     val beard: Boolean,
-    val hoodie: Boolean,
-)
+    val outfit: Outfit,
+    /** The colour of what they're wearing. Their business shows on their lanyard instead. */
+    val top: Color,
+) {
+    val hoodie: Boolean get() = outfit == Outfit.HOODIE
+}
+
+/** Everyday clothes: navy, denim, olive, mustard, burgundy, teal, charcoal, cream, coral, forest, lavender, sky, white, black, red. */
+private val Clothes = listOf(
+    0xFF2F3B59, 0xFF4A6FA5, 0xFF6B7B3A, 0xFFE0A526, 0xFF8E2C48, 0xFF2A9D8F, 0xFF3D3D46, 0xFFE8DFCB,
+    0xFFE76F51, 0xFF2D6A4F, 0xFF9D8EC7, 0xFF6CB4EE, 0xFFF1F1EE, 0xFF26262C, 0xFFD64545,
+).map { Color(it) }
 
 private val Skins = listOf(0xFFF7D9C4, 0xFFEFC3A2, 0xFFD9A07A, 0xFFB97C55, 0xFF8F5A38, 0xFF63402A).map { Color(it) }
 private val Hairs = listOf(0xFF2A1E17, 0xFF2A1E17, 0xFF4B2F1D, 0xFF7A4A2A, 0xFFB8692F, 0xFFE2BE78, 0xFF1C1C28, 0xFF9A9AA3, 0xFFC0473B).map { Color(it) }
@@ -54,7 +67,8 @@ internal fun lookFor(seed: Int): Look {
         style = style,
         glasses = r.nextInt(4) == 0,
         beard = !longish && style != HairStyle.BALD && r.nextInt(4) == 0 || style == HairStyle.BALD && r.nextInt(2) == 0,
-        hoodie = r.nextInt(3) == 0,
+        outfit = if (r.nextInt(3) == 0) Outfit.HOODIE else listOf(Outfit.TEE, Outfit.COLLAR, Outfit.SWEATER, Outfit.BLAZER)[r.nextInt(4)],
+        top = Clothes[r.nextInt(Clothes.size)],
     )
 }
 
@@ -103,6 +117,8 @@ internal fun DrawScope.drawSeated(
     phase: Float?,
     crown: Boolean,
     hands: Pair<Offset, Offset>,
+    /** Their business's colour, on a lanyard. */
+    badge: Color? = null,
 ) {
     val wave = phase?.let { sin(2 * Math.PI.toFloat() * it) } ?: 0f
     val bob = wave * 0.005f
@@ -140,16 +156,47 @@ internal fun DrawScope.drawSeated(
             drawRoundRect(shirt.shade(0.88f), o(-0.1f, -0.16f), Size(0.18f * s, 0.08f * s), CornerRadius(0.03f * s))
         }
     } else if (facing == Facing.FRONT) {
-        val v = Path().apply {
-            moveTo(hip.x - 0.065f * s, hip.y + (SHOULDER_Y - 0.065f + bob) * s)
-            lineTo(hip.x - 0.01f * s, hip.y + (SHOULDER_Y + 0.04f + bob) * s)
-            lineTo(hip.x + 0.045f * s, hip.y + (SHOULDER_Y - 0.065f + bob) * s)
-            close()
+        val top = SHOULDER_Y - 0.065f + bob
+        when (look.outfit) {
+            Outfit.TEE -> drawOval(look.skin.shade(0.9f), o(-0.06f, top - 0.005f), Size(0.11f * s, 0.05f * s))
+            Outfit.SWEATER -> {
+                drawOval(shirt.shade(0.72f), o(-0.075f, top - 0.012f), Size(0.14f * s, 0.06f * s))
+                drawOval(look.skin.shade(0.9f), o(-0.055f, top - 0.004f), Size(0.1f * s, 0.038f * s))
+            }
+            else -> {
+                // A V neck: skin, or a white tee under a blazer.
+                val inner = if (look.outfit == Outfit.BLAZER) Color(0xFFF4F4F2) else look.skin.shade(0.9f)
+                val v = Path().apply {
+                    moveTo(hip.x - 0.065f * s, hip.y + top * s)
+                    lineTo(hip.x - 0.01f * s, hip.y + (top + (if (look.outfit == Outfit.BLAZER) 0.2f else 0.105f)) * s)
+                    lineTo(hip.x + 0.045f * s, hip.y + top * s)
+                    close()
+                }
+                drawPath(v, inner)
+                if (look.outfit == Outfit.COLLAR) {
+                    // Collar points either side of the neck.
+                    val white = Color.White.copy(alpha = 0.9f)
+                    drawPath(Path().apply { moveTo(hip.x - 0.07f * s, hip.y + top * s); lineTo(hip.x - 0.015f * s, hip.y + (top + 0.06f) * s); lineTo(hip.x - 0.08f * s, hip.y + (top + 0.045f) * s); close() }, white)
+                    drawPath(Path().apply { moveTo(hip.x + 0.05f * s, hip.y + top * s); lineTo(hip.x - 0.005f * s, hip.y + (top + 0.06f) * s); lineTo(hip.x + 0.06f * s, hip.y + (top + 0.045f) * s); close() }, white)
+                }
+                if (look.outfit == Outfit.BLAZER) {
+                    drawLine(shirt.shade(0.62f), o(-0.065f, top), o(-0.01f, top + 0.2f), strokeWidth = 0.012f * s, cap = StrokeCap.Round)
+                    drawLine(shirt.shade(0.62f), o(0.045f, top), o(-0.01f, top + 0.2f), strokeWidth = 0.012f * s, cap = StrokeCap.Round)
+                }
+            }
         }
-        drawPath(v, look.skin.shade(0.9f))
     } else {
         // A collar from behind.
         drawLine(shirt.shade(0.7f), o(-0.07f, SHOULDER_Y - 0.055f + bob), o(0.07f, SHOULDER_Y - 0.055f + bob), strokeWidth = 0.02f * s, cap = StrokeCap.Round)
+    }
+
+    if (facing == Facing.FRONT && badge != null) {
+        // A lanyard with a badge in their business's colour.
+        val strap = Color(0xFF30303A).copy(alpha = 0.75f)
+        drawLine(strap, o(-0.05f, SHOULDER_Y - 0.06f + bob), o(-0.035f, SHOULDER_Y + 0.12f + bob), strokeWidth = 0.008f * s)
+        drawLine(strap, o(0.035f, SHOULDER_Y - 0.06f + bob), o(-0.015f, SHOULDER_Y + 0.12f + bob), strokeWidth = 0.008f * s)
+        drawRoundRect(badge, o(-0.06f, SHOULDER_Y + 0.115f + bob), Size(0.07f * s, 0.085f * s), CornerRadius(0.012f * s))
+        drawRect(Color.White.copy(alpha = 0.8f), o(-0.048f, SHOULDER_Y + 0.135f + bob), Size(0.046f * s, 0.012f * s))
     }
 
     if (facing == Facing.FRONT) {
@@ -335,6 +382,7 @@ internal fun DrawScope.drawHead(c: Offset, r: Float, look: Look, facing: Facing,
     drawCircle(Color(0xFFFF8A80).copy(alpha = 0.32f), 0.17f * r, p(ex - 0.55f, 0.3f))
     drawCircle(Color(0xFFFF8A80).copy(alpha = 0.32f), 0.17f * r, p(ex + 0.48f, 0.3f))
     if (!portrait) drawArc(look.skin.shade(0.78f), 90f, 120f, false, p(ex - 0.16f, 0.02f), Size(0.18f * r, 0.24f * r), style = Stroke(0.06f * r, cap = StrokeCap.Round))
+    else drawArc(look.skin.shade(0.82f), 20f, 140f, false, p(-0.09f, 0.04f), Size(0.18f * r, 0.12f * r), style = Stroke(0.05f * r, cap = StrokeCap.Round))
     drawArc(
         if (look.beard) look.skin.mix(Color.White, 0.2f) else Color(0xFF7A3B2E), 15f, 150f, false,
         topLeft = p(ex - 0.22f, 0.22f), size = Size(0.42f * r, 0.3f * r),
@@ -392,17 +440,24 @@ internal fun DrawScope.drawCrown(bottom: Offset, s: Float) {
     drawCircle(Color(0xFFFF5A5F), 0.014f * s, Offset(bottom.x, bottom.y - 0.03f * s))
 }
 
-/** A portrait for lists: head and shoulders on a tinted circle, the same person as at their desk. */
+/**
+ * A portrait for lists: head and shoulders on a circle tinted with their business's colour, in
+ * their own clothes, the same person as at their desk.
+ */
 @Composable
-internal fun Avatar(look: Look, shirt: Color, size: Dp = 44.dp, crown: Boolean = false, ring: Color? = null) {
+internal fun Avatar(look: Look, tint: Color, size: Dp = 44.dp, crown: Boolean = false, ring: Color? = null, top: Color? = null) {
     Canvas(Modifier.size(size)) {
         val d = this.size.minDimension
         val c = Offset(d / 2, d / 2)
         val circle = Path().apply { addOval(androidx.compose.ui.geometry.Rect(c, d / 2)) }
-        drawCircle(Brush.verticalGradient(listOf(shirt.mix(Color.White, 0.82f), shirt.mix(Color.White, 0.62f))), d / 2, c)
+        drawCircle(Brush.verticalGradient(listOf(tint.mix(Color.White, 0.8f), tint.mix(Color.White, 0.58f))), d / 2, c)
         clipPath(circle) {
             val s = d * 1.25f
-            drawHairBehind(Offset(c.x, c.y - 0.05f * s), 0.19f * s, look, portrait = true)
+            val shirt = top ?: look.top
+            val head = Offset(c.x, c.y - 0.05f * s)
+            // Light falls from the upper left: a soft glow behind the head.
+            drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.45f), Color.Transparent), Offset(c.x - 0.12f * s, c.y - 0.2f * s), 0.4f * s), 0.4f * s, Offset(c.x - 0.12f * s, c.y - 0.2f * s))
+            drawHairBehind(head, 0.19f * s, look, portrait = true)
             val body = Path().apply {
                 moveTo(c.x - 0.36f * s, d + 2f)
                 quadraticTo(c.x - 0.36f * s, c.y + 0.2f * s, c.x - 0.12f * s, c.y + 0.17f * s)
@@ -410,23 +465,45 @@ internal fun Avatar(look: Look, shirt: Color, size: Dp = 44.dp, crown: Boolean =
                 quadraticTo(c.x + 0.36f * s, c.y + 0.2f * s, c.x + 0.36f * s, d + 2f)
                 close()
             }
-            drawPath(body, shirt)
-            clipRect(left = c.x + 0.05f * s) { drawPath(body, shirt.shade(0.88f)) }
+            drawPath(body, Brush.horizontalGradient(listOf(shirt.mix(Color.White, 0.1f), shirt, shirt.shade(0.84f)), c.x - 0.36f * s, c.x + 0.36f * s))
+            // Neck, with the jaw's shadow across the top.
             drawRect(look.skin.shade(0.9f), topLeft = Offset(c.x - 0.045f * s, c.y + 0.08f * s), size = Size(0.09f * s, 0.1f * s))
-            if (!look.hoodie) {
-                val v = Path().apply {
-                    moveTo(c.x - 0.07f * s, c.y + 0.165f * s)
-                    lineTo(c.x, c.y + 0.24f * s)
-                    lineTo(c.x + 0.07f * s, c.y + 0.165f * s)
-                    close()
+            drawOval(look.skin.shade(0.7f).copy(alpha = 0.55f), topLeft = Offset(c.x - 0.06f * s, c.y + 0.075f * s), size = Size(0.12f * s, 0.05f * s))
+            val neck = c.y + 0.165f * s
+            fun tri(x0: Float, y0: Float, x1: Float, y1: Float, x2: Float, y2: Float, color: Color) = drawPath(
+                Path().apply { moveTo(c.x + x0 * s, y0); lineTo(c.x + x1 * s, y1); lineTo(c.x + x2 * s, y2); close() }, color,
+            )
+            when (look.outfit) {
+                Outfit.HOODIE -> {
+                    drawOval(shirt.shade(0.8f), topLeft = Offset(c.x - 0.13f * s, c.y + 0.14f * s), size = Size(0.26f * s, 0.07f * s))
+                    val cord = Color.White.copy(alpha = 0.85f)
+                    drawLine(cord, Offset(c.x - 0.05f * s, neck + 0.02f * s), Offset(c.x - 0.055f * s, neck + 0.14f * s), strokeWidth = 0.014f * s, cap = StrokeCap.Round)
+                    drawLine(cord, Offset(c.x + 0.05f * s, neck + 0.02f * s), Offset(c.x + 0.055f * s, neck + 0.14f * s), strokeWidth = 0.014f * s, cap = StrokeCap.Round)
                 }
-                drawPath(v, look.skin.shade(0.9f))
-            } else {
-                drawOval(shirt.shade(0.8f), topLeft = Offset(c.x - 0.13f * s, c.y + 0.14f * s), size = Size(0.26f * s, 0.07f * s))
+                Outfit.TEE -> drawOval(look.skin.shade(0.9f), topLeft = Offset(c.x - 0.075f * s, neck - 0.025f * s), size = Size(0.15f * s, 0.06f * s))
+                Outfit.SWEATER -> {
+                    drawOval(shirt.shade(0.72f), topLeft = Offset(c.x - 0.1f * s, neck - 0.035f * s), size = Size(0.2f * s, 0.08f * s))
+                    drawOval(look.skin.shade(0.9f), topLeft = Offset(c.x - 0.075f * s, neck - 0.025f * s), size = Size(0.15f * s, 0.05f * s))
+                    for (k in -2..2) drawLine(shirt.shade(0.8f), Offset(c.x + (k * 0.12f - 0.02f) * s, d), Offset(c.x + (k * 0.12f - 0.02f) * s, d - 0.04f * s), strokeWidth = 0.01f * s)
+                }
+                Outfit.COLLAR, Outfit.BLAZER -> {
+                    val inner = if (look.outfit == Outfit.BLAZER) Color(0xFFF4F4F2) else look.skin.shade(0.9f)
+                    tri(-0.08f, neck, 0f, neck + (if (look.outfit == Outfit.BLAZER) 0.3f else 0.09f) * s, 0.08f, neck, inner)
+                    if (look.outfit == Outfit.COLLAR) {
+                        tri(-0.09f, neck - 0.01f * s, -0.01f, neck + 0.07f * s, -0.12f, neck + 0.06f * s, Color.White.copy(alpha = 0.92f))
+                        tri(0.09f, neck - 0.01f * s, 0.01f, neck + 0.07f * s, 0.12f, neck + 0.06f * s, Color.White.copy(alpha = 0.92f))
+                    } else {
+                        // Lapels.
+                        tri(-0.08f, neck, 0f, neck + 0.3f * s, -0.14f, neck + 0.16f * s, shirt.shade(0.8f))
+                        tri(0.08f, neck, 0f, neck + 0.3f * s, 0.14f, neck + 0.16f * s, shirt.shade(0.72f))
+                    }
+                }
             }
-            drawHead(Offset(c.x, c.y - 0.05f * s), 0.19f * s, look, Facing.FRONT, portrait = true)
+            drawHead(head, 0.19f * s, look, Facing.FRONT, portrait = true)
             if (crown) drawCrown(Offset(c.x, c.y - 0.05f * s - 0.19f * s - 0.01f * s), s * 1.1f)
         }
+        // A fine rim keeps light portraits off light cards.
+        drawCircle(Color.Black.copy(alpha = 0.06f), d / 2 - 0.5f, c, style = Stroke(1f))
         if (ring != null) drawCircle(ring, d / 2 - 1.5f, c, style = Stroke(3f))
     }
 }
@@ -446,5 +523,5 @@ internal fun CandidatePortrait(id: Int, size: Dp = 44.dp, ring: Color? = null) {
 /** You, crowned. */
 @Composable
 internal fun FounderPortrait(state: GameState, size: Dp = 44.dp) {
-    Avatar(state.founderLook(), MaterialTheme.colorScheme.primary, size, crown = true)
+    Avatar(state.founderLook(), MaterialTheme.colorScheme.primary, size, crown = true, top = MaterialTheme.colorScheme.primary)
 }

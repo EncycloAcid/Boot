@@ -34,7 +34,7 @@ private const val MENTOR_LOOK = 4_242
 /** The mentor's portrait, in a teal jacket. */
 @Composable
 fun MentorPortrait(size: androidx.compose.ui.unit.Dp = 44.dp) {
-    Avatar(lookFor(MENTOR_LOOK), Color(0xFF2A9D8F), size)
+    Avatar(lookFor(MENTOR_LOOK).copy(outfit = Outfit.BLAZER, top = Color(0xFF2A9D8F)), Color(0xFF2A9D8F), size)
 }
 
 /** The tutorial's current lesson: Rosa, what to do and why, and a button that takes you there. */

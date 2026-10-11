@@ -13,13 +13,16 @@ object Format {
     fun a(phrase: String): String =
         (if (phrase.firstOrNull()?.lowercaseChar() in "aeiou".toList() && !phrase.startsWith("AAA")) "an " else "a ") + phrase
 
+    /** Two decimals at most, without the trailing zeros: 50, 1.5, 1.25. */
+    private fun short(v: Double): String = f("%.2f", v).trimEnd('0').trimEnd('.')
+
     fun money(v: Double): String {
         val sign = if (v < 0) "-" else ""
         val a = abs(v)
         return when {
-            a >= 1e12 -> "$sign\$${f("%.2f", a / 1e12)}T"
-            a >= 1_000_000_000 -> "$sign\$${f("%.2f", a / 1_000_000_000)}B"
-            a >= 1_000_000 -> "$sign\$${f("%.2f", a / 1_000_000)}M"
+            a >= 1e12 -> "$sign\$${short(a / 1e12)}T"
+            a >= 1_000_000_000 -> "$sign\$${short(a / 1_000_000_000)}B"
+            a >= 1_000_000 -> "$sign\$${short(a / 1_000_000)}M"
             a >= 10_000 -> "$sign\$${f("%.0f", a / 1_000)}k"
             a >= 1_000 -> "$sign\$${f("%.1f", a / 1_000)}k"
             else -> "$sign\$${f("%.0f", a)}"
@@ -30,8 +33,8 @@ object Format {
     fun signedMoney(v: Double): String = if (v >= 0) "+${money(v)}" else money(v)
 
     fun count(v: Double): String = when {
-        v >= 1_000_000_000 -> f("%.2fB", v / 1_000_000_000)
-        v >= 1_000_000 -> f("%.2fM", v / 1_000_000)
+        v >= 1_000_000_000 -> short(v / 1_000_000_000) + "B"
+        v >= 1_000_000 -> short(v / 1_000_000) + "M"
         v >= 10_000 -> f("%.0fk", v / 1_000)
         v >= 1_000 -> f("%.1fk", v / 1_000)
         else -> f("%.0f", v)

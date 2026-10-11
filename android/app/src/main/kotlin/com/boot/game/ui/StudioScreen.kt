@@ -163,7 +163,7 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
             TileRow {
                 StatTile("Fans", Format.count(g.fans), Modifier.weight(1f), "trust ${String.format(Locale.US, "%.2f", g.fanTrust)}")
-                StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), "${g.releases.size} games")
+                StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), if (g.releases.size == 1) "1 game" else "${g.releases.size} games")
                 StatTile("Research", "${state.researchPoints.toInt()}", Modifier.weight(1f), "RP to spend")
             }
         }

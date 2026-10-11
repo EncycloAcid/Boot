@@ -224,7 +224,8 @@ private fun StudioNow(store: GameStore, state: GameState) {
                     if (g.releases.isEmpty()) {
                         "Pick a topic, a genre and a platform, then guide the team through three stages of development."
                     } else {
-                        "${g.releases.size} games shipped, best review ${String.format(java.util.Locale.US, "%.1f", g.topScore)}. What's next?"
+                        (if (g.releases.size == 1) "1 game shipped" else "${g.releases.size} games shipped") +
+                            (if (g.topScore > 0) ", best review ${String.format(java.util.Locale.US, "%.1f", g.topScore)}" else "") + ". What's next?"
                     },
                 )
                 PrimaryButton("Develop a new game", { store.designGame() }, Modifier.fillMaxWidth())

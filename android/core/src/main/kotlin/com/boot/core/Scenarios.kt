@@ -23,7 +23,7 @@ enum class Objective {
     fun describe(target: Double): String = when (this) {
         VALUATION -> "Be worth ${money(target)}"
         YEARLY_REVENUE -> "Earn ${money(target)} in a year"
-        BEST_SCORE -> "Ship a game that scores ${String.format(java.util.Locale.US, "%.0f", target)} or more"
+        BEST_SCORE -> "Ship a game that scores ${String.format(java.util.Locale.US, "%.1f", target).removeSuffix(".0")} or more"
         APP_USERS -> "Reach ${Format.count(target)} app users"
         SOCIAL_USERS -> "Reach ${Format.count(target)} people on your platform"
         DEVICES_SOLD -> "Sell ${Format.count(target)} devices"
@@ -53,11 +53,11 @@ enum class Scenario(
 ) {
     GARAGE_TO_GLORY(
         "Garage to Glory", "Just you, a laptop and a dream of making a masterpiece.",
-        Lane.GAMES, null, Objective.BEST_SCORE, 9.0, 5,
+        Lane.GAMES, null, Objective.BEST_SCORE, 8.5, 5,
     ),
     CULT_FOLLOWING(
         "Cult Following", "1977. Computers are coming home, and so are games. Build a following that lasts.",
-        Lane.GAMES, 1977, Objective.FANS, 500_000.0, 10,
+        Lane.GAMES, 1977, Objective.FANS, 300_000.0, 10,
     ),
     CRASH_OF_83(
         "The Crash of '83", "Nobody wants video games any more. Prove them wrong.",
@@ -69,7 +69,7 @@ enum class Scenario(
     ),
     DOT_COM_GOLD_RUSH(
         "Dot-com Gold Rush", "1995. Everyone needs a website and investors are throwing money around. Get rich before it ends.",
-        Lane.WEBSITES, 1995, Objective.VALUATION, 200_000_000.0, 5,
+        Lane.WEBSITES, 1995, Objective.VALUATION, 50_000_000.0, 5,
     ),
     SURVIVE_THE_BUST(
         "Survive the Bust", "2000. The money's gone, the payroll isn't. You still have a name and two loyal clients: make them count.",
@@ -81,7 +81,7 @@ enum class Scenario(
     ),
     APP_FOR_THAT(
         "There's an App for That", "2008. The App Store just opened. Get on every home screen.",
-        Lane.APPS, 2008, Objective.APP_USERS, 500_000.0, 4,
+        Lane.APPS, 2008, Objective.APP_USERS, 500_000.0, 5,
     ),
     FREE_TO_PLAY(
         "Whale Watching", "2012. Games are free and the gems cost money. Make a fortune.",
@@ -97,7 +97,7 @@ enum class Scenario(
     ),
     WINTER_IS_HERE(
         "Winter Is Here", "Crypto winter: investors won't return your calls. Make money the old-fashioned way.",
-        Lane.WEBSITES, null, Objective.PROFIT_STREAK, 52.0, 3, era = Era.CRYPTO_WINTER,
+        Lane.WEBSITES, null, Objective.PROFIT_STREAK, 39.0, 3, era = Era.CRYPTO_WINTER,
     ),
     ;
 
