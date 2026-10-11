@@ -25,6 +25,15 @@ class Autopilot(
             guard += 1
             if (s.pendingPivot != null) resolvePivot(s) else resolveEvent(s)
         }
+        // Still stuck: take whatever's left so the week can go on.
+        if (s.needsDecision && !s.isOver) {
+            if (s.pendingPivot != null) attempt { s.stayFocused() }
+            while (s.events.isNotEmpty() && !s.isOver) {
+                val before = s.events.size
+                attempt { s.choose(s.events[0].choices.lastIndex) }
+                if (s.events.size >= before) break
+            }
+        }
         if (s.isOver) return
         manage(s)
         attempt { s.advance() }
@@ -177,6 +186,8 @@ class Autopilot(
                 }
             }
         }
+        // Nothing else works (in a run set in the past there may be only one other business, and no money for it).
+        attempt { s.stayFocused() }
     }
 
     // Running the company
