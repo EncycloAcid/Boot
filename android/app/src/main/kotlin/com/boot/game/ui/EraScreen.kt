@@ -27,6 +27,8 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.MODERN_YEAR
 import com.boot.core.historyAhead
+import com.boot.core.inSentence
+import com.boot.core.challengeProgress
 import com.boot.core.research
 import com.boot.core.laneOpen
 import com.boot.core.arrives
@@ -55,7 +57,7 @@ fun EraCard(state: GameState) {
                 val only = era.research.filter { it !in state.researched }
                 if (only.isNotEmpty()) {
                     Text(
-                        "Research only this era: " + only.joinToString { it.title.lowercase() } + ".",
+                        "Research only this era: " + only.joinToString { it.inSentence } + ".",
                         style = MaterialTheme.typography.labelLarge, color = colors.milestone,
                     )
                 }
@@ -84,6 +86,29 @@ fun EraCard(state: GameState) {
                     "${Format.weeks(weeks)} so far · felt at ${Format.percent(w.eraIntensity)} strength",
                     style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant,
                 )
+                w.challenge?.let { c ->
+                    val progress = state.challengeProgress(c)
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(colors.fill, RoundedCornerShape(16.dp))
+                            .padding(14.dp),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("This era's challenge", style = MaterialTheme.typography.labelMedium, color = colors.milestone, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                if (c.done) Pill("Done", colors.good)
+                            }
+                            Text(c.title, style = MaterialTheme.typography.titleSmall, color = scheme.onSurface)
+                            Text(c.detail, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                            Meter("Progress", progress, if (c.done) colors.good else colors.milestone)
+                            Text(
+                                "Reward: ${Format.money(c.reward)}, 25 research points and reputation.",
+                                style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
                 w.nextEra?.let { next ->
                     Box(
                         Modifier
@@ -149,11 +174,18 @@ fun EraTimeline(state: GameState) {
     GroupedSection("Timeline") {
         w.history.forEachIndexed { i, span ->
             if (i > 0) RowDivider(56.dp)
+            val dates = "${GameClock.label(span.startWeek)} to ${GameClock.label(span.endWeek)}"
             ListRow(
                 span.era.title,
-                subtitle = "${GameClock.label(span.startWeek)} to ${GameClock.label(span.endWeek)}",
+                // Eras you lived through get a short review.
+                subtitle = if (span.lived) "$dates\nEarned ${Format.money(span.revenue)} · worth ${Format.money(span.valueStart)} → ${Format.money(span.valueEnd)}" else dates,
                 leading = { Text(span.era.emoji, style = MaterialTheme.typography.titleLarge) },
-            )
+            ) {
+                span.challengeWon?.let { won ->
+                    Spacer(Modifier.width(8.dp))
+                    Pill(if (won) "Challenge met" else "Missed", if (won) gameColors.good else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         }
         if (w.history.isNotEmpty()) RowDivider(56.dp)
         ListRow(

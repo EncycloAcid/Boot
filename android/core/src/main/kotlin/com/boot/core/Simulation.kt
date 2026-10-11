@@ -12,6 +12,7 @@ fun GameState.advance() {
     ledger = (if (ledger.size >= GameState.LENGTH_WEEKS + 10) ledger.drop(1) else ledger) + WeekLedger(week)
 
     updateEra()
+    eraWeek()
     updateHistoricRivals()
     updateRivals()
     rivalWeek()
@@ -177,7 +178,7 @@ private fun GameState.pickNextEra(): Era {
 private fun GameState.startNextEra() {
     val w = world
     val next = historicalEraAfter()?.first ?: w.nextEra ?: pickNextEra()
-    w.history += EraSpan(w.era, w.eraStartWeek, week)
+    w.history += closeEra()
     w.pastEras += w.era
     w.era = next
     w.eraStartWeek = week
@@ -195,6 +196,7 @@ private fun GameState.startNextEra() {
     addLog("A new era begins: ${next.title}. ${next.blurb}", tone)
     announceEraResearch()
     publish(NewsDesk.INDUSTRY, "The Economist", "${next.emoji} ${next.title} begins", next.blurb, tone, lead = true)
+    beginEra()
 }
 
 private fun GameState.updateRivals() {
@@ -227,15 +229,10 @@ private fun GameState.studioWeek() {
     val g = games ?: return
     val t = g.trend
     if (t == null || week >= t.until) {
-        val next = when (world.era) {
-            Era.AI_GOLD_RUSH -> Trend(topic = rng.pick(listOf(Topic.ARTIFICIAL_INTELLIGENCE, Topic.ROBOTS, Topic.CYBERPUNK)), until = 0)
-            Era.VR_HYPE_CYCLE -> Trend(genre = Genre.ACTION, until = 0)
-            Era.RETRO_REVIVAL -> Trend(genre = Genre.CASUAL, until = 0)
-            Era.CREATOR_ECONOMY -> Trend(topic = rng.pick(listOf(Topic.MUSIC, Topic.FASHION, Topic.COOKING)), until = 0)
-            Era.PRIVACY_PANIC -> Trend(topic = rng.pick(listOf(Topic.HACKING, Topic.SPY)), until = 0)
-            Era.CRYPTO_WINTER -> Trend(topic = Topic.BUSINESS, until = 0)
-            else -> if (rng.chance(0.6)) Trend(topic = rng.pick(Topic.entries), until = 0) else Trend(genre = rng.pick(Genre.entries), until = 0)
-        }.copy(until = week + rng.int(40, 70))
+        // Most of the time the era decides what's hot; now and then something comes out of nowhere.
+        val next = (eraTrend()?.takeIf { rng.chance(0.75) }
+            ?: if (rng.chance(0.6)) Trend(topic = rng.pick(Topic.entries), until = 0) else Trend(genre = rng.pick(Genre.entries), until = 0))
+            .copy(until = week + rng.int(40, 70))
         if (next.title != t?.title) addLog("Trend: gamers can't get enough of ${next.title.lowercase()} games.", LogTone.NEUTRAL, Lane.GAMES)
         g.trend = next
     }

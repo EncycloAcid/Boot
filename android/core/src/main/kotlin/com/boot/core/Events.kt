@@ -133,6 +133,7 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is DramaEvent -> describeDrama(kind)
     is Opportunity -> describeOpportunity(kind)
     is LaneDecision -> describeLane(kind)
+    is EraMoment -> describeMoment(kind)
     is EventKind.Poach -> {
         val e = staff.firstOrNull { it.id == kind.employeeId }
         if (e == null) {
@@ -420,6 +421,7 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         is DramaEvent -> resolveDrama(kind, choice)
         is Opportunity -> resolveOpportunity(kind, choice)
         is LaneDecision -> resolveLane(kind, choice)
+        is EraMoment -> resolveMoment(kind, choice)
         is EventKind.Poach -> {
             val e = staff.firstOrNull { it.id == kind.employeeId } ?: return
             if (choice == 0) {

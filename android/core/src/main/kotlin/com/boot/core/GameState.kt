@@ -84,6 +84,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
                     s.addLog("${lane.title} eats money. You raised a ${money(round.amount)} seed round and gained a board.")
                 }
             }
+            // A run set in the past starts mid-history, with its era's challenge.
+            if (s.world.era != Era.BOOTSTRAP_YEARS) s.beginEra()
             return s
         }
 

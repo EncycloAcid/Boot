@@ -73,6 +73,8 @@ enum class Achievement(val title: String, val detail: String, val tier: Tier, in
     // Grit
     HARD_HIT("Hard Mode Hero", "Ship a hit on hard.", Tier.GOLD, { difficulty == Difficulty.HARD && games?.releases?.any { it.score >= 8 } == true }),
     LONG_HAUL("The Long Haul", "Play into year fifteen.", Tier.SILVER, { week >= 52 * 14 }),
+    ERA_RIDER("Sign of the Times", "Meet an era's challenge.", Tier.BRONZE, { stats.eraChallengesWon >= 1 }),
+    ERA_MASTER("Master of Eras", "Meet three eras' challenges in one run.", Tier.GOLD, { stats.eraChallengesWon >= 3 }),
     ;
 
     enum class Tier { BRONZE, SILVER, GOLD, PLATINUM }

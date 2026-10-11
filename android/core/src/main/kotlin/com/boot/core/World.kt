@@ -360,7 +360,20 @@ enum class EraPhase(val title: String) { DAWN("Dawn"), PEAK("Peak"), FADING("Fad
 
 /** An era that has been and gone, for the timeline. */
 @Serializable
-data class EraSpan(val era: Era, val startWeek: Int, val endWeek: Int)
+data class EraSpan(
+    val era: Era,
+    val startWeek: Int,
+    val endWeek: Int,
+    /** For eras you lived through: what you earned, and your value at the start and the end. */
+    val revenue: Double = 0.0,
+    val valueStart: Double = 0.0,
+    val valueEnd: Double = 0.0,
+    val challenge: String? = null,
+    val challengeWon: Boolean? = null,
+) {
+    /** Did the company live through this era (rather than it being history before the run began)? */
+    val lived: Boolean get() = endWeek > 0 && (valueStart > 0 || valueEnd > 0 || revenue > 0)
+}
 
 @Serializable
 class World {
@@ -376,6 +389,14 @@ class World {
 
     /** The era that comes next, picked as this one starts to fade. Only rumours say what it is. */
     var nextEra: Era? = null
+
+    /** This era's goal, and where you stood when it began. */
+    var challenge: EraChallenge? = null
+    var eraStartValue = 0.0
+    var eraStartRevenue = 0.0
+
+    /** The era's one-off moment has come round. */
+    var momentDone = false
 
     private fun scaled(x: Double): Double = 1 + (x - 1) * eraIntensity
 

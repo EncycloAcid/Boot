@@ -223,6 +223,12 @@ Every research item has the year it became possible (from 1978 for sequels, proc
 
 Reviewers' expectations (craft points per unit of work, and the engine level they expect) rise for the first fifteen years of a run and then hold, so a fifty-year Decades run stays playable.
 
+## Era challenges, moments and reviews
+
+Each era but the Bootstrap Years has a challenge, picked from its preferred kinds by what suits the company (a hit needs a game studio; mastering the tech needs research you could use): earn 1.2 times last year's revenue over the era, reach 2.5 times your valuation, 26 profitable weeks in a row, ship a game that scores 8 or more, research the era's own tech, or grow the team by half. Meeting it pays six weeks of company revenue (at least $50k), 25 RP and 3 reputation.
+
+When an era reaches its peak, its moment comes round once: a decision with effects for the rest of the era or longer, mostly as demand, output or cost changes on your businesses for 13 to 52 weeks. Game trends follow the era three times in four. When an era ends, its span in the timeline records what you earned, your value at the start and end, and whether you met the challenge, and the paper runs a review.
+
 ## Rivals
 
 Each lane has a main rival with a strength (their market muscle, which also sets how much of the market they take from you) and a heat: how much they want to hurt you. Heat rises each week you run the lane, faster the more you earn relative to the lane's scale (Games $300k a week, Websites $60k, Apps $100k, Social $150k, Hardware $600k, AI $400k), and cools slowly. Calm below 0.3, wary to 0.6, hostile above.

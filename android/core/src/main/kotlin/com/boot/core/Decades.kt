@@ -76,8 +76,12 @@ val Era.research: List<Research> get() = Research.entries.filter { it.era == thi
 internal fun GameState.announceEraResearch() {
     val items = world.era.research.filter { it !in researched }
     if (items.isEmpty()) return
-    addLog("New research, only while ${world.era.inSentence} lasts: ${items.joinToString(" and ") { it.title.lowercase() }}.", LogTone.MILESTONE)
+    addLog("New research, only while ${world.era.inSentence} lasts: ${items.joinToString(" and ") { it.inSentence }}.", LogTone.MILESTONE)
 }
+
+/** A research item's name mid-sentence: "copy protection", but "AI copilots" and "fire-sale GPUs" keep their capitals. */
+val Research.inSentence: String
+    get() = if (title.length > 1 && title[1].isLowerCase()) title.replaceFirstChar { it.lowercase() } else title
 
 /** An era's name mid-sentence: "the home computer revolution", "Web 2.0". */
 val Era.inSentence: String get() = if (title.startsWith("The ")) "the " + title.removePrefix("The ").lowercase() else title
