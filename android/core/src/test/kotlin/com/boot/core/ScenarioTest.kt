@@ -24,6 +24,7 @@ class ScenarioTest {
             assertEquals(sc.difficulty, s.difficulty)
             sc.cash?.let { assertEquals(it, s.cash, 1e-6) }
             assertEquals(sc.staff, s.staff.size)
+            assertTrue(s.staff.size <= s.office.desks, "${sc.name} starts crowded")
             sc.era?.let { assertEquals(it, s.world.era) }
             assertTrue(s.laneOpen(sc.lane), "${sc.name}: ${sc.lane} must exist in ${s.calendarYear}")
         }

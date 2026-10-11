@@ -128,6 +128,7 @@ fun GameState.Companion.scenario(
         s.ledger = listOf(WeekLedger(0, cash = cash))
     }
     repeat(scenario.staff) { s.hireDirect(s.makeCandidate(), scenario.lane) }
+    s.office = Office.entries.first { it.desks >= s.staff.size }
     if (scenario == Scenario.SURVIVE_THE_BUST) s.web?.let { web ->
         // A survivor of the boom: known around town, with clients who stayed.
         web.standing = 0.6

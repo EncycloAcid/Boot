@@ -745,7 +745,7 @@ class GameFlowTest {
         )
         File(RuntimeEnvironment.getApplication().filesDir, "hall.json").writeText(encodeHall(earlier))
         launch()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Hall of Fame", substring = true, ignoreCase = true))
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Hall of Fame ·", substring = true))
         compose.waitForIdle()
         compose.onNodeWithText("Moss & Co").assertExists()
         screen("64-hall-of-fame")
