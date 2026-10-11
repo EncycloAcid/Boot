@@ -310,6 +310,8 @@ internal fun GameState.resolveRival(k: RivalEvent, choice: Int) {
                         squeeze(k, "${k.rival}'s ad blitz", 0.97, 6)
                     } else {
                         squeeze(k, "${k.rival}'s ad blitz", 0.88, 10)
+                        // Their ads drown yours out.
+                        marketing.boost[k.lane]?.let { marketing.boost[k.lane] = it * 0.7 }
                     }
                 }
                 RivalMoveKind.TALENT_RAID -> {

@@ -81,6 +81,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     /** A company on the stock market whose page is open. */
     var openStock by mutableStateOf<String?>(null)
 
+    /** The campaign planner is open for this business. */
+    var campaignLane by mutableStateOf<Lane?>(null)
+
     /** How to play is open. */
     var guideOpen by mutableStateOf(false)
 
@@ -108,7 +111,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
 
     /** A full-screen page that holds the clock while it's open. */
-    val holdsClock: Boolean get() = designing || openRelease != null || guideOpen || openStock != null
+    val holdsClock: Boolean get() = designing || openRelease != null || guideOpen || openStock != null || campaignLane != null
 
     fun newGame(
         company: String,

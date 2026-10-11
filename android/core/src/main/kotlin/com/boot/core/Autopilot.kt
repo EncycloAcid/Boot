@@ -149,6 +149,13 @@ class Autopilot(
                     ?.let { if (s.cash > s.experimentCost * 10) attempt { s.startExperiment(it) } }
             }
         }
+        // Advertise a business that earns ten times what a campaign costs a week.
+        for (lane in s.lanes) {
+            if (s.campaignFor(lane) != null || (s.marketing.boost[lane] ?: 0.0) > 0.1) continue
+            val channel = s.channels().maxByOrNull { it.fit(lane) * it.reach / it.weekly } ?: continue
+            val cost = s.campaignCost(channel, AdBudget.MEDIUM)
+            if (s.trailingRevenue(lane, 4) / 4 > cost * 10 && s.cash > cost * 8 * 4) attempt { s.startCampaign(lane, channel, AdBudget.MEDIUM, 8) }
+        }
         for (r in s.yourRivals) {
             if (r.stance == RivalStance.HOSTILE && s.cash > s.counterCost(r, CounterMove.ATTACK_ADS) * 15 && s.counterBlocker(r, CounterMove.ATTACK_ADS) == null) {
                 attempt { s.counter(r.name, CounterMove.ATTACK_ADS) }

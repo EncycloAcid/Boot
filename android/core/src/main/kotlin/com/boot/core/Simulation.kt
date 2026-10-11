@@ -41,6 +41,7 @@ fun GameState.advance() {
 
     studioWeek()
     roadmapWeek()
+    marketingWeek()
     newsWeek()
     researchPoints += weeklyResearch(games?.lastWork ?: 0.0)
 

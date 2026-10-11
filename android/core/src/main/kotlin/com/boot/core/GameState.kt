@@ -124,6 +124,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     /** Sandbox: no bankruptcy, no Hall of Fame. */
     var sandbox = false
 
+    /** Brand awareness and ad campaigns, for every business. */
+    var marketing = Marketing()
+
     /** Shares you hold, companies you took over, and raiders at the gate. */
     var portfolio = Portfolio()
 
@@ -357,6 +360,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         val people = staffing(lane)
         mods.quality += minOf(6.0, people.traitQuality)
         mods.demand *= people.traitDemand
+        mods.demand *= brandLift(lane)
         if (lane == Lane.HARDWARE) mods.cost *= world.hardwareCost
         mods.demand *= difficulty.sales
         mods.cost *= difficulty.costs

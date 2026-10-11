@@ -82,6 +82,7 @@ fun LanesScreen(store: GameStore, state: GameState) {
             Lane.AI -> aiItems(store, state)
         }
         depthItems(store, state, lane)
+        item { MarketingSection(store, state, lane) }
         item { RivalSection(store, state, lane) }
         if (lane != Lane.GAMES) item { RoadmapSection(store, state, lane) }
     }
