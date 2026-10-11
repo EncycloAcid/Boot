@@ -62,8 +62,9 @@ import com.boot.game.Tab
 @Composable
 fun OfficeScreen(store: GameStore, state: GameState) {
     ScreenColumn {
-        item { OfficeCard(store, state) }
+        // The tutorial leads, so its button is on screen without scrolling.
         if (state.tutorial != null) item { LessonCard(store, state) }
+        item { OfficeCard(store, state) }
         if (state.scenario != null) item { ScenarioCard(state) }
         // While the tutorial runs, the next step only speaks up about money.
         if (nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true) {
