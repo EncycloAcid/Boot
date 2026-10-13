@@ -48,6 +48,7 @@ import com.boot.core.Research
 import com.boot.core.buyCampaign
 import com.boot.core.expansionBlocker
 import com.boot.core.freeDesks
+import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.researchBlocker
 import com.boot.game.GameStore
@@ -263,9 +264,27 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
         }
         if (p.isReady) {
             Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
-            Hint("Content complete. Bugs get fixed while you polish.")
+            val forecast = state.gameForecast(team)
+            if (forecast != null) {
+                Hint(
+                    String.format(
+                        java.util.Locale.US,
+                        "Content complete. Expected ~%.1f/10 if you ship now%s.",
+                        forecast.expectedScore,
+                        if (forecast.bugs >= 2) " — ${forecast.bugs.toInt()} bugs still open" else "",
+                    ),
+                )
+            } else {
+                Hint("Content complete. Bugs get fixed while you polish.")
+            }
         } else {
-            Meter("Development", p.completion, wavy = store.playing, caption = Format.weeks(p.weeksInDev) + " in")
+            val eta = state.gameForecast(team)?.weeksToReady
+            val caption = when {
+                eta == null -> Format.weeks(p.weeksInDev) + " in"
+                eta <= 0 -> "ready this week"
+                else -> "~${Format.weeks(eta)} left · ${Format.weeks(p.weeksInDev)} in"
+            }
+            Meter("Development", p.completion, wavy = store.playing, caption = caption)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             MiniStat("Design", Format.count(p.design), colors.design, Modifier.weight(1f))

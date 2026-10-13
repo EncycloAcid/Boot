@@ -57,6 +57,8 @@ import com.boot.core.buyCampaign
 import com.boot.core.cancelGame
 import com.boot.core.clashFor
 import com.boot.core.engineQuote
+import com.boot.core.LaunchForecast
+import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
@@ -287,15 +289,39 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                     }
                 }
             }
-            Meter("Development", p.completion, wavy = !p.isReady)
+            Meter(
+                "Development",
+                p.completion,
+                wavy = !p.isReady,
+                caption = forecastCaption(state.gameForecast(team), p.isReady),
+            )
             TileRow {
                 PointTile("Design", p.design, p.lastDesign, colors.design, state.week, Modifier.weight(1f))
                 PointTile("Tech", p.tech, p.lastTech, colors.tech, state.week, Modifier.weight(1f))
                 PointTile("Bugs", p.bugs, p.lastBugs, colors.bad, state.week, Modifier.weight(1f))
             }
-            if (p.isReady) Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
+            if (p.isReady) {
+                Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
+                state.gameForecast(team)?.let { f ->
+                    ValueRow(
+                        "Expected score",
+                        String.format(java.util.Locale.US, "~%.1f (%s–%s)", f.expectedScore, f.low, f.high),
+                    )
+                    if (f.polishPastSweetSpot) {
+                        Hint("Polish is full — further weeks mostly clear leftover bugs.", colors.warn)
+                    } else if (f.bugs >= 2) {
+                        Hint("Ship when bugs are down, or keep polishing for a cleaner score.")
+                    }
+                }
+            }
         }
     }
+}
+
+private fun forecastCaption(forecast: LaunchForecast?, ready: Boolean): String? {
+    if (ready) return "Content complete"
+    val weeks = forecast?.weeksToReady ?: return null
+    return if (weeks <= 0) "Ready this week" else "~${Format.weeks(weeks)} to ready"
 }
 
 /** A running total with a bubble that floats up each week showing what was just added, like the points popping off a dev's desk. */

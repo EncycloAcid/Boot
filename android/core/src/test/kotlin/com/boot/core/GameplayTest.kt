@@ -143,16 +143,55 @@ class AfterLaunchTest {
         val s = game(Lane.GAMES, 8)
         s.cash = 100_000.0
         val r = s.fakeRelease(7.0, bugs = 20.0)
+        r.userScore = 5.5
         assertNull(s.patchBlocker(r.id))
         val cash = s.cash
         val sales = r.weeklySales
+        val beforeUser = r.userScore
         s.patchGame(r.id)
         assertEquals(0.0, r.bugs)
         assertTrue(r.patched)
         assertTrue(r.weeklySales > sales)
+        assertTrue(r.userScore > beforeUser, "players raise their score when bugs are fixed")
         assertTrue(s.cash < cash)
         assertNotNull(s.patchBlocker(r.id))
         assertFailsWith<GameException> { s.patchGame(r.id) }
+    }
+
+    @Test
+    fun patchingBringsLivePlayersBack() {
+        val s = game(Lane.GAMES, 81)
+        s.cash = 100_000.0
+        val r = s.fakeRelease(6.5, bugs = 40.0, units = 10_000.0)
+        r.live = LiveService(players = 8_000.0, lastSeasonWeek = s.week)
+        val before = r.live!!.players
+        s.patchGame(r.id)
+        assertTrue(r.live!!.players > before)
+    }
+
+    @Test
+    fun gameForecastTracksBugsAndPolish() {
+        val s = game(Lane.GAMES, 82)
+        s.cash = 500_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        val concept = GameConcept("Forecast Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+        s.startGame(concept)
+        val early = assertNotNull(s.gameForecast())
+        assertNotNull(early.weeksToReady)
+        assertTrue(early.weeksToReady!! > 0)
+        while (s.games!!.project?.isReady != true) s.play(1)
+        val ready = assertNotNull(s.gameForecast())
+        assertNull(ready.weeksToReady)
+        val buggy = ready.expectedScore
+        // Clear bugs / polish a bit and the forecast should climb.
+        val p = s.games!!.project!!
+        p.bugs = 0.0
+        p.polish = p.work * 0.4
+        val clean = assertNotNull(s.gameForecast())
+        assertTrue(clean.expectedScore > buggy, "clean ${clean.expectedScore} vs buggy $buggy")
+        assertTrue(clean.high >= clean.low)
+        assertTrue(clean.polishPastSweetSpot)
     }
 
     @Test

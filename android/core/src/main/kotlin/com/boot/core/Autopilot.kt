@@ -321,7 +321,10 @@ class Autopilot(
             if (Research.MARKETING in s.researched) {
                 for (c in Campaign.entries) if (c !in p.campaigns && s.cash > c.cost * 25) attempt { s.buyCampaign(c) }
             }
-            val polished = p.bugs < p.work * 0.08 || p.weeksInDev > p.work / 2 + 30
+            val forecast = s.gameForecast()
+            val polished = p.bugs < p.work * 0.08 ||
+                forecast?.polishPastSweetSpot == true ||
+                p.weeksInDev > p.work / 2 + 30
             if (p.isReady && (polished || s.runwayWeeks < 10)) attempt { s.launchGame() }
             return
         }

@@ -123,8 +123,8 @@ data class GameRelease(
     /** A patch went out: bugs fixed, sales hold up a little longer. */
     var patched: Boolean = false,
     val expansions: MutableList<String> = mutableListOf(),
-    /** What players think, 1...10. Word of mouth: it decides how long the game keeps selling. -1 on old saves. */
-    val userScore: Double = -1.0,
+    /** What players think, 1...10. Word of mouth: it decides how long the game keeps selling. -1 on old saves. Patches can raise it. */
+    var userScore: Double = -1.0,
     val aspects: Map<ReviewAspect, Double> = emptyMap(),
     val pros: List<String> = emptyList(),
     val cons: List<String> = emptyList(),
@@ -165,6 +165,24 @@ data class ScorePart(val label: String, val points: Double, val note: String = "
 
 /** Where every score starts before its parts. */
 const val SCORE_BASELINE = 5.0
+
+/**
+ * What a game in development would score if you shipped it today.
+ * Critics' mood (±0.6) is left at zero, so the range is the expected band.
+ */
+data class LaunchForecast(
+    val expectedScore: Double,
+    val low: Double,
+    val high: Double,
+    val bugs: Double,
+    /** polish / (work × 0.4), capped at 1 once the polish meter is full. */
+    val polishRatio: Double,
+    /** Whole weeks of current output to hit content-complete. Null when already ready. */
+    val weeksToReady: Int?,
+) {
+    /** Further polish buys little once the meter is full. */
+    val polishPastSweetSpot: Boolean get() = polishRatio >= 0.95
+}
 
 /** Design and tech points per unit of work that a decent team makes in a given week: it rises 10% a year. */
 internal fun craftBenchmark(week: Int): Double = 2.0 * 1.1.pow(min(week / 52.0, BENCHMARK_YEARS))
@@ -468,21 +486,18 @@ class GamesStudio {
 
     // Launch, reviews and the game report
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1): LaneReport {
-        val p = projectOf(team) ?: throw invalid("No game in development.")
-        if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
+    /**
+     * Expected critic score if [p] shipped today. [mood] is the critics' mood roll (±0.6);
+     * pass 0 for a forecast.
+     */
+    private fun draftScore(p: GameProject, ctx: LaneContext, audienceSuited: Boolean, mood: Double): ScoreDraft {
         val c = p.concept
-        val report = LaneReport()
         val week = ctx.week
         val engine = engine(c.engineId)
-
-        // The score: a baseline, plus or minus each part of how the game was made. Every part is
-        // shown in the game report, so a score can always be explained.
         val parts = mutableListOf<ScorePart>()
         fun part(label: String, points: Double, note: String) {
             if (abs(points) >= 0.05) parts += ScorePart(label, (points * 10).roundToInt() / 10.0, note)
         }
-        // Craft: design and tech points for the work, against what a decent team makes this year.
         val craft = (p.design + p.tech) / max(1.0, p.work) / craftBenchmark(week)
         part("Craft", (2.2 * ln(max(0.05, craft)) / ln(1.5)).clamped(-3.0, 2.0),
             "${Format.percent(craft)} of what a decent team makes today. Better people and engines raise it.")
@@ -522,18 +537,65 @@ class GamesStudio {
         val rushedSequel = original != null && week - original.week < 52
         if (rushedSequel) part("Rushed sequel", -0.6, "Less than a year after ${original!!.title}.")
         part("Studio craft", ctx.mods.quality / 15, "Perfectionists, playtesting and the like.")
-        // Critics expect a studio to keep its level, but only a real drop is held against it.
         val recent = releases.filter { it.developer == null }.take(3).map { it.score }
         val before = SCORE_BASELINE + parts.sumOf { it.points }
         val stepBack = recent.isNotEmpty() && before < recent.average() - 1.5
         val record = releases.isNotEmpty() && before > topScore
         if (stepBack) part("A step back", -0.5, "Well below your last games (${String.format(java.util.Locale.US, "%.1f", recent.average())} on average).")
         if (record) part("Your best yet", 0.2, "Better than anything you've made.")
-        part("Critics' mood", rng.normal(sd = 0.3).clamped(-0.6, 0.6), "Reviewers are people.")
+        if (abs(mood) >= 0.05) part("Critics' mood", mood, "Reviewers are people.")
         val raw = SCORE_BASELINE + parts.sumOf { it.points }
         if (raw > 8) part("Diminishing returns", softCap(raw) - raw, "Above 8, every extra point counts half.")
         val score = softCap(raw).clamped(1.0, 10.0)
-        val q = craft
+        return ScoreDraft(
+            parts = parts, score = score, craft = craft, designRatio = designRatio, bugPenalty = bugPenalty,
+            audienceFit = audienceFit, onTrend = onTrend, repeated = repeated, rushedSequel = rushedSequel,
+            stepBack = stepBack, record = record, original = original, dated = dated, standard = standard, engine = engine,
+        )
+    }
+
+    /** Expected score if you shipped [team]'s project today, with a ±0.6 critic-mood band. */
+    fun forecast(ctx: LaneContext, audienceSuited: Boolean, workOutput: Double, team: Int = 1): LaunchForecast? {
+        val p = projectOf(team) ?: return null
+        val draft = draftScore(p, ctx, audienceSuited, mood = 0.0)
+        val weeks = when {
+            p.isReady -> null
+            workOutput <= 0.01 -> null
+            else -> ceil((p.work - p.progress) / workOutput).toInt()
+        }
+        return LaunchForecast(
+            expectedScore = (draft.score * 10).roundToInt() / 10.0,
+            low = ((draft.score - 0.6).clamped(1.0, 10.0) * 10).roundToInt() / 10.0,
+            high = ((draft.score + 0.6).clamped(1.0, 10.0) * 10).roundToInt() / 10.0,
+            bugs = p.bugs,
+            polishRatio = min(1.0, p.polish / (p.work * 0.4)),
+            weeksToReady = weeks,
+        )
+    }
+
+    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1): LaneReport {
+        val p = projectOf(team) ?: throw invalid("No game in development.")
+        if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
+        val c = p.concept
+        val report = LaneReport()
+        val week = ctx.week
+        val mood = rng.normal(sd = 0.3).clamped(-0.6, 0.6)
+        val draft = draftScore(p, ctx, audienceSuited, mood)
+        val parts = draft.parts
+        val score = draft.score
+        val q = draft.craft
+        val designRatio = draft.designRatio
+        val bugPenalty = draft.bugPenalty
+        val onTrend = draft.onTrend
+        val repeated = draft.repeated
+        val rushedSequel = draft.rushedSequel
+        val stepBack = draft.stepBack
+        val record = draft.record
+        val original = draft.original
+        val dated = draft.dated
+        val standard = draft.standard
+        val engine = draft.engine
+        val audienceFit = draft.audienceFit
 
         // The critics, and then the players.
         val areas = FocusArea.entries
@@ -746,6 +808,25 @@ class GamesStudio {
             return if (releases.isEmpty()) "No game in development" else "Between projects"
         }
 }
+
+/** Intermediate score build shared by launch and [GamesStudio.forecast]. */
+private data class ScoreDraft(
+    val parts: List<ScorePart>,
+    val score: Double,
+    val craft: Double,
+    val designRatio: Double,
+    val bugPenalty: Double,
+    val audienceFit: Fit,
+    val onTrend: Boolean,
+    val repeated: Boolean,
+    val rushedSequel: Boolean,
+    val stepBack: Boolean,
+    val record: Boolean,
+    val original: GameRelease?,
+    val dated: Boolean,
+    val standard: Double,
+    val engine: Engine,
+)
 
 private fun <T> List<T>.shuffledWith(rng: SeededRNG): List<T> {
     val list = toMutableList()

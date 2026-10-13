@@ -162,6 +162,14 @@ fun GameState.buyCampaign(c: Campaign, team: Int = 1) {
     addLog("${c.title} for ${p.title}. Hype is building.", LogTone.NEUTRAL, Lane.GAMES)
 }
 
+/** Expected critic score if you shipped [team]'s project today. */
+fun GameState.gameForecast(team: Int = 1): LaunchForecast? {
+    val g = games ?: return null
+    val p = g.projectOf(team) ?: return null
+    val suited = p.concept.platforms.any { it.suits(p.concept.audience) }
+    return g.forecast(context(Lane.GAMES), suited, context(Lane.GAMES).workOutput, team)
+}
+
 fun GameState.launchGame(team: Int = 1) {
     val g = studio()
     val p = g.projectOf(team) ?: throw invalid("No game in development.")
@@ -328,7 +336,10 @@ fun GameState.patchBlocker(id: Int): String? {
     return null
 }
 
-/** Fix the bugs that shipped. Players notice, and sales hold up a little longer. */
+/**
+ * Fix the bugs that shipped. Players raise their score, sales get a bump that scales with how
+ * broken it was, and a live game's community comes back a little.
+ */
 fun GameState.patchGame(id: Int) {
     requireLive()
     patchBlocker(id)?.let { throw notAvailable(it) }
@@ -337,12 +348,27 @@ fun GameState.patchGame(id: Int) {
     val cost = r.patchCost()
     spend(cost, Lane.GAMES)
     val fixed = r.bugs
+    val severity = (fixed / max(1.0, r.concept.size.work * 0.6)).coerceIn(0.0, 1.0)
     r.bugs = 0.0
     r.patched = true
-    if (r.weeklySales > 0) r.weeklySales *= 1.15
-    g.fanTrust = minOf(1.2, g.fanTrust + 0.03)
+    val beforeUser = r.userScore
+    if (r.userScore > 0) {
+        // Recover the bug hit on word of mouth: ~0.8 when bugPenalty was under 0.9, plus severity.
+        r.userScore = minOf(10.0, r.userScore + (0.4 + severity * 1.2).coerceIn(0.3, 1.6))
+    }
+    if (r.weeklySales > 0) r.weeklySales *= (1.1 + severity * 0.35).coerceIn(1.1, 1.5)
+    r.live?.takeIf { !it.closed }?.let { live ->
+        live.players *= 1 + 0.06 + severity * 0.12
+        live.peakPlayers = maxOf(live.peakPlayers, live.players)
+    }
+    g.fanTrust = minOf(1.2, g.fanTrust + 0.03 + severity * 0.04)
     reputation.adjust(1.0)
-    addLog("Patched ${r.title}: ${fixed.toInt()} bugs fixed for ${money(cost)}. Players notice.", LogTone.GOOD, Lane.GAMES)
+    val scoreNote = if (beforeUser > 0 && r.userScore > beforeUser + 0.05) {
+        " Player score " + String.format(java.util.Locale.US, "%.1f → %.1f.", beforeUser, r.userScore)
+    } else {
+        " Players notice."
+    }
+    addLog("Patched ${r.title}: ${fixed.toInt()} bugs fixed for ${money(cost)}.$scoreNote", LogTone.GOOD, Lane.GAMES)
 }
 
 fun GameState.expansionBlocker(id: Int): String? {

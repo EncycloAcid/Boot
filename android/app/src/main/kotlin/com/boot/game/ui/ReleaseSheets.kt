@@ -234,7 +234,11 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
     ) {
         ActionRow(
             if (r.patched) "Patched" else "Release a patch",
-            if (r.patched) "The bugs are fixed. Fans noticed." else patch ?: "Fixes ${r.bugs.toInt()} bugs for ${Format.money(r.patchCost())}. Fans notice, and sales hold up longer.",
+            if (r.patched) {
+                "Bugs cleared. Player score recovered, and sales held up longer."
+            } else {
+                patch ?: "Fixes ${r.bugs.toInt()} bugs for ${Format.money(r.patchCost())}. Raises the player score, refreshes sales, and brings live players back."
+            },
             if (r.patched) "Done" else "Patch",
             enabled = patch == null,
         ) { store.perform { patchGame(r.id) } }
