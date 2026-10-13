@@ -56,7 +56,9 @@ import com.boot.core.setEngineLicensed
 import com.boot.core.buyCampaign
 import com.boot.core.cancelGame
 import com.boot.core.clashFor
+import com.boot.core.engineCombo
 import com.boot.core.engineQuote
+import com.boot.core.expectedEngineStandard
 import com.boot.core.LaunchForecast
 import com.boot.core.gameForecast
 import com.boot.core.launchGame
@@ -71,6 +73,7 @@ import com.boot.core.takeGameContract
 import com.boot.game.GameStore
 import com.boot.game.StudioPage
 import java.util.Locale
+import kotlin.math.abs
 
 /** The game studio, Game Dev Tycoon style. */
 fun LazyListScope.studioItems(store: GameStore, state: GameState) {
@@ -300,6 +303,27 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 PointTile("Tech", p.tech, p.lastTech, colors.tech, state.week, Modifier.weight(1f))
                 PointTile("Bugs", p.bugs, p.lastBugs, colors.bad, state.week, Modifier.weight(1f))
             }
+            if (!p.isReady) {
+                val lean = p.projectedDesignShare()
+                val delta = p.designLeanDelta()
+                val leanHint = when {
+                    abs(delta) < 0.05 -> "On a healthy design/tech lean for ${c.genreLower}."
+                    delta < 0 -> "Leaning tech-heavy vs what ${c.genreLower} usually wants."
+                    else -> "Leaning design-heavy vs what ${c.genreLower} usually wants."
+                }
+                Meter(
+                    "Design lean",
+                    lean,
+                    colors.design,
+                    caption = "${Format.percent(lean)} design · $leanHint",
+                )
+                state.gameForecast(team)?.let { f ->
+                    ValueRow(
+                        "Expected score",
+                        String.format(java.util.Locale.US, "~%.1f (%s–%s)", f.expectedScore, f.low, f.high),
+                    )
+                }
+            }
             if (p.isReady) {
                 Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
                 state.gameForecast(team)?.let { f ->
@@ -355,7 +379,7 @@ private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject, team:
     val alloc = p.focus[stage]
     GroupedSection(
         (if (team == 2) "Team 2 · " else "") + "Focus · ${FocusArea.STAGES[stage]}",
-        footer = "Split this stage's effort. Each genre cares about different things; game reports teach you which.",
+        footer = "Rebalance this stage any time. Finishing a stage teaches one sharper genre lesson; shipping still fills the notebook.",
     ) {
         CardBlock {
             areas.forEachIndexed { i, area ->
@@ -516,18 +540,26 @@ fun ScoreBadge(score: Double, size: Dp) {
 private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
     val canBuild = Research.CUSTOM_ENGINES in state.researched
     val (features, cost, weeks) = state.engineQuote()
-    val level = features.sumOf { it.engineLevel }
+    val combo = engineCombo(features)
     val best = g.engines.maxOf { it.level }
+    val standard = state.expectedEngineStandard().toInt()
     GroupedSection(
         "Engines",
         footer = when {
             !canBuild -> "Research custom engines, then engine features, to build better tech. Games on dated engines look it."
-            else -> "Reviewers expect about level ${state.week / 20} by now."
+            else -> "Reviewers expect about level $standard by now. Feature tech levels stay hidden until a build finishes or a game ships."
         },
     ) {
         g.engines.sortedByDescending { it.level }.forEachIndexed { i, e ->
             if (i > 0) RowDivider()
-            ListRow(e.name, subtitle = if (e.features.isEmpty()) "No features" else e.features.joinToString { it.title }, value = "level ${e.level}")
+            val featureLine = if (e.features.isEmpty()) {
+                "No features"
+            } else {
+                e.features.joinToString { f ->
+                    if (g.knowsEngineLevel(f)) "${f.title} (L${f.engineLevel})" else f.title
+                }
+            }
+            ListRow(e.name, subtitle = featureLine, value = "level ${e.level}")
             if (e.level > 0) {
                 ToggleRow(
                     "License to other studios", e.licensed,
@@ -537,15 +569,18 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
         }
         g.engineBuild?.let { b ->
             RowDivider()
-            CardBlock { Meter("Building ${b.name}", 0.5, wavy = true, caption = "${Format.weeks(b.weeksLeft)} left") }
+            CardBlock { Meter("Building ${b.name}", 0.5, wavy = true, caption = "${Format.weeks(b.weeksLeft)} left · effective L${b.combo.level}") }
         }
         if (canBuild && g.engineBuild == null) {
             RowDivider()
+            val clash = combo.notes.firstOrNull()
             ActionRow(
-                "New engine: level $level",
-                "${features.size} features · ${Format.money(cost)} · $weeks weeks",
+                "New engine: level ${combo.level}",
+                "${features.size} features · ${Format.money(cost)} · $weeks weeks" +
+                    (if (clash != null) " · $clash" else "") +
+                    " · market expects ~L$standard",
                 "Build",
-                enabled = level > best && state.cash >= cost,
+                enabled = combo.level > best && state.cash >= cost,
             ) { store.perform { buildEngine() } }
         }
     }

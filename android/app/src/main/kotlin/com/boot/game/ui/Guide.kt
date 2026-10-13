@@ -103,6 +103,15 @@ val guideTopics: List<GuideTopic> = listOf(
         Lane.AI,
     ),
     GuideTopic(
+        "Platform Lab", "Kernels, OEMs and ecosystem",
+        listOf(
+            "Ship OS versions with a codename and a target (PC, phone, or both as eras unlock). Engineers and researchers build design and tech; bugs pile up if you rush.",
+            "A beta delays ship, cuts bugs and raises OEM trust. Shipping raw can force a rollback that freezes partners.",
+            "Revenue comes from OEM licences and installed base. Hardware and Apps lanes give optional synergies when you ship.",
+        ),
+        Lane.OS,
+    ),
+    GuideTopic(
         "People", "Hiring, morale and offices",
         listOf(
             "Five roles (engineer, designer, researcher, marketer, operations) matter differently to each business. Everyone has a skill, a salary, morale and often a trait: press and hold a trait to see what it does.",

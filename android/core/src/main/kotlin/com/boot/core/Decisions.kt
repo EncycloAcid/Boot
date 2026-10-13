@@ -215,6 +215,7 @@ private fun GameState.hasCustomers(lane: Lane): Boolean = when (lane) {
     Lane.SOCIAL -> social?.isLive == true && (social?.users ?: 0.0) > 10_000
     Lane.HARDWARE -> hardware?.onMarket != null
     Lane.AI -> (ai?.capability ?: 0.0) > 0
+    Lane.OS -> os?.releases?.isNotEmpty() == true
 }
 
 private fun <T> List<T>.shuffledWith(rng: SeededRNG): List<T> {
@@ -396,6 +397,7 @@ internal fun GameState.productName(lane: Lane): String = when (lane) {
     Lane.SOCIAL -> social?.name ?: "your platform"
     Lane.HARDWARE -> hardware?.onMarket?.name?.let { "the $it" } ?: "your device"
     Lane.AI -> ai?.modelName ?: "your model"
+    Lane.OS -> os?.releases?.firstOrNull()?.codename ?: "your platform"
 }
 
 // Resolving

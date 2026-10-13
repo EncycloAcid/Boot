@@ -38,13 +38,13 @@ enum class Channel(
 
     /** How well this channel suits a business, around 1. */
     fun fit(lane: Lane): Double = when (this) {
-        PRINT -> when (lane) { Lane.HARDWARE, Lane.GAMES -> 1.1; Lane.WEBSITES -> 1.0; Lane.AI -> 0.8; else -> 0.7 }
-        TV -> when (lane) { Lane.HARDWARE -> 1.3; Lane.GAMES -> 1.15; Lane.APPS -> 1.0; Lane.AI, Lane.SOCIAL -> 0.8; Lane.WEBSITES -> 0.5 }
+        PRINT -> when (lane) { Lane.HARDWARE, Lane.GAMES, Lane.OS -> 1.1; Lane.WEBSITES -> 1.0; Lane.AI -> 0.8; else -> 0.7 }
+        TV -> when (lane) { Lane.HARDWARE -> 1.3; Lane.GAMES -> 1.15; Lane.APPS, Lane.OS -> 1.0; Lane.AI, Lane.SOCIAL -> 0.8; Lane.WEBSITES -> 0.5 }
         PR -> 1.0
-        EVENTS -> when (lane) { Lane.WEBSITES, Lane.AI -> 1.4; Lane.HARDWARE -> 1.2; Lane.GAMES -> 1.0; else -> 0.6 }
-        SEARCH -> when (lane) { Lane.WEBSITES -> 1.3; Lane.APPS -> 1.2; Lane.AI, Lane.SOCIAL -> 1.0; Lane.GAMES -> 0.9; Lane.HARDWARE -> 0.8 }
-        SOCIAL_ADS -> when (lane) { Lane.APPS -> 1.3; Lane.GAMES, Lane.SOCIAL -> 1.2; Lane.HARDWARE -> 1.0; else -> 0.8 }
-        INFLUENCERS -> when (lane) { Lane.GAMES -> 1.4; Lane.APPS, Lane.SOCIAL -> 1.2; Lane.HARDWARE -> 1.1; Lane.AI -> 0.8; Lane.WEBSITES -> 0.6 }
+        EVENTS -> when (lane) { Lane.WEBSITES, Lane.AI, Lane.OS -> 1.4; Lane.HARDWARE -> 1.2; Lane.GAMES -> 1.0; else -> 0.6 }
+        SEARCH -> when (lane) { Lane.WEBSITES -> 1.3; Lane.APPS -> 1.2; Lane.AI, Lane.SOCIAL, Lane.OS -> 1.0; Lane.GAMES -> 0.9; Lane.HARDWARE -> 0.8 }
+        SOCIAL_ADS -> when (lane) { Lane.APPS -> 1.3; Lane.GAMES, Lane.SOCIAL -> 1.2; Lane.HARDWARE, Lane.OS -> 1.0; else -> 0.8 }
+        INFLUENCERS -> when (lane) { Lane.GAMES -> 1.4; Lane.APPS, Lane.SOCIAL -> 1.2; Lane.HARDWARE, Lane.OS -> 1.1; Lane.AI -> 0.8; Lane.WEBSITES -> 0.6 }
     }
 
     /** "Great fit", "Good fit" or "Poor fit", for the picker. */

@@ -53,7 +53,7 @@ class SetupTest {
 
     @Test
     fun everyPairOfLanesHasExactlyOneCombo() {
-        assertEquals(15, Combo.entries.size)
+        assertEquals(21, Combo.entries.size)
         for (a in Lane.entries) {
             for (b in Lane.entries) {
                 if (a >= b) continue

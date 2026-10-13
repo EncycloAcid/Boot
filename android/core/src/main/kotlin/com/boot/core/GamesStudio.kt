@@ -96,6 +96,26 @@ data class GameProject(
     val stage: Int get() = min(2, (progress / work * 3).toInt())
 
     val focusMatch: Double get() = if (matchWork > 0) matchSum / matchWork else 0.5
+
+    /**
+     * Estimated design share from work already done plus the current stage's sliders for work still
+     * to come. Moves when you rebalance mid-dev so the lean meter and forecast can react.
+     */
+    fun projectedDesignShare(): Double {
+        val remaining = (work - progress).coerceAtLeast(0.0)
+        val accruedShare = if (design + tech > 0.01) design / (design + tech) else null
+        if (isReady || remaining <= 0.01) return accruedShare ?: concept.idealDesignShare
+        val alloc = focus[stage]
+        val areas = FocusArea.forStage(stage)
+        val total = alloc.sum().takeIf { it > 0 } ?: 1.0
+        val stageShare = areas.indices.sumOf { alloc[it] / total * areas[it].designShare }
+        val done = progress.coerceAtLeast(0.0)
+        val accrued = accruedShare ?: stageShare
+        return (accrued * done + stageShare * remaining) / (done + remaining)
+    }
+
+    /** How close the projected design lean is to the genre ideal, without revealing the target. */
+    fun designLeanDelta(): Double = projectedDesignShare() - concept.idealDesignShare
 }
 
 @Serializable
@@ -254,6 +274,12 @@ class GamesStudio {
 
     /** Genre focus lessons, keyed "GENRE:AREA". */
     val insights: MutableSet<String> = mutableSetOf()
+
+    /**
+     * Engine feature tech levels you've measured in a build or a shipped game.
+     * Until then the UI shows the feature name only.
+     */
+    val revealedEngineTech: MutableSet<String> = mutableSetOf()
     var trend: Trend? = null
     var topQuality = 0.0
     var topScore = 0.0
@@ -295,6 +321,10 @@ class GamesStudio {
     fun knownFit(topic: Topic, audience: Audience): Fit? = knownFits["TA:${topic.name}:${audience.name}"]
     fun knownFit(platform: Platform, genre: Genre): Fit? = knownFits["PG:${platform.name}:${genre.name}"]
     fun knowsWeight(genre: Genre, area: FocusArea): Boolean = "${genre.name}:${area.name}" in insights
+    fun knowsEngineLevel(r: Research): Boolean = r.name in revealedEngineTech || r.engineLevel == 0
+    fun revealEngineTech(features: Iterable<Research>) {
+        for (f in features) if (f.kind == Research.Kind.ENGINE) revealedEngineTech += f.name
+    }
 
     /** One of your games, or one your label published. */
     fun release(id: Int): GameRelease? = releases.firstOrNull { it.id == id } ?: published.firstOrNull { it.id == id }
@@ -352,7 +382,14 @@ class GamesStudio {
                 val engine = Engine(nextId(), b.name, b.features, ctx.week)
                 engines += engine
                 engineBuild = null
-                report.log("${engine.name} is finished: tech level ${engine.level}. New games can use it.", LogTone.MILESTONE)
+                revealEngineTech(b.features)
+                val comboNote = engine.combo.notes.takeIf { it.isNotEmpty() }?.joinToString(" ") ?: ""
+                report.log(
+                    "${engine.name} is finished: tech level ${engine.level}" +
+                        (if (engine.rawLevel != engine.level) " (raw ${engine.rawLevel})" else "") +
+                        ". New games can use it." + if (comboNote.isNotEmpty()) " $comboNote" else "",
+                    LogTone.MILESTONE,
+                )
             } else {
                 engineBuild = b.copy(weeksLeft = left)
             }
@@ -453,7 +490,8 @@ class GamesStudio {
             val designShare = areas.indices.sumOf { alloc[it] / total * areas[it].designShare }
             val d = work * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
             val t = work * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
-            val b = work * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0)
+            val engineBugs = engine(p.concept.engineId).combo.bugRisk
+            val b = work * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0) * (1 + engineBugs)
             p.design += d
             p.tech += t
             p.bugs += b
@@ -465,8 +503,10 @@ class GamesStudio {
             val wasStage = stage
             p.progress += work
             if (p.isReady) {
+                grantStageInsight(p, wasStage, report)
                 report.log("${p.title} is content complete. Fix bugs and polish, or ship it now.", LogTone.GOOD)
             } else if (p.stage != wasStage) {
+                grantStageInsight(p, wasStage, report)
                 report.log("${p.title} moves on to ${FocusArea.STAGES[p.stage].lowercase()}.")
             }
         } else {
@@ -486,11 +526,41 @@ class GamesStudio {
 
     // Launch, reviews and the game report
 
+    /** One sharper genre-weight insight when a development stage finishes. */
+    private fun grantStageInsight(p: GameProject, completedStage: Int, report: LaneReport) {
+        val genres = listOf(p.concept.genre) + listOfNotNull(p.concept.genre2)
+        val areas = FocusArea.forStage(completedStage)
+        for (genre in genres) {
+            val pick = areas
+                .filter { !knowsWeight(genre, it) }
+                .maxByOrNull { p.concept.idealShare(it) }
+                ?: continue
+            insights += "${genre.name}:${pick.name}"
+            val how = when (genre.weight(pick)) {
+                2 -> "matters a lot"
+                1 -> "matters somewhat"
+                else -> "barely matters"
+            }
+            report.log(
+                "Insight from ${FocusArea.STAGES[completedStage]}: ${pick.title} $how in ${genre.lower} games.",
+                LogTone.GOOD,
+            )
+            break
+        }
+    }
+
     /**
      * Expected critic score if [p] shipped today. [mood] is the critics' mood roll (±0.6);
-     * pass 0 for a forecast.
+     * pass 0 for a forecast. [projectRemaining] folds current stage sliders into craft/balance so
+     * mid-dev forecasts move when you rebalance.
      */
-    private fun draftScore(p: GameProject, ctx: LaneContext, audienceSuited: Boolean, mood: Double): ScoreDraft {
+    private fun draftScore(
+        p: GameProject,
+        ctx: LaneContext,
+        audienceSuited: Boolean,
+        mood: Double,
+        projectRemaining: Boolean = false,
+    ): ScoreDraft {
         val c = p.concept
         val week = ctx.week
         val engine = engine(c.engineId)
@@ -498,10 +568,35 @@ class GamesStudio {
         fun part(label: String, points: Double, note: String) {
             if (abs(points) >= 0.05) parts += ScorePart(label, (points * 10).roundToInt() / 10.0, note)
         }
-        val craft = (p.design + p.tech) / max(1.0, p.work) / craftBenchmark(week)
+        val remaining = if (projectRemaining && !p.isReady) (p.work - p.progress).coerceAtLeast(0.0) else 0.0
+        val projectedShare = if (projectRemaining) p.projectedDesignShare() else null
+        val engineMult = engine.multiplier
+        val projectedDesign = if (remaining > 0) {
+            val share = projectedShare ?: c.idealDesignShare
+            p.design + remaining * 2 * share * (ctx.staffing.avgDesign / 5) * engineMult
+        } else {
+            p.design
+        }
+        val projectedTech = if (remaining > 0) {
+            val share = projectedShare ?: c.idealDesignShare
+            p.tech + remaining * 2 * (1 - share) * (ctx.staffing.avgTech / 5) * engineMult
+        } else {
+            p.tech
+        }
+        val craft = (projectedDesign + projectedTech) / max(1.0, p.work) / craftBenchmark(week)
         part("Craft", (2.2 * ln(max(0.05, craft)) / ln(1.5)).clamped(-3.0, 2.0),
             "${Format.percent(craft)} of what a decent team makes today. Better people and engines raise it.")
-        val designRatio = p.design / max(1.0, p.design + p.tech)
+        val designRatio = projectedShare ?: (projectedDesign / max(1.0, projectedDesign + projectedTech))
+        val focusForScore = if (projectRemaining && !p.isReady) {
+            val stage = p.stage
+            val doneMatch = p.focusMatch
+            val remainingMatch = focusMatch(c, stage, p.focus[stage])
+            val done = p.progress.coerceAtLeast(0.0)
+            val left = remaining
+            if (done + left <= 0.01) doneMatch else (doneMatch * done + remainingMatch * left) / (done + left)
+        } else {
+            p.focusMatch
+        }
         val combo = (listOf(c.topic.fit(c.genre)) + listOfNotNull(c.genre2?.let { c.topic.fit(it) })).map { fitPoints(it) }.average()
         part("${c.topic.title} + ${c.genreTitle}", combo, "How well the topic and genre fit together.")
         val audienceFit = c.topic.fit(c.audience)
@@ -514,7 +609,7 @@ class GamesStudio {
                 Fit.BAD -> -0.7
             }
         }.average() - 0.1 * (c.platforms.size - 1), "How ${c.genre.lower} games play on ${c.platforms.joinToString { it.title }}.")
-        part("Focus", ((p.focusMatch - 0.6) * 2.5).clamped(-1.5, 0.8), "How close the effort split was to what ${c.genreLower} games need.")
+        part("Focus", ((focusForScore - 0.6) * 2.5).clamped(-1.5, 0.8), "How close the effort split was to what ${c.genreLower} games need.")
         val balanceOff = abs(designRatio - c.idealDesignShare)
         part("Design and tech balance", if (balanceOff < 0.05) 0.2 else -(balanceOff * 4).clamped(0.0, 1.0),
             "${Format.percent(designRatio)} design; ${c.genreLower} games want about ${Format.percent(c.idealDesignShare)}.")
@@ -557,7 +652,7 @@ class GamesStudio {
     /** Expected score if you shipped [team]'s project today, with a ±0.6 critic-mood band. */
     fun forecast(ctx: LaneContext, audienceSuited: Boolean, workOutput: Double, team: Int = 1): LaunchForecast? {
         val p = projectOf(team) ?: return null
-        val draft = draftScore(p, ctx, audienceSuited, mood = 0.0)
+        val draft = draftScore(p, ctx, audienceSuited, mood = 0.0, projectRemaining = true)
         val weeks = when {
             p.isReady -> null
             workOutput <= 0.01 -> null
@@ -671,6 +766,8 @@ class GamesStudio {
         }
         if (bugPenalty < 0.95) lines += "Bugs cost you. Polish longer next time."
         if (dated) lines += "Your engine is behind the times. Research and build a new one."
+        revealEngineTech(engine.features)
+        if (engine.combo.notes.isNotEmpty()) lines += engine.combo.notes.first()
         if (onTrend) lines += "Riding the ${trend?.title?.lowercase()} trend helped sales."
         if (previous.isNotEmpty()) {
             val name = seriesName(seriesRoot(original!!).title)

@@ -47,7 +47,7 @@ enum class ScarKind {
         SCANDAL -> when (lane) {
             Lane.SOCIAL, Lane.AI -> 0.5; else -> 0.25
         }
-        RECALL -> if (lane == Lane.HARDWARE) 0.8 else 0.15
+        RECALL -> if (lane == Lane.HARDWARE || lane == Lane.OS) 0.8 else 0.15
         ANTITRUST -> 0.2
         LAYOFFS -> 0.15
     }

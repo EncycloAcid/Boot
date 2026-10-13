@@ -152,6 +152,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         internal set
     var ai: AILab? = null
         internal set
+    var os: OsLab? = null
+        internal set
 
     var staff: List<Employee> = emptyList()
         internal set
@@ -291,6 +293,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             Lane.SOCIAL -> social?.assetValue
             Lane.HARDWARE -> hardware?.assetValue
             Lane.AI -> ai?.assetValue
+            Lane.OS -> os?.assetValue
         } ?: 0.0
         return max(0.0, annual * lane.revenueMultiple * world.investorAppetite) + assets
     }
@@ -387,6 +390,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         Lane.SOCIAL -> social?.statusLine
         Lane.HARDWARE -> hardware?.statusLine
         Lane.AI -> ai?.statusLine
+        Lane.OS -> os?.statusLine
     } ?: ""
 
     // Bookkeeping
@@ -441,6 +445,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             Lane.SOCIAL -> social = SocialPlatform(rng.pick(Names.socials), rng.range(0.55, 1.35))
             Lane.HARDWARE -> hardware = HardwareLab()
             Lane.AI -> ai = AILab()
+            Lane.OS -> os = OsLab()
         }
         for (combo in Combo.available(lanes)) {
             if (crossover(combo) != null) continue
@@ -459,6 +464,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             Lane.SOCIAL -> social = null
             Lane.HARDWARE -> hardware = null
             Lane.AI -> ai = null
+            Lane.OS -> os = null
         }
         crossovers = crossovers.filterNot { it.combo.involves(lane) }
     }

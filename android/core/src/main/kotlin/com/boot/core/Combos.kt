@@ -24,7 +24,13 @@ enum class Combo(val first: Lane, val second: Lane) {
     WEBSITES_AI(Lane.WEBSITES, Lane.AI),
     APPS_SOCIAL(Lane.APPS, Lane.SOCIAL),
     APPS_AI(Lane.APPS, Lane.AI),
-    SOCIAL_HARDWARE(Lane.SOCIAL, Lane.HARDWARE);
+    SOCIAL_HARDWARE(Lane.SOCIAL, Lane.HARDWARE),
+    GAMES_OS(Lane.GAMES, Lane.OS),
+    WEBSITES_OS(Lane.WEBSITES, Lane.OS),
+    APPS_OS(Lane.APPS, Lane.OS),
+    SOCIAL_OS(Lane.SOCIAL, Lane.OS),
+    HARDWARE_OS(Lane.HARDWARE, Lane.OS),
+    AI_OS(Lane.AI, Lane.OS);
 
     fun involves(lane: Lane) = first == lane || second == lane
 
@@ -45,6 +51,12 @@ enum class Combo(val first: Lane, val second: Lane) {
             APPS_SOCIAL -> "Super App"
             APPS_AI -> "Assistant App"
             SOCIAL_HARDWARE -> "Smart Glasses"
+            GAMES_OS -> "First-Party Store"
+            WEBSITES_OS -> "Enterprise Portals"
+            APPS_OS -> "System Apps"
+            SOCIAL_OS -> "Social Shell"
+            HARDWARE_OS -> "Bundled Platform"
+            AI_OS -> "On-Device AI"
         }
 
     val pitch: String
@@ -64,6 +76,12 @@ enum class Combo(val first: Lane, val second: Lane) {
             APPS_SOCIAL -> "Log in with your social account, share everything, never leave."
             APPS_AI -> "An assistant baked into your app. People stop leaving."
             SOCIAL_HARDWARE -> "Glasses that post what you see. Social, hands-free."
+            GAMES_OS -> "Your games ship with the platform. Launch week is everywhere."
+            WEBSITES_OS -> "Agency clients get portals that sit on your OS."
+            APPS_OS -> "Your apps are baked into every OEM image."
+            SOCIAL_OS -> "The feed is the desktop. People never leave."
+            HARDWARE_OS -> "Every device you sell runs your OS. OEMs notice."
+            AI_OS -> "Models run on-device in the OS. Privacy sells; compute drops."
         }
 
     val problem: String
@@ -83,6 +101,12 @@ enum class Combo(val first: Lane, val second: Lane) {
             APPS_SOCIAL -> "All that sharing is one leak away from a privacy scandal."
             APPS_AI -> "Inference costs scale with every user."
             SOCIAL_HARDWARE -> "People don't love being recorded by strangers' glasses."
+            GAMES_OS -> "Exclusive titles anger OEMs who want a neutral store."
+            WEBSITES_OS -> "Portal clients demand features that slow the OS roadmap."
+            APPS_OS -> "Regulators call preloads an unfair advantage."
+            SOCIAL_OS -> "Moderation spills into the whole desktop."
+            HARDWARE_OS -> "A device recall becomes an OS scandal."
+            AI_OS -> "On-device models hallucinate in system UI."
         }
 
     /** Headline when the problem lands. */
@@ -103,6 +127,12 @@ enum class Combo(val first: Lane, val second: Lane) {
             APPS_SOCIAL -> "Data-sharing leak"
             APPS_AI -> "Inference bill shock"
             SOCIAL_HARDWARE -> "Your glasses are getting banned"
+            GAMES_OS -> "OEMs want a neutral store"
+            WEBSITES_OS -> "Portal feature creep"
+            APPS_OS -> "Preload antitrust probe"
+            SOCIAL_OS -> "Desktop moderation meltdown"
+            HARDWARE_OS -> "Recall hits the platform"
+            AI_OS -> "System UI said what?"
         }
 
     /** What the intensity dial controls for this combo. */
@@ -123,21 +153,27 @@ enum class Combo(val first: Lane, val second: Lane) {
             APPS_SOCIAL -> "Data sharing"
             APPS_AI -> "Assistant reach"
             SOCIAL_HARDWARE -> "Always-on capture"
+            GAMES_OS -> "Store exclusivity"
+            WEBSITES_OS -> "Portal depth"
+            APPS_OS -> "Preload aggressiveness"
+            SOCIAL_OS -> "Shell integration"
+            HARDWARE_OS -> "Bundle pressure"
+            AI_OS -> "On-device reach"
         }
 
     val buildCost: Double
         get() = when (this) {
             HARDWARE_AI -> 2_000_000.0
-            GAMES_HARDWARE, SOCIAL_HARDWARE, HARDWARE_APPS -> 600_000.0
-            AI_SOCIAL, AI_GAMES, APPS_AI, WEBSITES_AI -> 250_000.0
+            GAMES_HARDWARE, SOCIAL_HARDWARE, HARDWARE_APPS, HARDWARE_OS -> 600_000.0
+            AI_SOCIAL, AI_GAMES, APPS_AI, WEBSITES_AI, AI_OS, APPS_OS -> 250_000.0
             else -> 60_000.0
         }
 
     val buildWeeks: Int
         get() = when (this) {
             HARDWARE_AI -> 26
-            GAMES_HARDWARE, SOCIAL_HARDWARE -> 20
-            HARDWARE_APPS, AI_SOCIAL, AI_GAMES, APPS_AI -> 12
+            GAMES_HARDWARE, SOCIAL_HARDWARE, HARDWARE_OS -> 20
+            HARDWARE_APPS, AI_SOCIAL, AI_GAMES, APPS_AI, AI_OS, APPS_OS -> 12
             else -> 8
         }
 
@@ -145,10 +181,11 @@ enum class Combo(val first: Lane, val second: Lane) {
     internal val scar: ScarKind?
         get() = when (this) {
             APPS_GAMES -> ScarKind.PREDATORY_MONETIZATION
-            HARDWARE_APPS -> ScarKind.ANTITRUST
-            AI_SOCIAL, AI_GAMES, GAMES_SOCIAL, WEBSITES_SOCIAL -> ScarKind.SCANDAL
+            HARDWARE_APPS, APPS_OS -> ScarKind.ANTITRUST
+            AI_SOCIAL, AI_GAMES, GAMES_SOCIAL, WEBSITES_SOCIAL, SOCIAL_OS, AI_OS -> ScarKind.SCANDAL
             APPS_SOCIAL, SOCIAL_HARDWARE -> ScarKind.PRIVACY
             WEBSITES_AI -> ScarKind.LAYOFFS
+            HARDWARE_OS -> ScarKind.RECALL
             else -> null
         }
 
@@ -255,6 +292,30 @@ internal fun Crossover.applyTo(fx: ComboEffects, state: GameState) {
         Combo.SOCIAL_HARDWARE -> {
             fx.mod(Lane.HARDWARE) { demand *= 1 + 0.3 * i }
             fx.mod(Lane.SOCIAL) { growth *= 1 + 0.2 * i }
+        }
+        Combo.GAMES_OS -> {
+            fx.mod(Lane.GAMES) { demand *= 1 + 0.35 * i }
+            fx.mod(Lane.OS) { demand *= 1 + 0.2 * i; quality += 2 * i }
+        }
+        Combo.WEBSITES_OS -> {
+            fx.mod(Lane.WEBSITES) { demand *= 1 + 0.4 * i }
+            fx.mod(Lane.OS) { demand *= 1 + 0.1 * i }
+        }
+        Combo.APPS_OS -> {
+            fx.mod(Lane.APPS) { demand *= 1 + 0.45 * i; churn *= 1 - 0.2 * i }
+            fx.mod(Lane.OS) { demand *= 1 + 0.25 * i }
+        }
+        Combo.SOCIAL_OS -> {
+            fx.mod(Lane.SOCIAL) { growth *= 1 + 0.3 * i }
+            fx.mod(Lane.OS) { demand *= 1 + 0.2 * i }
+        }
+        Combo.HARDWARE_OS -> {
+            fx.mod(Lane.HARDWARE) { demand *= 1 + 0.35 * i }
+            fx.mod(Lane.OS) { demand *= 1 + 0.4 * i; quality += 3 * i }
+        }
+        Combo.AI_OS -> {
+            fx.mod(Lane.AI) { computeCost *= 1 - 0.25 * i }
+            fx.mod(Lane.OS) { quality += 4 * i; demand *= 1 + 0.15 * i }
         }
     }
 }

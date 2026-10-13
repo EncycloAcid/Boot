@@ -50,6 +50,7 @@ internal fun techOutlet(lane: Lane?, rng: SeededRNG): String = when (lane) {
     Lane.SOCIAL -> rng.pick(listOf("The Verge", "Wired", "Platformer"))
     Lane.HARDWARE -> rng.pick(listOf("The Verge", "Engadget", "Ars Technica"))
     Lane.AI -> rng.pick(listOf("Wired", "MIT Technology Review", "The Information"))
+    Lane.OS -> rng.pick(listOf("Ars Technica", "The Verge", "Wired"))
     null -> rng.pick(listOf("TechCrunch", "The Verge", "Wired"))
 }
 

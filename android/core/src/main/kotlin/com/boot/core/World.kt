@@ -419,6 +419,7 @@ class World {
             Rival(4, "Meta", Lane.SOCIAL, strength = 0.6, aggression = 0.5),
             Rival(5, "Apple", Lane.HARDWARE, strength = 0.7, aggression = 0.4),
             Rival(6, "OpenAI", Lane.AI, strength = 0.6, aggression = 0.8),
+            Rival(7, "Microsoft", Lane.OS, strength = 0.65, aggression = 0.45),
         )
 
         /** The other big names in each lane, for the news. The main rival is one of them. */
@@ -429,6 +430,7 @@ class World {
             Lane.SOCIAL -> listOf("Meta", "TikTok", "X", "Snap", "Reddit", "Discord")
             Lane.HARDWARE -> listOf("Apple", "Samsung", "Google", "Sony", "Nothing", "Microsoft")
             Lane.AI -> listOf("OpenAI", "Google DeepMind", "Anthropic", "Meta AI", "xAI", "Mistral AI")
+            Lane.OS -> listOf("Microsoft", "Apple", "Google", "Canonical", "Red Hat", "Valve")
         }
 
         /** Earlier versions used made-up rivals; saves from then get the real ones. */

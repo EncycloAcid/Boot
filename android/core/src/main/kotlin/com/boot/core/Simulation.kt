@@ -32,6 +32,7 @@ fun GameState.advance() {
             Lane.SOCIAL -> social!!.tick(ctx, rng)
             Lane.HARDWARE -> hardware!!.tick(ctx, rng)
             Lane.AI -> ai!!.tick(ctx, rng)
+            Lane.OS -> os!!.tick(ctx, rng)
         }
         applyReport(report, lane)
         val lanePayroll = staff(lane).sumOf { it.salary }
@@ -335,6 +336,7 @@ private fun GameState.hasLiveProduct(lane: Lane): Boolean = when (lane) {
     Lane.SOCIAL -> social?.isLive == true
     Lane.HARDWARE -> hardware?.onMarket != null
     Lane.AI -> (ai?.capability ?: 0.0) > 0
+    Lane.OS -> os?.releases?.isNotEmpty() == true
 }
 
 // Combos
@@ -495,5 +497,6 @@ private fun GameState.rivalMove(who: String, lane: Lane): String = rng.pick(
         Lane.SOCIAL -> listOf("$who copies a rival's best feature", "$who's new app passes 100 million users", "$who pays creators to move over")
         Lane.HARDWARE -> listOf("$who unveils a new flagship", "$who's new device sells out in minutes", "$who undercuts everyone on price")
         Lane.AI -> listOf("$who releases a new frontier model", "$who's model tops every benchmark", "$who raises billions for a new data centre")
+        Lane.OS -> listOf("$who ships a new platform version", "$who locks in three more OEM partners", "$who's developer conference steals the week")
     },
 )

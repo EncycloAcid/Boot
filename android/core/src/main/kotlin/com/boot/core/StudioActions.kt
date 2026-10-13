@@ -236,27 +236,37 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
     )
 }
 
-/** What a new engine with everything you've researched would cost. */
-fun GameState.engineQuote(): Triple<List<Research>, Double, Int> {
-    val features = researched.filter { it.kind == Research.Kind.ENGINE }.sortedBy { it.ordinal }
-    val level = features.sumOf { it.engineLevel }
-    val cost = 20_000 + 9_000 * level.toDouble().pow(1.35)
-    return Triple(features, cost, 3 + level / 3)
+/**
+ * What a new engine with [selected] features (or everything researched) would cost.
+ * Cost uses raw feature levels; the finished engine's [Engine.level] applies combo rules.
+ */
+fun GameState.engineQuote(selected: List<Research>? = null): Triple<List<Research>, Double, Int> {
+    val features = (selected ?: researched.filter { it.kind == Research.Kind.ENGINE }).sortedBy { it.ordinal }
+    val combo = engineCombo(features)
+    val cost = 20_000 + 9_000 * combo.rawLevel.toDouble().pow(1.35)
+    return Triple(features, cost, 3 + combo.level / 3)
 }
 
-fun GameState.buildEngine() {
+/** Expected engine standard reviewers use this week (shown in the builder without spoiling feature levels). */
+fun GameState.expectedEngineStandard(): Double = engineStandard(week)
+
+fun GameState.buildEngine(selected: List<Research>? = null) {
     val g = studio()
     if (Research.CUSTOM_ENGINES !in researched) throw notAvailable("Research custom engines first.")
     if (g.engineBuild != null) throw busy("An engine is already being built.")
-    val (features, cost, weeks) = engineQuote()
+    val (features, cost, weeks) = engineQuote(selected)
     if (features.isEmpty()) throw notAvailable("Research some engine features first.")
     val best = g.engines.maxOf { it.level }
-    if (features.sumOf { it.engineLevel } <= best) throw notAvailable("You've no new features to build in.")
-    if (cash < cost) throw insufficientFunds("A level ${features.sumOf { it.engineLevel }} engine costs ${money(cost)}.")
+    val combo = engineCombo(features)
+    if (combo.level <= best && combo.rawLevel <= g.engines.maxOf { it.rawLevel }) {
+        throw notAvailable("You've no new features to build in.")
+    }
+    if (cash < cost) throw insufficientFunds("A level ${combo.level} engine costs ${money(cost)}.")
     spend(cost, Lane.GAMES)
     val name = "Engine Mk ${g.engines.size}"
     g.engineBuild = EngineBuild(name, features, weeks)
-    addLog("Building $name with ${features.size} features. Ready in $weeks weeks.", LogTone.NEUTRAL, Lane.GAMES)
+    val clash = combo.notes.firstOrNull()?.let { " $it" } ?: ""
+    addLog("Building $name with ${features.size} features (effective level ${combo.level}). Ready in $weeks weeks.$clash", LogTone.NEUTRAL, Lane.GAMES)
 }
 
 /** A sequel's concept, ready to tweak: same topic and genre, a numbered title. */

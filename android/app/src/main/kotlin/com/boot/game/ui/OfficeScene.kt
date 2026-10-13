@@ -1040,6 +1040,7 @@ private fun laneTint(lane: Lane?): Color = when (lane) {
     Lane.SOCIAL -> Color(0xFFFF9500)
     Lane.HARDWARE -> Color(0xFFAF52DE)
     Lane.AI -> Color(0xFF32ADE6)
+    Lane.OS -> Color(0xFF5856D6)
     null -> Color(0xFF8E8E93)
 }
 
@@ -1203,6 +1204,14 @@ private fun DrawScope.screen(iso: Iso, x0: Float, x1: Float, y: Float, z0: Float
                 if (k == 0) path.moveTo(pt.x, pt.y) else path.lineTo(pt.x, pt.y)
             }
             drawPath(path, tint, style = Stroke(iso.t * 0.025f, cap = StrokeCap.Round))
+        }
+        Lane.OS -> {
+            rect(x0, x1, z0, z1, Color(0xFF1A1F2E))
+            rect(x0 + w * 0.08f, x0 + w * 0.92f, z0 + h * 0.12f, z1 - h * 0.12f, Color(0xFF2A3144))
+            rect(x0 + w * 0.08f, x0 + w * 0.92f, z1 - h * 0.28f, z1 - h * 0.12f, tint.copy(alpha = 0.55f))
+            for (k in 0..3) {
+                rect(x0 + w * 0.14f, x0 + w * (0.35f + 0.1f * k), z0 + h * (0.55f - k * 0.1f), z0 + h * (0.62f - k * 0.1f), Color.White.copy(alpha = 0.25f))
+            }
         }
     }
     // Glare.

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boot.core.AIProduct
+import com.boot.core.AppCategory
 import com.boot.core.AppMonetization
 import com.boot.core.DeviceCategory
 import com.boot.core.DeviceSpec
@@ -47,6 +48,7 @@ import com.boot.core.Lane
 import com.boot.core.AgencyRate
 import com.boot.core.ScopePolicy
 import com.boot.core.TrainingSize
+import com.boot.core.UpdateFocus
 import com.boot.core.UpdateStyle
 import com.boot.core.acceptContract
 import com.boot.core.buyGPUs
@@ -56,12 +58,20 @@ import com.boot.core.launchDevice
 import com.boot.core.orderUnits
 import com.boot.core.setAIFocus
 import com.boot.core.setAdLoad
+import com.boot.core.setAppCategory
 import com.boot.core.setModeration
 import com.boot.core.setMonetization
 import com.boot.core.setAgencyRate
 import com.boot.core.setScopePolicy
+import com.boot.core.setUpdateFocus
 import com.boot.core.setUpdateStyle
+import com.boot.core.OsTarget
+import com.boot.core.cancelOsBeta
+import com.boot.core.osTargetOpen
+import com.boot.core.shipOs
 import com.boot.core.startDevice
+import com.boot.core.startOsBeta
+import com.boot.core.startOsVersion
 import com.boot.core.startTraining
 import com.boot.game.GameStore
 
@@ -80,6 +90,7 @@ fun LanesScreen(store: GameStore, state: GameState) {
             Lane.SOCIAL -> socialItems(store, state)
             Lane.HARDWARE -> hardwareItems(store, state)
             Lane.AI -> aiItems(store, state)
+            Lane.OS -> osItems(store, state)
         }
         depthItems(store, state, lane)
         item { MarketingSection(store, state, lane) }
@@ -199,8 +210,10 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
         GroupedSection(a.name) {
             if (!a.isLive) {
                 CardBlock {
-                    Hint("Building version 1.0")
+                    Hint("Building ${a.category.title.lowercase()} v1.0")
                     Meter("Progress", (a.buildProgress / a.buildWork).coerceAtMost(1.0), wavy = true)
+                    Meter("Design", (a.design / 80).coerceAtMost(1.0), gameColors.design, Format.count(a.design))
+                    Meter("Tech", (a.tech / 80).coerceAtMost(1.0), gameColors.tech, Format.count(a.tech))
                 }
             } else {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -217,18 +230,31 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                     }
                 }
                 CardBlock {
-                    Meter("Quality", a.quality / 100, gameColors.milestone, "${a.quality.toInt()}")
+                    Meter("Store score", a.quality / 100, gameColors.milestone, "${a.quality.toInt()}")
+                    Meter("Design", (a.design / 100).coerceAtMost(1.0), gameColors.design, Format.count(a.design))
+                    Meter("Tech", (a.tech / 100).coerceAtMost(1.0), gameColors.tech, Format.count(a.tech))
                     Meter(
                         "Next update", (a.updateProgress / a.updateStyle.work).coerceAtMost(1.0),
-                        caption = "${a.weeksSinceUpdate} weeks since the last one", wavy = true,
+                        caption = "${a.weeksSinceUpdate} weeks since · ${a.updateFocus.title.lowercase()} focus", wavy = true,
                     )
                 }
             }
         }
     }
     item {
-        GroupedSection("Strategy", footer = "Stale apps churn. Ship often to stay fresh, or ship big to raise quality.") {
+        GroupedSection(
+            "Product brief",
+            footer = "Category and monetization shape the product. Feature research stacks like a light engine.",
+        ) {
             CardBlock(spacing = 8.dp) {
+                if (!a.isLive) {
+                    Text("Category", style = MaterialTheme.typography.bodyMedium)
+                    Segmented(AppCategory.entries, a.category, { it.title }) { c -> store.perform { setAppCategory(c) } }
+                    Spacer(Modifier.size(4.dp))
+                } else {
+                    ValueRow("Category", a.category.title)
+                    RowDivider()
+                }
                 Text("Monetization", style = MaterialTheme.typography.bodyMedium)
                 Segmented(AppMonetization.entries, a.monetization, {
                     when (it) {
@@ -237,11 +263,26 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                         AppMonetization.PAID -> "Paid"
                     }
                 }) { m -> store.perform { setMonetization(m) } }
-                Spacer(Modifier.size(4.dp))
-                Text("Updates", style = MaterialTheme.typography.bodyMedium)
+                if (a.features.isNotEmpty()) {
+                    Spacer(Modifier.size(4.dp))
+                    Hint("Feature stack: " + a.features.joinToString { it.title })
+                }
+            }
+        }
+    }
+    item {
+        GroupedSection("Update roadmap", footer = "Cadence and focus trade off: stability cuts churn, features grow installs, polish lifts reviews.") {
+            CardBlock(spacing = 8.dp) {
+                Text("Cadence", style = MaterialTheme.typography.bodyMedium)
                 Segmented(UpdateStyle.entries, a.updateStyle, { if (it == UpdateStyle.SMALL) "Small & often" else "Big & rare" }) { u ->
                     store.perform { setUpdateStyle(u) }
                 }
+                Spacer(Modifier.size(4.dp))
+                Text("Next update focus", style = MaterialTheme.typography.bodyMedium)
+                Segmented(UpdateFocus.entries, a.updateFocus, { it.title }) { f ->
+                    store.perform { setUpdateFocus(f) }
+                }
+                Hint(a.updateFocus.detail)
             }
         }
     }
@@ -472,6 +513,83 @@ private fun LazyListScope.aiItems(store: GameStore, state: GameState) {
             }
             RowDivider()
             CardBlock { Meter("Regulatory heat", lab.regulatoryHeat, gameColors.bad) }
+        }
+    }
+}
+
+// Platform Lab / OS
+
+private fun LazyListScope.osItems(store: GameStore, state: GameState) {
+    val lab = state.os ?: return
+    item {
+        GroupedSection("Platform Lab") {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                TileRow {
+                    StatTile("OEM trust", Format.percent(lab.oemTrust), Modifier.weight(1f))
+                    StatTile("Ecosystem", Format.percent(lab.ecosystem), Modifier.weight(1f))
+                    StatTile("Versions", "${lab.versionsShipped}", Modifier.weight(1f))
+                }
+                if (lab.lastLicense > 0) {
+                    StatTile("License revenue", lab.lastLicense.perWeek(), Modifier.fillMaxWidth(), "this week")
+                }
+            }
+        }
+    }
+    val p = lab.project
+    if (p != null) {
+        item {
+            GroupedSection(p.codename, footer = "Feature-complete versions can beta (safer for OEMs) or ship raw (faster, riskier).") {
+                CardBlock {
+                    Hint("v${p.version} · ${p.target.title} · ${Format.weeks(p.weeksInDev)} in")
+                    Meter("Progress", p.completion, wavy = !p.isReady)
+                    Meter("Design", (p.design / 200).coerceAtMost(1.0), gameColors.design, Format.count(p.design))
+                    Meter("Tech", (p.tech / 200).coerceAtMost(1.0), gameColors.tech, Format.count(p.tech))
+                    Meter("Bugs", (p.bugs / (p.work * 0.5)).coerceAtMost(1.0), gameColors.bad, Format.count(p.bugs))
+                    if (p.inBeta) {
+                        Hint("Beta: ${Format.weeks(p.betaWeeksLeft)} left")
+                        PlainButton("Cancel beta", { store.perform { cancelOsBeta() } })
+                    }
+                    if (p.isReady && !p.inBeta) {
+                        PrimaryButton("Start 6-week beta", { store.perform { startOsBeta(6) } }, Modifier.fillMaxWidth())
+                        PrimaryButton("Ship raw", { store.perform { shipOs() } }, Modifier.fillMaxWidth())
+                    } else if (p.isReady && p.inBeta && p.betaWeeksLeft <= 0) {
+                        PrimaryButton("Ship ${p.codename}", { store.perform { shipOs() } }, Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        }
+    } else {
+        item {
+            GroupedSection("New version", footer = "Phone targets unlock with smartphones; dual targets later.") {
+                OsTarget.entries.forEachIndexed { i, t ->
+                    if (i > 0) RowDivider()
+                    val open = state.osTargetOpen(t)
+                    ActionRow(
+                        t.title,
+                        if (open) "${t.work.toInt()} work · ${Format.money(t.weeklyBurn)}/wk burn" else "Unlocks in ${t.arrives}",
+                        "Start",
+                        enabled = open,
+                    ) { store.perform { startOsVersion(t) } }
+                }
+            }
+        }
+    }
+    if (lab.releases.isNotEmpty()) {
+        item {
+            GroupedSection("Shipped platforms") {
+                lab.releases.take(8).forEachIndexed { i, r ->
+                    if (i > 0) RowDivider()
+                    ListRow(
+                        "${r.codename} v${r.version}",
+                        subtitle = "${r.target.title} · ${String.format(java.util.Locale.US, "%.1f", r.score)}/10" +
+                            (if (r.beta) " · beta" else "") +
+                            (if (r.rolledBack) " · rolled back" else "") +
+                            " · ${r.oemPartners} OEMs",
+                        value = Format.count(r.installedBase),
+                        valueDetail = "devices",
+                    )
+                }
+            }
         }
     }
 }

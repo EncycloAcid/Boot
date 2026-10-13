@@ -285,7 +285,7 @@ fun LazyListScope.depthItems(store: GameStore, state: GameState, lane: Lane) {
                 }
             }
         }
-        Lane.GAMES -> {}
+        Lane.GAMES, Lane.OS -> {}
     }
 }
 

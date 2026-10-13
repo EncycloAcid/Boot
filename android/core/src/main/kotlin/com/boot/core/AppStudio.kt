@@ -40,6 +40,29 @@ enum class AppMonetization {
         }
 }
 
+/** What kind of software product you're shipping. */
+@Serializable
+enum class AppCategory {
+    PRODUCTIVITY, UTILITY, ENTERTAINMENT, CREATIVE;
+
+    val title: String
+        get() = when (this) {
+            PRODUCTIVITY -> "Productivity"
+            UTILITY -> "Utility"
+            ENTERTAINMENT -> "Entertainment"
+            CREATIVE -> "Creative"
+        }
+
+    /** Ideal design share of the store score (rest is tech). */
+    internal val idealDesignShare: Double
+        get() = when (this) {
+            PRODUCTIVITY -> 0.45
+            UTILITY -> 0.35
+            ENTERTAINMENT -> 0.62
+            CREATIVE -> 0.55
+        }
+}
+
 @Serializable
 enum class UpdateStyle {
     /** Ship little and often. Keeps the app fresh. */
@@ -50,7 +73,26 @@ enum class UpdateStyle {
 
     val title: String get() = if (this == SMALL) "Small, frequent updates" else "Big, rare updates"
     val work: Double get() = if (this == SMALL) 15.0 else 45.0
-    internal val qualityGain: Double get() = if (this == SMALL) 1.5 else 5.5
+}
+
+/** What the next update prioritises. */
+@Serializable
+enum class UpdateFocus {
+    STABILITY, FEATURES, POLISH;
+
+    val title: String
+        get() = when (this) {
+            STABILITY -> "Stability"
+            FEATURES -> "Features"
+            POLISH -> "Polish"
+        }
+
+    val detail: String
+        get() = when (this) {
+            STABILITY -> "Fewer crashes and less churn; slower feature growth."
+            FEATURES -> "New capabilities and installs; a little more churn risk."
+            POLISH -> "Reviews and delight; modest growth either way."
+        }
 }
 
 /** How much the app charges, whatever the model: cheap grows, premium earns. */
@@ -81,26 +123,42 @@ enum class ExperimentKind(val title: String, val detail: String, val metric: Met
 data class Experiment(val kind: ExperimentKind, var weeksLeft: Int, val lift: Double)
 
 @Serializable
-class AppStudio(val name: String, var monetization: AppMonetization) {
+class AppStudio(
+    val name: String,
+    var monetization: AppMonetization,
+    var category: AppCategory = AppCategory.PRODUCTIVITY,
+) {
     var isLive = false
     var buildProgress = 0.0
     val buildWork: Double get() = 50.0
     var users = 0.0
     var peakUsers = 0.0
 
-    /** 0...100 */
+    /**
+     * Combined store score 0...100, derived from [design] + [tech] once those axes exist.
+     * Kept for old saves and UI that still reads a single number.
+     */
     var quality = 50.0
+
+    /** Craft axes mirrored from games: accumulate during build and updates. */
+    var design = 25.0
+    var tech = 25.0
+
     var rank = 450.0
     var weeksSinceUpdate = 0
     var updateProgress = 0.0
     var updatesShipped = 0
     var updateStyle = UpdateStyle.SMALL
+    var updateFocus = UpdateFocus.FEATURES
     var lastChurn = 0.0
     var lastInstalls = 0.0
 
     var pricing = AppPricing.STANDARD
     var experiment: Experiment? = null
     val experimentsRun = mutableListOf<ExperimentKind>()
+
+    /** Researched platform features baked into the product (SDK bits, offline, sync…). */
+    val features: MutableList<Research> = mutableListOf()
 
     /** What kept experiments have done, multiplied together. */
     var installLift = 1.0
@@ -113,16 +171,33 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
 
     val rankLabel: String get() = if (isLive) "#${rank.roundToInt()}" else "Unreleased"
 
+    /** Store score from the two craft axes, category balance, and feature stack. */
+    fun recomputeQuality(modsQuality: Double = 0.0) {
+        val total = design + tech
+        val ratio = if (total > 0.01) design / total else category.idealDesignShare
+        val balance = 1.0 - (kotlin.math.abs(ratio - category.idealDesignShare) * 1.4).coerceIn(0.0, 0.35)
+        val featureBoost = features.sumOf { it.engineLevel }.coerceAtMost(12) * 1.2
+        val raw = ((design + tech) / 2.0 * balance + featureBoost + modsQuality * 0.4).coerceIn(5.0, 97.0)
+        quality = raw
+    }
+
     internal fun tick(ctx: LaneContext, rng: SeededRNG): LaneReport {
         val report = LaneReport()
         val work = ctx.workOutput
+        val featureMult = 1 + 0.03 * features.sumOf { it.engineLevel }.coerceAtMost(10)
 
         if (!isLive) {
             buildProgress += work
+            val designShare = category.idealDesignShare
+            design += work * 1.4 * designShare * (ctx.staffing.avgDesign / 5) * featureMult
+            tech += work * 1.4 * (1 - designShare) * (ctx.staffing.avgTech / 5) * featureMult
             report.expenses += 120 * ctx.mods.cost
             if (buildProgress >= buildWork) {
                 isLive = true
-                quality = shippedQuality(buildProgress * ctx.polishEfficiency, buildWork, ctx.staffing.averageSkill, ctx.mods.quality)
+                recomputeQuality(ctx.mods.quality)
+                // Blend with classic polish formula so research/staff still matter.
+                quality = (quality * 0.65 + shippedQuality(buildProgress * ctx.polishEfficiency, buildWork, ctx.staffing.averageSkill, ctx.mods.quality) * 0.35)
+                    .coerceIn(5.0, 97.0)
                 users = 1_500 * ctx.reception * ctx.marketDemand
                 report.log("$name is live on the App Store and Google Play. ${count(users)} installs in launch week.", LogTone.MILESTONE)
                 report.add(Incident.Stat(StatKey.RELEASE))
@@ -136,9 +211,24 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
             updateProgress -= updateStyle.work
             weeksSinceUpdate = 0
             updatesShipped += 1
-            quality = min(97.0, quality + updateStyle.qualityGain * (1 - quality / 110) + ctx.mods.quality * 0.05)
+            val scale = if (updateStyle == UpdateStyle.SMALL) 1.0 else 2.2
+            when (updateFocus) {
+                UpdateFocus.STABILITY -> {
+                    tech += 2.2 * scale * (1 - tech / 110)
+                    design += 0.6 * scale * (1 - design / 110)
+                }
+                UpdateFocus.FEATURES -> {
+                    design += 1.6 * scale * (1 - design / 110)
+                    tech += 1.8 * scale * (1 - tech / 110)
+                }
+                UpdateFocus.POLISH -> {
+                    design += 2.4 * scale * (1 - design / 110)
+                    tech += 1.0 * scale * (1 - tech / 110)
+                }
+            }
+            recomputeQuality(ctx.mods.quality)
             if (updateStyle == UpdateStyle.BIG) {
-                report.log("$name ${updatesShipped + 1}.0 ships. Reviews perk up.", LogTone.GOOD)
+                report.log("$name ${updatesShipped + 1}.0 ships (${updateFocus.title.lowercase()} focus). Reviews perk up.", LogTone.GOOD)
             }
         }
 
@@ -150,10 +240,21 @@ class AppStudio(val name: String, var monetization: AppMonetization) {
             }
         }
 
+        val focusChurn = when (updateFocus) {
+            UpdateFocus.STABILITY -> 0.92
+            UpdateFocus.FEATURES -> 1.04
+            UpdateFocus.POLISH -> 0.98
+        }
+        val focusInstalls = when (updateFocus) {
+            UpdateFocus.STABILITY -> 0.94
+            UpdateFocus.FEATURES -> 1.08
+            UpdateFocus.POLISH -> 1.02
+        }
         val stale = 0.003 * max(0, weeksSinceUpdate - 4)
-        val churn = ((monetization.baseChurn * (1.6 - quality / 100) + stale) * ctx.mods.churn * churnLift * pricing.churn).clamped(0.006, 0.3)
+        val churn = ((monetization.baseChurn * (1.6 - quality / 100) + stale) * ctx.mods.churn * churnLift * pricing.churn * focusChurn)
+            .clamped(0.006, 0.3)
         val organic = 200_000 / max(rank, 1.0)
-        val appeal = (quality / 60).pow(2) * monetization.installAppeal * installLift * pricing.appeal
+        val appeal = (quality / 60).pow(2) * monetization.installAppeal * installLift * pricing.appeal * focusInstalls * featureMult
         val installs = (organic + ctx.staffing.marketing * 80) * appeal * ctx.reception * ctx.marketDemand
 
         users = max(0.0, users * (1 - churn) + installs)

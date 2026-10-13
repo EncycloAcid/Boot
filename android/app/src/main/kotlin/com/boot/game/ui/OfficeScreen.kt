@@ -327,6 +327,7 @@ private fun GameState.inProgress(lane: Lane): Pair<String, Double>? = when (lane
     Lane.SOCIAL -> social?.takeIf { !it.isLive }?.let { "Building ${it.name}" to it.buildProgress / it.buildWork }
     Lane.HARDWARE -> hardware?.design?.let { "Designing ${it.name}" to it.completion }
     Lane.AI -> ai?.training?.let { "Training ${it.codename}" to it.completion }
+    Lane.OS -> os?.project?.let { "Building ${it.codename}" to it.completion }
 }
 
 @Composable

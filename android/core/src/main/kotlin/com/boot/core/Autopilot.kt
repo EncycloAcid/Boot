@@ -233,6 +233,7 @@ class Autopilot(
                 Lane.SOCIAL -> manageSocial(s)
                 Lane.HARDWARE -> manageHardware(s)
                 Lane.AI -> manageAI(s)
+                Lane.OS -> manageOs(s)
             }
         }
 
@@ -268,6 +269,7 @@ class Autopilot(
         Lane.SOCIAL -> 3 + ((s.social?.users ?: 0.0) / 1_000_000).toInt()
         Lane.HARDWARE -> 25
         Lane.AI -> 20
+        Lane.OS -> 18
     }
 
     private fun hire(s: GameState) {
@@ -499,5 +501,20 @@ class Autopilot(
             if (s.cash > budget) attempt { s.startTraining(wanted) }
         }
         if (s.cash > 30_000_000 && lab.gpusOwned < 16) attempt { s.buyGPUs(4) }
+    }
+
+    private fun manageOs(s: GameState) {
+        val lab = s.os ?: return
+        val p = lab.project
+        if (p == null) {
+            val target = OsTarget.entries.lastOrNull { s.osTargetOpen(it) } ?: OsTarget.PC
+            if (s.cash > target.weeklyBurn * 8) attempt { s.startOsVersion(target) }
+            return
+        }
+        if (p.isReady && !p.inBeta) {
+            if (p.bugs > p.work * 0.15) attempt { s.startOsBeta(6) } else attempt { s.shipOs() }
+        } else if (p.isReady && p.inBeta && p.betaWeeksLeft <= 0) {
+            attempt { s.shipOs() }
+        }
     }
 }
