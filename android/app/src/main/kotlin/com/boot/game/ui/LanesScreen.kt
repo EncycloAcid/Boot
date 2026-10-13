@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,9 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.boot.core.AIProduct
 import com.boot.core.AppCategory
 import com.boot.core.AppMonetization
-import com.boot.core.DeviceCategory
-import com.boot.core.DeviceSpec
-import com.boot.core.DeviceTier
+import com.boot.core.DeviceAspect
+import com.boot.core.DeviceFocus
 import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.GameState
@@ -69,11 +67,11 @@ import com.boot.core.OsTarget
 import com.boot.core.cancelOsBeta
 import com.boot.core.osTargetOpen
 import com.boot.core.shipOs
-import com.boot.core.startDevice
 import com.boot.core.startOsBeta
 import com.boot.core.startOsVersion
 import com.boot.core.startTraining
 import com.boot.game.GameStore
+import java.util.Locale
 
 @Composable
 fun LanesScreen(store: GameStore, state: GameState) {
@@ -366,7 +364,10 @@ private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
         GroupedSection("On the market") {
             val m = h.onMarket
             if (m != null) {
-                ListRow(m.name, subtitle = "${Format.money(m.spec.price)} · reviewed ${m.quality.toInt()}")
+                ListRow(
+                    m.name,
+                    subtitle = "${m.formFactor.title} · ${Format.money(m.spec.price)} · reviewed ${m.quality.toInt()}",
+                )
                 Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 18.dp)) {
                     TileRow {
                         StatTile("Demand", "${Format.count(h.lastDemand)}/wk", Modifier.weight(1f))
@@ -377,6 +378,21 @@ private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
                         StatTile("Sold", Format.count(m.unitsSold.toDouble()), Modifier.weight(1f))
                     }
                 }
+                if (m.aspects.isNotEmpty()) {
+                    RowDivider()
+                    DeviceAspectBars(m.aspects)
+                }
+                if (m.pros.isNotEmpty() || m.cons.isNotEmpty()) {
+                    RowDivider()
+                    CardBlock(spacing = 6.dp) {
+                        m.pros.forEach { Hint("+ $it", gameColors.good) }
+                        m.cons.forEach { Hint("− $it", gameColors.bad) }
+                    }
+                }
+                RowDivider()
+                ValueRow("BOM / unit", Format.money(m.bomCost))
+                RowDivider()
+                ValueRow("List price", Format.money(m.spec.price))
             } else {
                 CardBlock { Hint("Nothing on sale yet.") }
             }
@@ -391,32 +407,84 @@ private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
 @Composable
 private fun DesignSection(store: GameStore, state: GameState) {
     val h = state.hardware ?: return
-    var category by rememberSaveable { mutableStateOf(DeviceCategory.HEADPHONES) }
-    var tier by rememberSaveable { mutableStateOf(DeviceTier.BUDGET) }
     val d = h.design
     if (d != null) {
+        val forecast = h.forecast(d)
+        val weeksCover = if (h.lastDemand > 0) d.preorderedStock / h.lastDemand else d.preorderedStock / 100.0
+        val stockRisk = when {
+            d.isReady && d.preorderedStock == 0 -> "No stock booked — day-one sell-out risk."
+            weeksCover < 4 -> "Thin preorder cover. Scalpers may win."
+            weeksCover > 20 -> "Heavy stock. Overstock risk if reviews miss."
+            else -> null
+        }
         GroupedSection(
             "Design",
-            footer = if (d.isReady && d.preorderedStock == 0) "No stock has arrived yet. Launch now and you'll sell out on day one." else null,
+            footer = stockRisk ?: if (d.isReady) "Design locked. Launch when stock arrives." else null,
         ) {
             CardBlock {
                 Text(d.name, style = MaterialTheme.typography.titleLargeEmphasized)
-                Hint("${Format.money(d.spec.price)} retail · ${Format.money(d.spec.unitCost)} to build · ${d.spec.tier.weeklyRnD.perWeek()} R&D")
+                Hint(
+                    "${d.formFactor.title} · ${Format.money(d.spec.price)} retail · " +
+                        "${Format.money(d.effectiveUnitCost)} BOM · ${d.spec.tier.weeklyRnD.perWeek()} R&D",
+                )
                 Meter("Design", d.completion, wavy = !d.isReady)
             }
             RowDivider()
+            DeviceFocusBars(d.spec.category, d.normalizedFocus)
+            RowDivider()
+            ValueRow("Craft", "design ${d.design.toInt()} · tech ${d.tech.toInt()}")
+            RowDivider()
+            ValueRow("Preorder forecast", "~${forecast.preorderUnits} units · score ~${forecast.expectedScore}")
+            RowDivider()
             ValueRow("Stock booked for launch", "${d.preorderedStock} units")
+            if (d.bundleOs || d.appPack) {
+                RowDivider()
+                Hint(
+                    buildList {
+                        if (d.bundleOs) add("Bundled OS")
+                        if (d.appPack) add("App pack")
+                    }.joinToString(" · "),
+                    MaterialTheme.colorScheme.primary,
+                )
+            }
             CardBlock { PrimaryButton("Launch the ${d.name}", { store.perform { launchDevice() } }, Modifier.fillMaxWidth(), enabled = d.isReady) }
         }
     } else {
-        GroupedSection("New device", footer = "Budget sells more units; flagship earns more per unit.") {
+        GroupedSection("New device", footer = "Open the Device Designer: category, form factor, and component mix.") {
             CardBlock {
-                Segmented(DeviceCategory.entries, category, { it.title }) { category = it }
-                Segmented(DeviceTier.entries, tier, { it.title }) { tier = it }
-                val spec = DeviceSpec(category, tier)
-                Hint("${Format.money(spec.price)} retail, ${Format.money(spec.unitCost)} per unit, ${tier.weeklyRnD.perWeek()} R&D")
-                PrimaryButton("Start design", { store.perform { startDevice(category, tier) } }, Modifier.fillMaxWidth())
+                PrimaryButton("Start design", { store.designDevice() }, Modifier.fillMaxWidth())
             }
+        }
+    }
+}
+
+@Composable
+internal fun DeviceFocusBars(category: com.boot.core.DeviceCategory, weights: List<Double>) {
+    CardBlock(spacing = 8.dp) {
+        Text("Component mix", style = MaterialTheme.typography.bodyMedium)
+        DeviceFocus.ALL.forEachIndexed { i, area ->
+            val v = weights.getOrElse(i) { 0.0 }
+            Meter(area.title(category), v.coerceIn(0.0, 1.0), MaterialTheme.colorScheme.secondary)
+        }
+    }
+}
+
+@Composable
+internal fun DeviceAspectBars(aspects: Map<DeviceAspect, Double>) {
+    CardBlock(spacing = 8.dp) {
+        Text("Review aspects", style = MaterialTheme.typography.bodyMedium)
+        for ((aspect, score) in aspects.entries.sortedByDescending { it.value }) {
+            val tint = when {
+                score >= 75 -> Color(0xFF00CE7A)
+                score >= 50 -> Color(0xFFFFBD3F)
+                else -> Color(0xFFFF6874)
+            }
+            Meter(
+                aspect.title,
+                (score / 100).coerceIn(0.03, 1.0),
+                tint,
+                caption = String.format(Locale.US, "%.0f", score),
+            )
         }
     }
 }
@@ -425,7 +493,7 @@ private fun DesignSection(store: GameStore, state: GameState) {
 private fun FactorySection(store: GameStore, state: GameState) {
     val h = state.hardware ?: return
     var units by rememberSaveable { mutableIntStateOf(5_000) }
-    val spec = h.design?.spec ?: h.onMarket?.spec
+    val unitCost = h.design?.effectiveUnitCost ?: h.onMarket?.bomCost
     GroupedSection(
         "Factory",
         footer = "Lead time ${HardwareLab.LEAD_TIME_WEEKS} weeks. Guess low and scalpers profit; guess high and you're stuck with last year's model.",
@@ -446,8 +514,11 @@ private fun FactorySection(store: GameStore, state: GameState) {
                 }
                 TonalButton("+1k", { units += 1_000 })
             }
-            Hint(if (spec != null) "$units units cost ${Format.money(units * spec.unitCost)} up front" else "Start a design before you book the factory.")
-            PrimaryButton("Book factory capacity", { store.perform { orderUnits(units) } }, Modifier.fillMaxWidth(), enabled = spec != null)
+            Hint(
+                if (unitCost != null) "$units units cost ${Format.money(units * unitCost)} up front (BOM)"
+                else "Start a design before you book the factory.",
+            )
+            PrimaryButton("Book factory capacity", { store.perform { orderUnits(units) } }, Modifier.fillMaxWidth(), enabled = unitCost != null)
         }
         h.orders.forEach { o ->
             RowDivider()

@@ -220,6 +220,61 @@ fun LazyListScope.depthItems(store: GameStore, state: GameState, lane: Lane) {
             }
         }
         Lane.HARDWARE -> state.hardware?.let { h ->
+            h.design?.let { d ->
+                item {
+                    GroupedSection(
+                        "Hardware depth",
+                        footer = "Aspect bars while designing, BOM vs list price, and stock risk before launch.",
+                    ) {
+                        DeviceFocusBars(d.spec.category, d.normalizedFocus)
+                        RowDivider()
+                        ValueRow("BOM", Format.money(d.effectiveUnitCost))
+                        RowDivider()
+                        ValueRow("List price", Format.money(d.spec.price))
+                        RowDivider()
+                        ValueRow("Margin", Format.money(d.spec.price - d.effectiveUnitCost))
+                        val inbound = h.orders.filter { it.model == d.name }.sumOf { it.units }
+                        val cover = d.preorderedStock + inbound
+                        RowDivider()
+                        ValueRow(
+                            "Stock risk",
+                            when {
+                                cover == 0 -> "None booked"
+                                cover < 2_000 -> "Thin"
+                                cover > 40_000 -> "Heavy"
+                                else -> "Balanced"
+                            },
+                            when {
+                                cover == 0 || cover < 2_000 -> gameColors.warn
+                                cover > 40_000 -> gameColors.warn
+                                else -> gameColors.good
+                            },
+                        )
+                    }
+                }
+            }
+            h.onMarket?.takeIf { it.aspects.isNotEmpty() }?.let { m ->
+                item {
+                    GroupedSection(
+                        "Launch sheet",
+                        footer = m.cons.firstOrNull()?.let { "Reviewers: $it" }
+                            ?: "Aspect breakdown from the component mix, staff craft, and researched parts.",
+                    ) {
+                        ListRow(m.name, subtitle = "Reviewed ${m.quality.toInt()} · ${m.formFactor.title}")
+                        RowDivider()
+                        DeviceAspectBars(m.aspects)
+                        if (m.pros.isNotEmpty() || m.cons.isNotEmpty()) {
+                            RowDivider()
+                            CardBlock(spacing = 6.dp) {
+                                m.pros.forEach { Hint("+ $it", gameColors.good) }
+                                m.cons.forEach { Hint("− $it", gameColors.bad) }
+                            }
+                        }
+                        RowDivider()
+                        ValueRow("BOM vs price", "${Format.money(m.bomCost)} / ${Format.money(m.spec.price)}")
+                    }
+                }
+            }
             if (h.onMarket != null) {
                 item {
                     GroupedSection("Price", footer = "A discount sells a lot more units; a markup earns more on each one you sell.") {

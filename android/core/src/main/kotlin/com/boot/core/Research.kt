@@ -168,6 +168,36 @@ enum class Research(
     OLED_DISPLAYS("OLED displays", "Better reviews and a little more demand.", Kind.LANE, 70, requires = SUPPLY_CHAIN, lane = Lane.HARDWARE),
     MODULAR_DESIGN("Modular design", "Parts that swap out: better devices, fewer recalls.", Kind.LANE, 40, lane = Lane.HARDWARE),
     FAST_CHARGING("Fast charging", "Half an hour to full: 4% more demand.", Kind.LANE, 50, requires = BATTERY_SAFETY, lane = Lane.HARDWARE),
+    // Hardware parts tree (year-gated) — raises aspect caps in the Device Designer
+    DISPLAY_IPS("IPS panels", "Bright enough LCDs. Unlocks better display scores.", Kind.LANE, 20, lane = Lane.HARDWARE),
+    DISPLAY_LTPO(
+        "LTPO displays", "Variable refresh that sips power. Flagship screens.",
+        Kind.LANE, 95, requires = OLED_DISPLAYS, lane = Lane.HARDWARE,
+    ),
+    BATTERY_DENSE(
+        "Denser cells", "More watt-hours in the same shell. Stacks with battery safety.",
+        Kind.LANE, 45, requires = BATTERY_SAFETY, lane = Lane.HARDWARE,
+    ),
+    BATTERY_SI_ANODE(
+        "Silicon-anode cells", "Higher density still — watch thermals.",
+        Kind.LANE, 85, requires = BATTERY_DENSE, lane = Lane.HARDWARE,
+    ),
+    SOC_MIDRANGE("Mid-range SoC kit", "A competent silicon reference design for your devices.", Kind.LANE, 40, lane = Lane.HARDWARE),
+    NPU_BLOCK(
+        "Custom NPU block", "On-device AI silicon. Synergy with the AI lab.",
+        Kind.LANE, 110, requires = SOC_MIDRANGE, lane = Lane.HARDWARE,
+    ),
+    CAMERA_DUAL("Dual camera", "Wide + depth. Phones start taking real photos.", Kind.LANE, 35, lane = Lane.HARDWARE),
+    CAMERA_TRIPLE("Triple camera", "Wide, ultra-wide, tele. Reviewers notice.", Kind.LANE, 60, requires = CAMERA_DUAL, lane = Lane.HARDWARE),
+    CAMERA_COMPUTATIONAL(
+        "Computational photography", "Night mode and HDR that look like magic.",
+        Kind.LANE, 100, requires = CAMERA_TRIPLE, lane = Lane.HARDWARE,
+    ),
+    MATERIALS_ALUMINUM("Aluminum unibody", "Stiffer chassis, nicer in the hand.", Kind.LANE, 30, lane = Lane.HARDWARE),
+    MATERIALS_TITANIUM(
+        "Titanium & recycled alloys", "Lighter flagship frames and a greener story.",
+        Kind.LANE, 90, requires = MATERIALS_ALUMINUM, lane = Lane.HARDWARE,
+    ),
     EFFICIENT_TRAINING("Efficient training", "Compute bills drop by 15%.", Kind.LANE, 30, lane = Lane.AI),
     SAFETY_EVALS("Safety evals", "Regulators take longer to notice you.", Kind.LANE, 40, lane = Lane.AI),
     MIXTURE_OF_EXPERTS("Mixture of experts", "Training runs gain 15% more capability.", Kind.LANE, 90, requires = EFFICIENT_TRAINING, lane = Lane.AI),
@@ -257,24 +287,24 @@ enum class Research(
             GRAPHICS_3D_V1, STYLE_REALISTIC -> 1992
             LARGE_GAMES, VOICE_ACTING -> 1993
             MOTION_CAPTURE -> 1994
-            SITE_TEMPLATES -> 1996
+            SITE_TEMPLATES, MATERIALS_ALUMINUM -> 1996
             ONLINE_SERVICES -> 1997
             GRAPHICS_3D_V2, SOUND_SURROUND, ADVANCED_AI, PHYSICS, DYNAMIC_LIGHTING -> 1998
-            ESPORTS, ACCESSIBILITY, DESTRUCTION_PHYSICS -> 2000
-            OPEN_WORLD -> 2001
+            ESPORTS, ACCESSIBILITY, DESTRUCTION_PHYSICS, DISPLAY_IPS -> 2000
+            OPEN_WORLD, SOC_MIDRANGE -> 2001
             CMS_PLATFORM -> 2003
             AAA_GAMES, GRAPHICS_3D_V3, DIGITAL_STORES, SPAM_FILTERS, STYLE_ANIME -> 2004
             REMASTERS, MODULAR_DESIGN, STYLE_VOXEL -> 2005
             GROUPS, OLED_DISPLAYS, ACCESSIBLE_DESIGN -> 2008
-            PUSH_NOTIFICATIONS, RECOMMENDATIONS, APP_SDK -> 2009
+            PUSH_NOTIFICATIONS, RECOMMENDATIONS, APP_SDK, CAMERA_DUAL -> 2009
             AB_TESTING, LIVE_SERVICE, APP_OFFLINE, CLOUD_SAVES -> 2010
-            SUBSCRIPTION_ANALYTICS, APP_SYNC -> 2012
-            HOME_WIDGETS, EFFICIENT_TRAINING, FAST_CHARGING -> 2014
+            SUBSCRIPTION_ANALYTICS, APP_SYNC, BATTERY_DENSE -> 2012
+            HOME_WIDGETS, EFFICIENT_TRAINING, FAST_CHARGING, CAMERA_TRIPLE -> 2014
             CREATOR_TOOLS, SPATIAL_AUDIO, FACT_CHECKING, APP_COLLAB, APP_END_TO_END_CRYPTO -> 2016
-            HEADLESS_COMMERCE, APP_WIDGETS_V2 -> 2017
-            GRAPHICS_3D_V4, CROSS_PLAY, INSTANT_APPS -> 2018
-            SAFETY_EVALS -> 2019
-            DISTILLATION -> 2020
+            HEADLESS_COMMERCE, APP_WIDGETS_V2, MATERIALS_TITANIUM -> 2017
+            GRAPHICS_3D_V4, CROSS_PLAY, INSTANT_APPS, DISPLAY_LTPO, CAMERA_COMPUTATIONAL -> 2018
+            SAFETY_EVALS, BATTERY_SI_ANODE -> 2019
+            DISTILLATION, NPU_BLOCK -> 2020
             MIXTURE_OF_EXPERTS -> 2021
             RLHF -> 2022
             PHOTOREAL, NEURAL_NPCS, AI_SITE_BUILDER -> 2023
@@ -497,6 +527,33 @@ internal fun GameState.applyResearch(lane: Lane, mods: LaneModifiers) {
             if (has(Research.OLED_DISPLAYS)) {
                 mods.quality += 4
                 mods.demand *= 1.03
+            }
+            // Parts tree: small global mods; aspect caps live in HardwareLab.deviceAspectCap
+            if (has(Research.DISPLAY_IPS)) mods.quality += 1
+            if (has(Research.DISPLAY_LTPO)) {
+                mods.quality += 2
+                mods.demand *= 1.02
+            }
+            if (has(Research.BATTERY_DENSE)) mods.quality += 1
+            if (has(Research.BATTERY_SI_ANODE)) {
+                mods.quality += 2
+                mods.cost *= 1.02
+            }
+            if (has(Research.SOC_MIDRANGE)) mods.quality += 2
+            if (has(Research.NPU_BLOCK)) {
+                mods.quality += 3
+                mods.demand *= 1.03
+            }
+            if (has(Research.CAMERA_DUAL)) mods.quality += 1
+            if (has(Research.CAMERA_TRIPLE)) mods.quality += 2
+            if (has(Research.CAMERA_COMPUTATIONAL)) {
+                mods.quality += 3
+                mods.demand *= 1.02
+            }
+            if (has(Research.MATERIALS_ALUMINUM)) mods.quality += 1
+            if (has(Research.MATERIALS_TITANIUM)) {
+                mods.quality += 2
+                mods.cost *= 1.03
             }
         }
         Lane.AI -> {

@@ -507,19 +507,29 @@ class Autopilot(
             if (age > 40) {
                 val flagship = s.cash > 4_000_000
                 attempt {
+                    val cat = if (flagship) DeviceCategory.PHONE else DeviceCategory.HEADPHONES
+                    val tier = if (flagship) DeviceTier.FLAGSHIP else DeviceTier.BUDGET
+                    // Category-weighted ideals: phones push camera+battery; buds push sound+build.
+                    val focus = when (cat) {
+                        DeviceCategory.PHONE -> listOf(0.14, 0.22, 0.24, 0.14, 0.12, 0.14)
+                        DeviceCategory.HEADPHONES -> listOf(0.08, 0.18, 0.32, 0.22, 0.08, 0.12)
+                        else -> DeviceFocus.evenFocus()
+                    }
                     s.startDevice(
-                        if (flagship) DeviceCategory.PHONE else DeviceCategory.HEADPHONES,
-                        if (flagship) DeviceTier.FLAGSHIP else DeviceTier.BUDGET,
+                        cat, tier,
+                        formFactor = FormFactor.defaultFor(cat),
+                        focus = focus,
+                        bundleOs = s.canBundleOs(),
+                        appPack = s.canOfferAppPack() && s.apps?.isLive == true,
                     )
                 }
             }
         }
         h.design?.let { d ->
             if (d.completion > 0.55 && d.preorderedStock == 0 && inbound == 0) {
-                val spec = d.spec
-                val estimate = spec.category.baseDemand * spec.tier.demandMultiplier * h.brandAwareness * 14
-                val affordable = s.cash * 0.45 / spec.unitCost
-                val units = min(estimate, affordable).toInt()
+                val forecast = h.forecast(d)
+                val affordable = s.cash * 0.45 / d.effectiveUnitCost
+                val units = min(forecast.preorderUnits.toDouble(), affordable).toInt()
                 if (units > 100) attempt { s.orderUnits(units) }
             }
             if (d.isReady && (d.preorderedStock > 0 || inbound == 0)) attempt { s.launchDevice() }

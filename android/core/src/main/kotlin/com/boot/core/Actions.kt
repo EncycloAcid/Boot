@@ -154,11 +154,32 @@ fun GameState.setAdLoad(level: Double) {
 
 // Hardware
 
-fun GameState.startDevice(category: DeviceCategory, tier: DeviceTier) {
+fun GameState.startDevice(
+    category: DeviceCategory,
+    tier: DeviceTier,
+    formFactor: FormFactor = FormFactor.defaultFor(category),
+    focus: List<Double> = DeviceFocus.evenFocus(),
+    bundleOs: Boolean = false,
+    appPack: Boolean = false,
+) {
     require(Lane.HARDWARE)
     val h = hardware!!
-    h.startDesign(DeviceSpec(category, tier), rng)
-    addLog("Design work starts on the ${h.design!!.name}.", LogTone.NEUTRAL, Lane.HARDWARE)
+    val osOk = bundleOs && canBundleOs()
+    val appsOk = appPack && canOfferAppPack()
+    h.startDesign(
+        DeviceSpec(category, tier),
+        rng,
+        formFactor = formFactor,
+        focus = focus,
+        bundleOs = osOk,
+        appPack = appsOk,
+    )
+    val extras = buildList {
+        if (osOk) add("bundled OS")
+        if (appsOk) add("app pack")
+    }
+    val suffix = if (extras.isEmpty()) "" else " (${extras.joinToString(", ")})"
+    addLog("Design work starts on the ${h.design!!.name}$suffix.", LogTone.NEUTRAL, Lane.HARDWARE)
 }
 
 fun GameState.orderUnits(units: Int) {
@@ -176,10 +197,19 @@ fun GameState.orderUnits(units: Int) {
 
 fun GameState.launchDevice() {
     require(Lane.HARDWARE)
-    val report = hardware!!.launch(context(Lane.HARDWARE))
+    val h = hardware!!
+    val bundling = h.design?.bundleOs == true
+    val report = h.launch(context(Lane.HARDWARE), researched)
     cash += report.revenue
     recordRevenue(report.revenue, Lane.HARDWARE)
     handle(report.incidents, Lane.HARDWARE)
+    if (bundling && Lane.OS in lanes) {
+        os?.let { lab ->
+            lab.ecosystem = (lab.ecosystem + 0.03).coerceAtMost(1.0)
+            // Strategy ecosystem nudge: same spirit as HARDWARE_OS combo demand lift.
+            addLog("Bundled platform: OEMs and Strategy both notice the tighter ecosystem.", LogTone.GOOD, Lane.HARDWARE)
+        }
+    }
 }
 
 // AI

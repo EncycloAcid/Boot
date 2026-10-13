@@ -184,6 +184,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
         state.events.isNotEmpty() -> EventSheet(store, state)
         state.games?.unseenReview != null -> ReviewSheet(store, state, state.games!!.unseenReview!!)
         store.designing && state.games != null -> GameDesigner(store, state)
+        store.designingDevice && state.hardware != null -> DeviceDesigner(store, state)
         store.openRelease != null -> ReleaseSheet(store, state, store.openRelease!!)
         store.guideOpen -> GuideSheet(store, state)
         store.openStock != null -> StockSheet(store, state, store.openStock!!)

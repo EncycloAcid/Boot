@@ -185,6 +185,99 @@ class TycoonDepthOsTest {
     }
 }
 
+class TycoonDepthHardwareTest {
+    @Test
+    fun focusMixMovesAspectScores() {
+        val s = game(Lane.HARDWARE, 801)
+        s.cash = 5_000_000.0
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.HARDWARE)
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.HARDWARE)
+        // Camera-heavy phone brief.
+        val cameraHeavy = listOf(0.08, 0.12, 0.40, 0.12, 0.14, 0.14)
+        s.startDevice(DeviceCategory.PHONE, DeviceTier.FLAGSHIP, FormFactor.PRO, cameraHeavy)
+        val d = s.hardware!!.design!!
+        d.progress = d.work
+        d.polish = d.work
+        d.design = 120.0
+        d.tech = 140.0
+        s.launchDevice()
+        val m = assertNotNull(s.hardware!!.onMarket)
+        assertTrue(m.aspects.isNotEmpty())
+        val camera = m.aspects[DeviceAspect.CAMERA] ?: 0.0
+        val battery = m.aspects[DeviceAspect.BATTERY] ?: 0.0
+        assertTrue(camera > battery, "camera-heavy focus should outscore battery")
+    }
+
+    @Test
+    fun bomCostRisesWithComponentAmbition() {
+        val even = bomMultiplier(DeviceFocus.evenFocus())
+        val ambitious = bomMultiplier(listOf(0.35, 0.25, 0.25, 0.05, 0.05, 0.05))
+        assertTrue(ambitious > even, "display+camera ambition should raise BOM")
+        assertTrue(ambitious in 1.0..1.65)
+    }
+
+    @Test
+    fun researchRaisesAspectCaps() {
+        val bare = deviceAspectCap(DeviceAspect.DISPLAY, emptySet())
+        val oled = deviceAspectCap(DeviceAspect.DISPLAY, setOf(Research.OLED_DISPLAYS))
+        val ltpo = deviceAspectCap(DeviceAspect.DISPLAY, setOf(Research.OLED_DISPLAYS, Research.DISPLAY_LTPO))
+        assertTrue(oled > bare)
+        assertTrue(ltpo > oled)
+        assertTrue(deviceAspectCap(DeviceAspect.CAMERA, setOf(Research.CAMERA_COMPUTATIONAL, Research.CAMERA_TRIPLE, Research.CAMERA_DUAL)) >= 95.0)
+    }
+
+    @Test
+    fun osBundleBumpsIndustrialAndIsGatedOnRecentShip() {
+        val s = game(Lane.HARDWARE, 802)
+        s.cash = 10_000_000.0
+        assertTrue(!s.canBundleOs())
+        s.openLane(Lane.OS)
+        s.os!!.releases += OsRelease(
+            id = 1, codename = "Cedar", version = 1, target = OsTarget.PC,
+            week = s.week - 10, score = 7.0, design = 100.0, tech = 100.0, bugs = 5.0, beta = false,
+        )
+        assertTrue(s.canBundleOs())
+        s.startDevice(
+            DeviceCategory.PHONE, DeviceTier.FLAGSHIP, FormFactor.STANDARD,
+            DeviceFocus.evenFocus(), bundleOs = true,
+        )
+        assertTrue(s.hardware!!.design!!.bundleOs)
+        val d = s.hardware!!.design!!
+        d.progress = d.work
+        d.polish = d.work
+        d.design = 100.0
+        d.tech = 100.0
+        val ecoBefore = s.os!!.ecosystem
+        s.launchDevice()
+        assertTrue(s.hardware!!.onMarket!!.bundleOs)
+        assertTrue(s.os!!.ecosystem > ecoBefore)
+        val industrial = s.hardware!!.onMarket!!.aspects[DeviceAspect.INDUSTRIAL] ?: 0.0
+        assertTrue(industrial > 30.0)
+    }
+
+    @Test
+    fun saveMigratesOldDeviceDesignToEvenFocus() {
+        val s = game(Lane.HARDWARE, 803)
+        s.cash = 2_000_000.0
+        s.startDevice(DeviceCategory.HEADPHONES, DeviceTier.BUDGET)
+        // Simulate a corrupted / pre-depth focus list.
+        val d = s.hardware!!.design!!
+        s.hardware!!.design = d.copy(focus = emptyList(), formFactor = FormFactor.STANDARD)
+        val round = GameState.decode(s.encode())
+        val migrated = assertNotNull(round.hardware!!.design)
+        assertEquals(6, migrated.focus.size)
+        assertEquals(1.0, migrated.focus.sum(), 1e-6)
+        assertTrue(migrated.formFactor in FormFactor.options(DeviceCategory.HEADPHONES))
+    }
+
+    @Test
+    fun budgetPhoneWithFlagshipCameraSoftensTierFit() {
+        val heavyCam = listOf(0.1, 0.1, 0.4, 0.15, 0.15, 0.1)
+        val fit = deviceTierFit(heavyCam, DeviceTier.BUDGET, DeviceCategory.PHONE)
+        assertTrue(fit < 1.0)
+    }
+}
+
 class TycoonDepthGamesPolishTest {
     @Test
     fun designLeanFitIsHighWhenNearGenreIdeal() {

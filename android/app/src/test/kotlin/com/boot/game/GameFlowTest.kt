@@ -445,7 +445,17 @@ class GameFlowTest {
         screen("09-hardware")
         tapInList("Start design")
         compose.waitForIdle()
+        assertTrue(store.designingDevice)
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Next").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Start design").performClick()
+        compose.waitForIdle()
         assertNotNull(store.state!!.hardware!!.design)
+        assertTrue(!store.designingDevice)
         compose.onNodeWithText("Launch the", substring = true).assertExists()
     }
 

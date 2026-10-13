@@ -84,6 +84,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var designing by mutableStateOf(false)
     var draft by mutableStateOf<GameConcept?>(null)
 
+    /** The hardware Device Designer is open. */
+    var designingDevice by mutableStateOf(false)
+
     /** A company on the stock market whose page is open. */
     var openStock by mutableStateOf<String?>(null)
 
@@ -117,7 +120,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
 
     /** A full-screen page that holds the clock while it's open. */
-    val holdsClock: Boolean get() = designing || openRelease != null || guideOpen || openStock != null || campaignLane != null
+    val holdsClock: Boolean get() = designing || designingDevice || openRelease != null || guideOpen || openStock != null || campaignLane != null
 
     fun newGame(
         company: String,
@@ -224,6 +227,11 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         draft = seed
         designTeam = team
         designing = true
+    }
+
+    fun designDevice() {
+        pause()
+        designingDevice = true
     }
 
     fun openLane(lane: Lane) {

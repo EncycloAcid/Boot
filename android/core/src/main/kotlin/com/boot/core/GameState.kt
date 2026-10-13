@@ -554,6 +554,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         syncAppPlatformFeatures()
         apps?.migrateCraftFromQuality()
         os?.capOemPartners()
+        hardware?.design?.let { d -> hardware!!.design = d.migrated() }
         // Old saves lacked StrategyBook fields that kotlinx may leave at defaults — ensure lists exist.
         if (strategy.nextAllianceId < 1) strategy.nextAllianceId = 1
         if (strategy.nextHoldingId < 1) strategy.nextHoldingId = 1
