@@ -18,14 +18,16 @@ enum class OsTarget {
             BOTH -> "PC & phone"
         }
 
-    internal val work: Double
+    /** Total development work units for a version on this target. */
+    val work: Double
         get() = when (this) {
             PC -> 320.0
             PHONE -> 280.0
             BOTH -> 480.0
         }
 
-    internal val weeklyBurn: Double
+    /** Weekly cash burn while the version is in active development. */
+    val weeklyBurn: Double
         get() = when (this) {
             PC -> 45_000.0
             PHONE -> 40_000.0
