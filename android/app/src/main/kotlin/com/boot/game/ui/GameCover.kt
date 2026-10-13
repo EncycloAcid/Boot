@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.boot.core.Audience
 import com.boot.core.GameConcept
+import com.boot.core.GameSize
 import com.boot.core.Genre
 import com.boot.core.Platform
 import com.boot.core.Topic
@@ -60,6 +61,7 @@ import kotlin.math.sin
 private enum class Scene {
     CASTLE, DRAGON, TEMPLE, PAGODA, PLANET, UFO, MARS, VORTEX, CITY, NEON, NOIR, HERO_CITY, ROAD, STADIUM,
     GRAVEYARD, GOTHIC, RUINS, REEF, SHIP, FARM, HOUSE, STAGE, JUNGLE, MECH, NETWORK, DESERT, WAR, RUNWAY, KITCHEN, SCHOOL, CLINIC, PETS, TOWER,
+    VAULT, AIRSHIP, WILDERNESS, BALLET_STAGE, VILLAGE, ARENA,
 }
 
 private enum class Fx { EMBERS, STARS, RAIN, FIREFLIES, BUBBLES, CONFETTI, SPARKLES, NONE }
@@ -111,12 +113,12 @@ private val Topic.art: Art
         Topic.ARTIFICIAL_INTELLIGENCE -> Art(0xFF0A0A1F, 0xFF3B2A7A, 0xFF07071A, 0xFFFF6AD5, Scene.NETWORK, Fx.SPARKLES)
         Topic.WILD_WEST -> Art(0xFFE8613C, 0xFFFFD98A, 0xFFB86A35, 0xFFFFF2B0, Scene.DESERT, Fx.NONE)
         Topic.MILITARY -> Art(0xFF1C2328, 0xFF8D6E63, 0xFF161B1E, 0xFFFFD08A, Scene.WAR, Fx.EMBERS)
-        Topic.HEIST -> Art(0xFF0C1018, 0xFF3A465C, 0xFF06080C, 0xFFFFC46B, Scene.NOIR, Fx.RAIN)
-        Topic.STEAMPUNK -> Art(0xFF2A160C, 0xFFC48A3A, 0xFF1A1008, 0xFFFFD58A, Scene.TOWER, Fx.EMBERS)
-        Topic.SURVIVAL -> Art(0xFF1A2410, 0xFF6B8F3A, 0xFF0E1408, 0xFFE8F0C8, Scene.JUNGLE, Fx.FIREFLIES)
-        Topic.BALLET -> Art(0xFF1A1028, 0xFFE8A0C8, 0xFF0C0818, 0xFFFFE8F4, Scene.STAGE, Fx.SPARKLES)
-        Topic.FOLKLORE -> Art(0xFF1E1830, 0xFFC48A5A, 0xFF120E1C, 0xFFFFE0A8, Scene.TEMPLE, Fx.FIREFLIES)
-        Topic.ESPORTS_SCENE -> Art(0xFF0A0618, 0xFF5B2CFF, 0xFF060410, 0xFF7CF0FF, Scene.NEON, Fx.CONFETTI)
+        Topic.HEIST -> Art(0xFF0A1218, 0xFF3D5A6A, 0xFF060A0E, 0xFFFFD866, Scene.VAULT, Fx.SPARKLES)
+        Topic.STEAMPUNK -> Art(0xFF2A1810, 0xFFC4783A, 0xFF1A100C, 0xFFFFC46B, Scene.AIRSHIP, Fx.EMBERS)
+        Topic.SURVIVAL -> Art(0xFF0A2830, 0xFF6B8F9E, 0xFF0E1618, 0xFFFFB26B, Scene.WILDERNESS, Fx.FIREFLIES)
+        Topic.BALLET -> Art(0xFF1A0A22, 0xFFD48AD0, 0xFF0E0614, 0xFFFFE6F2, Scene.BALLET_STAGE, Fx.SPARKLES)
+        Topic.FOLKLORE -> Art(0xFF1C2A1C, 0xFF8FA86A, 0xFF101810, 0xFFFFE08A, Scene.VILLAGE, Fx.FIREFLIES)
+        Topic.ESPORTS_SCENE -> Art(0xFF0A0E24, 0xFF3A5CFF, 0xFF060812, 0xFF7CF0FF, Scene.ARENA, Fx.CONFETTI)
     }
 
 private fun platformColor(p: Platform): Color = when (p.maker) {
@@ -140,12 +142,23 @@ private val Audience.rating: String
         Audience.MATURE -> "M"
     }
 
+/** Minimal concept for chart / list rows that only store topic and genre cues. */
+fun chartCoverConcept(title: String, topic: Topic, genre: Genre, platform: Platform = Platform.PC): GameConcept =
+    GameConcept(title, topic, genre, platforms = listOf(platform), size = GameSize.MEDIUM)
+
 /** Box art for [concept], by [studio] if given. Small covers keep the picture and drop the words. */
 @Composable
 fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, studio: String? = null) {
     val measurer = rememberTextMeasurer()
-    val detailed = width >= 72.dp
-    val seed = remember(concept.title) { concept.title.hashCode() }
+    // Studio (64dp) and designer (104dp+) get lettering; tiny list thumbs stay pictorial.
+    val detailed = width >= 56.dp
+    val seed = remember(concept.title, concept.topic, concept.genre, concept.genre2) {
+        var h = concept.title.hashCode()
+        h = 31 * h + concept.topic.ordinal
+        h = 31 * h + concept.genre.ordinal
+        h = 31 * h + (concept.genre2?.ordinal ?: -1)
+        h
+    }
     Canvas(
         modifier
             .size(width, width * 4 / 3)
@@ -154,13 +167,15 @@ fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, st
     ) {
         val w = size.width
         val h = size.height
+        // Guard zero-size layouts (blank canvas) — nothing to paint yet.
+        if (w <= 0f || h <= 0f) return@Canvas
         val band = h * 0.09f
         val art = concept.topic.art
-        val rng = java.util.Random(seed.toLong() * 31 + concept.topic.ordinal)
+        val rng = java.util.Random(seed.toLong() * 31L + concept.topic.ordinal * 17L + concept.genre.ordinal)
         // Half the covers put the title at the top, half at the bottom; the hero takes the other end.
         val titleTop = detailed && (seed and 1) == 0
         val mirror = (seed shr 1 and 1) == 1
-        val horizon = h * (0.6f + 0.05f * rng.nextFloat())
+        val horizon = h * (0.58f + 0.08f * rng.nextFloat())
 
         clipRect(top = band) {
             drawRect(Brush.verticalGradient(listOf(art.sky, art.horizon), startY = band, endY = horizon), topLeft = Offset(0f, band), size = Size(w, horizon - band))
@@ -217,16 +232,20 @@ fun CoverWithScore(concept: GameConcept, score: Double, width: Dp = 44.dp) {
         score >= 5 -> colors.warn
         else -> colors.bad
     }
-    Box(Modifier.size(width + 6.dp, width * 4 / 3 + 4.dp)) {
+    // Aspect matches GameCover (3:4); badge sits on the cover without stretching the box.
+    Box(Modifier.size(width, width * 4 / 3)) {
         GameCover(concept, width)
         Text(
             String.format(Locale.US, if (score >= 9.95 || score % 1.0 == 0.0) "%.0f" else "%.1f", score),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Black,
             color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .background(color, RoundedCornerShape(6.dp))
+                .padding(2.dp)
+                .background(color, RoundedCornerShape(5.dp))
                 .padding(horizontal = 4.dp, vertical = 1.dp),
         )
     }
@@ -260,7 +279,9 @@ private fun DrawScope.titleLogo(measurer: TextMeasurer, c: GameConcept, art: Art
         maxLines = 1,
     )
     val blockH = layout.size.height + (num?.size?.height?.times(0.8f) ?: 0f) + genre.size.height
-    val y0 = if (top) band + h * 0.035f else h - w * 0.2f - blockH
+    // Keep title clear of the rating / studio footer strip.
+    val footerReserve = w * 0.22f
+    val y0 = if (top) band + h * 0.035f else (h - footerReserve - blockH).coerceAtLeast(band + h * 0.08f)
     val x = w * 0.06f
     val at = Offset(x, y0)
     drawText(layout, color = Color.Black.copy(alpha = 0.45f), topLeft = at + Offset(0f, fs * 0.07f))
@@ -799,6 +820,114 @@ private fun DrawScope.scene(a: Art, topic: Topic, w: Float, h: Float, top: Float
                 val f = Offset(w * rng.nextFloat(), horizon - h * 0.1f * rng.nextFloat())
                 drawCircle(Color.White.copy(alpha = 0.8f), w * 0.008f, f)
             }
+        }
+        Scene.VAULT -> {
+            // Steel vault door with a gold dial and laser lattice.
+            drawRect(Color(0xFF1A2430), Offset(0f, horizon - h * 0.02f), Size(w, h - horizon + h * 0.02f))
+            val cx = w * 0.52f
+            val cy = top + h * 0.42f
+            val vr = w * 0.28f
+            drawCircle(Color(0xFF3A4654), vr, Offset(cx, cy))
+            drawCircle(Color(0xFF232B36), vr * 0.82f, Offset(cx, cy))
+            drawCircle(a.light.mix(Color(0xFFFFC46B), 0.4f), vr * 0.22f, Offset(cx, cy), style = Stroke(w * 0.018f))
+            drawCircle(a.light, vr * 0.06f, Offset(cx, cy))
+            for (k in 0 until 8) {
+                val ang = k * PI.toFloat() / 4f
+                drawLine(Color(0xFF5A6778), Offset(cx, cy), Offset(cx + cos(ang) * vr * 0.7f, cy + sin(ang) * vr * 0.7f), strokeWidth = w * 0.008f)
+            }
+            for (k in 0..4) {
+                drawLine(Color(0xFFFF4D6A).copy(alpha = 0.45f), Offset(w * 0.05f, top + h * (0.12f + k * 0.08f)), Offset(w * 0.95f, top + h * (0.16f + k * 0.08f)), strokeWidth = w * 0.004f)
+                drawLine(Color(0xFFFF4D6A).copy(alpha = 0.35f), Offset(w * (0.12f + k * 0.18f), top + h * 0.1f), Offset(w * (0.08f + k * 0.18f), horizon), strokeWidth = w * 0.004f)
+            }
+            // Stacked bars of gold.
+            for (k in 0..2) {
+                drawRoundRect(a.light.shade(0.85f - k * 0.05f), Offset(w * 0.08f + k * w * 0.02f, horizon + h * 0.04f + k * h * 0.02f), Size(w * 0.18f, h * 0.035f), CornerRadius(w * 0.01f))
+            }
+        }
+        Scene.AIRSHIP -> {
+            mountains(mid, horizon, w, h, rng, 0.12f)
+            drawCircle(a.light.mix(Color(0xFFFFD08A), 0.5f), w * 0.1f, light)
+            // Brass gears in the sky.
+            for ((gx, gy, gr) in listOf(Triple(0.2f, 0.22f, 0.09f), Triple(0.78f, 0.18f, 0.07f), Triple(0.68f, 0.32f, 0.05f))) {
+                val c = Offset(w * gx, top + h * gy)
+                drawCircle(Color(0xFFB87333), w * gr, c, style = Stroke(w * 0.012f))
+                for (k in 0 until 6) {
+                    val ang = k * PI.toFloat() / 3f
+                    drawLine(Color(0xFFB87333), c, Offset(c.x + cos(ang) * w * gr, c.y + sin(ang) * w * gr), strokeWidth = w * 0.01f)
+                }
+            }
+            val ax = w * 0.48f
+            val ay = top + h * 0.38f
+            drawOval(Color(0xFF8D6E4A), Offset(ax - w * 0.28f, ay - h * 0.08f), Size(w * 0.56f, h * 0.16f))
+            drawOval(Color(0xFFC49A6C), Offset(ax - w * 0.24f, ay - h * 0.06f), Size(w * 0.48f, h * 0.12f))
+            drawRoundRect(Color(0xFF5D4037), Offset(ax - w * 0.1f, ay + h * 0.04f), Size(w * 0.2f, h * 0.07f), CornerRadius(w * 0.02f))
+            for (k in -1..1) drawRect(a.light, Offset(ax + k * w * 0.05f - w * 0.012f, ay + h * 0.055f), Size(w * 0.024f, h * 0.028f))
+            drawLine(Color(0xFF5D4037), Offset(ax - w * 0.08f, ay + h * 0.11f), Offset(ax - w * 0.18f, horizon + h * 0.02f), strokeWidth = w * 0.008f)
+            drawLine(Color(0xFF5D4037), Offset(ax + w * 0.08f, ay + h * 0.11f), Offset(ax + w * 0.18f, horizon + h * 0.02f), strokeWidth = w * 0.008f)
+        }
+        Scene.WILDERNESS -> {
+            mountains(mid, horizon, w, h, rng, 0.18f)
+            // Pine line.
+            for (k in 0 until 7) {
+                val tx = w * (0.05f + k * 0.14f)
+                val th = h * (0.12f + 0.08f * rng.nextFloat())
+                poly(dark.shade(0.85f), tx, horizon, tx - w * 0.05f, horizon - th * 0.55f, tx, horizon - th, tx + w * 0.05f, horizon - th * 0.55f)
+                drawLine(Color(0xFF3E2723), Offset(tx, horizon), Offset(tx, horizon + h * 0.02f), strokeWidth = w * 0.012f)
+            }
+            val cabin = if (light.x > w / 2) w * 0.22f else w * 0.7f
+            drawRect(Color(0xFF5D4037), Offset(cabin - w * 0.1f, horizon - h * 0.1f), Size(w * 0.2f, h * 0.1f))
+            poly(Color(0xFF3E2723), cabin - w * 0.12f, horizon - h * 0.1f, cabin, horizon - h * 0.18f, cabin + w * 0.12f, horizon - h * 0.1f)
+            drawRect(a.light, Offset(cabin - w * 0.02f, horizon - h * 0.07f), Size(w * 0.04f, h * 0.035f))
+            glow(Offset(cabin + w * 0.14f, horizon + h * 0.02f), w * 0.12f, Color(0xFFFF8A3D), 0.55f)
+            drawCircle(Color(0xFFFFB26B), w * 0.025f, Offset(cabin + w * 0.14f, horizon + h * 0.02f))
+        }
+        Scene.BALLET_STAGE -> {
+            for (k in 0..3) {
+                val sx = w * (0.15f + k * 0.23f)
+                poly(a.light.copy(alpha = 0.2f), sx, top, sx - w * 0.1f, horizon, sx + w * 0.1f, horizon)
+            }
+            drawRect(Color(0xFF2A1430), Offset(0f, horizon), Size(w, h * 0.06f))
+            drawRect(Color(0xFF1A0A20), Offset(0f, horizon + h * 0.06f), Size(w, h - horizon - h * 0.06f))
+            // Curtains.
+            poly(Color(0xFF8E2454), 0f, top, w * 0.18f, top, w * 0.12f, horizon, 0f, horizon)
+            poly(Color(0xFF8E2454), w, top, w * 0.82f, top, w * 0.88f, horizon, w, horizon)
+            // Spotlight circle on the boards.
+            glow(Offset(w * 0.5f, horizon + h * 0.02f), w * 0.28f, a.light, 0.45f)
+            drawOval(a.light.copy(alpha = 0.25f), Offset(w * 0.32f, horizon - h * 0.01f), Size(w * 0.36f, h * 0.05f))
+        }
+        Scene.VILLAGE -> {
+            drawCircle(a.light.mix(Color(0xFFFFE08A), 0.4f), w * 0.1f, light)
+            mountains(mid, horizon, w, h, rng, 0.1f)
+            for (k in 0 until 4) {
+                val hx = w * (0.1f + k * 0.22f)
+                val hh = h * (0.08f + 0.04f * (k % 2))
+                drawRect(Color(0xFF6D4C41), Offset(hx, horizon - hh), Size(w * 0.14f, hh))
+                poly(Color(0xFF8D6E63), hx - w * 0.015f, horizon - hh, hx + w * 0.07f, horizon - hh - h * 0.05f, hx + w * 0.155f, horizon - hh)
+                drawRect(a.light, Offset(hx + w * 0.05f, horizon - hh * 0.55f), Size(w * 0.035f, h * 0.025f))
+            }
+            // Spirit wisps above the roofs.
+            for (k in 0 until 5) {
+                val p = Offset(w * (0.15f + 0.7f * rng.nextFloat()), top + h * (0.12f + 0.2f * rng.nextFloat()))
+                glow(p, w * 0.06f, a.light, 0.5f)
+                drawCircle(Color.White.copy(alpha = 0.7f), w * 0.012f, p)
+            }
+            for (k in 0 until 5) drawCircle(Color(0xFF1B5E20).shade(0.85f), w * 0.08f, Offset(w * k / 4.5f, horizon + h * 0.06f))
+        }
+        Scene.ARENA -> {
+            // Esports stage: LED wall, desks, crowd glow.
+            drawRoundRect(Color(0xFF12182E), Offset(w * 0.08f, top + h * 0.1f), Size(w * 0.84f, h * 0.28f), CornerRadius(w * 0.03f))
+            drawRoundRect(a.light.copy(alpha = 0.35f), Offset(w * 0.12f, top + h * 0.14f), Size(w * 0.76f, h * 0.2f), CornerRadius(w * 0.02f), style = Stroke(w * 0.01f))
+            for (k in 0..4) {
+                drawRect(listOf(a.light, Color(0xFFFF4D6A), Color(0xFF7CF0FF), Color(0xFFFFE066), Color(0xFFB388FF))[k].copy(alpha = 0.55f), Offset(w * (0.16f + k * 0.14f), top + h * 0.18f), Size(w * 0.1f, h * 0.12f))
+            }
+            drawRect(Color(0xFF1A2038), Offset(0f, horizon - h * 0.04f), Size(w, h * 0.08f))
+            for (k in 0..3) {
+                val dx = w * (0.15f + k * 0.2f)
+                drawRect(Color(0xFF2A3148), Offset(dx - w * 0.05f, horizon - h * 0.02f), Size(w * 0.1f, h * 0.04f))
+                glow(Offset(dx, horizon - h * 0.05f), w * 0.08f, a.light, 0.4f)
+            }
+            for (k in 0 until 16) drawCircle(Color(0xFF050208), w * 0.04f, Offset(w * k / 15f, h - h * 0.015f * (k % 3)))
+            glow(Offset(w * 0.5f, horizon), w * 0.4f, a.horizon, 0.35f)
         }
     }
 }

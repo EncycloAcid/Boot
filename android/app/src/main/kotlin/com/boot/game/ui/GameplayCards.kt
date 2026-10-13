@@ -162,7 +162,7 @@ fun ChartCard(state: GameState, limit: Int, action: (@Composable () -> Unit)? = 
     ) {
         if (chart.isEmpty()) CardBlock { Hint("Nothing on sale yet. Rival studios ship games all the time; yours will show up here too.") }
         chart.forEachIndexed { i, e ->
-            if (i > 0) RowDivider(56.dp)
+            if (i > 0) RowDivider(72.dp)
             ChartRow(i + 1, e, onOpen)
         }
     }
@@ -188,6 +188,8 @@ private fun ChartRow(rank: Int, e: ChartEntry, onOpen: ((Int) -> Unit)?) {
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp),
         )
+        Spacer(Modifier.width(10.dp))
+        CoverWithScore(e.coverConcept(), e.score, width = 40.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -195,10 +197,12 @@ private fun ChartRow(rank: Int, e: ChartEntry, onOpen: ((Int) -> Unit)?) {
                 fontWeight = if (highlight) FontWeight.SemiBold else FontWeight.Normal,
             )
             Text(
-                (if (highlight) "You" else if (e.owned) "${e.studio} · yours" else e.studio) + " · " + String.format(Locale.US, "%.1f", e.score) + "/10",
+                (if (highlight) "You" else if (e.owned) "${e.studio} · yours" else e.studio) +
+                    " · ${e.topic.title} · ${e.genre.title}",
                 style = MaterialTheme.typography.labelMedium,
                 color = if (highlight || e.owned) colors.milestone else MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Text(Format.money(e.weeklySales) + "/wk", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
