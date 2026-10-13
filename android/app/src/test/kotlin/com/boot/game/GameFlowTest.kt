@@ -56,6 +56,7 @@ import com.boot.core.GameSize
 import com.boot.core.Genre
 import com.boot.core.Lane
 import com.boot.core.Platform
+import com.boot.core.StartPoint
 import com.boot.core.Topic
 import com.boot.core.acknowledgeReview
 import com.boot.core.advance
@@ -846,7 +847,13 @@ class GameFlowTest {
         compose.onNodeWithText("Websites").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("When", ignoreCase = true))
         screen("70-decades-new-game")
-        compose.onNodeWithText("Start your game studio").performClick()
+        // Hall of Fame leftovers from earlier tests in this suite change legacy perks and can
+        // bankrupt or end a decades run before 1988 — clear them and pin the seed.
+        compose.runOnIdle {
+            store.hall = emptyList()
+            File(RuntimeEnvironment.getApplication().filesDir, "hall.json").delete()
+            store.newGame("Pixel Soft", "Alex", Lane.GAMES, seed = 42L, start = StartPoint.CONSOLE_WARS)
+        }
         compose.waitForIdle()
         val s = store.state!!
         assertEquals(1985, s.startYear)
@@ -856,9 +863,13 @@ class GameFlowTest {
         compose.runOnIdle {
             val pilot = Autopilot()
             store.perform {
-                repeat(52 * 3) { if (pendingPivot != null) stayFocused(); pilot.playWeek(this) }
-                if (pendingPivot != null) stayFocused()
-                while (events.isNotEmpty()) choose(events[0].choices.size - 1)
+                repeat(52 * 3) {
+                    if (isOver) return@repeat
+                    if (pendingPivot != null) stayFocused()
+                    pilot.playWeek(this)
+                }
+                if (pendingPivot != null && !isOver) stayFocused()
+                while (events.isNotEmpty() && !isOver) choose(events[0].choices.size - 1)
                 acknowledgeReview()
             }
         }
