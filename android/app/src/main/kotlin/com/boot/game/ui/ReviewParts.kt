@@ -94,10 +94,18 @@ fun ScoreSummary(r: GameRelease) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             PlayerScoreBadge(r.userScore)
             Spacer(Modifier.size(6.dp))
-            Text("Players", style = MaterialTheme.typography.labelMedium)
+            Text(
+                when {
+                    r.userScore <= 0 -> "Players"
+                    r.userScoreSettled -> "Players"
+                    else -> "Early player score"
+                },
+                style = MaterialTheme.typography.labelMedium,
+            )
             Text(
                 when {
                     r.userScore <= 0 -> "no data"
+                    !r.userScoreSettled -> "settles in a few weeks"
                     r.userScore >= r.score + 0.7 -> "love it more"
                     r.userScore <= r.score - 0.7 -> "less impressed"
                     else -> "agree"

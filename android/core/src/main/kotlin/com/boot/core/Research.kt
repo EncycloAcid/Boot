@@ -67,6 +67,18 @@ enum class Research(
         "Realistic materials", "PBR skins, dirt maps, the lot.",
         Kind.ENGINE, 55, requires = GRAPHICS_3D_V1, engineLevel = 3, graphicStyle = GraphicStyle.REALISTIC,
     ),
+    STYLE_ANIME(
+        "Anime look", "Cel shading, big eyes, expressive silhouettes.",
+        Kind.ENGINE, 40, requires = STYLE_STYLIZED, engineLevel = 2, graphicStyle = GraphicStyle.ANIME,
+    ),
+    STYLE_VOXEL(
+        "Voxel style", "Chunky cubes with charm — Minecraft's cousins.",
+        Kind.ENGINE, 32, requires = STYLE_PIXEL, engineLevel = 2, graphicStyle = GraphicStyle.VOXEL,
+    ),
+    ACCESSIBLE_DESIGN(
+        "Accessible design", "Colour-blind modes, remaps, subtitles that actually help. Small review bump.",
+        Kind.STUDIO, 35, requires = PLAYTESTING,
+    ),
     SOUND_STEREO("Stereo sound", "Left and right, finally.", Kind.ENGINE, 8, engineLevel = 1),
     SOUND_SURROUND("Surround sound", "Footsteps behind you.", Kind.ENGINE, 40, requires = SOUND_STEREO, engineLevel = 2),
     SPATIAL_AUDIO("Spatial audio", "You can hear the room.", Kind.ENGINE, 110, requires = SOUND_SURROUND, engineLevel = 3),
@@ -75,10 +87,22 @@ enum class Research(
     ADVANCED_AI("Advanced AI", "Enemies that flank.", Kind.ENGINE, 55, requires = BASIC_AI, engineLevel = 2),
     NEURAL_NPCS("Neural NPCs", "Characters that improvise.", Kind.ENGINE, 180, requires = ADVANCED_AI, engineLevel = 3),
     PHYSICS("Physics engine", "Everything can fall over.", Kind.ENGINE, 30, engineLevel = 2),
+    DYNAMIC_LIGHTING(
+        "Dynamic lighting", "Day-night cycles and lights that move with the action.",
+        Kind.ENGINE, 48, requires = GRAPHICS_3D_V2, engineLevel = 2,
+    ),
+    DESTRUCTION_PHYSICS(
+        "Destruction physics", "Walls crumple, props shatter, chaos sells.",
+        Kind.ENGINE, 70, requires = PHYSICS, engineLevel = 3,
+    ),
     VOICE_ACTING("Voice acting", "Real actors, real lines.", Kind.ENGINE, 35, requires = SOUND_STEREO, engineLevel = 1),
     MOTION_CAPTURE("Motion capture", "Actors in dotted suits. Characters move like people.", Kind.ENGINE, 60, requires = GRAPHICS_3D_V1, engineLevel = 2),
     MULTIPLAYER("Multiplayer", "Play with friends.", Kind.ENGINE, 35, engineLevel = 2),
     ONLINE_SERVICES("Online services", "Accounts, leaderboards, patches.", Kind.ENGINE, 80, requires = MULTIPLAYER, engineLevel = 2),
+    CLOUD_SAVES(
+        "Cloud saves", "Pick up on any machine. Players notice when you don't have it.",
+        Kind.ENGINE, 55, requires = ONLINE_SERVICES, engineLevel = 1,
+    ),
     CROSS_PLAY("Cross-play", "Everyone in one lobby.", Kind.ENGINE, 140, requires = ONLINE_SERVICES, engineLevel = 3),
     PROCEDURAL("Procedural generation", "Infinite worlds, finite budget.", Kind.ENGINE, 65, engineLevel = 2),
     OPEN_WORLD("Open world", "Go anywhere.", Kind.ENGINE, 85, requires = PHYSICS, engineLevel = 3),
@@ -97,6 +121,18 @@ enum class Research(
     HIRING_PIPELINE("Recruiting pipeline", "University ties and referral bonuses: better candidates turn up.", Kind.COMPANY, 25),
     STOCK_OPTIONS("Stock options", "Everyone owns a sliver. Rivals find your people much harder to poach.", Kind.COMPANY, 35),
     OPS_AUTOMATION("Back-office automation", "Payroll, invoices and IT run themselves: every business costs 5% less to run.", Kind.COMPANY, 60),
+    REGIONAL_EXPANSION(
+        "Regional expansion", "Open offices beyond your first region and grow local brand and territory revenue.",
+        Kind.COMPANY, 28,
+    ),
+    GLOBAL_ALLIANCES(
+        "Global alliances", "Sign two-year distribution, cloud, content or platform partnerships.",
+        Kind.COMPANY, 35, requires = REGIONAL_EXPANSION,
+    ),
+    VENTURE_ARM(
+        "Venture Arm", "Seed minority investments in startups across your lanes, follow on, and exit.",
+        Kind.COMPANY, 45, requires = GLOBAL_ALLIANCES,
+    ),
 
     // Lanes
     SITE_TEMPLATES("Site templates", "Agency work goes 10% faster.", Kind.LANE, 12, lane = Lane.WEBSITES),
@@ -114,6 +150,14 @@ enum class Research(
     APP_OFFLINE("Offline mode", "Works on the train. Users stick around.", Kind.LANE, 22, requires = APP_SDK, engineLevel = 2, lane = Lane.APPS),
     APP_SYNC("Cloud sync", "Pick up on any device.", Kind.LANE, 40, requires = APP_OFFLINE, engineLevel = 2, lane = Lane.APPS),
     APP_COLLAB("Collaboration", "Share and co-edit. Teams buy in.", Kind.LANE, 70, requires = APP_SYNC, engineLevel = 3, lane = Lane.APPS),
+    APP_WIDGETS_V2(
+        "Smart widgets", "Interactive home-screen tiles that earn their space.",
+        Kind.LANE, 75, requires = HOME_WIDGETS, engineLevel = 2, lane = Lane.APPS,
+    ),
+    APP_END_TO_END_CRYPTO(
+        "End-to-end crypto", "Messages and sync that even you can't read. Trust goes up; churn goes down.",
+        Kind.LANE, 65, requires = APP_SYNC, engineLevel = 2, lane = Lane.APPS,
+    ),
     SPAM_FILTERS("Spam filters", "Toxicity falls faster.", Kind.LANE, 15, lane = Lane.SOCIAL),
     RECOMMENDATIONS("Recommendations v1", "8% more growth.", Kind.LANE, 40, requires = SPAM_FILTERS, lane = Lane.SOCIAL),
     CREATOR_TOOLS("Creator tools", "Creators bring their audiences: more demand and ad revenue.", Kind.LANE, 80, requires = RECOMMENDATIONS, lane = Lane.SOCIAL),
@@ -136,6 +180,18 @@ enum class Research(
     OS_SERVICES("System services", "Updates, accounts, notifications as platform primitives.", Kind.LANE, 45, requires = KERNEL_V1, engineLevel = 2, lane = Lane.OS),
     OEM_SDK("OEM adaptation kit", "Board support that handset makers can actually ship.", Kind.LANE, 70, requires = KERNEL_V2, engineLevel = 3, lane = Lane.OS),
     DEV_PLATFORM("Developer platform", "APIs and tools that grow the app ecosystem.", Kind.LANE, 80, requires = OS_SERVICES, engineLevel = 3, lane = Lane.OS),
+    OS_DRIVER_MODEL(
+        "Unified driver model", "Hardware makers ship one stack that mostly works.",
+        Kind.LANE, 50, requires = KERNEL_V1, engineLevel = 2, lane = Lane.OS,
+    ),
+    OS_APP_SANDBOX(
+        "App sandbox", "Apps can't ransack the system. Users and stores notice.",
+        Kind.LANE, 60, requires = OS_SERVICES, engineLevel = 2, lane = Lane.OS,
+    ),
+    OS_UPDATE_OTA(
+        "Seamless OTA updates", "Silent patches that OEMs trust — fewer rollbacks.",
+        Kind.LANE, 70, requires = OS_SERVICES, engineLevel = 2, lane = Lane.OS,
+    ),
 
     // Era research: only while its era lasts. Once you have it, it's yours for good.
     COPY_PROTECTION("Copy protection", "Stop the bootleg tapes going round school: 6% more game sales.", Kind.ERA, 15),
@@ -191,8 +247,9 @@ enum class Research(
     val year: Int
         get() = when (this) {
             SEQUELS, PROCEDURAL, BASIC_AI, MULTIPLAYER, STYLE_PIXEL -> 1978
-            MERCHANDISE, PUBLISHING, CUSTOM_ENGINES, STOCK_OPTIONS -> 1980
-            MEDIUM_GAMES -> 1983
+            MERCHANDISE, PUBLISHING, CUSTOM_ENGINES, STOCK_OPTIONS, REGIONAL_EXPANSION -> 1980
+            MEDIUM_GAMES, GLOBAL_ALLIANCES -> 1983
+            VENTURE_ARM -> 1985
             MULTI_PLATFORM -> 1984
             MULTI_GENRE, LOCALIZATION, SOUND_STEREO, OPS_AUTOMATION, STYLE_STYLIZED -> 1985
             SAVE_SYSTEM -> 1986
@@ -202,30 +259,30 @@ enum class Research(
             MOTION_CAPTURE -> 1994
             SITE_TEMPLATES -> 1996
             ONLINE_SERVICES -> 1997
-            GRAPHICS_3D_V2, SOUND_SURROUND, ADVANCED_AI, PHYSICS -> 1998
-            ESPORTS, ACCESSIBILITY -> 2000
+            GRAPHICS_3D_V2, SOUND_SURROUND, ADVANCED_AI, PHYSICS, DYNAMIC_LIGHTING -> 1998
+            ESPORTS, ACCESSIBILITY, DESTRUCTION_PHYSICS -> 2000
             OPEN_WORLD -> 2001
             CMS_PLATFORM -> 2003
-            AAA_GAMES, GRAPHICS_3D_V3, DIGITAL_STORES, SPAM_FILTERS -> 2004
-            REMASTERS, MODULAR_DESIGN -> 2005
-            GROUPS, OLED_DISPLAYS -> 2008
+            AAA_GAMES, GRAPHICS_3D_V3, DIGITAL_STORES, SPAM_FILTERS, STYLE_ANIME -> 2004
+            REMASTERS, MODULAR_DESIGN, STYLE_VOXEL -> 2005
+            GROUPS, OLED_DISPLAYS, ACCESSIBLE_DESIGN -> 2008
             PUSH_NOTIFICATIONS, RECOMMENDATIONS, APP_SDK -> 2009
-            AB_TESTING, LIVE_SERVICE, APP_OFFLINE -> 2010
+            AB_TESTING, LIVE_SERVICE, APP_OFFLINE, CLOUD_SAVES -> 2010
             SUBSCRIPTION_ANALYTICS, APP_SYNC -> 2012
             HOME_WIDGETS, EFFICIENT_TRAINING, FAST_CHARGING -> 2014
-            CREATOR_TOOLS, SPATIAL_AUDIO, FACT_CHECKING, APP_COLLAB -> 2016
-            HEADLESS_COMMERCE -> 2017
+            CREATOR_TOOLS, SPATIAL_AUDIO, FACT_CHECKING, APP_COLLAB, APP_END_TO_END_CRYPTO -> 2016
+            HEADLESS_COMMERCE, APP_WIDGETS_V2 -> 2017
             GRAPHICS_3D_V4, CROSS_PLAY, INSTANT_APPS -> 2018
             SAFETY_EVALS -> 2019
             DISTILLATION -> 2020
             MIXTURE_OF_EXPERTS -> 2021
             RLHF -> 2022
             PHOTOREAL, NEURAL_NPCS, AI_SITE_BUILDER -> 2023
-            KERNEL_V1, SHELL_UI -> 1981
+            KERNEL_V1, SHELL_UI, OS_DRIVER_MODEL -> 1981
             OS_SERVICES -> 1995
             KERNEL_V2 -> 2001
-            OEM_SDK -> 2007
-            DEV_PLATFORM -> 2010
+            OEM_SDK, OS_APP_SANDBOX -> 2007
+            DEV_PLATFORM, OS_UPDATE_OTA -> 2010
             else -> 0
         }
 }
@@ -233,7 +290,7 @@ enum class Research(
 /** Art-direction style for engine features. Mixing incompatible styles lowers effective level. */
 @Serializable
 enum class GraphicStyle {
-    PIXEL, HAND_PAINTED, STYLIZED, REALISTIC;
+    PIXEL, HAND_PAINTED, STYLIZED, REALISTIC, ANIME, VOXEL;
 
     val title: String
         get() = when (this) {
@@ -241,6 +298,8 @@ enum class GraphicStyle {
             HAND_PAINTED -> "Hand-painted"
             STYLIZED -> "Stylized"
             REALISTIC -> "Realistic"
+            ANIME -> "Anime"
+            VOXEL -> "Voxel"
         }
 }
 
@@ -284,9 +343,35 @@ fun engineCombo(features: List<Research>): EngineCombo {
         bugRisk += 0.04
         notes += "Hand-painted and realistic materials pull the look apart."
     }
+    if (GraphicStyle.ANIME in styles && GraphicStyle.REALISTIC in styles) {
+        level *= 0.85
+        bugRisk += 0.06
+        notes += "Anime cel shading and realistic materials pull apart."
+    }
+    if (GraphicStyle.VOXEL in styles && GraphicStyle.REALISTIC in styles) {
+        level *= 0.82
+        bugRisk += 0.07
+        notes += "Voxels and photoreal don't share a pipeline happily."
+    }
+    if (GraphicStyle.ANIME in styles && GraphicStyle.STYLIZED in styles) {
+        level += 0.5
+        notes += "Anime on a stylized base: a natural fit."
+    }
+    if (GraphicStyle.VOXEL in styles && GraphicStyle.PIXEL in styles) {
+        level += 0.5
+        notes += "Voxel and pixel share a chunky DNA."
+    }
     if (Research.PHYSICS in set && Research.OPEN_WORLD in set) {
         level += 1.0
         notes += "Physics + open world: a small synergy."
+    }
+    if (Research.PHYSICS in set && Research.DESTRUCTION_PHYSICS in set) {
+        level += 0.5
+        notes += "Destruction rides on a solid physics core."
+    }
+    if (Research.DYNAMIC_LIGHTING in set && Research.GRAPHICS_3D_V3 in set) {
+        level += 0.5
+        notes += "Dynamic lights shine on a modern renderer."
     }
     if (Research.MOTION_CAPTURE in set && Research.VOICE_ACTING in set) {
         level += 0.5
@@ -302,6 +387,10 @@ fun engineCombo(features: List<Research>): EngineCombo {
     if (Research.MULTIPLAYER in set && Research.OPEN_WORLD in set) {
         level += 0.5
         notes += "Multiplayer open worlds are a tough combo done right."
+    }
+    if (Research.CLOUD_SAVES in set && Research.ONLINE_SERVICES in set) {
+        level += 0.25
+        notes += "Cloud saves round out the online stack."
     }
     return EngineCombo(
         level = kotlin.math.round(level).toInt().coerceAtLeast(0),
@@ -371,6 +460,15 @@ internal fun GameState.applyResearch(lane: Lane, mods: LaneModifiers) {
                 mods.demand *= 1.06
                 mods.quality += 2
             }
+            if (has(Research.APP_WIDGETS_V2)) {
+                mods.churn *= 0.94
+                mods.quality += 2
+            }
+            if (has(Research.APP_END_TO_END_CRYPTO)) {
+                mods.churn *= 0.93
+                mods.risk *= 0.85
+                mods.demand *= 1.03
+            }
         }
         Lane.SOCIAL -> {
             if (has(Research.GROUPS)) mods.growth *= 1.05
@@ -422,11 +520,28 @@ internal fun GameState.applyResearch(lane: Lane, mods: LaneModifiers) {
                 mods.demand *= 1.06
                 mods.quality += 2
             }
+            if (has(Research.OS_DRIVER_MODEL)) {
+                mods.quality += 2
+                mods.risk *= 0.92
+            }
+            if (has(Research.OS_APP_SANDBOX)) {
+                mods.quality += 1
+                mods.demand *= 1.04
+                mods.risk *= 0.88
+            }
+            if (has(Research.OS_UPDATE_OTA)) {
+                mods.demand *= 1.05
+                mods.risk *= 0.75
+            }
         }
         Lane.GAMES -> {
             if (has(Research.LOCALIZATION)) mods.demand *= 1.06
             if (has(Research.DIGITAL_STORES)) mods.demand *= 1.05
             if (has(Research.PLAYTESTING)) mods.quality += 3
+            if (has(Research.ACCESSIBLE_DESIGN)) {
+                mods.quality += 2
+                mods.demand *= 1.02
+            }
             if (has(Research.COPY_PROTECTION)) mods.demand *= 1.06
             if (has(Research.QUALITY_SEAL)) {
                 mods.quality += 4

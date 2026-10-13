@@ -151,6 +151,11 @@ data class GameRelease(
     val expansions: MutableList<String> = mutableListOf(),
     /** What players think, 1...10. Word of mouth: it decides how long the game keeps selling. -1 on old saves. Patches can raise it. */
     var userScore: Double = -1.0,
+    /**
+     * False while [userScore] is still the early/provisional number (settles after 3 weeks or the first patch).
+     * Old saves default to true so existing scores stay final.
+     */
+    var userScoreSettled: Boolean = true,
     val aspects: Map<ReviewAspect, Double> = emptyMap(),
     val pros: List<String> = emptyList(),
     val cons: List<String> = emptyList(),
@@ -757,24 +762,55 @@ class GamesStudio {
             lines += "${c.genre.title} on ${pl.title}: ${pl.fit(c.genre).title.lowercase()}."
         }
         lines += when {
-            designRatio < c.idealDesignShare - 0.08 -> "${c.genre.title} games want more design than this had."
-            designRatio > c.idealDesignShare + 0.08 -> "${c.genre.title} games want more tech than this had."
-            else -> "The design and tech balance was right for ${c.genre.lower}."
+            designRatio < c.idealDesignShare - 0.08 -> when (rng.int(0, 2)) {
+                0 -> "Lean harder into design next ${c.genre.lower}."
+                1 -> "${c.genre.title} wanted more design craft than this shipped with."
+                else -> "Tech-heavy for a ${c.genre.lower} — dial design up next time."
+            }
+            designRatio > c.idealDesignShare + 0.08 -> when (rng.int(0, 2)) {
+                0 -> "${c.genre.title} needed more tech under the hood."
+                1 -> "Pretty ideas, thin tech — ${c.genre.lower} players noticed."
+                else -> "Push the engineering side on the next ${c.genre.lower}."
+            }
+            else -> when (rng.int(0, 1)) {
+                0 -> "Design and tech landed in the sweet spot for ${c.genre.lower}."
+                else -> "Balance felt right for a ${c.genre.lower} release."
+            }
         }
         val lessons = (listOf(weakest) + FocusArea.entries.shuffledWith(rng)).distinct().take(2)
         for (a in lessons) {
             insights += "${c.genre.name}:${a.name}"
-            lines += "${a.title} " + when (c.genre.weight(a)) {
-                2 -> "matters a lot in ${c.genre.lower} games."
-                1 -> "matters somewhat in ${c.genre.lower} games."
-                else -> "barely matters in ${c.genre.lower} games."
+            val w = c.genre.weight(a)
+            lines += when (w) {
+                2 -> when (rng.int(0, 2)) {
+                    0 -> "${a.title} carries ${c.genre.lower} games — keep investing."
+                    1 -> "Lesson: nail ${a.title.lowercase()} or ${c.genre.lower} falls flat."
+                    else -> "${c.genre.title} lives or dies on ${a.title.lowercase()}."
+                }
+                1 -> when (rng.int(0, 1)) {
+                    0 -> "${a.title} helps ${c.genre.lower}, but it's not the whole game."
+                    else -> "Worth a look: ${a.title.lowercase()} in ${c.genre.lower}."
+                }
+                else -> when (rng.int(0, 1)) {
+                    0 -> "Don't overspend on ${a.title.lowercase()} for ${c.genre.lower}."
+                    else -> "${a.title} is optional in ${c.genre.lower} — save the hours."
+                }
             }
         }
-        if (bugPenalty < 0.95) lines += "Bugs cost you. Polish longer next time."
-        if (dated) lines += "Your engine is behind the times. Research and build a new one."
+        if (bugPenalty < 0.95) lines += when (rng.int(0, 1)) {
+            0 -> "Bugs hurt the score. Bake in more polish time."
+            else -> "Ship cleaner next time — the crashes showed."
+        }
+        if (dated) lines += when (rng.int(0, 1)) {
+            0 -> "Engine tech is lagging. Research and rebuild."
+            else -> "Players clocked the dated tech. New engine features will help."
+        }
         revealEngineTech(engine.features)
         if (engine.combo.notes.isNotEmpty()) lines += engine.combo.notes.first()
-        if (onTrend) lines += "Riding the ${trend?.title?.lowercase()} trend helped sales."
+        if (onTrend) lines += when (rng.int(0, 1)) {
+            0 -> "Catching the ${trend?.title?.lowercase()} wave helped sales."
+            else -> "Right place, right time: ${trend?.title?.lowercase()}."
+        }
         if (previous.isNotEmpty()) {
             val name = seriesName(seriesRoot(original!!).title)
             val pct = ((sequelLift - 1) * 100).roundToInt()
@@ -808,7 +844,8 @@ class GamesStudio {
             id = nextId(), title = p.title, concept = c, week = week, reviews = reviews, score = avg, weeklySales = gross,
             netShare = netShare, design = p.design, tech = p.tech, bugs = p.bugs, hype = p.hype, devCost = p.spent,
             report = lines, publisher = p.deal?.publisher,
-            userScore = verdict.userScore, aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons,
+            userScore = verdict.userScore, userScoreSettled = false,
+            aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons,
             live = if (c.live) LiveService(livePlayers(gross / c.unitPrice), week) else null,
             breakdown = listOf(ScorePart("Baseline", SCORE_BASELINE, "Where every game starts.")) + parts,
         )

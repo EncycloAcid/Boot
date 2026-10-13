@@ -201,16 +201,29 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     when (c.topic.fit(c.genre)) {
         Fit.GREAT -> pros += Point(
             1.8, "$topic and ${c.genre.lower} are a perfect match",
-            listOf("${topic.lowercase()} and ${c.genre.lower} are a perfect match", "the ${topic.lowercase()} setting and the ${c.genre.lower} design fit like a glove"),
+            listOf(
+                "${topic.lowercase()} and ${c.genre.lower} are a perfect match",
+                "the ${topic.lowercase()} setting and the ${c.genre.lower} design fit like a glove",
+                genreTopicPraise(c.genre, c.topic),
+            ),
         )
         Fit.BAD -> cons += Point(
             2.2, "$topic and ${c.genre.lower} don't mix",
             listOf(
-                "${topic.lowercase()} and ${c.genre.lower} just don't mix", "nobody asked for ${Format.a(topic.lowercase())} ${c.genre.lower} game",
+                "${topic.lowercase()} and ${c.genre.lower} just don't mix",
+                "nobody asked for ${Format.a(topic.lowercase())} ${c.genre.lower} game",
                 "the ${topic.lowercase()} theme fights the ${c.genre.lower} design at every turn",
+                genreTopicPan(c.genre, c.topic),
             ),
         )
         else -> {}
+    }
+    topicClause(c.topic)?.let { (pro, con) ->
+        when (c.topic.fit(c.genre)) {
+            Fit.GREAT, Fit.GOOD -> pros += Point(0.7, pro, pro.lowercase())
+            Fit.BAD -> cons += Point(0.9, con, con.lowercase())
+            else -> {}
+        }
     }
     if (i.focusMatch > 0.85) pros += Point(1.4, "Every part pulls its weight", listOf("every part of it pulls its weight", "it knows exactly what it wants to be"))
     if (i.onTrend) pros += Point(0.8, "Right on trend", listOf("it's right on trend", "it arrives at exactly the right time"))
@@ -300,6 +313,56 @@ private fun bias(outlet: Outlet, i: ReviewInputs, aspects: Map<ReviewAspect, Dou
     }
 }
 
+private fun genreTopicPraise(genre: Genre, topic: Topic): String = when (genre) {
+    Genre.ACTION -> "the ${topic.title.lowercase()} set-pieces hit hard"
+    Genre.ADVENTURE -> "exploring a ${topic.title.lowercase()} world actually feels wondrous"
+    Genre.RPG -> "the ${topic.title.lowercase()} lore gives the systems soul"
+    Genre.SIMULATION -> "running a ${topic.title.lowercase()} sim is oddly compulsive"
+    Genre.STRATEGY -> "${topic.title.lowercase()} makes for meaty strategic puzzles"
+    Genre.CASUAL -> "the ${topic.title.lowercase()} hook is instant and friendly"
+}
+
+private fun genreTopicPan(genre: Genre, topic: Topic): String = when (genre) {
+    Genre.ACTION -> "the ${topic.title.lowercase()} never earns the action"
+    Genre.ADVENTURE -> "wandering a thin ${topic.title.lowercase()} setting wears thin"
+    Genre.RPG -> "the ${topic.title.lowercase()} story can't carry the grind"
+    Genre.SIMULATION -> "the ${topic.title.lowercase()} sim never finds a loop"
+    Genre.STRATEGY -> "${topic.title.lowercase()} and strategy keep stepping on each other"
+    Genre.CASUAL -> "even as a casual game, the ${topic.title.lowercase()} theme feels forced"
+}
+
+/** Optional topic-flavoured colour for pros/cons lists. */
+private fun topicClause(topic: Topic): Pair<String, String>? = when (topic) {
+    Topic.HEIST -> "A heist that actually pays off" to "The heist never gets clever"
+    Topic.STEAMPUNK -> "Brass-and-steam atmosphere to spare" to "Steampunk window dressing, little else"
+    Topic.SURVIVAL -> "Every scrap of gear feels hard-won" to "Survival systems that punish without teaching"
+    Topic.BALLET -> "Graceful motion that sells the fantasy" to "The ballet theme is mostly costume"
+    Topic.FOLKLORE -> "Folk tales with teeth" to "Folklore reduced to wallpaper"
+    Topic.ESPORTS_SCENE -> "Competitive structure that respects the scene" to "Esports flavour without the stakes"
+    Topic.HORROR -> "Dread that sticks after you quit" to "Jumpscares standing in for atmosphere"
+    Topic.CYBERPUNK -> "Neon grit with a point of view" to "Cyberpunk clichés on autopilot"
+    else -> null
+}
+
+private fun outletEncore(outlet: Outlet, score: Double, rng: SeededRNG): String? {
+    if (score < 8 && score > 4) return null
+    val high = score >= 8
+    return when (outlet) {
+        Outlet.IGN -> if (high) rng.pick(listOf("Don't miss this one.", "Our review score says it all."))
+        else rng.pick(listOf("Skip it.", "Hard recommend: pass."))
+        Outlet.GAMESPOT -> if (high) rng.pick(listOf("A must-play.", "It earns every point."))
+        else rng.pick(listOf("Not worth your time.", "The problems stack up."))
+        Outlet.GAME_INFORMER -> if (high) "Fans of the genre should start here." else "Even die-hards will struggle."
+        Outlet.EUROGAMER -> if (high) "It belongs on this year's shortlists." else "There's little reason to return."
+        Outlet.PC_GAMER -> if (high) "PC players are spoiled this week." else "Even on PC, it frustrates more than it rewards."
+        Outlet.EDGE -> if (high) "A rare ten-adjacent triumph." else "Below the standard we expect."
+        Outlet.NINTENDO_POWER -> if (high) "A new favourite on Nintendo hardware." else "Not up to Nintendo Power standards."
+        Outlet.EGM -> if (high) "Four out of four of us would play again." else "The panel was not kind."
+        else -> if (high) rng.pick(listOf("A standout.", "Highly recommended."))
+        else rng.pick(listOf("Give it a miss.", "Not recommended."))
+    }
+}
+
 private fun comment(outlet: Outlet, n: Int, score: Double, pros: List<Point>, cons: List<Point>, rng: SeededRNG): String {
     // Outlets fan out over the top points so they don't all say the same thing.
     fun pick(points: List<Point>): String? {
@@ -312,13 +375,20 @@ private fun comment(outlet: Outlet, n: Int, score: Double, pros: List<Point>, co
     val body = when {
         score >= 8 -> pro ?: rng.pick(listOf("it's a joy from start to finish", "it's easy to lose whole evenings to it", "it's the real deal"))
         score >= 6.5 -> when {
-            pro != null && con != null -> "$pro, but $con"
+            pro != null && con != null -> when (rng.int(0, 2)) {
+                0 -> "$pro, but $con"
+                1 -> "You'll love that $pro — just know $con"
+                else -> "Strong where it counts ($pro), weaker elsewhere ($con)"
+            }
             pro != null -> pro
             con != null -> "it's fun, even if $con"
             else -> rng.pick(listOf("it does what it sets out to do", "it's a solid, safe bet"))
         }
         score >= 5 -> when {
-            pro != null && con != null -> "$pro, but $con"
+            pro != null && con != null -> when (rng.int(0, 1)) {
+                0 -> "$pro, but $con"
+                else -> "For every $pro, there's $con"
+            }
             pro != null -> "$pro, " + rng.pick(
                 listOf("but little else stands out", "but the rest is merely fine", "though that's about it", "but it never quite comes together"),
             )
@@ -330,8 +400,13 @@ private fun comment(outlet: Outlet, n: Int, score: Double, pros: List<Point>, co
             else -> rng.pick(listOf("it never comes together", "there's little here to recommend", "it's hard to see who this is for"))
         }
     }
+    val shape = rng.int(0, 2)
     val lead = when (outlet) {
-        Outlet.EDGE -> return body.replaceFirstChar { it.uppercase() } + "."
+        Outlet.EDGE -> {
+            val core = body.replaceFirstChar { it.uppercase() } + "."
+            val encore = outletEncore(outlet, score, rng)
+            return if (encore != null && (score >= 8 || score <= 4)) "$core $encore" else core
+        }
         Outlet.EUROGAMER -> when (Outlet.stars(score)) {
             5 -> "Essential."
             4 -> "Recommended."
@@ -339,6 +414,9 @@ private fun comment(outlet: Outlet, n: Int, score: Double, pros: List<Point>, co
             else -> ""
         }
         else -> when {
+            // Vary sentence shapes — not always "Lead: clause."
+            shape == 1 && score >= 8 -> ""
+            shape == 2 && score <= 4 -> ""
             score >= 9.5 -> "A masterpiece:"
             score >= 8.5 -> "Brilliant:"
             score >= 7.5 -> "Great fun:"
@@ -349,5 +427,11 @@ private fun comment(outlet: Outlet, n: Int, score: Double, pros: List<Point>, co
         }
     }
     val sentence = body.replaceFirstChar { it.uppercase() } + "."
-    return if (lead.isEmpty()) sentence else if (lead.endsWith(":")) "$lead $body." else "$lead $sentence"
+    val encore = outletEncore(outlet, score, rng)
+    val main = when {
+        lead.isEmpty() -> sentence
+        lead.endsWith(":") -> "$lead $body."
+        else -> "$lead $sentence"
+    }
+    return if (encore != null) "$main $encore" else main
 }

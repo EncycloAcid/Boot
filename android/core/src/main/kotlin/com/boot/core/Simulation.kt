@@ -43,6 +43,7 @@ fun GameState.advance() {
     studioWeek()
     roadmapWeek()
     marketingWeek()
+    strategyWeek()
     newsWeek()
     researchPoints += weeklyResearch(games?.lastWork ?: 0.0)
 
@@ -249,6 +250,12 @@ private fun GameState.studioWeek() {
     // Pushy stores get noticed.
     if (week % 13 == 0 && g.liveGames.any { it.live!!.monetization == Monetization.AGGRESSIVE && it.live!!.players > 10_000 }) {
         reputation.scar(ScarKind.PREDATORY_MONETIZATION, 0.03, week, "Pay-to-win store")
+    }
+    // Early player scores settle after three weeks of word of mouth (or sooner via patch).
+    for (r in g.releases) {
+        if (!r.userScoreSettled && r.userScore > 0 && week - r.week >= 3) {
+            finalizeUserScore(r)
+        }
     }
     // Merchandise for the hits, fading over a couple of years.
     if (Research.MERCHANDISE in researched) {

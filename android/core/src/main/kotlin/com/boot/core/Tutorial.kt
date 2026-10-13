@@ -134,9 +134,9 @@ fun GameState.completeLesson(step: TutorialStep) {
     t.done = t.done + step
 }
 
-/** Start the lessons again, from the menu. Anything already done ticks itself off. */
+/** Start the lessons again, from the menu. Welcome shows again until acknowledged. */
 fun GameState.restartTutorial() {
-    tutorial = Tutorial(setOf(TutorialStep.WELCOME))
+    tutorial = Tutorial(emptySet())
 }
 
 /** No more lessons. */

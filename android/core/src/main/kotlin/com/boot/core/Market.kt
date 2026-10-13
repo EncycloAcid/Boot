@@ -102,6 +102,12 @@ internal fun GameState.marketWeek() {
             if (rank == 1 && !wasTop) {
                 stats.chartToppers += 1
                 addLog("${r.title} is the best-selling game in the world this week.", LogTone.MILESTONE, Lane.GAMES)
+                publish(
+                    NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
+                    "${r.title} tops the charts",
+                    "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} is the week's best-seller.",
+                    LogTone.GOOD, Lane.GAMES, lead = true,
+                )
             }
         }
     }
@@ -133,14 +139,19 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     val title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), m.games.map { it.title }.toSet())
     val game = RivalGame(m.nextId++, title, studio, topic, genre, size, score, week, sales)
     m.games += game
-    if (score >= 8.5 || game.mega || (size == GameSize.AAA && score < 5.5)) {
+    // Mid-score and chart-weight releases make the Games desk, not only mega-hits and AAA flops.
+    if (score >= 7.0 || game.mega || (size >= GameSize.LARGE && score < 5.5) || (size == GameSize.AAA && score < 6.5) ||
+        (size >= GameSize.MEDIUM && score in 5.5..6.9 && rng.chance(0.35))
+    ) {
         val sc = String.format(java.util.Locale.US, "%.1f", score)
         publish(
             NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
             when {
                 game.mega -> "$title is here, and everyone's playing it"
                 score >= 9 -> "$title review: an instant classic"
-                score >= 8.5 -> "$title review: $studio does it again"
+                score >= 8 -> "$title review: $studio does it again"
+                score >= 7 -> "$title review: critics warm to $studio's latest"
+                score >= 5.5 -> "$title review: mixed notices for $studio"
                 else -> "$studio's $title is a costly misfire"
             },
             "${Format.a(size.lower).replaceFirstChar { it.uppercase() }} ${topic.title.lowercase()} ${genre.lower} game by $studio. $sc/10.",

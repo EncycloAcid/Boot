@@ -64,7 +64,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var tab by mutableStateOf(Tab.OFFICE)
     var lane by mutableStateOf<Lane?>(null)
 
-    /** Company tab page: 0 overview, 1 money and board, 2 combos. */
+    /** Company tab page: 0 overview, 1 money, 2 markets, 3 strategy, 4 combos, 5 goals. */
     var companyPage by mutableIntStateOf(0)
     var studioPage by mutableStateOf(StudioPage.MAKE)
 

@@ -160,7 +160,13 @@ enum class Topic(
     MARS("ST", "VA", "C", "E"),
     FASHION("CS", "V", "ATR", "YE", "M"),
     HOSPITAL("S", "CT", "AR", "EM", "Y"),
-    ARTIFICIAL_INTELLIGENCE("TS", "VR", "C", "EM");
+    ARTIFICIAL_INTELLIGENCE("TS", "VR", "C", "EM"),
+    HEIST("AV", "T", "CS", "EM", "Y"),
+    STEAMPUNK("RA", "VS", "C", "EM"),
+    SURVIVAL("SA", "TV", "C", "EM", "Y"),
+    BALLET("C", "VS", "ART", "YE", "M"),
+    FOLKLORE("RV", "AT", "CS", "EM"),
+    ESPORTS_SCENE("AC", "S", "VRT", "YE", "M");
 
     val title: String
         get() = when (this) {
@@ -169,6 +175,7 @@ enum class Topic(
             WILD_WEST -> "Wild West"
             TIME_TRAVEL -> "Time travel"
             ARTIFICIAL_INTELLIGENCE -> "Artificial intelligence"
+            ESPORTS_SCENE -> "Esports"
             else -> name.lowercase().replaceFirstChar { it.uppercase() }
         }
 

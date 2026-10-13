@@ -86,6 +86,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             s.refreshTalentPool()
             s.addLog("Day one. A laptop, a cramped apartment, and ${money(s.cash)} in savings.", LogTone.MILESTONE)
             s.applyLegacy(legacy)
+            // Soft start: enough RP for the cheapest studio unlocks without waiting weeks at ~0.5 RP/week.
+            s.researchPoints += 8.0
             s.ledger = listOf(WeekLedger(0, cash = s.cash))
             if (lane.isCapitalIntensive && !sandbox) {
                 s.ventureForLane(lane).getOrNull()?.let { round ->
@@ -127,6 +129,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
 
     /** Brand awareness and ad campaigns, for every business. */
     var marketing = Marketing()
+
+    /** Regional offices, alliances, and Venture Arm holdings. */
+    var strategy = StrategyBook()
 
     /** Shares you hold, companies you took over, and raiders at the gate. */
     var portfolio = Portfolio()
@@ -549,6 +554,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         syncAppPlatformFeatures()
         apps?.migrateCraftFromQuality()
         os?.capOemPartners()
+        // Old saves lacked StrategyBook fields that kotlinx may leave at defaults — ensure lists exist.
+        if (strategy.nextAllianceId < 1) strategy.nextAllianceId = 1
+        if (strategy.nextHoldingId < 1) strategy.nextHoldingId = 1
     }
 
     /** Drop researched app-platform bits into the product stack (also when opening Apps late). */

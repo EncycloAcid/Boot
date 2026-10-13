@@ -181,25 +181,38 @@ fun GameDesigner(store: GameStore, state: GameState) {
                     }
                 }
                 HorizontalDivider(thickness = 0.5.dp, color = colors.separator)
-                Row(
+                val blocker = state.conceptBlocker(concept, team = team)
+                Column(
                     Modifier
                         .fillMaxWidth()
                         .background(colors.bar)
                         .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (step > 0) PlainButton("Back", { step -= 1 })
-                    Spacer(Modifier.weight(1f))
-                    if (step < steps.lastIndex) {
-                        PrimaryButton("Next", { step += 1 }, enabled = platforms.isNotEmpty())
-                    } else {
-                        val blocker = state.conceptBlocker(concept, team = team)
-                        PrimaryButton("Start development", {
-                            val split = focus.map { it.toMutableList() }
-                            store.perform { startGame(concept, split, team) }
-                            if (store.state?.games?.projectOf(team) != null) close()
-                        }, enabled = blocker == null)
+                    if ((step == 1 || step == steps.lastIndex) && blocker != null) {
+                        Hint(blocker, colors.bad)
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (step > 0) PlainButton("Back", { step -= 1 })
+                        Spacer(Modifier.weight(1f))
+                        if (step < steps.lastIndex) {
+                            val nextOk = when (step) {
+                                0 -> true
+                                1 -> platforms.isNotEmpty() && blocker == null
+                                else -> true
+                            }
+                            PrimaryButton("Next", { step += 1 }, enabled = nextOk)
+                        } else {
+                            PrimaryButton("Start development", {
+                                val split = focus.map { it.toMutableList() }
+                                store.perform { startGame(concept, split, team) }
+                                if (store.state?.games?.projectOf(team) != null) close()
+                            }, enabled = blocker == null)
+                        }
                     }
                 }
             }

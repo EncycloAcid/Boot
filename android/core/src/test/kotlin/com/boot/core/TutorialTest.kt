@@ -66,6 +66,8 @@ class TutorialTest {
     fun theResearchLessonShowsHowClose() {
         val s = GameState.create("Co", "Ada", Lane.GAMES, seed = 4, tutorial = true)
         s.tutorial!!.done = setOf(TutorialStep.WELCOME, TutorialStep.FIRST_WORK, TutorialStep.PLAY, TutorialStep.HIRE, TutorialStep.MONEY)
+        // Soft start grants 8 RP (enough for the cheapest unlock); drain to exercise the progress meter.
+        s.researchPoints = 3.0
         val l = s.lesson()!!
         assertEquals(TutorialStep.RESEARCH, l.step)
         assertTrue(l.progress!! < 1.0)

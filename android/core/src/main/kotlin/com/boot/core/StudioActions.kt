@@ -54,7 +54,13 @@ fun GameState.setTeamSplit(share: Double) {
 fun evenFocus(): List<MutableList<Double>> = List(3) { mutableListOf(0.5, 0.5, 0.5) }
 
 /** Why a concept can't be started, or null if it can. */
-fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: Int = 1): String? {
+fun GameState.conceptBlocker(
+    c: GameConcept,
+    deal: PublisherDeal? = null,
+    team: Int = 1,
+    /** Publisher deals cover platform licence fees; still check real platforms and burn cash. */
+    publisherPaysFees: Boolean = false,
+): String? {
     val g = games ?: return "You don't run a game studio."
     if (team == 2) {
         if (Research.SECOND_TEAM !in researched) return "Research a second team first."
@@ -98,8 +104,15 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: 
         if (Research.LIVE_SERVICE !in researched) return "Research live service games first."
         if (c.size == GameSize.SMALL) return "Live games need to be medium or bigger."
     }
-    val upfront = c.platforms.sumOf { it.fee } + c.size.weeklyBudget * 4
-    if (cash < upfront) return "You need ${money(upfront)} for licence fees and the first month."
+    val fees = if (publisherPaysFees) 0.0 else c.platforms.sumOf { it.fee }
+    val upfront = fees + c.size.weeklyBudget * 4
+    if (cash < upfront) {
+        return if (publisherPaysFees) {
+            "You need ${money(upfront)} for the first month of development."
+        } else {
+            "You need ${money(upfront)} for licence fees and the first month."
+        }
+    }
     return null
 }
 
@@ -177,18 +190,18 @@ fun GameState.launchGame(team: Int = 1) {
     val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team)
     g.releases.firstOrNull()?.let { r ->
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)
-        publish(
-            NewsDesk.YOU, rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon")),
-            when {
-                r.score >= 9 -> "${r.title} review: a masterpiece"
-                r.score >= 8 -> "${r.title} review: $companyName has a hit"
-                r.score >= 6.5 -> "${r.title} review: solid, if not spectacular"
-                r.score >= 5 -> "${r.title} review: a mixed bag"
-                else -> "${r.title} review: avoid"
-            },
-            "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game. $sc/10.",
-            if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL, Lane.GAMES, lead = r.score >= 9,
-        )
+        val outlet = rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon"))
+        val headline = when {
+            r.score >= 9 -> "${r.title} review: a masterpiece"
+            r.score >= 8 -> "${r.title} review: $companyName has a hit"
+            r.score >= 6.5 -> "${r.title} review: solid, if not spectacular"
+            r.score >= 5 -> "${r.title} review: a mixed bag"
+            else -> "${r.title} review: avoid"
+        }
+        val body = "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game. $sc/10."
+        val tone = if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL
+        publish(NewsDesk.GAMES, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9)
+        publish(NewsDesk.YOU, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9)
     }
     cash += report.revenue - report.expenses
     recordRevenue(report.revenue, Lane.GAMES)
@@ -219,8 +232,8 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
     )
     val wasKnown = d.topic in g.topics
     if (!wasKnown) g.topics += d.topic
-    // The publisher pays the licence, so check everything but money.
-    val blocker = conceptBlocker(concept.copy(platforms = listOf(Platform.PC)), d)
+    // Check the deal's real platform; the publisher covers licence fees.
+    val blocker = conceptBlocker(concept, d, publisherPaysFees = true)
     if (blocker != null) {
         if (!wasKnown) g.topics -= d.topic
         throw notAvailable(blocker)
@@ -378,6 +391,8 @@ fun GameState.patchGame(id: Int) {
     if (r.userScore > 0) {
         // Recover the bug hit on word of mouth: ~0.8 when bugPenalty was under 0.9, plus severity.
         r.userScore = minOf(10.0, r.userScore + (0.4 + severity * 1.2).coerceIn(0.3, 1.6))
+        // First patch settles the early player score into the public number.
+        r.userScoreSettled = true
     }
     if (r.weeklySales > 0) r.weeklySales *= (1.1 + severity * 0.35).coerceIn(1.1, 1.5)
     r.live?.takeIf { !it.closed }?.let { live ->
@@ -392,6 +407,19 @@ fun GameState.patchGame(id: Int) {
         " Players notice."
     }
     addLog("Patched ${r.title}: ${fixed.toInt()} bugs fixed for ${money(cost)}.$scoreNote", LogTone.GOOD, Lane.GAMES)
+}
+
+/** Lock in the public player score after the early window (bugs / patches can still move it). */
+internal fun GameState.finalizeUserScore(r: GameRelease) {
+    if (r.userScoreSettled || r.userScore <= 0) return
+    var score = r.userScore
+    val work = r.concept.size.work
+    if (r.bugs > work * 0.08) score -= 0.35
+    else if (r.bugs < work * 0.02) score += 0.15
+    if (r.patched) score += 0.25
+    score += rng.normal(sd = 0.2)
+    r.userScore = kotlin.math.round(score.coerceIn(1.0, 10.0) * 10) / 10.0
+    r.userScoreSettled = true
 }
 
 fun GameState.expansionBlocker(id: Int): String? {

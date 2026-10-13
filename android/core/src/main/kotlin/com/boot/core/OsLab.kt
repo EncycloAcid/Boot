@@ -147,8 +147,9 @@ class OsLab {
             week = ctx.week, score = (score * 10).roundToInt() / 10.0, design = p.design, tech = p.tech,
             bugs = p.bugs, beta = p.inBeta, installedBase = base, oemPartners = partners,
         )
-        // Raw ship risk: recall-like rollback.
-        if (!p.inBeta && p.bugs > p.work * 0.25 && rng.chance(0.35 + p.bugs / p.work)) {
+        // Raw ship risk: recall-like rollback (research can cut risk via mods.risk).
+        val rollbackChance = ((0.35 + p.bugs / p.work) * ctx.mods.risk).coerceIn(0.05, 0.85)
+        if (!p.inBeta && p.bugs > p.work * 0.25 && rng.chance(rollbackChance)) {
             release.rolledBack = true
             release.installedBase *= 0.45
             oemTrust = (oemTrust - 0.12).clamped(0.05, 1.0)
