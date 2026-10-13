@@ -208,9 +208,23 @@ class TycoonDepthGamesPolishTest {
         s.researched = setOf(
             Research.CUSTOM_ENGINES, Research.STYLE_PIXEL, Research.STYLE_REALISTIC, Research.GRAPHICS_2D_V2, Research.GRAPHICS_3D_V1,
         )
-        val (_, _, weeks) = s.engineQuote()
-        val combo = engineCombo(s.researched.filter { it.kind == Research.Kind.ENGINE })
+        // Explicit pack still pays the clash; weeks follow that pack's raw level.
+        val packed = listOf(Research.STYLE_PIXEL, Research.STYLE_REALISTIC, Research.GRAPHICS_2D_V2, Research.GRAPHICS_3D_V1)
+        val (_, _, weeks) = s.engineQuote(packed)
+        val combo = engineCombo(packed)
         assertTrue(combo.level < combo.rawLevel)
         assertEquals(3 + combo.rawLevel / 3, weeks)
+    }
+
+    @Test
+    fun autoEngineQuotePrunesClashingStyles() {
+        val s = game(Lane.GAMES, 92)
+        s.researched = setOf(
+            Research.CUSTOM_ENGINES, Research.STYLE_PIXEL, Research.STYLE_REALISTIC, Research.GRAPHICS_2D_V2, Research.GRAPHICS_3D_V1,
+        )
+        val (features, _, _) = s.engineQuote()
+        val styles = features.mapNotNull { it.graphicStyle }.toSet()
+        assertEquals(1, styles.size, "one-click engine pack should keep a single graphic style")
+        assertTrue(engineCombo(features).notes.none { it.contains("fight", ignoreCase = true) })
     }
 }

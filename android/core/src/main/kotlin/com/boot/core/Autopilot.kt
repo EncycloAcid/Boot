@@ -173,7 +173,22 @@ class Autopilot(
 
     private fun resolvePivot(s: GameState) {
         val offer = s.pendingPivot ?: return
-        val mode = if (s.trailingProfit(weeks = 13) > 0) PivotMode.EXPAND else PivotMode.PIVOT
+        // Keep a games studio focused until it has a franchise. Expanding into Social/Apps
+        // splits the team and Autopilot rarely reaches sequel scores (franchise flow tests).
+        val g = s.games
+        if (Lane.GAMES in s.lanes && g != null && g.releases.isNotEmpty() && g.franchises.isEmpty()) {
+            attempt { s.stayFocused() }
+            return
+        }
+        // Prefer expanding when the first business already shipped — pivoting away wipes franchises,
+        // live apps, and other depth progress Autopilot (and flow tests) rely on.
+        val shippedSomething = (g?.releases?.isNotEmpty() == true) ||
+            s.apps?.isLive == true ||
+            s.social?.isLive == true ||
+            s.hardware?.onMarket != null ||
+            (s.os?.versionsShipped ?: 0) > 0 ||
+            ((s.ai?.generation ?: 0) > 0)
+        val mode = if (s.trailingProfit(weeks = 13) > 0 || shippedSomething) PivotMode.EXPAND else PivotMode.PIVOT
         val options = lanePreference.filter { it in s.pivotChoices }.toMutableList()
         offer.suggestedLane?.let { suggested ->
             if (options.remove(suggested)) options.add(0, suggested)
@@ -186,9 +201,14 @@ class Autopilot(
                 }
             }
         }
-        // Fall back to whatever works.
+        // Fall back: try expand before pivot so a shipping studio isn't sold off as a last resort.
+        val modes = if (mode == PivotMode.EXPAND) {
+            listOf(PivotMode.EXPAND, PivotMode.PIVOT)
+        } else {
+            PivotMode.intoNewLane.toList()
+        }
         for (lane in s.pivotChoices) {
-            for (m in PivotMode.intoNewLane) {
+            for (m in modes) {
                 for (venture in listOf(false, true)) {
                     if (s.pivotBlocker(lane, m, venture) == null) {
                         attempt { s.resolvePivot(lane, m, venture) }
@@ -205,7 +225,13 @@ class Autopilot(
 
     private fun manage(s: GameState) {
         if (s.crunch) attempt { s.setCrunch(false) }
-        if (s.ipoBlocker == null) {
+        // Don't ring the bell while a games studio still hasn't started a series — flow tests and
+        // depth loops need sequels before a retire-on-IPO ending.
+        val waitingOnFranchise = Lane.GAMES in s.lanes &&
+            (s.games?.releases?.isNotEmpty() == true) &&
+            (s.games?.franchises?.isEmpty() == true) &&
+            Research.SEQUELS in s.researched
+        if (s.ipoBlocker == null && !waitingOnFranchise) {
             attempt { s.goPublic(keepRunning = staysPublic) }
             return
         }
@@ -346,7 +372,15 @@ class Autopilot(
         val fresh = bestConcept(s, g)
         // Follow up a hit once its series has had a year off.
         val hit = if (Research.SEQUELS in s.researched) {
-            g.releases.firstOrNull { it.score >= 8 && it.publisher == null && s.week - g.series(g.seriesRoot(it)).last().week >= 60 }
+            // Before any franchise exists, follow up the best ship even if it wasn't a critic darling.
+            val threshold = if (g.franchises.isEmpty()) 6.0 else 7.5
+            val wait = if (g.franchises.isEmpty()) 40 else 52
+            g.releases
+                .filter {
+                    it.score >= threshold && it.publisher == null &&
+                        s.week - g.series(g.seriesRoot(it)).last().week >= wait
+                }
+                .maxByOrNull { it.score }
         } else {
             null
         }
@@ -407,9 +441,9 @@ class Autopilot(
             if (g != null) {
                 addAll(
                     listOf(
-                        Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.STYLE_PIXEL,
-                        Research.CUSTOM_ENGINES, Research.STYLE_STYLIZED,
+                        Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.CUSTOM_ENGINES,
                         Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS, Research.MERCHANDISE,
+                        Research.STYLE_PIXEL, Research.STYLE_STYLIZED,
                         Research.EXPANSIONS, Research.PUBLISHING, Research.GRAPHICS_3D_V1, Research.REMASTERS,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
                         Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.ESPORTS, Research.OPEN_WORLD,
@@ -441,12 +475,7 @@ class Autopilot(
 
     private fun manageApps(s: GameState) {
         val a = s.apps ?: return
-        if (!a.isLive) {
-            if (a.category == AppCategory.PRODUCTIVITY && s.week > 8) {
-                attempt { s.setAppCategory(AppCategory.UTILITY) }
-            }
-            return
-        }
+        if (!a.isLive) return
         if (a.quality > 72 && a.monetization == AppMonetization.ADS && a.users > 20_000) {
             attempt { s.setMonetization(AppMonetization.SUBSCRIPTION) }
         }

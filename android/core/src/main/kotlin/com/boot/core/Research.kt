@@ -247,6 +247,20 @@ enum class GraphicStyle {
 /** Soft combo result when packing researched features into one engine. */
 data class EngineCombo(val level: Int, val rawLevel: Int, val notes: List<String>, val bugRisk: Double)
 
+/**
+ * Drop clashing graphic-style features from an auto-picked pack, keeping the strongest style.
+ * Explicit [selected] lists in the builder are left alone so the player can still choose a clash.
+ */
+fun pruneEngineStyleClashes(features: List<Research>): List<Research> {
+    val styled = features.filter { it.graphicStyle != null }
+    if (styled.size <= 1 && Research.PHOTOREAL !in features) return features
+    val keep = styled.maxByOrNull { it.engineLevel * 10 + it.ordinal } ?: return features
+    val drop = styled.filter { it != keep }.toSet()
+    return features.filter { f ->
+        f !in drop && !(keep.graphicStyle == GraphicStyle.PIXEL && f == Research.PHOTOREAL)
+    }
+}
+
 /** Effective engine tech after style clashes and synergies. */
 fun engineCombo(features: List<Research>): EngineCombo {
     val raw = features.sumOf { it.engineLevel }

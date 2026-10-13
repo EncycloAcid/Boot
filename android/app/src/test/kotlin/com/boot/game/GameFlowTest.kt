@@ -358,7 +358,11 @@ class GameFlowTest {
             store.newGame("Series Co", "Rae", Lane.GAMES, seed = 22)
             val pilot = Autopilot()
             store.perform {
-                while (week < 300 && !isOver && (games!!.franchises.isEmpty() || games!!.busy)) pilot.playWeek(this)
+                while (week < 300 && !isOver) {
+                    val g = games ?: break
+                    if (g.franchises.isNotEmpty() && !g.busy) break
+                    pilot.playWeek(this)
+                }
                 while (events.isNotEmpty()) choose(events[0].choices.size - 1)
                 acknowledgeReview()
             }

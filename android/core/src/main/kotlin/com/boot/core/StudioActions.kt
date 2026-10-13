@@ -241,7 +241,9 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
  * Cost uses raw feature levels; the finished engine's [Engine.level] applies combo rules.
  */
 fun GameState.engineQuote(selected: List<Research>? = null): Triple<List<Research>, Double, Int> {
-    val features = (selected ?: researched.filter { it.kind == Research.Kind.ENGINE }).sortedBy { it.ordinal }
+    val raw = (selected ?: researched.filter { it.kind == Research.Kind.ENGINE }).sortedBy { it.ordinal }
+    // Autopilot / one-click build: skip style clashes. Explicit picks keep the soft penalty.
+    val features = if (selected == null) pruneEngineStyleClashes(raw) else raw
     val combo = engineCombo(features)
     val cost = 20_000 + 9_000 * combo.rawLevel.toDouble().pow(1.35)
     // Build time tracks raw feature load; clashes still cut the finished effective level.
