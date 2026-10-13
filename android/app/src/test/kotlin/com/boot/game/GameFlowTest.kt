@@ -443,14 +443,15 @@ class GameFlowTest {
         assertNotNull(store.state!!.venture.board)
         tab("Lanes")
         screen("09-hardware")
-        tapInList("Start design")
+        // Device Designer: category+tier → form factor → component sliders → summary → start.
+        tapInList("Design a device")
         compose.waitForIdle()
         assertTrue(store.designingDevice)
-        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick() // form factor
         compose.waitForIdle()
-        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick() // components
         compose.waitForIdle()
-        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("Next").performClick() // summary
         compose.waitForIdle()
         compose.onNodeWithText("Start design").performClick()
         compose.waitForIdle()

@@ -452,7 +452,7 @@ private fun DesignSection(store: GameStore, state: GameState) {
     } else {
         GroupedSection("New device", footer = "Open the Device Designer: category, form factor, and component mix.") {
             CardBlock {
-                PrimaryButton("Start design", { store.designDevice() }, Modifier.fillMaxWidth())
+                PrimaryButton("Design a device", { store.designDevice() }, Modifier.fillMaxWidth())
             }
         }
     }
