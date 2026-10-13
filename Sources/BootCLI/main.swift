@@ -125,7 +125,7 @@ struct Session {
           status | news | staff | hires | combos | money
           hire <id> [lane]  fire <id>  assign <id> <lane>  focus <lane> <0-1>
           crunch on|off  vacation  raise  ipo  expand <lane> [vc]
-          game start small|medium|large   game launch   game cancel
+          game start small|medium|large   game launch   game cancel   game patch <id>
           web accept <id>  web decline <id>  web policy absorb|bill  web offers
           app monetize ads|subscription|paid   app updates small|big
           social moderation <0-1>   social ads <0-1>
@@ -233,9 +233,21 @@ struct Session {
             case "start": try state.startGame(GameScope(rawValue: arg(2)) ?? .small)
             case "launch": try state.launchGame()
             case "cancel": try state.cancelGame()
+            case "patch":
+                guard let id = int(2) else { throw ActionError.invalid("game patch <id>") }
+                try state.patchGame(id)
             default:
+                if let f = state.gameForecast(), let p = state.games?.project {
+                    let eta = f.weeksToReady.map { $0 == 0 ? "ready this week" : "~\($0)w to ready" } ?? "content complete"
+                    print("  In dev: \(p.title) \(Int(p.completion * 100))% · \(eta)")
+                    print("  Forecast: review ~\(Int(f.expectedReview.rounded())) (\(f.reviewLow)–\(f.reviewHigh)), launch week ~\(Format.money(f.expectedFirstWeekSales))")
+                    if f.polishPastSweetSpot { print("  Polish is past the sweet spot.") }
+                }
                 for r in state.games?.releases.prefix(5) ?? [] {
-                    print("  \(r.title): \(r.review) (\(r.verdict)), \(Format.money(r.lifetimeSales)) lifetime")
+                    let patch = state.games!.canPatch(r, atWeek: state.week)
+                        ? ", patchable for \(Format.money(state.games!.patchCost(for: r)))"
+                        : (r.patched ? ", patched" : "")
+                    print("  #\(r.id) \(r.title): \(r.review) (\(r.verdict)), \(Format.money(r.lifetimeSales)) lifetime\(patch)")
                 }
             }
         case "web":

@@ -105,6 +105,26 @@ extension GameState {
         handle(report.incidents, lane: .games)
     }
 
+    /// Ship a day-one patch for a recent release. Costs cash; bumps score and refreshes sales.
+    public mutating func patchGame(_ releaseID: Int) throws {
+        try require(.games)
+        guard let release = games?.releases.first(where: { $0.id == releaseID }) else {
+            throw ActionError.invalid("No release with that id.")
+        }
+        let cost = games!.patchCost(for: release)
+        guard cash >= cost else {
+            throw ActionError.insufficientFunds("A patch for \(release.title) costs \(money(cost)).")
+        }
+        let report = try games!.patch(releaseID: releaseID, ctx: context(for: .games), rng: &rng)
+        spend(report.expenses, lane: .games)
+        handle(report.incidents, lane: .games)
+    }
+
+    /// Forecast for the game currently in development, if any.
+    public func gameForecast() -> GameLaunchForecast? {
+        games?.forecast(ctx: context(for: .games))
+    }
+
     // MARK: Websites
 
     public mutating func acceptContract(_ id: Int) throws {

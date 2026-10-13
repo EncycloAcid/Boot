@@ -54,6 +54,24 @@ public enum GameScope: String, Codable, CaseIterable, Identifiable, Sendable {
         case .large: 250_000
         }
     }
+
+    /// Cash cost to ship a day-one patch for a released game of this scope.
+    public var patchCost: Double { weeklyBudget * 4 }
+}
+
+/// Snapshot of how a project in development is likely to land if launched now.
+public struct GameLaunchForecast: Sendable {
+    public var expectedReview: Double
+    /// Rough critical range (±1 SD of the review roll).
+    public var reviewLow: Int
+    public var reviewHigh: Int
+    public var expectedFirstWeekSales: Double
+    /// Nil when already content-complete.
+    public var weeksToReady: Int?
+    /// polish / required work. Above ~1.4, further weeks buy little.
+    public var polishRatio: Double
+
+    public var polishPastSweetSpot: Bool { polishRatio >= 1.4 }
 }
 
 public struct GameProject: Codable, Sendable {
@@ -65,6 +83,13 @@ public struct GameProject: Codable, Sendable {
 
     public var isReady: Bool { progress >= scope.work }
     public var completion: Double { min(1, progress / scope.work) }
+
+    /// Whole weeks of current output needed to hit content-complete. Nil if ready or idle.
+    public func weeksRemaining(workOutput: Double) -> Int? {
+        guard !isReady else { return nil }
+        guard workOutput > 0.01 else { return nil }
+        return Int(ceil((scope.work - progress) / workOutput))
+    }
 }
 
 public struct GameRelease: Codable, Identifiable, Sendable {
@@ -75,6 +100,20 @@ public struct GameRelease: Codable, Identifiable, Sendable {
     public var review: Int
     public var weeklySales: Double
     public var lifetimeSales: Double
+    /// Day-one patch already shipped. Optional in saves older than this field.
+    public var patched: Bool
+
+    public init(id: Int, title: String, scope: GameScope, week: Int, review: Int,
+                weeklySales: Double, lifetimeSales: Double, patched: Bool = false) {
+        self.id = id
+        self.title = title
+        self.scope = scope
+        self.week = week
+        self.review = review
+        self.weeklySales = weeklySales
+        self.lifetimeSales = lifetimeSales
+        self.patched = patched
+    }
 
     public var verdict: String {
         switch review {
@@ -84,6 +123,22 @@ public struct GameRelease: Codable, Identifiable, Sendable {
         case 55..<70: "Mixed"
         default: "Flop"
         }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, scope, week, review, weeklySales, lifetimeSales, patched
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        scope = try c.decode(GameScope.self, forKey: .scope)
+        week = try c.decode(Int.self, forKey: .week)
+        review = try c.decode(Int.self, forKey: .review)
+        weeklySales = try c.decode(Double.self, forKey: .weeklySales)
+        lifetimeSales = try c.decode(Double.self, forKey: .lifetimeSales)
+        patched = try c.decodeIfPresent(Bool.self, forKey: .patched) ?? false
     }
 }
 
@@ -97,6 +152,9 @@ public struct GamesStudio: Codable, Sendable {
     public var flops = 0
     private var nextID = 1
     private var usedTitles: [String] = []
+
+    /// Weeks after launch during which a day-one patch can still move the needle.
+    public static let patchWindowWeeks = 12
 
     public init() {}
 
@@ -113,6 +171,37 @@ public struct GamesStudio: Codable, Sendable {
     mutating func cancelProject() {
         project = nil
     }
+
+    /// Expected review and launch-week sales if you shipped the current project today.
+    func forecast(ctx: LaneContext) -> GameLaunchForecast? {
+        guard let p = project else { return nil }
+        return forecast(for: p, ctx: ctx)
+    }
+
+    func forecast(for p: GameProject, ctx: LaneContext) -> GameLaunchForecast {
+        let quality = shippedQuality(polish: p.polish, work: p.scope.work,
+                                     averageSkill: ctx.staffing.averageSkill, bonus: ctx.mods.quality)
+        let fanLift = 1 + 1.5 * fans / (fans + p.scope.fanScale)
+        let sales = p.scope.launchSales * pow(quality / 70, 3) * fanLift * fanTrust
+            * ctx.reception * ctx.marketDemand * ctx.marketingBoost
+        return GameLaunchForecast(
+            expectedReview: quality,
+            reviewLow: Int((quality - 9).clamped(5, 98).rounded()),
+            reviewHigh: Int((quality + 9).clamped(5, 98).rounded()),
+            expectedFirstWeekSales: sales,
+            weeksToReady: p.weeksRemaining(workOutput: ctx.workOutput),
+            polishRatio: p.polish / max(p.scope.work, 1)
+        )
+    }
+
+    public func canPatch(_ release: GameRelease, atWeek week: Int) -> Bool {
+        !release.patched
+            && release.review < 92
+            && week - release.week <= Self.patchWindowWeeks
+            && release.weeklySales > 0
+    }
+
+    public func patchCost(for release: GameRelease) -> Double { release.scope.patchCost }
 
     /// Launches the current project. Returns what happened for the log.
     mutating func launch(_ ctx: LaneContext, rng: inout SeededRNG) throws -> LaneReport {
@@ -153,6 +242,59 @@ public struct GamesStudio: Codable, Sendable {
             let severity = p.scope == .small ? 0.15 : 0.35
             report.incidents.append(.scar(.flop, severity, "\(p.title) flopped with a \(review)."))
             report.log("\(p.title) flops with a \(review). The fans will remember this one.", .bad)
+        }
+        return report
+    }
+
+    /// Ship a day-one patch: spend cash, bump the score, and refresh fading sales.
+    mutating func patch(releaseID: Int, ctx: LaneContext, rng: inout SeededRNG) throws -> LaneReport {
+        guard let i = releases.firstIndex(where: { $0.id == releaseID }) else {
+            throw ActionError.invalid("No release with that id.")
+        }
+        let release = releases[i]
+        guard canPatch(release, atWeek: ctx.week) else {
+            if release.patched {
+                throw ActionError.invalid("\(release.title) already got its day-one patch.")
+            }
+            if release.review >= 92 {
+                throw ActionError.invalid("Critics already love \(release.title).")
+            }
+            if ctx.week - release.week > Self.patchWindowWeeks {
+                throw ActionError.invalid("The patch window for \(release.title) has closed.")
+            }
+            throw ActionError.invalid("\(release.title) isn't selling enough to patch.")
+        }
+
+        var report = LaneReport()
+        let cost = patchCost(for: release)
+        report.expenses += cost
+
+        let skillBoost = (ctx.staffing.averageSkill - 5) * 0.7
+        let meanBump = 4.5 + skillBoost + (release.review < 55 ? 1.5 : 0)
+        let bump = Int(rng.normal(mean: meanBump, sd: 1.8).clamped(2, 11).rounded())
+        let oldReview = release.review
+        let newReview = min(98, oldReview + bump)
+        releases[i].review = newReview
+        releases[i].patched = true
+
+        // Sales wake up with the score: flops recover harder than near-hits.
+        let lift = pow(Double(newReview) / Double(max(oldReview, 1)), 1.8)
+        releases[i].weeklySales *= min(2.2, max(1.08, lift))
+
+        if oldReview < 85 && newReview >= 85 {
+            hits += 1
+            if oldReview < 55 { flops = max(0, flops - 1) }
+            fanTrust = min(1.2, fanTrust + 0.08)
+            fans += release.scope.fanScale * 0.08
+            report.incidents.append(.stat(.hit))
+            report.incidents.append(.reputation(2))
+            report.log("The \(release.title) patch lands. Reviews climb \(oldReview) → \(newReview). It's a late hit.", .milestone)
+        } else if oldReview < 55 && newReview >= 55 {
+            fanTrust = min(1.2, fanTrust + 0.05)
+            fans += release.scope.fanScale * 0.03
+            report.log("The \(release.title) patch steadies the ship. Reviews \(oldReview) → \(newReview).", .good)
+        } else {
+            report.log("Day-one patch for \(release.title): reviews \(oldReview) → \(newReview). Sales tick up.", .good)
         }
         return report
     }

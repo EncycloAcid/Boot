@@ -157,8 +157,17 @@ public struct Autopilot: Sendable {
 
     private func manageGames(_ s: inout GameState) {
         guard let g = s.games else { return }
+        // Rescue a struggling launch while the patch window is open.
+        if let rescue = g.releases.first(where: {
+            g.canPatch($0, atWeek: s.week) && $0.review < 72 && s.cash > g.patchCost(for: $0) * 2
+        }) {
+            try? s.patchGame(rescue.id)
+        }
         if let p = g.project {
-            if p.isReady && (p.polish >= p.scope.work * 1.3 || p.weeksInDev > 40 || s.runwayWeeks < 10) {
+            let forecast = s.gameForecast()
+            let polishedEnough = (forecast?.polishRatio ?? 0) >= 1.3
+                || p.polish >= p.scope.work * 1.3
+            if p.isReady && (polishedEnough || p.weeksInDev > 40 || s.runwayWeeks < 10) {
                 try? s.launchGame()
             }
             return
