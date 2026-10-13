@@ -244,7 +244,8 @@ fun GameState.engineQuote(selected: List<Research>? = null): Triple<List<Researc
     val features = (selected ?: researched.filter { it.kind == Research.Kind.ENGINE }).sortedBy { it.ordinal }
     val combo = engineCombo(features)
     val cost = 20_000 + 9_000 * combo.rawLevel.toDouble().pow(1.35)
-    return Triple(features, cost, 3 + combo.level / 3)
+    // Build time tracks raw feature load; clashes still cut the finished effective level.
+    return Triple(features, cost, 3 + combo.rawLevel / 3)
 }
 
 /** Expected engine standard reviewers use this week (shown in the builder without spoiling feature levels). */
@@ -256,17 +257,27 @@ fun GameState.buildEngine(selected: List<Research>? = null) {
     if (g.engineBuild != null) throw busy("An engine is already being built.")
     val (features, cost, weeks) = engineQuote(selected)
     if (features.isEmpty()) throw notAvailable("Research some engine features first.")
-    val best = g.engines.maxOf { it.level }
+    val best = g.engines.maxOfOrNull { it.level } ?: 0
+    val bestRaw = g.engines.maxOfOrNull { it.rawLevel } ?: 0
     val combo = engineCombo(features)
-    if (combo.level <= best && combo.rawLevel <= g.engines.maxOf { it.rawLevel }) {
+    if (combo.level <= best && combo.rawLevel <= bestRaw) {
+        if (combo.notes.isNotEmpty()) {
+            throw notAvailable("Style clashes keep this pack at level ${combo.level}. Drop a conflicting style, or research more tech.")
+        }
         throw notAvailable("You've no new features to build in.")
     }
     if (cash < cost) throw insufficientFunds("A level ${combo.level} engine costs ${money(cost)}.")
     spend(cost, Lane.GAMES)
     val name = "Engine Mk ${g.engines.size}"
     g.engineBuild = EngineBuild(name, features, weeks)
-    val clash = combo.notes.firstOrNull()?.let { " $it" } ?: ""
-    addLog("Building $name with ${features.size} features (effective level ${combo.level}). Ready in $weeks weeks.$clash", LogTone.NEUTRAL, Lane.GAMES)
+    val note = combo.notes.takeIf { it.isNotEmpty() }?.joinToString(" ")?.let { " $it" } ?: ""
+    val risk = if (combo.bugRisk >= 0.04) " Games on it may ship a little buggier." else ""
+    addLog(
+        "Building $name with ${features.size} features (effective level ${combo.level}" +
+            (if (combo.level != combo.rawLevel) ", raw ${combo.rawLevel}" else "") +
+            "). Ready in $weeks weeks.$note$risk",
+        LogTone.NEUTRAL, Lane.GAMES,
+    )
 }
 
 /** A sequel's concept, ready to tweak: same topic and genre, a numbered title. */

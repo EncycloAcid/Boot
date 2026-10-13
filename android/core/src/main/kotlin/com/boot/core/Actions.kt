@@ -125,15 +125,19 @@ fun GameState.setUpdateStyle(s: UpdateStyle) {
 
 fun GameState.setUpdateFocus(f: UpdateFocus) {
     require(Lane.APPS)
-    apps!!.updateFocus = f
-    addLog("Next ${apps!!.name} update focuses on ${f.title.lowercase()}. ${f.detail}", LogTone.NEUTRAL, Lane.APPS)
+    val a = apps!!
+    if (a.updateFocus == f) return
+    a.updateFocus = f
+    addLog("Next ${a.name} update focuses on ${f.title.lowercase()}. ${f.detail}", LogTone.NEUTRAL, Lane.APPS)
 }
 
 fun GameState.setAppCategory(c: AppCategory) {
     require(Lane.APPS)
     val a = apps!!
     if (a.isLive) throw notAvailable("Category is locked once the app ships.")
+    if (a.category == c) return
     a.category = c
+    addLog("${a.name} is shaping up as ${c.title.lowercase()} software.", LogTone.NEUTRAL, Lane.APPS)
 }
 
 // Social

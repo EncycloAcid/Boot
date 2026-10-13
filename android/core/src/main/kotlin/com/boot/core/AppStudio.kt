@@ -181,6 +181,26 @@ class AppStudio(
         quality = raw
     }
 
+    /** Design share of craft (0…1). */
+    fun designShare(): Double {
+        val total = design + tech
+        return if (total > 0.01) design / total else category.idealDesignShare
+    }
+
+    /**
+     * Old saves only had [quality]. If craft axes still look like constructor defaults while
+     * quality was already progressed, seed design/tech from that score and the category lean.
+     */
+    internal fun migrateCraftFromQuality() {
+        val looksDefault = kotlin.math.abs(design - 25.0) < 0.01 && kotlin.math.abs(tech - 25.0) < 0.01
+        if (!looksDefault) return
+        if (kotlin.math.abs(quality - 50.0) < 0.5 && !isLive && updatesShipped == 0) return
+        val share = category.idealDesignShare
+        val craft = quality.coerceIn(5.0, 97.0)
+        design = craft * share * 2
+        tech = craft * (1 - share) * 2
+    }
+
     internal fun tick(ctx: LaneContext, rng: SeededRNG): LaneReport {
         val report = LaneReport()
         val work = ctx.workOutput

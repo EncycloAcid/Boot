@@ -407,7 +407,8 @@ class Autopilot(
             if (g != null) {
                 addAll(
                     listOf(
-                        Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.CUSTOM_ENGINES,
+                        Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.STYLE_PIXEL,
+                        Research.CUSTOM_ENGINES, Research.STYLE_STYLIZED,
                         Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS, Research.MERCHANDISE,
                         Research.EXPANSIONS, Research.PUBLISHING, Research.GRAPHICS_3D_V1, Research.REMASTERS,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
@@ -440,10 +441,22 @@ class Autopilot(
 
     private fun manageApps(s: GameState) {
         val a = s.apps ?: return
-        if (!a.isLive) return
+        if (!a.isLive) {
+            if (a.category == AppCategory.PRODUCTIVITY && s.week > 8) {
+                attempt { s.setAppCategory(AppCategory.UTILITY) }
+            }
+            return
+        }
         if (a.quality > 72 && a.monetization == AppMonetization.ADS && a.users > 20_000) {
             attempt { s.setMonetization(AppMonetization.SUBSCRIPTION) }
         }
+        val focus = when {
+            a.lastChurn > 0.09 -> UpdateFocus.STABILITY
+            a.weeksSinceUpdate > 10 -> UpdateFocus.FEATURES
+            a.quality < 55 -> UpdateFocus.POLISH
+            else -> a.updateFocus
+        }
+        if (focus != a.updateFocus) attempt { s.setUpdateFocus(focus) }
     }
 
     private fun manageSocial(s: GameState) {

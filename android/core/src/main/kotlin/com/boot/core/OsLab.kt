@@ -198,9 +198,9 @@ class OsLab {
                     report.log("${p.codename} is feature-complete. Run a beta or ship raw.", LogTone.GOOD)
                 }
             } else {
-                // Idle polish while waiting to beta/ship.
-                p.bugs = max(0.0, p.bugs - work * 0.2)
-                report.expenses += p.target.weeklyBurn * 0.4 * ctx.mods.cost
+                // Idle polish while waiting to beta/ship — light burn so waiting isn't ruinous.
+                p.bugs = max(0.0, p.bugs - work * 0.25)
+                report.expenses += p.target.weeklyBurn * 0.25 * ctx.mods.cost
             }
         }
 
@@ -223,10 +223,17 @@ class OsLab {
 
         if (rng.chance(0.008) && releases.isNotEmpty() && oemTrust > 0.55) {
             val r = releases.first()
-            r.oemPartners += 1
-            report.log("Another OEM signs on for ${r.codename}.", LogTone.GOOD)
+            if (r.oemPartners < 12) {
+                r.oemPartners += 1
+                report.log("Another OEM signs on for ${r.codename}.", LogTone.GOOD)
+            }
         }
         return report
+    }
+
+    /** Keep partner counts sane after load or long idle runs. */
+    internal fun capOemPartners() {
+        for (r in releases) r.oemPartners = r.oemPartners.coerceIn(0, 12)
     }
 
     internal val assetValue: Double
@@ -265,16 +272,25 @@ fun GameState.startOsVersion(target: OsTarget) {
 
 fun GameState.startOsBeta(weeks: Int = 6) {
     val lab = osLab()
-    lab.startBeta(weeks)
-    addLog("${lab.project!!.codename} enters a $weeks-week beta. Bugs fall; ship date slips.", LogTone.NEUTRAL, Lane.OS)
+    val w = weeks.coerceIn(2, 12)
+    lab.startBeta(w)
+    addLog("${lab.project!!.codename} enters a $w-week beta. Bugs fall; ship date slips.", LogTone.NEUTRAL, Lane.OS)
 }
 
 fun GameState.cancelOsBeta() {
     val p = osLab().project ?: throw invalid("No OS project.")
     if (!p.inBeta) throw invalid("Not in beta.")
+    val wrapped = p.betaWeeksLeft <= 0
     p.inBeta = false
     p.betaWeeksLeft = 0
-    addLog("${p.codename} beta cancelled. You can ship raw whenever you're ready.", LogTone.NEUTRAL, Lane.OS)
+    addLog(
+        if (wrapped) {
+            "${p.codename} leaves beta without shipping. You can still ship when ready."
+        } else {
+            "${p.codename} beta cancelled. You can ship raw whenever you're ready."
+        },
+        LogTone.NEUTRAL, Lane.OS,
+    )
 }
 
 fun GameState.shipOs() {

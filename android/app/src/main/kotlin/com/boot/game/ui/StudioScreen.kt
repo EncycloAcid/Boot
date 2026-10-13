@@ -307,14 +307,17 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 val lean = p.projectedDesignShare()
                 val delta = p.designLeanDelta()
                 val leanHint = when {
-                    abs(delta) < 0.05 -> "On a healthy design/tech lean for ${c.genreLower}."
+                    abs(delta) < 0.06 -> "On a healthy design/tech lean for ${c.genreLower}."
+                    abs(delta) < 0.14 && delta < 0 -> "A bit tech-heavy for ${c.genreLower}."
+                    abs(delta) < 0.14 -> "A bit design-heavy for ${c.genreLower}."
                     delta < 0 -> "Leaning tech-heavy vs what ${c.genreLower} usually wants."
                     else -> "Leaning design-heavy vs what ${c.genreLower} usually wants."
                 }
+                // Fit meter (closeness to genre ideal), not raw design share — share is in the caption.
                 Meter(
-                    "Design lean",
-                    lean,
-                    colors.design,
+                    "Genre fit",
+                    p.designLeanFit(),
+                    if (p.designLeanFit() >= 0.7) colors.design else colors.warn,
                     caption = "${Format.percent(lean)} design · $leanHint",
                 )
                 state.gameForecast(team)?.let { f ->
@@ -322,6 +325,7 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                         "Expected score",
                         String.format(java.util.Locale.US, "~%.1f (%s–%s)", f.expectedScore, f.low, f.high),
                     )
+                    Hint("Rebalance this stage’s sliders — the forecast and fit update right away.")
                 }
             }
             if (p.isReady) {
@@ -546,8 +550,8 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
     GroupedSection(
         "Engines",
         footer = when {
-            !canBuild -> "Research custom engines, then engine features, to build better tech. Games on dated engines look it."
-            else -> "Reviewers expect about level $standard by now. Feature tech levels stay hidden until a build finishes or a game ships."
+            !canBuild -> "Research custom engines, then graphic styles and tech features. Games on dated engines look it."
+            else -> "Reviewers expect about level $standard by now. Individual feature levels stay hidden until a build finishes or a game ships. Mixing pixel with realistic cuts effective level."
         },
     ) {
         g.engines.sortedByDescending { it.level }.forEachIndexed { i, e ->
@@ -559,7 +563,15 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
                     if (g.knowsEngineLevel(f)) "${f.title} (L${f.engineLevel})" else f.title
                 }
             }
-            ListRow(e.name, subtitle = featureLine, value = "level ${e.level}")
+            val levelLabel = if (e.rawLevel != e.level && e.features.isNotEmpty()) {
+                "L${e.level} (raw ${e.rawLevel})"
+            } else {
+                "level ${e.level}"
+            }
+            ListRow(e.name, subtitle = featureLine, value = levelLabel)
+            if (e.combo.notes.isNotEmpty()) {
+                Hint(e.combo.notes.joinToString(" "), gameColors.warn)
+            }
             if (e.level > 0) {
                 ToggleRow(
                     "License to other studios", e.licensed,
@@ -569,18 +581,31 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
         }
         g.engineBuild?.let { b ->
             RowDivider()
-            CardBlock { Meter("Building ${b.name}", 0.5, wavy = true, caption = "${Format.weeks(b.weeksLeft)} left · effective L${b.combo.level}") }
+            CardBlock {
+                Meter(
+                    "Building ${b.name}", 0.5, wavy = true,
+                    caption = "${Format.weeks(b.weeksLeft)} left · effective L${b.combo.level}" +
+                        if (b.combo.level != b.combo.rawLevel) " (raw ${b.combo.rawLevel})" else "",
+                )
+                if (b.combo.notes.isNotEmpty()) Hint(b.combo.notes.joinToString(" "), gameColors.warn)
+            }
         }
         if (canBuild && g.engineBuild == null) {
             RowDivider()
-            val clash = combo.notes.firstOrNull()
+            val canAfford = state.cash >= cost
+            val improves = combo.level > best || combo.rawLevel > g.engines.maxOf { it.rawLevel }
+            val detail = buildString {
+                append("${features.size} features · ${Format.money(cost)} · $weeks weeks")
+                if (combo.level != combo.rawLevel) append(" · effective L${combo.level} (raw ${combo.rawLevel})")
+                if (combo.bugRisk >= 0.04) append(" · higher bug risk")
+                if (combo.notes.isNotEmpty()) append(" · ${combo.notes.joinToString(" ")}")
+                append(" · market expects ~L$standard")
+            }
             ActionRow(
                 "New engine: level ${combo.level}",
-                "${features.size} features · ${Format.money(cost)} · $weeks weeks" +
-                    (if (clash != null) " · $clash" else "") +
-                    " · market expects ~L$standard",
+                detail,
                 "Build",
-                enabled = combo.level > best && state.cash >= cost,
+                enabled = improves && canAfford,
             ) { store.perform { buildEngine() } }
         }
     }

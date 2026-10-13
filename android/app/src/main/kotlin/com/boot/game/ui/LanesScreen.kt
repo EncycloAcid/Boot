@@ -210,7 +210,7 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
         GroupedSection(a.name) {
             if (!a.isLive) {
                 CardBlock {
-                    Hint("Building ${a.category.title.lowercase()} v1.0")
+                    Hint("Building ${a.category.title.lowercase()} v1.0 — design and tech accumulate toward store score.")
                     Meter("Progress", (a.buildProgress / a.buildWork).coerceAtMost(1.0), wavy = true)
                     Meter("Design", (a.design / 80).coerceAtMost(1.0), gameColors.design, Format.count(a.design))
                     Meter("Tech", (a.tech / 80).coerceAtMost(1.0), gameColors.tech, Format.count(a.tech))
@@ -231,7 +231,10 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                 }
                 CardBlock {
                     Meter("Store score", a.quality / 100, gameColors.milestone, "${a.quality.toInt()}")
-                    Meter("Design", (a.design / 100).coerceAtMost(1.0), gameColors.design, Format.count(a.design))
+                    Meter(
+                        "Design", (a.design / 100).coerceAtMost(1.0), gameColors.design,
+                        "${Format.count(a.design)} · ${Format.percent(a.designShare())}",
+                    )
                     Meter("Tech", (a.tech / 100).coerceAtMost(1.0), gameColors.tech, Format.count(a.tech))
                     Meter(
                         "Next update", (a.updateProgress / a.updateStyle.work).coerceAtMost(1.0),
@@ -244,7 +247,11 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
     item {
         GroupedSection(
             "Product brief",
-            footer = "Category and monetization shape the product. Feature research stacks like a light engine.",
+            footer = if (a.isLive) {
+                "Category is locked after launch. Monetization can still change (some users leave). Platform research stacks into the product."
+            } else {
+                "Pick a category before v1.0 — it leans the craft balance. Feature research (SDK, offline, sync, collab) stacks like a light engine."
+            },
         ) {
             CardBlock(spacing = 8.dp) {
                 if (!a.isLive) {
@@ -263,15 +270,20 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                         AppMonetization.PAID -> "Paid"
                     }
                 }) { m -> store.perform { setMonetization(m) } }
+                Spacer(Modifier.size(4.dp))
                 if (a.features.isNotEmpty()) {
-                    Spacer(Modifier.size(4.dp))
                     Hint("Feature stack: " + a.features.joinToString { it.title })
+                } else {
+                    Hint("No platform features yet — research Native SDK kit on the Research tab.")
                 }
             }
         }
     }
     item {
-        GroupedSection("Update roadmap", footer = "Cadence and focus trade off: stability cuts churn, features grow installs, polish lifts reviews.") {
+        GroupedSection(
+            "Update roadmap",
+            footer = "Cadence sets how often you ship. Focus sets what each drop improves: stability cuts churn, features grow installs, polish lifts reviews.",
+        ) {
             CardBlock(spacing = 8.dp) {
                 Text("Cadence", style = MaterialTheme.typography.bodyMedium)
                 Segmented(UpdateStyle.entries, a.updateStyle, { if (it == UpdateStyle.SMALL) "Small & often" else "Big & rare" }) { u ->
@@ -521,8 +533,18 @@ private fun LazyListScope.aiItems(store: GameStore, state: GameState) {
 
 private fun LazyListScope.osItems(store: GameStore, state: GameState) {
     val lab = state.os ?: return
+    val hardwareLive = state.hardware?.onMarket != null && Lane.HARDWARE in state.lanes
+    val appsLive = state.apps?.isLive == true && Lane.APPS in state.lanes
     item {
-        GroupedSection("Platform Lab") {
+        GroupedSection(
+            "Platform Lab",
+            footer = when {
+                hardwareLive && appsLive -> "Shipping with your own hardware and live apps boosts score and ecosystem."
+                hardwareLive -> "A device on the market sweetens the next OS launch."
+                appsLive -> "First-party apps lift ecosystem when you ship."
+                else -> "Open Hardware or Apps for optional launch synergies."
+            },
+        ) {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 TileRow {
                     StatTile("OEM trust", Format.percent(lab.oemTrust), Modifier.weight(1f))
@@ -537,19 +559,36 @@ private fun LazyListScope.osItems(store: GameStore, state: GameState) {
     }
     val p = lab.project
     if (p != null) {
+        val bugHeavy = p.bugs > p.work * 0.25
         item {
-            GroupedSection(p.codename, footer = "Feature-complete versions can beta (safer for OEMs) or ship raw (faster, riskier).") {
+            GroupedSection(
+                p.codename,
+                footer = "Feature-complete versions can beta (safer for OEMs) or ship raw (faster, riskier). Waiting after ready still burns a light weekly cost.",
+            ) {
                 CardBlock {
                     Hint("v${p.version} · ${p.target.title} · ${Format.weeks(p.weeksInDev)} in")
                     Meter("Progress", p.completion, wavy = !p.isReady)
-                    Meter("Design", (p.design / 200).coerceAtMost(1.0), gameColors.design, Format.count(p.design))
-                    Meter("Tech", (p.tech / 200).coerceAtMost(1.0), gameColors.tech, Format.count(p.tech))
+                    Meter(
+                        "Design", (p.design / p.work).coerceAtMost(1.0), gameColors.design,
+                        Format.count(p.design),
+                    )
+                    Meter(
+                        "Tech", (p.tech / p.work).coerceAtMost(1.0), gameColors.tech,
+                        Format.count(p.tech),
+                    )
                     Meter("Bugs", (p.bugs / (p.work * 0.5)).coerceAtMost(1.0), gameColors.bad, Format.count(p.bugs))
                     if (p.inBeta) {
-                        Hint("Beta: ${Format.weeks(p.betaWeeksLeft)} left")
+                        if (p.betaWeeksLeft > 0) {
+                            Hint("Beta: ${Format.weeks(p.betaWeeksLeft)} left — bugs fall each week.")
+                        } else {
+                            Hint("Beta wrapped. Ship when you're ready — OEMs already saw the polish.", gameColors.good)
+                        }
                         PlainButton("Cancel beta", { store.perform { cancelOsBeta() } })
                     }
                     if (p.isReady && !p.inBeta) {
+                        if (bugHeavy) {
+                            Hint("Bug load is high — shipping raw risks a rollback that freezes OEM orders.", gameColors.bad)
+                        }
                         PrimaryButton("Start 6-week beta", { store.perform { startOsBeta(6) } }, Modifier.fillMaxWidth())
                         PrimaryButton("Ship raw", { store.perform { shipOs() } }, Modifier.fillMaxWidth())
                     } else if (p.isReady && p.inBeta && p.betaWeeksLeft <= 0) {
@@ -560,7 +599,7 @@ private fun LazyListScope.osItems(store: GameStore, state: GameState) {
         }
     } else {
         item {
-            GroupedSection("New version", footer = "Phone targets unlock with smartphones; dual targets later.") {
+            GroupedSection("New version", footer = "Phone targets unlock in 2007; PC & phone dual targets in 2012. Kernel research raises release quality.") {
                 OsTarget.entries.forEachIndexed { i, t ->
                     if (i > 0) RowDivider()
                     val open = state.osTargetOpen(t)
@@ -582,7 +621,7 @@ private fun LazyListScope.osItems(store: GameStore, state: GameState) {
                     ListRow(
                         "${r.codename} v${r.version}",
                         subtitle = "${r.target.title} · ${String.format(java.util.Locale.US, "%.1f", r.score)}/10" +
-                            (if (r.beta) " · beta" else "") +
+                            (if (r.beta) " · beta" else " · raw") +
                             (if (r.rolledBack) " · rolled back" else "") +
                             " · ${r.oemPartners} OEMs",
                         value = Format.count(r.installedBase),

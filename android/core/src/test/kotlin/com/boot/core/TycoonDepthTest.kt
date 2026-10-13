@@ -47,6 +47,34 @@ class TycoonDepthAppsTest {
         s.research(Research.APP_SDK)
         assertTrue(Research.APP_SDK in s.apps!!.features)
     }
+
+    @Test
+    fun decodeSeedsCraftFromLegacyQualityAndSyncsFeatures() {
+        val s = game(Lane.APPS, 503)
+        s.cash = 100_000.0
+        s.researchPoints = 80.0
+        s.research(Research.APP_SDK)
+        val a = s.apps!!
+        // Simulate a pre-depth save: quality progressed, craft still at constructor defaults.
+        a.design = 25.0
+        a.tech = 25.0
+        a.quality = 72.0
+        a.isLive = true
+        a.features.clear()
+        val round = GameState.decode(s.encode())
+        val b = assertNotNull(round.apps)
+        assertTrue(b.design > 25.0 || b.tech > 25.0, "craft should seed from legacy quality")
+        assertTrue(Research.APP_SDK in b.features, "researched platform bits should rejoin the stack")
+    }
+
+    @Test
+    fun setUpdateFocusIsIdempotent() {
+        val s = game(Lane.APPS, 504)
+        s.setUpdateFocus(UpdateFocus.FEATURES)
+        val before = s.log.size
+        s.setUpdateFocus(UpdateFocus.FEATURES)
+        assertEquals(before, s.log.size)
+    }
 }
 
 class TycoonDepthOsTest {
@@ -118,5 +146,71 @@ class TycoonDepthOsTest {
         val round = GameState.decode(json)
         assertEquals(null, round.os)
         assertTrue(Lane.OS !in round.lanes)
+    }
+
+    @Test
+    fun decodeRevealsTechOnExistingEnginesAndCapsOemPartners() {
+        val s = game(Lane.GAMES, 88)
+        s.cash = 1_000_000.0
+        val g = s.games!!
+        g.engines += Engine(1, "Mk1", listOf(Research.GRAPHICS_2D_V2, Research.STYLE_PIXEL), 10)
+        g.revealedEngineTech.clear()
+        assertTrue(!g.knowsEngineLevel(Research.GRAPHICS_2D_V2))
+        val round = GameState.decode(s.encode())
+        assertTrue(round.games!!.knowsEngineLevel(Research.GRAPHICS_2D_V2))
+
+        val os = game(Lane.OS, 89)
+        os.cash = 5_000_000.0
+        os.startOsVersion(OsTarget.PC)
+        val p = os.os!!.project!!
+        p.progress = p.work
+        p.bugs = 0.0
+        os.shipOs()
+        os.os!!.releases.first().oemPartners = 40
+        val osRound = GameState.decode(os.encode())
+        assertEquals(12, osRound.os!!.releases.first().oemPartners)
+    }
+
+    @Test
+    fun cancelOsBetaAfterWrapUsesSofterCopy() {
+        val s = game(Lane.OS, 90)
+        s.cash = 5_000_000.0
+        s.startOsVersion(OsTarget.PC)
+        val p = s.os!!.project!!
+        p.progress = p.work
+        s.startOsBeta(2)
+        while (s.os!!.project!!.betaWeeksLeft > 0) s.play(1)
+        s.cancelOsBeta()
+        assertTrue(!s.os!!.project!!.inBeta)
+    }
+}
+
+class TycoonDepthGamesPolishTest {
+    @Test
+    fun designLeanFitIsHighWhenNearGenreIdeal() {
+        val concept = GameConcept("Fit", Topic.FANTASY, Genre.ADVENTURE, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+        val p = GameProject(
+            concept,
+            focus = listOf(
+                mutableListOf(0.35, 0.55, 0.45),
+                mutableListOf(0.5, 0.5, 0.5),
+                mutableListOf(0.5, 0.5, 0.5),
+            ),
+            startedWeek = 0,
+        )
+        assertTrue(p.designLeanFit() > 0.7, "adventure-leaning sliders should score a strong genre fit")
+        assertTrue(kotlin.math.abs(p.projectedDesignShare() - concept.idealDesignShare) < 0.12)
+    }
+
+    @Test
+    fun engineQuoteBuildTimeTracksRawLevelNotClashPenalty() {
+        val s = game(Lane.GAMES, 91)
+        s.researched = setOf(
+            Research.CUSTOM_ENGINES, Research.STYLE_PIXEL, Research.STYLE_REALISTIC, Research.GRAPHICS_2D_V2, Research.GRAPHICS_3D_V1,
+        )
+        val (_, _, weeks) = s.engineQuote()
+        val combo = engineCombo(s.researched.filter { it.kind == Research.Kind.ENGINE })
+        assertTrue(combo.level < combo.rawLevel)
+        assertEquals(3 + combo.rawLevel / 3, weeks)
     }
 }

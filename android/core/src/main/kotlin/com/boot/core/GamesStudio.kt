@@ -116,6 +116,12 @@ data class GameProject(
 
     /** How close the projected design lean is to the genre ideal, without revealing the target. */
     fun designLeanDelta(): Double = projectedDesignShare() - concept.idealDesignShare
+
+    /**
+     * 1 when projected lean matches the genre ideal; falls toward 0 as you drift.
+     * Used as a meter fill so "design lean" doesn't read as a progress bar toward 100% design.
+     */
+    fun designLeanFit(): Double = (1.0 - kotlin.math.abs(designLeanDelta()) / 0.35).coerceIn(0.0, 1.0)
 }
 
 @Serializable
