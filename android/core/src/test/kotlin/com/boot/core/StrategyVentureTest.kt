@@ -87,14 +87,20 @@ class VentureArmTest {
     fun seedFollowOnAndExit() {
         val s = armed()
         assertNull(s.seedVentureBlocker(Lane.GAMES))
+        val previewOwn = s.seedOwnershipPreview(0.7)
         s.seedVenture(Lane.GAMES, conviction = 0.7)
         val h = s.strategy.liveHoldings.single()
         assertEquals(VentureStage.SEED, h.stage)
+        assertEquals(previewOwn, h.ownership, 1e-9)
         assertTrue(h.ownership in 0.05..0.2)
         assertTrue(h.basis > 0 && h.valuation > h.basis)
+        assertTrue(s.followOnWeeksLeft(h) in 1..26)
+        assertTrue(s.exitQuote(h) > 0)
+        assertTrue(s.marketCycleLabel().isNotBlank())
 
         assertNotNull(s.followOnBlocker(h.id)) // too early
         s.week = h.seededWeek + 26
+        assertEquals(0, s.followOnWeeksLeft(h))
         assertNull(s.followOnBlocker(h.id))
         val beforeOwn = h.ownership
         s.followOnVenture(h.id)
@@ -102,9 +108,11 @@ class VentureArmTest {
         assertTrue(h.ownership > beforeOwn)
 
         assertNull(s.exitVentureBlocker(h.id))
+        val quote = s.exitQuote(h)
         val cashBefore = s.cash
         s.exitVenture(h.id)
         assertTrue(h.exited)
+        assertEquals(quote, h.exitProceeds, 1e-6)
         assertTrue(s.cash > cashBefore)
         assertTrue(s.strategy.liveHoldings.isEmpty())
     }

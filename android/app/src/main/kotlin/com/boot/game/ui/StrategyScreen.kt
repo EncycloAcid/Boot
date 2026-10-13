@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,16 +24,22 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.Region
 import com.boot.core.Research
+import com.boot.core.VentureHolding
 import com.boot.core.VentureStage
+import com.boot.core.exitQuote
 import com.boot.core.exitVenture
 import com.boot.core.exitVentureBlocker
 import com.boot.core.followOnBlocker
 import com.boot.core.followOnTicket
 import com.boot.core.followOnVenture
+import com.boot.core.followOnWeeksLeft
 import com.boot.core.localizeOffice
 import com.boot.core.localizeOfficeBlocker
+import com.boot.core.marketCycle
+import com.boot.core.marketCycleLabel
 import com.boot.core.openOffice
 import com.boot.core.openOfficeBlocker
+import com.boot.core.seedOwnershipPreview
 import com.boot.core.seedTicket
 import com.boot.core.seedVenture
 import com.boot.core.seedVentureBlocker
@@ -51,9 +59,13 @@ fun LazyListScope.strategyItems(store: GameStore, state: GameState) {
 private fun StrategyPulse(state: GameState) {
     val colors = gameColors
     val book = state.strategy
+    val cycle = state.marketCycle()
+    val cycleLabel = state.marketCycleLabel()
+    val marked = book.liveHoldings.sumOf { it.marketValue }
+    val basis = book.liveHoldings.sumOf { it.basis }
     GroupedSection(
         "Strategy",
-        footer = "Offices grow local brand and territory revenue. Alliances last two years. The Venture Arm seeds minority stakes you can follow on and exit.",
+        footer = "Offices grow territory. Alliances last two years. Venture Arm marks and exits lean on the market cycle ($cycleLabel).",
     ) {
         CardBlock {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -66,18 +78,28 @@ private fun StrategyPulse(state: GameState) {
                     if (book.lastTerritory > 0) colors.good else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 StatTile(
-                    "Alliances",
-                    "${book.activeAlliances.size}",
+                    "Cycle",
+                    cycleLabel,
                     Modifier.weight(1f),
-                    Format.money(book.lastAllianceYield) + "/wk",
+                    String.format(java.util.Locale.US, "%.0f%% appetite", cycle * 100),
+                    when {
+                        cycle >= 1.1 -> colors.good
+                        cycle <= 0.8 -> colors.bad
+                        else -> colors.warn
+                    },
                 )
             }
         }
         RowDivider()
         ValueRow(
             "Venture Arm",
-            "${book.liveHoldings.size} live · ${Format.money(book.liveHoldings.sumOf { it.marketValue })} marked",
+            "${book.liveHoldings.size} live · ${Format.money(marked)} marked",
+            if (marked >= basis) colors.good else if (basis > 0) colors.bad else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (basis > 0) {
+            RowDivider()
+            ValueRow("Paper P&L", Format.signedMoney(marked - basis), if (marked >= basis) colors.good else colors.bad)
+        }
     }
 }
 
@@ -182,52 +204,34 @@ private fun AlliancesSection(store: GameStore, state: GameState) {
 @Composable
 private fun VentureArmSection(store: GameStore, state: GameState) {
     val colors = gameColors
-    var lane by remember { mutableStateOf(state.lanes.firstOrNull() ?: Lane.GAMES) }
+    var lane by remember(state.lanes) { mutableStateOf(state.lanes.firstOrNull() ?: Lane.GAMES) }
+    if (lane !in state.lanes && state.lanes.isNotEmpty()) lane = state.lanes.first()
+    var conviction by remember { mutableFloatStateOf(0.55f) }
     val researched = Research.VENTURE_ARM in state.researched
     GroupedSection(
         "Venture Arm",
         footer = if (!researched) {
-            "Research Venture Arm to seed minority investments across your open lanes."
+            "Research Venture Arm to seed minority investments in any open lane."
         } else {
-            "Seed, follow on from Seed to Series A, and exit when the cycle is right. Marks move with the market."
+            "Pick a live lane, set conviction, seed a minority stake. Follow on Seed→Series A after six months. Exit turns marks into cash — cycle ${state.marketCycleLabel().lowercase()} right now."
         },
     ) {
         val live = state.strategy.liveHoldings
-        val exited = state.strategy.holdings.filter { it.exited }.takeLast(3)
+        val exited = state.strategy.holdings.filter { it.exited }.takeLast(4)
         if (live.isEmpty() && exited.isEmpty()) {
-            CardBlock { Hint(if (researched) "No holdings yet. Seed a startup in one of your lanes." else "Locked until researched.") }
+            CardBlock { Hint(if (researched) "No holdings yet. Seed a startup in one of your open lanes." else "Locked until researched.") }
         }
         live.forEachIndexed { i, h ->
             if (i > 0) RowDivider(68.dp)
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(h.name, style = MaterialTheme.typography.titleMedium)
-                Hint("${h.lane.title} · ${h.stage.title} · ${Format.percent(h.ownership)} owned · conviction ${Format.percent(h.conviction)}")
-                ValueRow("Basis", Format.money(h.basis))
-                RowDivider()
-                ValueRow(
-                    "Marked value",
-                    Format.money(h.marketValue),
-                    if (h.paperGain >= 0) colors.good else colors.bad,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (h.stage == VentureStage.SEED) {
-                        val fb = state.followOnBlocker(h.id)
-                        TonalButton(
-                            "Follow-on · ${Format.money(state.followOnTicket(h))}",
-                            { if (fb == null) store.perform { followOnVenture(h.id) } else store.error = fb },
-                            enabled = fb == null,
-                        )
-                    }
-                    val eb = state.exitVentureBlocker(h.id)
-                    PlainButton(
-                        "Exit",
-                        { if (eb == null) store.perform { exitVenture(h.id) } else store.error = eb },
-                    )
-                }
-            }
+            HoldingCard(store, state, h)
         }
         if (exited.isNotEmpty()) {
             RowDivider()
+            Text(
+                "Recent exits",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             exited.forEachIndexed { i, h ->
                 if (i > 0) RowDivider(68.dp)
                 ListRow(
@@ -243,17 +247,89 @@ private fun VentureArmSection(store: GameStore, state: GameState) {
             RowDivider()
             CardBlock(spacing = 10.dp) {
                 Text("Seed a startup", style = MaterialTheme.typography.titleSmall)
+                Hint("Any active lane — ${state.lanes.joinToString { it.title }}.")
                 Segmented(state.lanes, lane, { it.title }) { lane = it }
+                Text("Conviction", style = MaterialTheme.typography.bodyMedium)
+                Slider(
+                    value = conviction,
+                    onValueChange = { conviction = it },
+                    valueRange = 0.25f..0.95f,
+                )
                 val ticket = state.seedTicket(lane)
+                val own = state.seedOwnershipPreview(conviction.toDouble())
+                Hint(
+                    "${Format.money(ticket)} cheque · about ${Format.percent(own)} ownership · " +
+                        "marks move with a ${state.marketCycleLabel().lowercase()} cycle",
+                )
                 val blocker = state.seedVentureBlocker(lane)
                 PrimaryButton(
-                    "Seed · ${Format.money(ticket)}",
-                    { if (blocker == null) store.perform { seedVenture(lane) } else store.error = blocker },
+                    "Seed in ${lane.title} · ${Format.money(ticket)}",
+                    {
+                        if (blocker == null) store.perform { seedVenture(lane, conviction.toDouble()) }
+                        else store.error = blocker
+                    },
                     Modifier.fillMaxWidth(),
                     enabled = blocker == null,
                 )
                 if (blocker != null) Hint(blocker, colors.bad)
             }
+        }
+    }
+}
+
+@Composable
+private fun HoldingCard(store: GameStore, state: GameState, h: VentureHolding) {
+    val colors = gameColors
+    val quote = state.exitQuote(h)
+    val followLeft = state.followOnWeeksLeft(h)
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(h.name, style = MaterialTheme.typography.titleMedium)
+            Pill(h.stage.title, if (h.stage == VentureStage.SERIES_A) colors.good else MaterialTheme.colorScheme.primary)
+        }
+        Hint("${h.lane.title} · seeded ${GameClock.label(h.seededWeek)}")
+        Meter("Ownership", h.ownership / 0.28, colors.good, caption = Format.percent(h.ownership))
+        Meter("Conviction", h.conviction, MaterialTheme.colorScheme.primary)
+        ValueRow("Basis", Format.money(h.basis))
+        RowDivider()
+        ValueRow("Company valuation", Format.money(h.valuation))
+        RowDivider()
+        ValueRow(
+            "Your mark",
+            Format.money(h.marketValue),
+            if (h.paperGain >= 0) colors.good else colors.bad,
+        )
+        RowDivider()
+        ValueRow(
+            "Exit quote now",
+            Format.money(quote),
+            if (quote >= h.basis) colors.good else colors.bad,
+        )
+        Hint(
+            when {
+                h.stage == VentureStage.SEED && followLeft > 0 -> "Series A follow-on in ${followLeft}w · cycle ${state.marketCycleLabel().lowercase()}"
+                h.stage == VentureStage.SEED -> "Ready for Series A follow-on"
+                else -> "Series A · exit when the ${state.marketCycleLabel().lowercase()} cycle suits you"
+            },
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (h.stage == VentureStage.SEED) {
+                val fb = state.followOnBlocker(h.id)
+                TonalButton(
+                    if (followLeft > 0) "Follow-on in ${followLeft}w" else "Follow-on · ${Format.money(state.followOnTicket(h))}",
+                    { if (fb == null) store.perform { followOnVenture(h.id) } else store.error = fb },
+                    enabled = fb == null,
+                )
+            }
+            val eb = state.exitVentureBlocker(h.id)
+            PlainButton(
+                "Exit · ${Format.money(quote)}",
+                { if (eb == null) store.perform { exitVenture(h.id) } else store.error = eb },
+                enabled = eb == null,
+            )
+        }
+        state.exitVentureBlocker(h.id)?.takeIf { h.stage != VentureStage.SEED || followLeft == 0 }?.let {
+            Hint(it, colors.warn)
         }
     }
 }

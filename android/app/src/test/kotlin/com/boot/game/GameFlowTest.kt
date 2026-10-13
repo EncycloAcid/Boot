@@ -358,13 +358,9 @@ class GameFlowTest {
             store.newGame("Series Co", "Rae", Lane.GAMES, seed = 22)
             val pilot = Autopilot()
             store.perform {
-<<<<<<< HEAD
-                while (week < 300 && !isOver) {
-=======
-                // Stay on Games through the Pivot so franchises can form; games!! NPE'd when Autopilot pivoted away.
+                // Null-safe loop; stayFocused if a pivot still appears (Autopilot usually stays on Games now).
                 while (week < 300 && !isOver) {
                     while (pendingPivot != null) stayFocused()
->>>>>>> acee0ea (Add start/news/reviews depth, Strategy offices/alliances, and Venture Arm)
                     val g = games ?: break
                     if (g.franchises.isNotEmpty() && !g.busy) break
                     pilot.playWeek(this)

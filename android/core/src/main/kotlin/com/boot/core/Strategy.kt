@@ -184,7 +184,7 @@ private val startupNames = listOf(
 )
 
 /** How hot/cold the economy feels for strategy outcomes. */
-internal fun GameState.marketCycle(): Double {
+fun GameState.marketCycle(): Double {
     val appetite = world.investorAppetite
     val phase = when (world.phase) {
         EraPhase.DAWN -> 1.05
@@ -305,20 +305,25 @@ fun GameState.seedVentureBlocker(lane: Lane): String? {
 fun GameState.seedTicket(lane: Lane): Double =
     (40_000.0 + lane.setupCost * 0.08) * (0.85 + marketCycle() * 0.2)
 
+/** Expected ownership fraction for a seed at [conviction] (preview for UI). */
+fun GameState.seedOwnershipPreview(conviction: Double): Double =
+    (0.08 + conviction.coerceIn(0.2, 1.0) * 0.06).coerceIn(0.05, 0.18)
+
 fun GameState.seedVenture(lane: Lane, conviction: Double = 0.55) {
     seedVentureBlocker(lane)?.let { throw notAvailable(it) }
     val ticket = seedTicket(lane)
     spend(ticket, null)
     val name = rng.pick(startupNames.filter { n -> strategy.holdings.none { it.name == n && !it.exited } }
         .ifEmpty { startupNames })
-    val ownership = (0.08 + conviction * 0.06).coerceIn(0.05, 0.18)
+    val c = conviction.coerceIn(0.2, 1.0)
+    val ownership = seedOwnershipPreview(c)
     val valuation = ticket / ownership
     val h = VentureHolding(
         id = strategy.nextHoldingId++,
         name = name,
         lane = lane,
         ownership = ownership,
-        conviction = conviction.coerceIn(0.2, 1.0),
+        conviction = c,
         basis = ticket,
         valuation = valuation,
         stage = VentureStage.SEED,
@@ -329,6 +334,31 @@ fun GameState.seedVenture(lane: Lane, conviction: Double = 0.55) {
         "Venture Arm seeded $name (${lane.title}) for ${money(ticket)} — ${Format.percent(ownership)} ownership.",
         LogTone.GOOD, lane,
     )
+}
+
+/** Rough cash if you exited [h] this week (cycle + conviction multiple). */
+fun GameState.exitQuote(h: VentureHolding): Double {
+    if (h.exited) return h.exitProceeds
+    val multiple = (0.85 + h.conviction * 0.35) * marketCycle().coerceIn(0.55, 1.5)
+    return h.valuation * h.ownership * multiple
+}
+
+/** Weeks until a Seed holding can take a Series A follow-on (0 if ready or not Seed). */
+fun GameState.followOnWeeksLeft(h: VentureHolding): Int {
+    if (h.exited || h.stage != VentureStage.SEED) return 0
+    return max(0, 26 - (week - h.seededWeek))
+}
+
+/** Human label for the current market cycle (Venture Arm marks / exits). */
+fun GameState.marketCycleLabel(): String {
+    val c = marketCycle()
+    return when {
+        c >= 1.25 -> "Hot"
+        c >= 1.05 -> "Warm"
+        c >= 0.9 -> "Steady"
+        c >= 0.7 -> "Cool"
+        else -> "Cold"
+    }
 }
 
 fun GameState.followOnBlocker(id: Int): String? {
@@ -373,9 +403,7 @@ fun GameState.exitVentureBlocker(id: Int): String? {
 fun GameState.exitVenture(id: Int) {
     exitVentureBlocker(id)?.let { throw notAvailable(it) }
     val h = strategy.holdings.first { it.id == id }
-    // Cycle and conviction shade the exit multiple.
-    val multiple = (0.85 + h.conviction * 0.35) * marketCycle().coerceIn(0.55, 1.5)
-    val proceeds = h.valuation * h.ownership * multiple
+    val proceeds = exitQuote(h)
     cash += proceeds
     recordRevenue(proceeds, null)
     h.exitWeek = week
