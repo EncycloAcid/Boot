@@ -850,8 +850,7 @@ class GameFlowTest {
         // Hall of Fame leftovers from earlier tests in this suite change legacy perks and can
         // bankrupt or end a decades run before 1988 — clear them and pin the seed.
         compose.runOnIdle {
-            store.hall = emptyList()
-            File(RuntimeEnvironment.getApplication().filesDir, "hall.json").delete()
+            store.clearHall()
             store.newGame("Pixel Soft", "Alex", Lane.GAMES, seed = 42L, start = StartPoint.CONSOLE_WARS)
         }
         compose.waitForIdle()

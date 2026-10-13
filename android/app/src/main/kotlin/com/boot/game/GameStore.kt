@@ -49,6 +49,12 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var hall by mutableStateOf(runCatching { decodeHall(hallFile.readText()) }.getOrDefault(emptyList()))
         private set
 
+    /** Drop Hall of Fame history (tests use this so legacy perks don't leak between cases). */
+    fun clearHall() {
+        hall = emptyList()
+        runCatching { hallFile.delete() }
+    }
+
     /** Replaced with a fresh copy after every action, so Compose always sees the change. */
     var state by mutableStateOf<GameState?>(null)
         private set
