@@ -41,15 +41,30 @@ struct GamesView: View {
 
     var body: some View {
         if let g = state.games {
+            let forecast = state.gameForecast()
             HStack(alignment: .top, spacing: 16) {
                 Card("In development") {
                     if let p = g.project {
                         Text(p.title).font(.title3.bold())
                         Text("\(p.scope.name) · \(p.weeksInDev) weeks in · \(Format.money(p.scope.weeklyBudget))/wk budget")
                             .font(.callout).foregroundStyle(.secondary)
-                        Meter(label: "Content", value: p.completion)
+                        Meter(label: "Content", value: p.completion,
+                              caption: etaCaption(p: p, forecast: forecast))
                         Meter(label: "Polish", value: min(1, p.polish / (p.scope.work * 1.5)), tint: .purple,
-                              caption: p.isReady ? "Keep polishing for a better review" : nil)
+                              caption: polishCaption(p: p, forecast: forecast))
+                        if let forecast {
+                            VStack(alignment: .leading, spacing: 4) {
+                                KeyValue(key: "Expected review",
+                                         value: "~\(Int(forecast.expectedReview.rounded())) (\(forecast.reviewLow)–\(forecast.reviewHigh))")
+                                KeyValue(key: "Launch-week sales",
+                                         value: "~\(Format.money(forecast.expectedFirstWeekSales))")
+                                if forecast.polishPastSweetSpot && p.isReady {
+                                    Text("Polish is past the sweet spot — further weeks buy little.")
+                                        .font(.caption).foregroundStyle(.orange)
+                                }
+                            }
+                            .padding(.top, 2)
+                        }
                         HStack {
                             Button("Launch \(p.title)") { store.perform { try $0.launchGame() } }
                                 .buttonStyle(.borderedProminent)
@@ -91,15 +106,39 @@ struct GamesView: View {
                         Text(r.title).font(.headline)
                         Text(r.verdict).font(.caption).padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Capsule().fill((r.review >= 85 ? Color.green : r.review < 55 ? Color.red : Color.gray).opacity(0.2)))
+                        if r.patched {
+                            Text("Patched").font(.caption2).foregroundStyle(.secondary)
+                        }
                         Spacer()
                         Text("Review \(r.review)").monospacedDigit()
                         Text("\(Format.money(r.weeklySales))/wk").monospacedDigit().frame(width: 100, alignment: .trailing)
                         Text("\(Format.money(r.lifetimeSales)) total").monospacedDigit().foregroundStyle(.secondary)
                             .frame(width: 120, alignment: .trailing)
+                        if g.canPatch(r, atWeek: state.week) {
+                            Button("Patch \(Format.money(g.patchCost(for: r)))") {
+                                store.perform { try $0.patchGame(r.id) }
+                            }
+                            .help("Day-one patch: bump the score and refresh sales within \(GamesStudio.patchWindowWeeks) weeks of launch")
+                        }
                     }
                 }
             }
         }
+    }
+
+    private func etaCaption(p: GameProject, forecast: GameLaunchForecast?) -> String? {
+        if p.isReady { return "Content complete" }
+        if let weeks = forecast?.weeksToReady {
+            return weeks == 0 ? "This week" : "~\(weeks) wk to ready"
+        }
+        return "Need more output"
+    }
+
+    private func polishCaption(p: GameProject, forecast: GameLaunchForecast?) -> String? {
+        if let forecast, p.isReady {
+            return forecast.polishPastSweetSpot ? "Diminishing returns" : "Keep polishing for a better review"
+        }
+        return nil
     }
 }
 

@@ -29,8 +29,9 @@ This document describes the design as it is implemented in `Sources/BootCore`. N
 
 ### Games: hit-driven and volatile
 - Projects come in three scopes (small, mid-size, blockbuster) with very different work and budgets.
-- Content progress and **polish** are tracked separately. You can launch once the content is done, or keep polishing for a better review.
+- Content progress and **polish** are tracked separately. You can launch once the content is done, or keep polishing for a better review. The studio UI (and `game` in the CLI) shows an **expected review range**, launch-week sales forecast, and weeks-to-ready ETA so the polish call is readable.
 - The **review score** drives a launch-week spike (cubic in the review), which then decays fast.
+- **Day-one patch:** within 12 weeks of launch, you can spend cash (4× the project's weekly budget) to bump the score and refresh fading sales. A flop rescued into a hit restores some fan trust.
 - **Fans** amplify future launches. **Fan trust** drops with every flop and only hits bring it back: the fanbase never forgets.
 
 ### Websites: an agency sim

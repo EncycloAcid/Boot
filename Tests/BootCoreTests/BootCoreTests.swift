@@ -116,6 +116,79 @@ final class LaneTests: XCTestCase {
         XCTAssertEqual(s.stats.releases, 1)
     }
 
+    func testGameForecastTracksPolishAndETA() throws {
+        var s = GameState(companyName: "T", founderName: "F", lane: .games, seed: 11)
+        try s.startGame(.small)
+        let early = try XCTUnwrap(s.gameForecast())
+        XCTAssertNotNil(early.weeksToReady)
+        XCTAssertGreaterThan(early.weeksToReady!, 0)
+        XCTAssertLessThan(early.expectedReview, 80)
+
+        while !(s.games?.project?.isReady ?? false) {
+            try s.advance()
+            if s.needsDecision { try s.choose(0) }
+        }
+        // Polish a bit past content-complete so the forecast moves.
+        for _ in 0..<6 {
+            try s.advance()
+            if s.needsDecision { try s.choose(0) }
+        }
+        let ready = try XCTUnwrap(s.gameForecast())
+        XCTAssertNil(ready.weeksToReady)
+        XCTAssertGreaterThan(ready.expectedReview, early.expectedReview)
+        XCTAssertGreaterThan(ready.expectedFirstWeekSales, early.expectedFirstWeekSales)
+        XCTAssertGreaterThanOrEqual(ready.reviewHigh, ready.reviewLow)
+    }
+
+    func testGamePatchBumpsReviewAndCostsCash() throws {
+        var s = GameState(companyName: "T", founderName: "F", lane: .games, seed: 3)
+        try s.startGame(.small)
+        while !(s.games?.project?.isReady ?? false) {
+            try s.advance()
+            if s.needsDecision { try s.choose(0) }
+        }
+        try s.launchGame()
+        let release = try XCTUnwrap(s.games?.releases.first)
+        let beforeReview = release.review
+        let beforeCash = s.cash
+        let cost = s.games!.patchCost(for: release)
+
+        try s.patchGame(release.id)
+        let patched = try XCTUnwrap(s.games?.releases.first)
+        XCTAssertTrue(patched.patched)
+        XCTAssertGreaterThan(patched.review, beforeReview)
+        XCTAssertEqual(s.cash, beforeCash - cost, accuracy: 0.01)
+        XCTAssertThrowsError(try s.patchGame(release.id))
+    }
+
+    func testGamePatchRejectsClosedWindow() throws {
+        var s = GameState(companyName: "T", founderName: "F", lane: .games, seed: 5)
+        try s.startGame(.small)
+        while !(s.games?.project?.isReady ?? false) {
+            try s.advance()
+            if s.needsDecision { try s.choose(0) }
+        }
+        try s.launchGame()
+        let id = try XCTUnwrap(s.games?.releases.first?.id)
+        for _ in 0..<(GamesStudio.patchWindowWeeks + 2) {
+            try s.advance()
+            while s.needsDecision { try s.choose(0) }
+            if s.isOver { break }
+        }
+        guard !s.isOver else { return }
+        XCTAssertThrowsError(try s.patchGame(id))
+    }
+
+    func testGameReleasePatchedDecodesFromLegacySave() throws {
+        // Old saves omit `patched`; decoding should default to false.
+        let json = """
+        {"id":1,"title":"Aster","scope":"small","week":10,"review":70,"weeklySales":1000,"lifetimeSales":5000}
+        """.data(using: .utf8)!
+        let release = try JSONDecoder().decode(GameRelease.self, from: json)
+        XCTAssertFalse(release.patched)
+        XCTAssertEqual(release.title, "Aster")
+    }
+
     func testAcceptingAContractPaysUpfront() throws {
         var s = GameState(companyName: "T", founderName: "F", lane: .websites, seed: 2)
         while s.web?.offers.isEmpty ?? true { try s.advance() }
