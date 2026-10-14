@@ -344,7 +344,18 @@ fun main() = application {
                                     CardBlock("PUBLISHING LABEL", "Sign promising indie games when publishing research is unlocked.") {
                                         if (Research.PUBLISHING !in state.researched) Text("Research the publishing label to unlock indie pitches.", color = muted)
                                         else if (g.pitches.isEmpty()) Text("No pitches are waiting right now.", color = muted)
-                                        else g.pitches.forEach { Text(it.toString(), color = muted) }
+                                        else g.pitches.forEach { pitch ->
+                                            Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(pitch.title + " · " + pitch.developer, style = MaterialTheme.typography.titleMedium)
+                                                Text(pitch.topic.title + " · " + pitch.genre.title + " · " + pitch.size.title + " · " + pitch.demoTitle, color = muted)
+                                                Text("Funding " + moneyDesktop(pitch.funding) + " · " + pitch.weeks + " weeks · label share " + (pitch.labelShare * 100).toInt() + "%", color = muted)
+                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Button(onClick = { perform("Signed " + pitch.title + " for the label.") { signPitch(pitch.id) } }, enabled = state.signBlocker(pitch.id) == null) { Text("Sign game") }
+                                                    OutlinedButton(onClick = { perform("Passed on " + pitch.title + ".") { passPitch(pitch.id) } }) { Text("Pass") }
+                                                }
+                                            }
+                                            HorizontalDivider(color = Color(0xFF354139))
+                                        }
                                     }
                                     CardBlock("RIVAL STUDIOS", "Competition changes the market and your opportunities.") {
                                         g.market.games.take(8).forEach { Text(it.toString(), color = muted) }
@@ -363,8 +374,8 @@ fun main() = application {
                                     MetricCard("ENGINE LEVEL", (g?.engines?.maxOfOrNull { it.level } ?: 0).toString(), "Best engine", Modifier.weight(1f))
                                 }
                                 CardBlock("RESEARCH TREE", "Unlock new genres, production sizes, tools and business capabilities.") {
-                                    Research.entries.filter { it !in state.researched && (it.kind == Research.Kind.STUDIO || it.kind == Research.Kind.ENGINE || it.kind == Research.Kind.COMPANY) }
-                                        .take(35).forEach { item ->
+                                    Research.entries.filter { it !in state.researched }
+                                        .forEach { item ->
                                             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                                                 Column(Modifier.weight(1f)) {
                                                     Text(item.title)
