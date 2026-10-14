@@ -43,6 +43,7 @@ import com.boot.core.FocusArea
 import com.boot.core.Fit
 import com.boot.core.Format
 import com.boot.core.GameProject
+import com.boot.core.GameSeason
 import com.boot.core.Genre
 import com.boot.core.Lane
 import com.boot.core.GameState
@@ -64,6 +65,7 @@ import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
+import com.boot.core.playtestGame
 import com.boot.core.sequelConcept
 import com.boot.core.setStageFocus
 import com.boot.core.gameTeam
@@ -303,6 +305,37 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 PointTile("Tech", p.tech, p.lastTech, colors.tech, state.week, Modifier.weight(1f))
                 PointTile("Bugs", p.bugs, p.lastBugs, colors.bad, state.week, Modifier.weight(1f))
             }
+            val testStage = if (p.isReady) 3 else p.stage
+            val testCost = p.concept.size.weeklyBudget * (1.5 + testStage * 0.5)
+            val alreadyTested = testStage in p.playtestedStages
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Quality assurance · ${stageLabels[testStage]}", style = MaterialTheme.typography.titleSmall)
+                    Hint(
+                        when {
+                            alreadyTested -> "This stage has been playtested. You can test again after reaching the next stage."
+                            state.cash < testCost -> "Playtesting costs ${Format.money(testCost)}; your current cash is too low."
+                            else -> "Find bugs early: a playtest removes up to 35% of current bugs and adds design/tech feedback."
+                        },
+                    )
+                }
+                PrimaryButton(
+                    if (alreadyTested) "Tested" else "Playtest · ${Format.money(testCost)}",
+                    { store.perform { playtestGame(team) } },
+                    enabled = !alreadyTested && state.cash >= testCost,
+                )
+            }
+            val season = GameSeason.forWeek(state.timelineWeek)
+            val seasonalDelta = ((season.launchMultiplier(c.genre) - 1.0) * 100).toInt()
+            Hint(
+                "Seasonal market · ${season.title}: ${season.marketTip} " +
+                    "A launch this week gets ${if (seasonalDelta > 0) "+" else ""}${seasonalDelta}% for ${c.genre.title}.",
+                if (seasonalDelta > 0) colors.good else if (seasonalDelta < 0) colors.warn else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (!p.isReady) {
                 val lean = p.projectedDesignShare()
                 val delta = p.designLeanDelta()
