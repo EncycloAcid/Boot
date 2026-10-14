@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,6 +38,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.boot.core.Format
@@ -85,9 +87,15 @@ private fun GameShell(
     }
 
     Box(Modifier.fillMaxSize()) {
-        // Full-bleed isometric office (Android Canvas sprites).
+        // Full-bleed isometric office — inset so top HUD never covers the room ridge.
         when (store.tab) {
-            Tab.OFFICE -> OfficeScene(state, store.playing, Modifier.fillMaxSize())
+            Tab.OFFICE -> OfficeScene(
+                state,
+                store.playing,
+                Modifier.fillMaxSize(),
+                // Keep the room ridge below Menu / bubbles / project card.
+                insetTop = if (state.games?.project != null) 168.dp else 120.dp,
+            )
             else -> {
                 // Soft cream world behind other tabs so chrome stays GDT-light.
                 Box(Modifier.fillMaxSize().background(Color(0xFFF4F1EA)))
@@ -123,7 +131,8 @@ private fun GameShell(
         FloatingNav(store, Modifier.align(Alignment.BottomCenter))
 
         if (toast != null) {
-            Box(Modifier.align(Alignment.TopCenter).padding(top = 88.dp)) {
+            // Sit under the center HUD stack so toasts never cover bubbles or the project card.
+            Box(Modifier.align(Alignment.TopCenter).padding(top = 210.dp)) {
                 ToastBanner(toast) { store.dismissNotice() }
             }
         }
@@ -147,7 +156,12 @@ private fun GdtHud(
 ) {
     val h = hudColors
     val project = state.games?.project
-    Box(Modifier.fillMaxSize().padding(18.dp)) {
+    // Side gutters reserve Menu + status pills; center stack is width-capped so nothing collides.
+    BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 20.dp)) {
+        val sideGutter = 168.dp
+        val centerMax = (maxWidth - sideGutter * 2).coerceIn(200.dp, 340.dp)
+        val bubbleSize = if (maxWidth < 960.dp) 46.dp else 50.dp
+
         // Top-left Menu
         Row(
             Modifier
@@ -172,9 +186,15 @@ private fun GdtHud(
                 Modifier
                     .align(Alignment.TopStart)
                     .padding(top = 52.dp)
-                    .widthIn(min = 200.dp),
+                    .widthIn(min = 200.dp, max = 240.dp),
             ) {
-                Text(state.companyName, style = MaterialTheme.typography.titleMedium, color = h.text)
+                Text(
+                    state.companyName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = h.text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Hint(state.office.title)
                 MacButton(
                     if (fullscreen) "Windowed (Esc)" else "Fullscreen (F11)",
@@ -191,67 +211,77 @@ private fun GdtHud(
             }
         }
 
-        // Resource bubbles — Design / Tech / Research / Bugs (or RP when idle)
-        Row(
-            Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            val design = project?.design?.toInt() ?: 0
-            val tech = project?.tech?.toInt() ?: 0
-            val bugs = project?.bugs?.toInt() ?: 0
-            ResourceBubble("$design", h.designBubble, "◇")
-            ResourceBubble("$tech", Color(0xFFFFCC00), "▣")
-            Spacer(Modifier.width(28.dp))
-            ResourceBubble("${state.researchPoints.toInt()}", h.research, "⚛")
-            ResourceBubble("$bugs", h.bugs, "!")
-        }
-
         val season = GameSeason.forWeek(state.week)
 
-        // Center project header + bars (when a game is in progress)
-        if (project != null) {
-            val lift = season.launchMultiplier(project.concept.genre)
-            val seasonPct = ((lift - 1) * 100).toInt()
-            val seasonLine = when {
-                lift > 1.0 -> "${season.title} · ${project.concept.genreTitle} +$seasonPct% demand"
-                lift < 1.0 -> "${season.title} · ${project.concept.genreTitle} $seasonPct% demand"
-                else -> "${season.title} · ${season.weeksLabel}"
+        // Center stack: bubbles then project card — one column so they never overlap each other or the side chrome.
+        Column(
+            Modifier
+                .align(Alignment.TopCenter)
+                .widthIn(max = centerMax)
+                .padding(horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                val design = project?.design?.toInt() ?: 0
+                val tech = project?.tech?.toInt() ?: 0
+                val bugs = project?.bugs?.toInt() ?: 0
+                ResourceBubble("$design", h.designBubble, "◇", size = bubbleSize)
+                ResourceBubble("$tech", Color(0xFFFFCC00), "▣", size = bubbleSize)
+                Spacer(Modifier.width(12.dp))
+                ResourceBubble("${state.researchPoints.toInt()}", h.research, "⚛", size = bubbleSize)
+                ResourceBubble("$bugs", h.bugs, "!", size = bubbleSize)
             }
-            GlassPanel(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 78.dp)
-                    .widthIn(max = 360.dp),
-            ) {
-                Text(project.title, style = MaterialTheme.typography.titleLarge, color = h.text, fontWeight = FontWeight.Bold)
-                Text(
-                    "${project.concept.topic.title} / ${project.concept.genreTitle}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = h.textDim,
-                )
-                Hint(seasonLine, if (lift >= 1.0) h.accent else h.textDim)
-                Spacer(Modifier.height(4.dp))
-                ProgressRow("Progress", project.completion.toFloat(), h.accent)
-                ProgressRow("Hype ${project.hype.toInt()}", (project.hype / 100.0).toFloat().coerceIn(0f, 1f), Color(0xFF6B7B3A))
-            }
-        } else if (store.tab == Tab.OFFICE) {
-            GlassPanel(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 78.dp)
-                    .widthIn(max = 320.dp),
-            ) {
-                Text(state.companyName, style = MaterialTheme.typography.titleLarge, color = h.text, fontWeight = FontWeight.Bold)
-                Hint("${state.world.era.title} · ${state.office.title}")
-                Hint("${season.title} · ${season.marketTip}", h.accent)
+            if (project != null) {
+                val lift = season.launchMultiplier(project.concept.genre)
+                val seasonPct = ((lift - 1) * 100).toInt()
+                val seasonLine = when {
+                    lift > 1.0 -> "${season.title} · ${project.concept.genreTitle} +$seasonPct% demand"
+                    lift < 1.0 -> "${season.title} · ${project.concept.genreTitle} $seasonPct% demand"
+                    else -> "${season.title} · ${season.weeksLabel}"
+                }
+                GlassPanel(Modifier.fillMaxWidth()) {
+                    Text(
+                        project.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = h.text,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${project.concept.topic.title} / ${project.concept.genreTitle}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = h.textDim,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Hint(seasonLine, if (lift >= 1.0) h.accent else h.textDim)
+                    Spacer(Modifier.height(4.dp))
+                    ProgressRow("Progress", project.completion.toFloat(), h.accent)
+                    ProgressRow("Hype ${project.hype.toInt()}", (project.hype / 100.0).toFloat().coerceIn(0f, 1f), Color(0xFF6B7B3A))
+                }
+            } else if (store.tab == Tab.OFFICE) {
+                GlassPanel(Modifier.widthIn(max = 280.dp)) {
+                    Text(
+                        state.companyName,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = h.text,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Hint("${state.world.era.title} · ${state.office.title}")
+                    Hint("${season.title} · ${season.marketTip}", h.accent)
+                }
             }
         }
 
-        // Top-right stacked pills
+        // Top-right stacked pills — fixed end column, never shares space with the center stack.
         Column(
-            Modifier.align(Alignment.TopEnd),
+            Modifier
+                .align(Alignment.TopEnd)
+                .widthIn(min = 120.dp, max = 180.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End,
         ) {

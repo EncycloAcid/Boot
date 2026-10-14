@@ -53,7 +53,7 @@ fun FloatingNav(store: DesktopStore, modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 20.dp),
+            .padding(start = 36.dp, end = 36.dp, top = 12.dp, bottom = 28.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Row(

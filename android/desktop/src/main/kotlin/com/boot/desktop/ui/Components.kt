@@ -67,9 +67,9 @@ fun StatusPill(
             .clip(PillShape)
             .background(h.glass)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Box(
             Modifier
@@ -80,7 +80,13 @@ fun StatusPill(
         ) {
             Text(icon, fontSize = 12.sp, color = iconTint)
         }
-        Text(label, style = MaterialTheme.typography.labelLarge, color = valueColor, fontWeight = FontWeight.SemiBold)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = valueColor,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
 
@@ -91,20 +97,29 @@ fun ResourceBubble(
     glyph: String,
     size: Dp = 56.dp,
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
-                .size(size)
-                .shadow(8.dp, CircleShape, clip = false)
-                .clip(CircleShape)
-                .background(fill)
-                .border(2.dp, Color.White.copy(alpha = 0.55f), CircleShape),
-            contentAlignment = Alignment.Center,
+    Box(
+        Modifier
+            .size(size)
+            .shadow(8.dp, CircleShape, clip = false)
+            .clip(CircleShape)
+            .background(fill)
+            .border(2.dp, Color.White.copy(alpha = 0.55f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Compact stack so glyph + value never clip inside the circle.
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(glyph, fontSize = 14.sp, color = Color.White.copy(alpha = 0.95f))
-                Text(value, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
-            }
+            Text(glyph, fontSize = (size.value * 0.22f).sp, color = Color.White.copy(alpha = 0.95f), lineHeight = (size.value * 0.24f).sp)
+            Text(
+                value,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = (size.value * 0.28f).sp,
+                lineHeight = (size.value * 0.3f).sp,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -199,4 +214,4 @@ fun ToastBanner(message: String, onDismiss: () -> Unit) {
     }
 }
 
-val ScreenPad = PaddingValues(start = 28.dp, end = 28.dp, top = 96.dp, bottom = 110.dp)
+val ScreenPad = PaddingValues(start = 32.dp, end = 32.dp, top = 128.dp, bottom = 124.dp)

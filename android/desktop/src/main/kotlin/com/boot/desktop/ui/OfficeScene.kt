@@ -262,13 +262,14 @@ private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolea
         }
         props.sortBy { it.depth }
         for (prop in props) prop.draw(this)
-        // GDT-style name labels, dashed selection, and idle work icons above heads.
+        // Labels / selection / work icons — only for occupied seats, kept clear of desks.
         room.seats.forEachIndexed { i, seat ->
             val worker = model.people.getOrNull(i) ?: return@forEachIndexed
             val label = model.labels.getOrNull(i) ?: return@forEachIndexed
-            val at = iso.p(seat.cx + 0.62f, seat.cy + 0.22f, 0.02f)
+            // Name sits in the open aisle in front of the chair — never on the desk top.
+            val labelY = if (seat.facing == Facing.FRONT) seat.cy - 0.62f else seat.cy + 0.62f
+            val at = iso.p(seat.cx, labelY, 0.02f)
             val layout = measurer.measure(label, nameStyle)
-            // Soft chalk shadow under the name.
             drawText(
                 layout,
                 topLeft = Offset(at.x - layout.size.width / 2f + 1f, at.y + 1f),
@@ -276,27 +277,29 @@ private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolea
             )
             drawText(layout, topLeft = Offset(at.x - layout.size.width / 2f, at.y))
             if (worker.founder) {
-                val c = iso.p(seat.cx, seat.cy)
+                // Tight ring under the chair only (does not spill onto the opposite desk).
+                val c = iso.p(seat.cx, seat.cy + if (seat.facing == Facing.FRONT) 0.04f else -0.04f)
                 withTransform({ scale(1f, 0.5f, pivot = c) }) {
                     drawCircle(
                         Color.White.copy(alpha = 0.95f),
-                        iso.t * 0.62f,
+                        iso.t * 0.34f,
                         c,
                         style = Stroke(
-                            width = 2.8f,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 7f), 0f),
+                            width = 2.2f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 5f), 0f),
                         ),
                     )
                 }
             }
-            // Idle activity bubble above the head (GDT work icons).
+            // Work bubble sits just above the crown — clear of wall plants and posters.
             val head = iso.head(seat)
-            val bubble = Offset(head.x, head.y - iso.t * 0.55f - (if (playing) sin((anim + i) * PI.toFloat() * 2f) * iso.t * 0.04f else 0f))
+            val bob = if (playing) sin((anim + i * 0.37f) * PI.toFloat() * 2f) * iso.t * 0.025f else 0f
+            val bubble = Offset(head.x, head.y - iso.t * 0.58f + bob)
             val iconBg = if (worker.founder) Color(0xFF1C1C1E) else Color.White
             val iconFg = if (worker.founder) Color.White else Color(0xFF34C759)
-            drawCircle(Color.Black.copy(alpha = 0.12f), iso.t * 0.2f, bubble + Offset(1.5f, 2f))
-            drawCircle(iconBg, iso.t * 0.18f, bubble)
-            drawCircle(iconFg, iso.t * 0.07f, bubble)
+            drawCircle(Color.Black.copy(alpha = 0.1f), iso.t * 0.13f, bubble + Offset(1f, 1.5f))
+            drawCircle(iconBg, iso.t * 0.12f, bubble)
+            drawCircle(iconFg, iso.t * 0.048f, bubble)
         }
         if (night) drawNightGlow(iso, room, model.people)
     }
@@ -559,7 +562,7 @@ private fun DrawScope.drawShell(iso: Iso, room: Room, model: SceneModel, p: Room
     drawFloor(iso, room, p)
     wallShade(iso, room, night)
     when (model.office) {
-        Office.APARTMENT -> sunOnFloor(iso, room, 1.5f, w - 0.6f, 0.75f, 1.65f, night)
+        Office.APARTMENT -> sunOnFloor(iso, room, 1.7f, w - 1.35f, 0.75f, 1.65f, night)
         Office.COWORKING -> {
             sunOnFloor(iso, room, 1.2f, 2.9f, 0.7f, 1.7f, night)
             sunOnFloor(iso, room, 3.4f, w - 0.5f, 0.7f, 1.7f, night)
@@ -584,11 +587,12 @@ private fun DrawScope.drawShell(iso: Iso, room: Room, model: SceneModel, p: Room
     val name = model.name
     when (model.office) {
         Office.APARTMENT -> {
-            rightWindow(iso, 1.35f, w - 0.45f, 0.7f, 1.72f, p, night, Outside.SKY)
-            // GDT clutter: studio name + two themed posters on the left wall.
-            leftSign(iso, name, d - 0.55f, 1.58f, p, measurer)
-            themedPoster(iso, 1.55f, 1.72f, Color(0xFF2B3A67), "SPACE", p, measurer)
-            themedPoster(iso, 2.55f, 1.72f, Color(0xFFC45C3E), "MARS", p, measurer)
+            // Poster bays on both sides of the window; right bay stays furniture-free (see furnish).
+            rightWindow(iso, 1.7f, w - 1.35f, 0.72f, 1.7f, p, night, Outside.SKY)
+            rightWallPoster(iso, 0.22f, 1.7f, Color(0xFF2B3A67), "SPACE", p, measurer, scale = 0.85f)
+            rightWallPoster(iso, w - 1.05f, 1.7f, Color(0xFFC45C3E), "MARS", p, measurer, scale = 0.85f)
+            // Studio name alone on the left wall, forward of the couch bay.
+            leftSign(iso, name.take(12), d - 0.32f, 1.52f, p, measurer)
         }
         Office.COWORKING -> {
             rightWindow(iso, 1.2f, 2.9f, 0.7f, 1.7f, p, night, Outside.SKY)
@@ -852,24 +856,46 @@ private fun DrawScope.themedPoster(
     p: RoomPalette,
     measurer: TextMeasurer,
 ) {
-    onLeftWall(iso, yStart, z) {
-        val pw = iso.t * 0.95f
-        val ph = iso.t * 1.2f
-        drawRoundRect(p.frame, Offset(-iso.t * 0.06f, -iso.t * 0.06f), Size(pw + iso.t * 0.12f, ph + iso.t * 0.12f), CornerRadius(iso.t * 0.04f))
-        drawRect(Brush.verticalGradient(listOf(tint.shade(1.15f), tint.shade(0.75f)), 0f, ph), Offset.Zero, Size(pw, ph))
-        // Simple planet / horizon graphic.
-        drawCircle(Color.White.copy(alpha = 0.9f), pw * 0.22f, Offset(pw * 0.5f, ph * 0.38f))
-        drawCircle(tint.shade(0.55f).copy(alpha = 0.55f), pw * 0.22f, Offset(pw * 0.58f, ph * 0.38f))
-        drawRect(Color.White.copy(alpha = 0.2f), Offset(pw * 0.1f, ph * 0.62f), Size(pw * 0.8f, ph * 0.04f))
-        val style = TextStyle(
-            fontSize = (iso.t * 0.22f).toSp(),
-            fontWeight = FontWeight.Black,
-            color = Color.White,
-            letterSpacing = 1.2.sp,
-        )
-        val layout = measurer.measure(caption, style)
-        drawText(layout, topLeft = Offset((pw - layout.size.width) / 2f, ph * 0.72f))
-    }
+    onLeftWall(iso, yStart, z) { drawPosterFace(iso, tint, caption, p, measurer) }
+}
+
+/** Poster on the back-right wall (y = 0), [x] is the left edge along the wall. */
+private fun DrawScope.rightWallPoster(
+    iso: Iso,
+    x: Float,
+    z: Float,
+    tint: Color,
+    caption: String,
+    p: RoomPalette,
+    measurer: TextMeasurer,
+    scale: Float = 1f,
+) {
+    onRightWall(iso, x, z) { drawPosterFace(iso, tint, caption, p, measurer, scale) }
+}
+
+private fun DrawScope.drawPosterFace(
+    iso: Iso,
+    tint: Color,
+    caption: String,
+    p: RoomPalette,
+    measurer: TextMeasurer,
+    scale: Float = 1f,
+) {
+    val pw = iso.t * 0.72f * scale
+    val ph = iso.t * 0.92f * scale
+    drawRoundRect(p.frame, Offset(-iso.t * 0.04f, -iso.t * 0.04f), Size(pw + iso.t * 0.08f, ph + iso.t * 0.08f), CornerRadius(iso.t * 0.04f))
+    drawRect(Brush.verticalGradient(listOf(tint.shade(1.12f), tint.shade(0.72f)), 0f, ph), Offset.Zero, Size(pw, ph))
+    drawCircle(Color.White.copy(alpha = 0.9f), pw * 0.18f, Offset(pw * 0.5f, ph * 0.34f))
+    drawCircle(tint.shade(0.55f).copy(alpha = 0.55f), pw * 0.18f, Offset(pw * 0.58f, ph * 0.34f))
+    drawRect(Color.White.copy(alpha = 0.2f), Offset(pw * 0.14f, ph * 0.58f), Size(pw * 0.72f, ph * 0.03f))
+    val style = TextStyle(
+        fontSize = (iso.t * 0.16f * scale).toSp(),
+        fontWeight = FontWeight.Black,
+        color = Color.White,
+        letterSpacing = 0.8.sp,
+    )
+    val layout = measurer.measure(caption, style)
+    drawText(layout, topLeft = Offset((pw - layout.size.width) / 2f, ph * 0.68f))
 }
 
 private fun DrawScope.whiteboard(iso: Iso, yStart: Float, p: RoomPalette) {
@@ -955,12 +981,10 @@ private fun furnish(props: MutableList<Prop>, iso: Iso, room: Room, model: Scene
     val items = mutableListOf<WallItem>()
     val leftItems = mutableListOf<WallItem>()
     if (model.office == Office.APARTMENT) {
-        leftItems += WallItem(1.5f) { couch(it, p) }
-        // Always dress the starter office like the GDT reference — cooler, books, coffee, microwave.
-        items += WallItem(0.45f) { waterCooler(it) }
-        items += WallItem(0.9f) { bookshelf(it, p) }
-        items += WallItem(0.95f) { coffee(it, p, anim) }
-        items += WallItem(0.55f) { microwaveCart(it, p) }
+        // Couch on left; bookshelf + cooler only under the window (MARS bay stays empty).
+        leftItems += WallItem(1.35f) { couch(it, p) }
+        items += WallItem(0.75f) { bookshelf(it, p) }
+        items += WallItem(0.38f) { waterCooler(it) }
     }
     if (Perk.COFFEE in perks && model.office != Office.APARTMENT) items += WallItem(0.95f) { coffee(it, p, anim) }
     if (Perk.LIBRARY in perks && model.office != Office.APARTMENT) items += WallItem(0.9f) { bookshelf(it, p) }
@@ -973,39 +997,42 @@ private fun furnish(props: MutableList<Prop>, iso: Iso, room: Room, model: Scene
     if (model.servers) leftItems += WallItem(0.55f) { serverRack(it, anim) }
 
     // Along the right wall from the corner, then down the left wall; whatever doesn't fit moves over.
-    var x = 1.3f
-    var y = 1.15f
-    val rightEnd = room.w - 0.15f
-    val leftEnd = room.d - 0.1f
+    // Apartment: props live only under the window — never into the MARS poster bay at the far right.
+    var x = if (model.office == Office.APARTMENT) 1.75f else 1.3f
+    var y = 1.25f
+    val rightEnd = if (model.office == Office.APARTMENT) room.w - 1.2f else room.w - 0.25f
+    val leftEnd = room.d - 0.25f
     fun place(item: WallItem, preferLeft: Boolean) {
+        val gap = 0.18f
         val fitsRight = x + item.len <= rightEnd
         val fitsLeft = y + item.len <= leftEnd
         val left = if (preferLeft) fitsLeft || !fitsRight else !fitsRight && fitsLeft
         if (left && fitsLeft) {
             val spot = Spot(iso, true, y, item.len)
             props += Prop(spot.depth) { item.draw(this, spot) }
-            y += item.len + 0.12f
+            y += item.len + gap
         } else if (fitsRight) {
             val spot = Spot(iso, false, x, item.len)
             props += Prop(spot.depth) { item.draw(this, spot) }
-            x += item.len + 0.12f
+            x += item.len + gap
         }
     }
     leftItems.forEach { place(it, preferLeft = true) }
     items.forEach { place(it, preferLeft = false) }
 
-    // Plants in the corners — apartment always gets a second plant for depth.
-    val plants = mutableListOf(0.45f to 0.45f)
-    if (model.office == Office.APARTMENT) {
-        plants += room.w - 0.42f to room.d - 0.42f
-    }
+    // Single back-corner plant, tucked clear of seats / work bubbles.
+    val plants = mutableListOf(0.38f to 0.38f)
     if (Perk.PLANTS in perks) {
-        plants += room.w - 0.4f to Y0 + 0.2f
-        plants += 0.4f to room.d - 0.45f
-        plants += room.w - 0.35f to room.d - 0.4f
+        plants += 0.38f to room.d - 0.45f
+        if (model.office != Office.APARTMENT) {
+            plants += room.w - 0.4f to Y0 + 0.2f
+            plants += room.w - 0.35f to room.d - 0.4f
+        }
     }
     if (model.office == Office.CAMPUS) plants += room.w - 0.4f to room.d / 2
-    for ((px, py) in plants.distinct()) props += Prop(px + py) { plant(iso, px, py, p, big = model.office >= Office.STUDIO) }
+    for ((px, py) in plants.distinct()) {
+        props += Prop(px + py) { plant(iso, px, py, p, big = model.office >= Office.STUDIO) }
+    }
 }
 
 private fun DrawScope.microwaveCart(s: Spot, p: RoomPalette) {
