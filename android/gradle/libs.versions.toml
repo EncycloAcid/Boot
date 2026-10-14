@@ -11,6 +11,8 @@ lifecycle = "2.10.0"
 coreKtx = "1.18.0"
 junit = "4.13.2"
 robolectric = "4.16.1"
+# Compose Multiplatform Desktop (Windows / macOS / Linux). Keep Kotlin plugin + CMP aligned.
+composeMultiplatform = "1.9.3"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
@@ -35,3 +37,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
