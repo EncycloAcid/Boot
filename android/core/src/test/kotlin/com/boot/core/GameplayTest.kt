@@ -1338,3 +1338,60 @@ class RatingTest {
         assertTrue(next.score > hit.score - 2.5)
     }
 }
+
+class GamePlaytestTest {
+    private fun newProject(): GameState {
+        val s = GameState.create("Test Studio", "Founder", Lane.GAMES, 918L)
+        s.cash = 1_000_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        s.startGame(GameConcept("Test Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL), evenFocus())
+        return s
+    }
+
+    @Test
+    fun playtestCostsMoneyImprovesBuildAndCanOnlyBeUsedOncePerStage() {
+        val s = newProject()
+        val p = s.games!!.project!!
+        p.bugs = 20.0
+        val cash = s.cash
+        val design = p.design
+        val tech = p.tech
+
+        s.playtestGame()
+
+        assertTrue(s.cash < cash)
+        assertTrue(p.bugs < 20.0)
+        assertTrue(p.design > design)
+        assertTrue(p.tech > tech)
+        assertTrue(0 in p.playtestedStages)
+        assertFailsWith<GameException> { s.playtestGame() }
+    }
+
+    @Test
+    fun playtestStageAndCostPersistAcrossSaves() {
+        val s = newProject()
+        s.playtestGame()
+        val restored = GameState.decode(s.encode())
+        assertTrue(0 in restored.games!!.project!!.playtestedStages)
+        assertFailsWith<GameException> { restored.playtestGame() }
+    }
+}
+ 
+class GameSeasonTest {
+    @Test
+    fun seasonCalendarRepeatsEveryYear() {
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(1))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(13))
+        assertEquals(GameSeason.SUMMER, GameSeason.forWeek(14))
+        assertEquals(GameSeason.AUTUMN, GameSeason.forWeek(27))
+        assertEquals(GameSeason.WINTER, GameSeason.forWeek(40))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(53))
+    }
+    @Test
+    fun seasonalDemandRewardsFeaturedGenres() {
+        assertTrue(GameSeason.SUMMER.launchMultiplier(Genre.ACTION) > GameSeason.SUMMER.launchMultiplier(Genre.CASUAL))
+        assertTrue(GameSeason.AUTUMN.launchMultiplier(Genre.HORROR) > 1.0)
+        assertTrue(GameSeason.WINTER.launchMultiplier(Genre.RPG) > 1.0)
+    }
+}
