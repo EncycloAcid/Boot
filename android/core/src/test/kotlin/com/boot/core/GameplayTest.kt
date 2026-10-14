@@ -1343,6 +1343,8 @@ class GamePlaytestTest {
     private fun newProject(): GameState {
         val s = GameState.create("Test Studio", "Founder", Lane.GAMES, 918L)
         s.cash = 1_000_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
         s.startGame(GameConcept("Test Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL), evenFocus())
         return s
     }
