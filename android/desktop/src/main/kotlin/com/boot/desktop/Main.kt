@@ -115,7 +115,7 @@ fun main() = application {
                                 Text(page.label, style = MaterialTheme.typography.headlineMedium)
                                 Text("Build a studio, make games, learn from the market.", color = muted)
                             }
-                            Text("SPRING · " + GameSeason.forWeek(state.week + 1).title.uppercase(), color = mint, style = MaterialTheme.typography.labelLarge)
+                            Text("SEASON · " + GameSeason.forWeek(state.week + 1).title.uppercase(), color = mint, style = MaterialTheme.typography.labelLarge)
                         }
                         when (page) {
                             DesktopPage.OVERVIEW -> {
@@ -130,7 +130,7 @@ fun main() = application {
                                     Text("Featured genres receive +18% launch demand, the runner-up +8%, other genres -4%.", color = muted)
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                                    CardBlock("GAME DEVELOPMENT", Modifier.weight(1f)) {
+                                    CardBlock("GAME DEVELOPMENT", modifier = Modifier.weight(1f)) {
                                         val p = state.games?.project
                                         if (p == null) {
                                             Text("No game in production.", color = muted)
@@ -143,7 +143,7 @@ fun main() = application {
                                             Button(onClick = { page = DesktopPage.MAKE }) { Text("Open project") }
                                         }
                                     }
-                                    CardBlock("WEEKLY FINANCES", Modifier.weight(1f)) {
+                                    CardBlock("WEEKLY FINANCES", modifier = Modifier.weight(1f)) {
                                         ValueLine("Estimated weekly burn", moneyDesktop(state.weeklyBurn))
                                         ValueLine("Runway", if (state.runwayWeeks.isInfinite()) "No projected burn" else state.runwayWeeks.toInt().toString() + " weeks")
                                         ValueLine("Studio valuation", moneyDesktop(state.valuation))
@@ -313,7 +313,7 @@ fun main() = application {
                                         else g.pitches.forEach { Text(it.toString(), color = muted) }
                                     }
                                     CardBlock("RIVAL STUDIOS", "Competition changes the market and your opportunities.") {
-                                        g.market.rivals.take(8).forEach { Text(it.toString(), color = muted) }
+                                        g.market.games.take(8).forEach { Text(it.toString(), color = muted) }
                                     }
                                     CardBlock("CONTRACT & PUBLISHER PIPELINE", "Optional work for cash, or publisher advances for a larger project.") {
                                         Text("Open the Make page to accept currently available contracts and publisher offers.", color = muted)
@@ -404,7 +404,7 @@ fun main() = application {
                                 CardBlock("COMPANY SETTINGS", "A few decisions have effects across the entire studio.") {
                                     FieldLabel("Company name")
                                     OutlinedTextField(rename, { rename = it }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                                    Button(onClick = { perform("Company renamed.") { rename(rename) } }) { Text("Rename company") }
+                                    Button(onClick = { perform("Company renamed.") { this.rename(rename) } }) { Text("Rename company") }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Column(Modifier.weight(1f)) {
                                             Text("Crunch mode")
@@ -544,9 +544,6 @@ private fun CardBlock(title: String, subtitle: String = "", modifier: Modifier =
     }
 }
 
-@Composable
-private fun CardBlock(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) =
-    CardBlock(title, subtitle, Modifier.fillMaxWidth(), content)
 
 @Composable
 private fun FieldLabel(label: String) { Text(label, style = MaterialTheme.typography.labelLarge, color = muted) }
