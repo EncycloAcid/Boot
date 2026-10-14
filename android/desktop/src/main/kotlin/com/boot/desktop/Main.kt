@@ -819,7 +819,7 @@ fun main() = application {
                                                 Text(candidate.name + " · " + candidate.role.title)
                                                 Text("Skill " + candidate.skill + " · " + moneyDesktop(candidate.askingSalary) + "/week · hiring fee " + moneyDesktop(candidate.askingSalary * 2), color = muted)
                                             }
-                                            Button(onClick = { perform("Hired " + candidate.name) { hire(candidate.id, Lane.GAMES) }, enabled = state.cash >= candidate.askingSalary * 2 && state.freeDesks > 0) { Text("Hire for Games") }
+                                            Button(onClick = { perform("Hired " + candidate.name) { hire(candidate.id, Lane.GAMES) } }, enabled = state.cash >= candidate.askingSalary * 2 && state.freeDesks > 0) { Text("Hire for Games") }
                                         }
                                     }
                                 }
