@@ -140,12 +140,7 @@ fun main() = application {
                             border = BorderStroke(1.dp, borderLine),
                         ) {
                             Row(Modifier.padding(13.dp), horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    Modifier.size(36.dp).clip(RoundedCornerShape(11.dp)).background(mint.copy(alpha = 0.13f)),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(state.companyName.take(1).uppercase(Locale.US), color = mint, fontWeight = FontWeight.Bold)
-                                }
+                                FounderPortrait(state, size = 42.dp)
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(state.companyName, style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text("FOUNDER · " + state.founder.name, style = MaterialTheme.typography.labelSmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -314,6 +309,7 @@ fun main() = application {
                                 }
                             }
                             DesktopPage.OVERVIEW -> {
+                                StudioOfficeCard(state) { page = DesktopPage.TEAM }
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                                     MetricCard("CASH ON HAND", moneyDesktop(state.cash), "Current studio balance", Modifier.weight(1f))
                                     MetricCard("WEEK", state.week.toString(), state.dateLabel, Modifier.weight(1f))
@@ -968,7 +964,8 @@ fun main() = application {
                                     ValueLine("Office", state.office.title + " · " + state.freeDesks + " free desks")
                                     if (state.staff.isEmpty()) Text("You're working solo. Hire specialists when you can afford them.", color = muted)
                                     state.staff.forEach { employee ->
-                                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            StaffPortrait(employee, size = 44.dp)
                                             Column(Modifier.weight(1f)) {
                                                 Text(employee.name + " · " + employee.role.title)
                                                 Text("Skill " + employee.skill + " · " + moneyDesktop(employee.salary) + "/week · " + (employee.lane?.title ?: "Unassigned"), color = muted)
@@ -980,7 +977,8 @@ fun main() = application {
                                 CardBlock("CANDIDATES", "Choose people who match the work you want to do.") {
                                     if (state.candidates.isEmpty()) Text("No candidates available this week. Advance the calendar to refresh the pool.", color = muted)
                                     state.candidates.take(12).forEach { candidate ->
-                                        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            CandidatePortrait(candidate.id, size = 42.dp)
                                             Column(Modifier.weight(1f)) {
                                                 Text(candidate.name + " · " + candidate.role.title)
                                                 Text("Skill " + candidate.skill + " · " + moneyDesktop(candidate.askingSalary) + "/week · hiring fee " + moneyDesktop(candidate.askingSalary * 2), color = muted)
@@ -1260,6 +1258,80 @@ private fun NavigationButton(label: String, selected: Boolean, onClick: () -> Un
             Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = if (selected) Color.White else muted, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (selected) Text("•", color = mint, style = MaterialTheme.typography.titleSmall)
         }
+    }
+}
+
+@Composable
+private fun StudioOfficeCard(state: GameState, onTeamClick: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(310.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(panelRaised),
+    ) {
+        OfficeScene(state, playing = true, modifier = Modifier.fillMaxSize(), insetTop = 40.dp)
+        Row(
+            Modifier.align(Alignment.TopStart).padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SceneBadge(state.office.title.uppercase(Locale.US), mint)
+            SceneBadge("${state.staff.size}/${state.office.desks} DESKS", sky)
+        }
+        Surface(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(14.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = canvas.copy(alpha = 0.88f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        ) {
+            Row(
+                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("YOUR STUDIO FLOOR", color = mint, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.1.sp)
+                    val project = state.games?.project
+                    Text(
+                        project?.let { "${it.title} is in production" } ?: "${state.companyName} is ready for work",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        project?.let { "${it.concept.topic.title} ${it.concept.genreTitle} · ${(it.completion * 100).toInt()}% complete" }
+                            ?: "Meet the team, improve the office, and start your next project.",
+                        color = muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                OutlinedButton(onClick = onTeamClick, shape = RoundedCornerShape(12.dp)) {
+                    Text("Manage team")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SceneBadge(text: String, tint: Color) {
+    Surface(
+        shape = CircleShape,
+        color = panel.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+    ) {
+        Text(
+            text,
+            Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            color = tint,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.3.sp,
+        )
     }
 }
 
