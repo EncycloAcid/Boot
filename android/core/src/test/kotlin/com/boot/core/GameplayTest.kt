@@ -1338,3 +1338,40 @@ class RatingTest {
         assertTrue(next.score > hit.score - 2.5)
     }
 }
+
+class GamePlaytestTest {
+    private fun newProject(): GameState {
+        val s = GameState.create("Test Studio", "Founder", Lane.GAMES, 918L)
+        s.cash = 1_000_000.0
+        s.startGame(GameConcept("Test Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL), evenFocus())
+        return s
+    }
+
+    @Test
+    fun playtestCostsMoneyImprovesBuildAndCanOnlyBeUsedOncePerStage() {
+        val s = newProject()
+        val p = s.games!!.project!!
+        p.bugs = 20.0
+        val cash = s.cash
+        val design = p.design
+        val tech = p.tech
+
+        s.playtestGame()
+
+        assertTrue(s.cash < cash)
+        assertTrue(p.bugs < 20.0)
+        assertTrue(p.design > design)
+        assertTrue(p.tech > tech)
+        assertTrue(0 in p.playtestedStages)
+        assertFailsWith<GameException> { s.playtestGame() }
+    }
+
+    @Test
+    fun playtestStageAndCostPersistAcrossSaves() {
+        val s = newProject()
+        s.playtestGame()
+        val restored = GameState.decode(s.encode())
+        assertTrue(0 in restored.games!!.project!!.playtestedStages)
+        assertFailsWith<GameException> { restored.playtestGame() }
+    }
+}
