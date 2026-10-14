@@ -135,6 +135,37 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
     )
 }
 
+/**
+ * Spend money on a focused playtest. It finds real bugs and gives the team feedback before launch.
+ * Each development stage can be tested once, so testing is a strategic choice rather than a free button.
+ */
+fun GameState.playtestGame(team: Int = 1) {
+    val g = studio()
+    val p = g.projectOf(team) ?: throw invalid("Nothing in development to playtest.")
+    val stage = if (p.isReady) 3 else p.stage
+    if (stage in p.playtestedStages) throw busy("You've already playtested ${p.title} during this stage.")
+    val cost = p.concept.size.weeklyBudget * (1.5 + stage * 0.5)
+    if (cash < cost) throw insufficientFunds("A playtest costs ${money(cost)}. You have ${money(cash)}.")
+    spend(cost, Lane.GAMES)
+    val bugsBefore = p.bugs
+    val fixed = minOf(p.bugs, maxOf(1.0, p.bugs * 0.35))
+    p.bugs = (p.bugs - fixed).coerceAtLeast(0.0)
+    // Feedback turns into better decisions, represented by small, tangible design and tech gains.
+    p.design += p.work * 0.015
+    p.tech += p.work * 0.01
+    p.playtestedStages.add(stage)
+    val stageName = when (stage) {
+        0 -> "foundations"
+        1 -> "content"
+        2 -> "presentation"
+        else -> "final polish"
+    }
+    addLog(
+        "Playtested ${p.title} during $stageName: fixed ${Format.count(fixed)} bugs and improved the build's design and tech. " +
+            "Cost ${money(cost)}${if (bugsBefore < 1.0) ". Few bugs were found, but feedback still improved the build." else "."},
+        LogTone.GOOD, Lane.GAMES,
+    )
+}
 /** Set how the team splits its time in one stage. Values are relative weights. */
 fun GameState.setStageFocus(stage: Int, allocation: List<Double>, team: Int = 1) {
     val p = studio().projectOf(team) ?: throw invalid("Nothing in development.")
