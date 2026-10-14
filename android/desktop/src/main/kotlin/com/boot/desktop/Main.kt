@@ -39,6 +39,10 @@ fun main() = application {
         var audience by remember { mutableStateOf(Audience.EVERYONE) }
         var size by remember { mutableStateOf(GameSize.SMALL) }
         var price by remember { mutableStateOf(PriceTier.STANDARD) }
+        var secondGenre by remember { mutableStateOf<Genre?>(null) }
+        var selectedPlatforms by remember { mutableStateOf(listOf(Platform.PC)) }
+        var liveService by remember { mutableStateOf(false) }
+        var sequelOf by remember { mutableStateOf<Int?>(null) }
         var focusStage by remember { mutableIntStateOf(0) }
         var focusValues by remember { mutableStateOf(listOf(0.6f, 0.6f, 0.6f)) }
         var rename by remember { mutableStateOf("Boot Studio") }
@@ -167,8 +171,10 @@ fun main() = application {
                                 val studio = state.games
                                 val project = studio?.project
                                 val project2 = studio?.project2
-                                if (project == null) {
-                                    CardBlock("DESIGN A GAME", "Choose a concept before committing the team's time and budget.") {
+                                if (project == null || (Research.SECOND_TEAM in state.researched && project2 == null)) {
+                                    if (project != null) DevelopmentPanel(state, project, 1, notice, ::perform, focusStage, { focusStage = it }, focusValues, { focusValues = it })
+                                    val targetTeam = if (project == null) 1 else 2
+                                    CardBlock(if (targetTeam == 1) "DESIGN A GAME" else "DESIGN A GAME · TEAM 2", "Choose a concept before committing the team's time and budget.") {
                                         FieldLabel("Game title")
                                         OutlinedTextField(projectTitle, { projectTitle = it }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -180,22 +186,46 @@ fun main() = application {
                                             EnumPicker("Size", state.unlockedSizes, size, { size = it }, Modifier.weight(1f)) { it.title }
                                             EnumPicker("Price", PriceTier.entries, price, { price = it }, Modifier.weight(1f)) { it.title }
                                         }
+                                        if (Research.MULTI_GENRE in state.researched) {
+                                            EnumPicker("Second genre (optional)", listOf(null) + Genre.entries.filter { it != genre }, secondGenre, { secondGenre = it }, Modifier.fillMaxWidth()) { it?.title ?: "Single genre" }
+                                        }
+                                        Text("Target platforms", style = MaterialTheme.typography.titleMedium)
+                                        state.platformsOnSale.take(10).forEach { platform ->
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Checkbox(
+                                                    checked = platform in selectedPlatforms,
+                                                    enabled = platform in selectedPlatforms || selectedPlatforms.size == 1 || Research.MULTI_PLATFORM in state.researched,
+                                                    onCheckedChange = { checked -> selectedPlatforms = if (checked) (selectedPlatforms + platform).distinct() else (selectedPlatforms - platform).ifEmpty { listOf(Platform.PC) } },
+                                                )
+                                                Text(platform.title + if (platform.fee > 0) " · licence " + moneyDesktop(platform.fee) else "", color = muted)
+                                            }
+                                        }
+                                        if (Research.LIVE_SERVICE in state.researched) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Checkbox(checked = liveService, onCheckedChange = { liveService = it })
+                                                Column {
+                                                    Text("Live-service game")
+                                                    Text("Recurring seasons and player spending; ongoing server costs.", color = muted, style = MaterialTheme.typography.bodySmall)
+                                                }
+                                            }
+                                        }
                                         val concept = GameConcept(
                                             title = projectTitle.ifBlank { "Untitled Project" }.trim(),
-                                            topic = topic, genre = genre, audience = audience,
-                                            platforms = listOf(Platform.PC), size = size, price = price,
+                                            topic = topic, genre = genre, genre2 = secondGenre, audience = audience,
+                                            platforms = selectedPlatforms, size = size, price = price,
                                             engineId = studio?.engines?.maxByOrNull { it.level }?.id ?: 0,
+                                            sequelOf = sequelOf, live = liveService,
                                         )
-                                        val blocker = state.conceptBlocker(concept)
+                                        val blocker = state.conceptBlocker(concept, team = targetTeam)
                                         Text("Target platform: PC · " + state.estimatedWeeks(concept) + " estimated weeks", color = muted)
                                         Text("Budget: " + moneyDesktop(size.weeklyBudget) + "/week · " + moneyDesktop(size.weeklyBudget * 4) + " first-month planning cost", color = muted)
                                         if (blocker != null) Text(blocker, color = Color(0xFFFFD18A))
                                         Button(
-                                            onClick = { perform("Started " + concept.title + ".") { startGame(concept) } },
+                                            onClick = { perform("Started " + concept.title + " for team " + targetTeam + ".") { startGame(concept, team = targetTeam) }; sequelOf = null },
                                             enabled = blocker == null,
                                         ) { Text("Start development") }
                                     }
-                                    if (studio?.contractOffers?.isNotEmpty() == true) {
+                                    if (project == null && project2 == null && studio?.contractOffers?.isNotEmpty() == true) {
                                         CardBlock("CONTRACT WORK", "Side jobs can keep cash flowing between releases.") {
                                             studio.contractOffers.take(4).forEach { offer ->
                                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -208,7 +238,7 @@ fun main() = application {
                                             }
                                         }
                                     }
-                                    if (studio?.dealOffers?.isNotEmpty() == true) {
+                                    if (project == null && project2 == null && studio?.dealOffers?.isNotEmpty() == true) {
                                         CardBlock("PUBLISHER OFFERS", "An advance now in exchange for a share of sales.") {
                                             studio.dealOffers.take(4).forEach { offer ->
                                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -276,9 +306,13 @@ fun main() = application {
                                                             projectTitle = sequel.title
                                                             topic = sequel.topic
                                                             genre = sequel.genre
+                                                            secondGenre = sequel.genre2
                                                             size = sequel.size
                                                             audience = sequel.audience
                                                             price = sequel.price
+                                                            selectedPlatforms = sequel.platforms
+                                                            sequelOf = sequel.sequelOf
+                                                            liveService = sequel.live
                                                             page = DesktopPage.MAKE
                                                             notice = "Sequel concept loaded into the designer."
                                                         }
