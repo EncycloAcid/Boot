@@ -29,7 +29,7 @@ This document describes the design as it is implemented in `Sources/BootCore`. N
 
 ### Games: hit-driven and volatile
 - Projects come in three scopes (small, mid-size, blockbuster) with very different work and budgets.
-- Content progress and **polish** are tracked separately. You can launch once the content is done, or keep polishing for a better review.
+- Content progress and **polish** are tracked separately. You can launch once the content is done, or keep polishing for a better review. While a game is in development, choose a focus each week: balanced progress, gameplay, visuals, performance, or more content. Content-first moves faster but ships rougher; visuals-first takes longer but builds polish. The focus can be changed any week.
 - The **review score** drives a launch-week spike (cubic in the review), which then decays fast.
 - **Fans** amplify future launches. **Fan trust** drops with every flop and only hits bring it back: the fanbase never forgets.
 
