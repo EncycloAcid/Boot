@@ -1391,7 +1391,7 @@ class GameSeasonTest {
     @Test
     fun seasonalDemandRewardsFeaturedGenres() {
         assertTrue(GameSeason.SUMMER.launchMultiplier(Genre.ACTION) > GameSeason.SUMMER.launchMultiplier(Genre.CASUAL))
-        assertTrue(GameSeason.AUTUMN.launchMultiplier(Genre.HORROR) > 1.0)
+        assertTrue(GameSeason.AUTUMN.launchMultiplier(Genre.STRATEGY) > 1.0)
         assertTrue(GameSeason.WINTER.launchMultiplier(Genre.RPG) > 1.0)
     }
 }
