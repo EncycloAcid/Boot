@@ -25,7 +25,7 @@ private val muted = Color(0xFFB7C1BA)
 
 private enum class DesktopPage(val label: String) {
     OVERVIEW("Overview"), MAKE("Make"), GAMES("Games"), BUSINESSES("Businesses"), MARKET("Market"),
-    TECH("Tech & Research"), TEAM("Team"), COMPANY("Company"), NEWS("News")
+    TECH("Tech & Research"), STRATEGY("Strategy"), TEAM("Team"), COMPANY("Company"), NEWS("News")
 }
 
 fun main() = application {
@@ -47,6 +47,10 @@ fun main() = application {
         var deviceTier by remember { mutableStateOf(DeviceTier.FLAGSHIP) }
         var trainingSize by remember { mutableStateOf(TrainingSize.SMALL) }
         var aiProduct by remember { mutableStateOf(AIProduct.CHATBOT) }
+        var osTarget by remember { mutableStateOf(OsTarget.PC) }
+        var strategyRegion by remember { mutableStateOf(Region.NORTH_AMERICA) }
+        var allianceKind by remember { mutableStateOf(AllianceKind.DISTRIBUTION) }
+        var allianceLane by remember { mutableStateOf(Lane.GAMES) }
         var focusStage by remember { mutableIntStateOf(0) }
         var focusValues by remember { mutableStateOf(listOf(0.6f, 0.6f, 0.6f)) }
         var rename by remember { mutableStateOf("Boot Studio") }
@@ -492,6 +496,39 @@ fun main() = application {
                                                         lab.onMarket?.let { ValueLine("On sale", it.name + " · " + it.unitsSold + " units sold") }
                                                     }
                                                 }
+                                                Lane.OS -> {
+                                                    val lab = state.os
+                                                    if (lab != null) {
+                                                        ValueLine("Platform Lab", "OS releases " + lab.versionsShipped)
+                                                        ValueLine("OEM trust", (lab.oemTrust * 100).toInt().toString() + "%")
+                                                        ValueLine("Ecosystem strength", (lab.ecosystem * 100).toInt().toString() + "%")
+                                                        ValueLine("Lifetime licenses", Format.count(lab.lifetimeLicenses))
+                                                        lab.project?.let { project ->
+                                                            Text(project.codename + " v" + project.version + " · " + project.target.title, style = MaterialTheme.typography.titleMedium)
+                                                            Meter("OS development", project.completion)
+                                                            ValueLine("Known bugs", project.bugs.toInt().toString())
+                                                            if (project.inBeta) {
+                                                                ValueLine("Beta time remaining", project.betaWeeksLeft.toString() + " weeks")
+                                                                OutlinedButton(onClick = { perform("OS beta cancelled.") { cancelOsBeta() } }) { Text("Cancel beta") }
+                                                            } else if (project.isReady) {
+                                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                                    Button(onClick = { perform("OS beta started.") { startOsBeta() } }) { Text("Start 6-week beta") }
+                                                                    Button(onClick = { perform("OS version shipped.") { shipOs() } }) { Text("Ship OS") }
+                                                                }
+                                                            }
+                                                        }
+                                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                            EnumPicker("Release target", OsTarget.entries.filter { state.osTargetOpen(it) }, osTarget, { osTarget = it }, Modifier.weight(1f)) { it.title }
+                                                            Button(onClick = { perform("Started OS version for " + osTarget.title) { startOsVersion(osTarget) } }, enabled = lab.project == null && state.osTargetOpen(osTarget)) { Text("Start version") }
+                                                        }
+                                                        if (lab.releases.isNotEmpty()) {
+                                                            Text("Shipped versions", style = MaterialTheme.typography.titleMedium)
+                                                            lab.releases.takeLast(8).reversed().forEach { release ->
+                                                                Text(release.codename + " v" + release.version + " · " + release.target.title + " · score " + release.score.toInt() + " · " + Format.count(release.installedBase) + " devices · " + release.oemPartners + " OEMs", color = muted)
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                                 Lane.AI -> {
                                                     val lab = state.ai
                                                     if (lab != null) {
@@ -595,6 +632,76 @@ fun main() = application {
                                             Text("Next engine: " + moneyDesktop(quote.second) + " · " + quote.third + " weeks", color = muted)
                                             Button(onClick = { perform("Started custom engine build.") { buildEngine() } }, enabled = Research.CUSTOM_ENGINES in state.researched && quote.first.isNotEmpty() && quote.first.sumOf { it.engineLevel } > (g.engines.maxOfOrNull { it.level } ?: 0) && state.cash >= quote.second) { Text("Build engine") }
                                         }
+                                    }
+                                }
+                            }
+                            DesktopPage.STRATEGY -> {
+                                CardBlock("GLOBAL STRATEGY", "The 3.4.1 strategy layer adds regional offices, lane alliances, and minority investments.") {
+                                    ValueLine("Market cycle", state.marketCycleLabel())
+                                    ValueLine("Regional offices", state.strategy.offices.size.toString())
+                                    ValueLine("Active alliances", state.strategy.activeAlliances.size.toString())
+                                    ValueLine("Live venture holdings", state.strategy.liveHoldings.size.toString())
+                                    ValueLine("Territory revenue", moneyDesktop(state.strategy.lastTerritory))
+                                    ValueLine("Alliance yield", moneyDesktop(state.strategy.lastAllianceYield))
+                                }
+                                CardBlock("REGIONAL OFFICES", "Open a market, then pay to localize it for stronger brand and share.") {
+                                    EnumPicker("Region", Region.entries, strategyRegion, { strategyRegion = it }, Modifier.fillMaxWidth()) { it.title }
+                                    val openBlocker = state.openOfficeBlocker(strategyRegion)
+                                    val localizeBlocker = state.localizeOfficeBlocker(strategyRegion)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(onClick = { perform("Opened office in " + strategyRegion.title) { openOffice(strategyRegion) } }, enabled = openBlocker == null) { Text("Open · " + moneyDesktop(strategyRegion.openCost)) }
+                                        Button(onClick = { perform("Localized office in " + strategyRegion.title) { localizeOffice(strategyRegion) } }, enabled = localizeBlocker == null) { Text("Localize · " + moneyDesktop(strategyRegion.localizeCost)) }
+                                    }
+                                    (openBlocker ?: localizeBlocker)?.let { Text(it, color = muted) }
+                                    state.strategy.offices.forEach { office ->
+                                        Column(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+                                            Text(office.region.title + if (office.localized) " · LOCALIZED" else "", style = MaterialTheme.typography.titleMedium)
+                                            ValueLine("Local brand", (office.brand * 100).toInt().toString() + "%")
+                                            ValueLine("Market share", (office.share * 100).toInt().toString() + "%")
+                                            ValueLine("Weekly revenue", moneyDesktop(office.weeklyRevenue))
+                                        }
+                                    }
+                                }
+                                CardBlock("GLOBAL ALLIANCES", "Two-year partnerships boost a specific business lane.") {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        EnumPicker("Alliance", AllianceKind.entries, allianceKind, { allianceKind = it }, Modifier.weight(1f)) { it.title }
+                                        EnumPicker("Business", Lane.entries.filter { it in state.lanes }, allianceLane, { allianceLane = it }, Modifier.weight(1f)) { it.title }
+                                    }
+                                    val allianceBlocker = state.signAllianceBlocker(allianceKind, allianceLane)
+                                    Button(onClick = { perform("Signed " + allianceKind.title + " alliance for " + allianceLane.title) { signAlliance(allianceKind, allianceLane) } }, enabled = allianceBlocker == null) { Text("Sign alliance · " + moneyDesktop(allianceKind.signCost)) }
+                                    allianceBlocker?.let { Text(it, color = muted) }
+                                    state.strategy.activeAlliances.forEach { alliance ->
+                                        Text(alliance.partner + " · " + alliance.kind.title + " · " + alliance.lane.title + " · " + alliance.weeksLeft(state.week) + " weeks left", color = muted)
+                                    }
+                                }
+                                CardBlock("VENTURE ARM", "Invest in startups in lanes you understand; follow-on rounds cost more, and exits depend on the market cycle.") {
+                                    Lane.entries.filter { it in state.lanes }.forEach { lane ->
+                                        val blocker = state.seedVentureBlocker(lane)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(lane.title)
+                                                Text("Seed ticket " + moneyDesktop(state.seedTicket(lane)), color = muted)
+                                            }
+                                            Button(onClick = { perform("Seeded a startup in " + lane.title) { seedVenture(lane) } }, enabled = blocker == null) { Text("Seed") }
+                                        }
+                                    }
+                                    state.strategy.holdings.forEach { holding ->
+                                        Column(Modifier.fillMaxWidth().padding(vertical = 7.dp)) {
+                                            Text(holding.name + " · " + holding.lane.title + " · " + holding.stage.title, style = MaterialTheme.typography.titleMedium)
+                                            ValueLine("Ownership", (holding.ownership * 100).toInt().toString() + "%")
+                                            ValueLine("Market value", moneyDesktop(holding.marketValue))
+                                            ValueLine("Paper gain", moneyDesktop(holding.paperGain))
+                                            if (!holding.exited) {
+                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Button(onClick = { perform("Follow-on investment in " + holding.name) { followOnVenture(holding.id) } }, enabled = state.followOnBlocker(holding.id) == null) { Text("Series A · " + moneyDesktop(state.followOnTicket(holding))) }
+                                                    OutlinedButton(onClick = { perform("Exited " + holding.name) { exitVenture(holding.id) } }, enabled = state.exitVentureBlocker(holding.id) == null) { Text("Exit · " + moneyDesktop(state.exitQuote(holding))) }
+                                                }
+                                                state.followOnBlocker(holding.id)?.let { Text(it, color = muted, style = MaterialTheme.typography.bodySmall) }
+                                            } else {
+                                                Text("Exited · proceeds " + moneyDesktop(holding.exitProceeds), color = muted)
+                                            }
+                                        }
+                                        HorizontalDivider(color = Color(0xFF354139))
                                     }
                                 }
                             }
