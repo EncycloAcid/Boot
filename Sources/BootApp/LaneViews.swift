@@ -47,6 +47,15 @@ struct GamesView: View {
                         Text(p.title).font(.title3.bold())
                         Text("\(p.scope.name) · \(p.weeksInDev) weeks in · \(Format.money(p.scope.weeklyBudget))/wk budget")
                             .font(.callout).foregroundStyle(.secondary)
+                        Picker("Development focus", selection: Binding(
+                            get: { p.activeFocus },
+                            set: { focus in store.perform { try $0.setGameFocus(focus) } })) {
+                            ForEach(GameFocus.allCases) { focus in
+                                Text(focus.name).tag(focus)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        Text(p.activeFocus.description).font(.caption).foregroundStyle(.secondary)
                         Meter(label: "Content", value: p.completion)
                         Meter(label: "Polish", value: min(1, p.polish / (p.scope.work * 1.5)), tint: .purple,
                               caption: p.isReady ? "Keep polishing for a better review" : nil)
