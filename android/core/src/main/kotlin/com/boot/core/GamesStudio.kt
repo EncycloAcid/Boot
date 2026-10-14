@@ -634,9 +634,11 @@ class GamesStudio {
         // A remaster sells to the people who remember the original, and fewer of them than a new game finds.
         val remastered = c.remasterOf?.let { release(it) }
         val nostalgia = remastered?.let { remasterLift(it.score) } ?: 1.0
+        val season = GameSeason.forWeek(week)
+        val seasonalLift = season.launchMultiplier(c.genre)
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia
+            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia * seasonalLift
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 
@@ -647,6 +649,7 @@ class GamesStudio {
         }
         learn("TG:${c.topic.name}:${c.genre.name}", c.topic.fit(c.genre))
         lines += "${c.topic.title} + ${c.genre.title}: ${c.topic.fit(c.genre).title.lowercase()} combination."
+        lines += "${season.title} launch timing: ${season.marketTip} Your ${c.genre.lower} game received ${if (seasonalLift >= 1) "+" else ""}${((seasonalLift - 1) * 100).roundToInt()}% seasonal demand."
         c.genre2?.let {
             learn("TG:${c.topic.name}:${it.name}", c.topic.fit(it))
             lines += "${c.topic.title} + ${it.title}: ${c.topic.fit(it).title.lowercase()} combination."
