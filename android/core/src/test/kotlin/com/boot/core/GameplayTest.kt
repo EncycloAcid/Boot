@@ -1377,3 +1377,21 @@ class GamePlaytestTest {
         assertFailsWith<GameException> { restored.playtestGame() }
     }
 }
+ 
+class GameSeasonTest {
+    @Test
+    fun seasonCalendarRepeatsEveryYear() {
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(1))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(13))
+        assertEquals(GameSeason.SUMMER, GameSeason.forWeek(14))
+        assertEquals(GameSeason.AUTUMN, GameSeason.forWeek(27))
+        assertEquals(GameSeason.WINTER, GameSeason.forWeek(40))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(53))
+    }
+    @Test
+    fun seasonalDemandRewardsFeaturedGenres() {
+        assertTrue(GameSeason.SUMMER.launchMultiplier(Genre.ACTION) > GameSeason.SUMMER.launchMultiplier(Genre.CASUAL))
+        assertTrue(GameSeason.AUTUMN.launchMultiplier(Genre.HORROR) > 1.0)
+        assertTrue(GameSeason.WINTER.launchMultiplier(Genre.RPG) > 1.0)
+    }
+}
