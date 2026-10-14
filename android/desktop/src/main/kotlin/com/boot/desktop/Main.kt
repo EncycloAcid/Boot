@@ -318,6 +318,35 @@ fun main() = application {
                                                         }
                                                     }) { Text("Design sequel") }
                                                 }
+                                                if (release.live != null) {
+                                                    val live = release.live!!
+                                                    Text("LIVE SERVICE · " + if (live.closed) "SHUT DOWN" else "ACTIVE", color = mint)
+                                                    ValueLine("Players", Format.count(live.players))
+                                                    ValueLine("Seasons released", live.seasons.toString())
+                                                    ValueLine("Lifetime live revenue", moneyDesktop(live.lifetimeRevenue))
+                                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                        Button(onClick = { perform("Launched a new season for " + release.title) { launchSeason(release.id) } }, enabled = state.seasonBlocker(release.id) == null) { Text("Launch season") }
+                                                        OutlinedButton(onClick = { perform("Set cosmetic monetization.") { setMonetization(release.id, Monetization.COSMETIC) } }, enabled = !live.closed) { Text("Cosmetic") }
+                                                        OutlinedButton(onClick = { perform("Set fair monetization.") { setMonetization(release.id, Monetization.FAIR) } }, enabled = !live.closed) { Text("Fair") }
+                                                        OutlinedButton(onClick = { perform("Set aggressive monetization.") { setMonetization(release.id, Monetization.AGGRESSIVE) } }, enabled = !live.closed) { Text("Aggressive") }
+                                                        if (!live.closed) OutlinedButton(onClick = { perform("Ended live service.") { endService(release.id) } }) { Text("End service") }
+                                                    }
+                                                }
+                                                if (release.league != null) {
+                                                    val league = release.league!!
+                                                    Text("ESPORTS · " + if (league.closed) "LEAGUE ENDED" else league.name, color = mint)
+                                                    ValueLine("Viewers", Format.count(league.viewers))
+                                                    ValueLine("Prize pool", league.prize.title + " · " + moneyDesktop(league.prize.amount))
+                                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                        PrizePool.entries.forEach { prize ->
+                                                            OutlinedButton(onClick = { perform("Updated esports prize pool.") { setPrizePool(release.id, prize) } }, enabled = !league.closed) { Text(prize.title) }
+                                                        }
+                                                        if (!league.closed) OutlinedButton(onClick = { perform("Ended esports league.") { endLeague(release.id) } }) { Text("End league") }
+                                                    }
+                                                } else if (Research.ESPORTS in state.researched) {
+                                                    Button(onClick = { perform("Started esports league.") { startLeague(release.id) } }, enabled = state.leagueBlocker(release.id) == null) { Text("Start esports league") }
+                                                    state.leagueBlocker(release.id)?.let { Text(it, color = muted, style = MaterialTheme.typography.bodySmall) }
+                                                }
                                             }
                                             HorizontalDivider(color = Color(0xFF354139))
                                         }
