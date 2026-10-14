@@ -133,8 +133,8 @@ fun main() = application {
             Surface(Modifier.fillMaxSize(), color = canvas) {
                 Row(Modifier.fillMaxSize()) {
                     Column(
-                        Modifier.width(270.dp).fillMaxHeight().background(sidebar).padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        Modifier.width(232.dp).fillMaxHeight().background(sidebar).padding(horizontal = 14.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Box(
@@ -154,24 +154,17 @@ fun main() = application {
                             colors = CardDefaults.cardColors(containerColor = panel),
                             border = BorderStroke(1.dp, borderLine),
                         ) {
-                            Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    FounderPortrait(state, size = 38.dp)
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        Text(state.companyName, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("FOUNDER · " + state.founder.name, style = MaterialTheme.typography.labelSmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    }
-                                }
-                                HorizontalDivider(color = borderLine)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("AVAILABLE CASH", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = muted, letterSpacing = 0.5.sp)
-                                    Text(moneyDesktop(state.cash), style = MaterialTheme.typography.titleSmall, color = mint, fontWeight = FontWeight.Bold)
+                            Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                FounderPortrait(state, size = 38.dp)
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text(state.companyName, style = MaterialTheme.typography.titleSmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("FOUNDER · " + state.founder.name, style = MaterialTheme.typography.labelSmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
                             }
                         }
                         Column(
                             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             DesktopPage.entries.map { it.group }.distinct().forEach { group ->
                                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -183,71 +176,74 @@ fun main() = application {
                             }
                         }
                         HorizontalDivider(color = borderLine)
-                        Button(
-                            onClick = { perform("Week closed. Review the studio feed for consequences.") { advance() } },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            enabled = !state.isOver && !state.needsDecision && state.games?.unseenReview == null,
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                        ) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                                Box(Modifier.size(30.dp).clip(RoundedCornerShape(10.dp)).background(Color.Black.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-                                    Text("▶", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black)
-                                }
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                    Text("Advance week", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                                    Text("Week ${state.week} · ${state.dateLabel}", style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                }
-                            }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            OutlinedButton(
-                                onClick = {
-                                    try {
-                                        Files.createDirectories(savePath.parent)
-                                        Files.writeString(savePath, state.encode())
-                                        notice = "Saved to " + savePath.toAbsolutePath()
-                                    } catch (e: Exception) { notice = "Save failed: " + e.message }
-                                },
-                                modifier = Modifier.weight(1f).height(36.dp),
-                                shape = RoundedCornerShape(13.dp),
-                            ) { Text("Save") }
-                            OutlinedButton(
-                                onClick = {
-                                    try {
-                                        if (Files.exists(savePath)) {
-                                            state = GameState.decode(Files.readString(savePath))
-                                            notice = "Save loaded."
-                                        } else notice = "No desktop save found yet."
-                                    } catch (e: Exception) { notice = "Load failed: " + e.message }
-                                },
-                                modifier = Modifier.weight(1f).height(36.dp),
-                                shape = RoundedCornerShape(13.dp),
-                            ) { Text("Load") }
-                        }
                         OutlinedButton(
                             onClick = { page = DesktopPage.SETUP },
-                            modifier = Modifier.fillMaxWidth().height(36.dp),
-                            shape = RoundedCornerShape(13.dp),
-                        ) { Text("Start a new run") }
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(14.dp),
+                        ) { Text("＋  Start a new run") }
+                        Text("Your studio, your next move.", Modifier.padding(start = 3.dp), color = muted, style = MaterialTheme.typography.labelSmall)
                     }
 
-                    Column(
-                        Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 36.dp, vertical = 28.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                    ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text(state.companyName.uppercase(Locale.US) + "  /  " + page.group, style = MaterialTheme.typography.labelSmall, color = mint, letterSpacing = 1.35.sp)
-                                Text(page.label, style = MaterialTheme.typography.headlineLarge, color = ink, fontWeight = FontWeight.Bold)
-                                Text(page.description, color = muted, style = MaterialTheme.typography.bodyMedium)
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Row(
+                            Modifier.fillMaxWidth().background(panel).padding(horizontal = 24.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(state.companyName.uppercase(Locale.US) + "  /  " + page.group, style = MaterialTheme.typography.labelSmall, color = mint, letterSpacing = 1.2.sp)
+                                Text(page.label, style = MaterialTheme.typography.titleLarge, color = ink, fontWeight = FontWeight.Bold)
+                                Text(page.description, color = muted, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                StatusPill("CURRENT WEEK", state.week.toString() + " · " + state.dateLabel, sky)
-                                StatusPill("NEXT SEASON", GameSeason.forWeek(state.week + 1).title, mint)
+                            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                StatusPill("WEEK", state.week.toString() + " · " + state.dateLabel, sky)
+                                StatusPill("CASH", moneyDesktop(state.cash), mint)
+                                StatusPill("NEXT SEASON", GameSeason.forWeek(state.week + 1).title, coral)
+                                OutlinedButton(
+                                    onClick = {
+                                        try {
+                                            Files.createDirectories(savePath.parent)
+                                            Files.writeString(savePath, state.encode())
+                                            notice = "Saved to " + savePath.toAbsolutePath()
+                                        } catch (e: Exception) { notice = "Save failed: " + e.message }
+                                    },
+                                    modifier = Modifier.height(42.dp),
+                                    shape = RoundedCornerShape(13.dp),
+                                    contentPadding = PaddingValues(horizontal = 13.dp, vertical = 0.dp),
+                                ) { Text("Save") }
+                                OutlinedButton(
+                                    onClick = {
+                                        try {
+                                            if (Files.exists(savePath)) {
+                                                state = GameState.decode(Files.readString(savePath))
+                                                notice = "Save loaded."
+                                            } else notice = "No desktop save found yet."
+                                        } catch (e: Exception) { notice = "Load failed: " + e.message }
+                                    },
+                                    modifier = Modifier.height(42.dp),
+                                    shape = RoundedCornerShape(13.dp),
+                                    contentPadding = PaddingValues(horizontal = 13.dp, vertical = 0.dp),
+                                ) { Text("Load") }
+                                Button(
+                                    onClick = { perform("Week closed. Review the studio feed for consequences.") { advance() } },
+                                    modifier = Modifier.height(44.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    enabled = !state.isOver && !state.needsDecision && state.games?.unseenReview == null,
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                ) {
+                                    Column(horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                        Text("Advance week", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                                        Text(state.dateLabel, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
                             }
                         }
-                        HorizontalDivider(Modifier.padding(bottom = 2.dp), color = borderLine)
+                        HorizontalDivider(color = borderLine)
+                        Row(Modifier.weight(1f).fillMaxWidth()) {
+                            Column(
+                                Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 30.dp, vertical = 24.dp),
+                                verticalArrangement = Arrangement.spacedBy(18.dp),
+                            ) {
                         ActionNotice(notice)
                         state.events.firstOrNull()?.let { event ->
                             CardBlock("DECISION REQUIRED", event.title) {
@@ -1197,6 +1193,13 @@ fun main() = application {
                             }
                         }
                         Spacer(Modifier.height(12.dp))
+                            }
+                            StudioInspector(
+                                state = state,
+                                onNavigate = { page = it },
+                                modifier = Modifier.width(270.dp).fillMaxHeight().background(sidebar).verticalScroll(rememberScrollState()).padding(14.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -1355,6 +1358,72 @@ private fun ActionNotice(message: String) {
             Box(Modifier.size(9.dp).clip(CircleShape).background(mint))
             Text(message, Modifier.weight(1f), color = ink, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("WEEK", color = muted, style = MaterialTheme.typography.labelSmall, letterSpacing = 0.7.sp)
+        }
+    }
+}
+
+@Composable
+private fun StudioInspector(
+    state: GameState,
+    onNavigate: (DesktopPage) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("STUDIO INSPECTOR", Modifier.padding(start = 3.dp, top = 3.dp), style = MaterialTheme.typography.labelSmall, color = muted, letterSpacing = 1.1.sp)
+        CardBlock("Studio snapshot", "A quick read on the business") {
+            ValueLine("Weekly burn", moneyDesktop(state.weeklyBurn))
+            ValueLine("Runway", if (state.runwayWeeks.isInfinite()) "No projected burn" else "${state.runwayWeeks.toInt()} weeks")
+            ValueLine("Valuation", moneyDesktop(state.valuation))
+            ValueLine("Team", state.staff.size.toString() + " people")
+            ValueLine("Research", state.researchPoints.toInt().toString() + " RP")
+        }
+        val project = state.games?.project
+        CardBlock(if (project == null) "Next step" else "In production", project?.title ?: "Give your team a project") {
+            if (project == null) {
+                Text(
+                    if (state.games == null) "Grow the company or explore the game studio when it is available." else "Start a game project and turn your studio into a release team.",
+                    color = muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedButton(
+                    onClick = { onNavigate(if (state.games == null) DesktopPage.BUSINESSES else DesktopPage.MAKE) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                ) { Text(if (state.games == null) "Explore businesses" else "Design a game") }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    GameCover(project.concept, 58.dp, studio = state.companyName)
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(project.concept.topic.title + " · " + project.concept.genreTitle, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(if (project.isReady) "Ready to launch" else "Stage ${project.stage + 1} of 3", style = MaterialTheme.typography.labelMedium, color = ink, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Meter("Production", project.completion)
+                Button(onClick = { onNavigate(DesktopPage.MAKE) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                    Text(if (project.isReady) "Review and launch" else "Open production")
+                }
+            }
+        }
+        CardBlock("Quick links", "Jump to a studio area") {
+            InspectorLink(DesktopPage.MAKE, onNavigate)
+            InspectorLink(DesktopPage.TEAM, onNavigate)
+            InspectorLink(DesktopPage.MARKET, onNavigate)
+            InspectorLink(DesktopPage.COMPANY, onNavigate)
+        }
+    }
+}
+
+@Composable
+private fun InspectorLink(page: DesktopPage, onNavigate: (DesktopPage) -> Unit) {
+    TextButton(
+        onClick = { onNavigate(page) },
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp),
+        shape = RoundedCornerShape(10.dp),
+    ) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(page.label, color = ink, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            Text(page.description, color = muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
