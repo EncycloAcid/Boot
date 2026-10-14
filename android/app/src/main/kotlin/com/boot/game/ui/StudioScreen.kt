@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -43,6 +44,7 @@ import com.boot.core.FocusArea
 import com.boot.core.Fit
 import com.boot.core.Format
 import com.boot.core.GameProject
+import com.boot.core.GameSeason
 import com.boot.core.Genre
 import com.boot.core.Lane
 import com.boot.core.GameState
@@ -171,6 +173,13 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
                 StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), if (g.releases.size == 1) "1 game" else "${g.releases.size} games")
                 StatTile("Research", "${state.researchPoints.toInt()}", Modifier.weight(1f), "RP to spend")
             }
+            val season = GameSeason.forWeek(state.week)
+            Spacer(Modifier.size(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Season: ${season.title}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Text(season.weeksLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Hint(season.marketTip)
         }
         if (g.lastRoyalties > 0 || g.lastMerch > 0) {
             RowDivider()
@@ -296,7 +305,7 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 "Development",
                 p.completion,
                 wavy = !p.isReady,
-                caption = forecastCaption(state.gameForecast(team), p.isReady),
+                caption = forecastCaption(state.gameForecast(team), p.isReady, state.week, p.concept.genre),
             )
             TileRow {
                 PointTile("Design", p.design, p.lastDesign, colors.design, state.week, Modifier.weight(1f))
@@ -346,10 +355,18 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
     }
 }
 
-private fun forecastCaption(forecast: LaunchForecast?, ready: Boolean): String? {
-    if (ready) return "Content complete"
+private fun forecastCaption(forecast: LaunchForecast?, ready: Boolean, week: Int, genre: Genre): String? {
+    val season = GameSeason.forWeek(week)
+    val lift = season.launchMultiplier(genre)
+    val seasonNote = when {
+        lift > 1.0 -> " · ${season.title} boost for ${genre.lower}"
+        lift < 1.0 -> " · ${season.title} soft for ${genre.lower}"
+        else -> ""
+    }
+    if (ready) return "Content complete$seasonNote"
     val weeks = forecast?.weeksToReady ?: return null
-    return if (weeks <= 0) "Ready this week" else "~${Format.weeks(weeks)} to ready"
+    val eta = if (weeks <= 0) "Ready this week" else "~${Format.weeks(weeks)} to ready"
+    return eta + seasonNote
 }
 
 /** A running total with a bubble that floats up each week showing what was just added, like the points popping off a dev's desk. */

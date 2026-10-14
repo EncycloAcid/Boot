@@ -61,6 +61,7 @@ import com.boot.core.Audience
 import com.boot.core.FocusArea
 import com.boot.core.Format
 import com.boot.core.GameConcept
+import com.boot.core.GameSeason
 import com.boot.core.GameSize
 import com.boot.core.GameState
 import com.boot.core.Genre
@@ -278,10 +279,20 @@ private fun ConceptStep(
             }
         }
     }
+    val season = GameSeason.forWeek(state.week)
+    val seasonLift = season.launchMultiplier(genre)
+    val seasonHint = when {
+        seasonLift > 1.0 -> "${season.title}: ${genre.title} launches get a demand boost."
+        seasonLift < 1.0 -> "${season.title}: ${genre.title} launches are slightly soft right now."
+        else -> null
+    }
     val genreFooter = when {
         seriesGenre != null && genre != seriesGenre ->
             "A spin-off: the series in a new genre. Fans follow it, but only half as keenly as a true sequel."
-        else -> g.knownFit(topic, genre)?.let { "${topic.title} + ${genre.title}: ${it.title.lowercase()} combination." }
+        else -> listOfNotNull(
+            g.knownFit(topic, genre)?.let { "${topic.title} + ${genre.title}: ${it.title.lowercase()} combination." },
+            seasonHint,
+        ).joinToString(" ").ifBlank { null }
     }
     GroupedSection("Genre", footer = genreFooter) {
         CardBlock {
