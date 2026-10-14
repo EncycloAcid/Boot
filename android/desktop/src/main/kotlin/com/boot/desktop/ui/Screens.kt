@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import com.boot.core.Difficulty
 import com.boot.core.Format
+import com.boot.core.GameSeason
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.Research
@@ -199,17 +200,31 @@ private fun LaneDepthPanel(state: GameState, lane: Lane) {
     when (lane) {
         Lane.GAMES -> {
             val g = state.games
+            val season = GameSeason.forWeek(state.week)
             GlassPanel {
                 Text("Game studio", style = MaterialTheme.typography.titleLarge, color = h.accent)
                 if (g == null) {
                     Hint("Games lane book not open yet.")
                     return@GlassPanel
                 }
-                Stat("Fans", Format.count(g.fans))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Stat("Fans", Format.count(g.fans))
+                    Stat("Season", season.title)
+                }
+                Hint("${season.weeksLabel} · ${season.marketTip}", h.accent)
                 val project = g.project
                 if (project != null) {
+                    val lift = season.launchMultiplier(project.concept.genre)
+                    val seasonPct = ((lift - 1) * 100).toInt()
                     Hint("In progress: ${project.title} · stage ${project.stage + 1}/3")
                     Hint("Progress ${Format.percent(project.completion)}")
+                    Hint(
+                        when {
+                            lift > 1.0 -> "Shipping now: ${project.concept.genreTitle} gets +$seasonPct% seasonal demand"
+                            lift < 1.0 -> "Shipping now: ${project.concept.genreTitle} is $seasonPct% soft this season"
+                            else -> "Shipping now: neutral seasonal demand"
+                        },
+                    )
                 } else {
                     Hint("No game in development — start one on Android; desktop shows live status.")
                 }

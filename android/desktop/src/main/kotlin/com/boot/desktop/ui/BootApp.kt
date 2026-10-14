@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.boot.core.Format
+import com.boot.core.GameSeason
 import com.boot.core.GameState
 import com.boot.desktop.DesktopStore
 import com.boot.desktop.Speed
@@ -207,8 +208,17 @@ private fun GdtHud(
             ResourceBubble("$bugs", h.bugs, "!")
         }
 
+        val season = GameSeason.forWeek(state.week)
+
         // Center project header + bars (when a game is in progress)
         if (project != null) {
+            val lift = season.launchMultiplier(project.concept.genre)
+            val seasonPct = ((lift - 1) * 100).toInt()
+            val seasonLine = when {
+                lift > 1.0 -> "${season.title} · ${project.concept.genreTitle} +$seasonPct% demand"
+                lift < 1.0 -> "${season.title} · ${project.concept.genreTitle} $seasonPct% demand"
+                else -> "${season.title} · ${season.weeksLabel}"
+            }
             GlassPanel(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -221,6 +231,7 @@ private fun GdtHud(
                     style = MaterialTheme.typography.bodyMedium,
                     color = h.textDim,
                 )
+                Hint(seasonLine, if (lift >= 1.0) h.accent else h.textDim)
                 Spacer(Modifier.height(4.dp))
                 ProgressRow("Progress", project.completion.toFloat(), h.accent)
                 ProgressRow("Hype ${project.hype.toInt()}", (project.hype / 100.0).toFloat().coerceIn(0f, 1f), Color(0xFF6B7B3A))
@@ -234,6 +245,7 @@ private fun GdtHud(
             ) {
                 Text(state.companyName, style = MaterialTheme.typography.titleLarge, color = h.text, fontWeight = FontWeight.Bold)
                 Hint("${state.world.era.title} · ${state.office.title}")
+                Hint("${season.title} · ${season.marketTip}", h.accent)
             }
         }
 
@@ -243,7 +255,7 @@ private fun GdtHud(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End,
         ) {
-            StatusPill(h.accent, "◷", state.dateLabel)
+            StatusPill(h.accent, "◷", "${state.dateLabel} · ${season.title}")
             val fans = state.games?.fans
             if (fans != null) {
                 StatusPill(h.fans, "♥", "${Format.count(fans)} Fans") { store.openLane(com.boot.core.Lane.GAMES) }
