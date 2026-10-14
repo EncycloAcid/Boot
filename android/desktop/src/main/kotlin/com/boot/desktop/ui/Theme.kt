@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.sp
 import com.boot.core.Lane
 
 /**
- * Game Dev Tycoon / macOS-light shell: cream world, white translucent floating chrome.
- * Lane / design / tech colors mirror Android's light [GameColors] so office sprites match.
+ * Boot desktop shell — cool studio paper chrome over the isometric office.
+ * Lane / design / tech colors stay aligned with Android light [GameColors].
  */
 @Immutable
 data class GameColors(
@@ -39,21 +39,30 @@ data class GameColors(
     fun lane(lane: Lane): Color = lanes.getValue(lane)
 }
 
-/** macOS-ish floating HUD tokens. */
+/** Floating HUD tokens — matte studio sheet, not iOS glass. */
 @Immutable
 data class HudColors(
-    val glass: Color,
-    val glassBorder: Color,
-    val text: Color,
-    val textDim: Color,
+    val world: Color,
+    val worldDeep: Color,
+    val panel: Color,
+    val panelBorder: Color,
+    val ink: Color,
+    val inkMute: Color,
     val accent: Color,
+    val accentSoft: Color,
     val cash: Color,
     val fans: Color,
     val research: Color,
     val bugs: Color,
     val designBubble: Color,
     val techBubble: Color,
+    val hype: Color,
     val shadow: Color,
+    /** @deprecated use [panel] — kept so older call sites compile during the redesign. */
+    val glass: Color,
+    val glassBorder: Color,
+    val text: Color,
+    val textDim: Color,
 )
 
 val LocalGameColors = staticCompositionLocalOf { LightGame }
@@ -63,7 +72,7 @@ val LightGame = GameColors(
     good = Color(0xFF1F8A4C),
     bad = Color(0xFFD93D42),
     warn = Color(0xFFC9650E),
-    milestone = Color(0xFF6E56CF),
+    milestone = Color(0xFF0B6E6A),
     lanes = mapOf(
         Lane.GAMES to Color(0xFFE5486F),
         Lane.WEBSITES to Color(0xFF3B7FE8),
@@ -71,31 +80,39 @@ val LightGame = GameColors(
         Lane.SOCIAL to Color(0xFFE8920C),
         Lane.HARDWARE to Color(0xFF9B59E0),
         Lane.AI to Color(0xFF1F9BC9),
-        Lane.OS to Color(0xFF5856D6),
+        Lane.OS to Color(0xFF3D5A80),
     ),
-    other = Color(0xFF9A9BA1),
-    grouped = Color(0xFFF4F1EA),
-    card = Color.White,
-    fill = Color(0xFFF1F1EE),
-    separator = Color(0xFFE5E2DB),
-    bar = Color(0xF2FFFFFF),
+    other = Color(0xFF8B93A0),
+    grouped = Color(0xFFE7EEF3),
+    card = Color(0xFFF7FAFC),
+    fill = Color(0xFFEDF2F6),
+    separator = Color(0xFFCBD5E1),
+    bar = Color(0xF2F7FAFC),
     design = Color(0xFF3B7FE8),
     tech = Color(0xFFE8792A),
 )
 
 val LightHud = HudColors(
-    glass = Color(0xE6FFFFFF),
-    glassBorder = Color(0x33FFFFFF),
-    text = Color(0xFF1C1C1E),
-    textDim = Color(0xFF6C6C70),
-    accent = Color(0xFF007AFF),
-    cash = Color(0xFF34C759),
-    fans = Color(0xFFAF52DE),
-    research = Color(0xFF5AC8FA),
-    bugs = Color(0xFFFF3B30),
-    designBubble = Color(0xFFFF9F0A),
-    techBubble = Color(0xFFFFD60A),
-    shadow = Color(0x33000000),
+    world = Color(0xFFE7EEF3),
+    worldDeep = Color(0xFFD5E0E8),
+    panel = Color(0xF5F7FAFC),
+    panelBorder = Color(0xFFB8C4CE),
+    ink = Color(0xFF15202B),
+    inkMute = Color(0xFF5B6B7C),
+    accent = Color(0xFF0B6E6A),
+    accentSoft = Color(0xFFD5EDEA),
+    cash = Color(0xFF15803D),
+    fans = Color(0xFFBE123C),
+    research = Color(0xFF1D6FA5),
+    bugs = Color(0xFFDC2626),
+    designBubble = Color(0xFFE67E22),
+    techBubble = Color(0xFFCA8A04),
+    hype = Color(0xFF5C6B3A),
+    shadow = Color(0x1A15202B),
+    glass = Color(0xF5F7FAFC),
+    glassBorder = Color(0xFFB8C4CE),
+    text = Color(0xFF15202B),
+    textDim = Color(0xFF5B6B7C),
 )
 
 val gameColors: GameColors
@@ -105,32 +122,84 @@ val hudColors: HudColors
     @Composable get() = LocalHudColors.current
 
 private val LightScheme = lightColorScheme(
-    primary = Color(0xFF007AFF),
+    primary = Color(0xFF0B6E6A),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE5F1FF),
-    onPrimaryContainer = Color(0xFF003A75),
-    secondary = Color(0xFF34C759),
+    primaryContainer = Color(0xFFD5EDEA),
+    onPrimaryContainer = Color(0xFF063E3C),
+    secondary = Color(0xFF15803D),
     onSecondary = Color.White,
-    background = Color(0xFFF4F1EA),
-    onBackground = Color(0xFF1C1C1E),
-    surface = Color.White,
-    onSurface = Color(0xFF1C1C1E),
-    onSurfaceVariant = Color(0xFF6C6C70),
-    outline = Color(0xFFD1D1D6),
+    background = Color(0xFFE7EEF3),
+    onBackground = Color(0xFF15202B),
+    surface = Color(0xFFF7FAFC),
+    onSurface = Color(0xFF15202B),
+    onSurfaceVariant = Color(0xFF5B6B7C),
+    outline = Color(0xFFB8C4CE),
 )
 
-/** Clean sans — GDT/macOS chrome, not pixel monospace. */
-private val MacType = Typography(
-    displayLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 34.sp),
-    headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold, fontSize = 26.sp),
-    headlineMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp),
-    titleLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
-    titleMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
-    bodyLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 21.sp),
-    bodyMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
-    labelLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
-    labelMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = 12.sp),
-    labelSmall = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = 11.sp),
+/**
+ * Serif for brand / titles, geometric sans for dense HUD chrome.
+ * Avoids the default Inter/system look while staying readable on desktop.
+ */
+private val BootType = Typography(
+    displayLarge = TextStyle(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 40.sp,
+        letterSpacing = (-0.5).sp,
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        letterSpacing = (-0.3).sp,
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp,
+    ),
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.Serif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        letterSpacing = (-0.2).sp,
+    ),
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        letterSpacing = 0.1.sp,
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal,
+        fontSize = 15.sp,
+        lineHeight = 22.sp,
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+    ),
+    labelLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
+        letterSpacing = 0.4.sp,
+    ),
+    labelMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        letterSpacing = 0.3.sp,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 10.sp,
+        letterSpacing = 0.4.sp,
+    ),
 )
 
 @Composable
@@ -138,11 +207,11 @@ fun BootDesktopTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalGameColors provides LightGame,
         LocalHudColors provides LightHud,
-        LocalIndication provides ripple(color = LightHud.accent.copy(alpha = 0.25f)),
+        LocalIndication provides ripple(color = LightHud.accent.copy(alpha = 0.22f)),
     ) {
         MaterialTheme(
             colorScheme = LightScheme,
-            typography = MacType,
+            typography = BootType,
             content = content,
         )
     }

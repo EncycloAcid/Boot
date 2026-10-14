@@ -51,7 +51,8 @@ fun NewGameScreen(store: DesktopStore) {
     var difficulty by remember { mutableStateOf(Difficulty.NORMAL) }
     var start by remember { mutableStateOf(StartPoint.TODAY) }
 
-    Box(Modifier.fillMaxSize().background(Color(0xFFF4F1EA))) {
+    Box(Modifier.fillMaxSize()) {
+        WorldBackdrop(Modifier.fillMaxSize())
         Column(
             Modifier
                 .fillMaxSize()
@@ -61,11 +62,11 @@ fun NewGameScreen(store: DesktopStore) {
                 .align(Alignment.Center),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Text("Boot", style = MaterialTheme.typography.displayLarge, color = h.text)
+            Text("Boot", style = MaterialTheme.typography.displayLarge, color = h.ink)
             Text(
-                "Windows · Game Dev Tycoon–style floating HUD",
+                "Windows studio · cool paper HUD over the isometric office",
                 style = MaterialTheme.typography.bodyMedium,
-                color = h.textDim,
+                color = h.inkMute,
             )
             GlassPanel {
                 Text("Company", style = MaterialTheme.typography.labelLarge, color = h.textDim)
@@ -136,13 +137,13 @@ private fun LightField(value: String, onChange: (String) -> Unit) {
     BasicTextField(
         value = value,
         onValueChange = onChange,
-        textStyle = MaterialTheme.typography.titleMedium.copy(color = h.text),
+        textStyle = MaterialTheme.typography.titleMedium.copy(color = h.ink),
         cursorBrush = SolidColor(h.accent),
         singleLine = true,
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(10.dp))
-            .border(1.dp, Color(0x22000000), RoundedCornerShape(10.dp))
+            .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+            .border(1.dp, h.panelBorder, RoundedCornerShape(8.dp))
             .padding(12.dp),
     )
 }
