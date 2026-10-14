@@ -1419,6 +1419,8 @@ class PlaytestTest {
     fun paidPlaytestFixesBugsImprovesBuildAndPersistsStageHistory() {
         val s = game(Lane.GAMES, 431)
         s.cash = 100_000.0
+        s.hire(s.candidates.first { it.role == Role.DESIGNER }.id, Lane.GAMES)
+        s.hire(s.candidates.first { it.role == Role.ENGINEER }.id, Lane.GAMES)
         s.startGame(GameConcept("Playtest Demo", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL))
         val p = s.games!!.project!!
         p.bugs = 20.0
