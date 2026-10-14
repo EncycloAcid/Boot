@@ -270,7 +270,7 @@ fun main() = application {
                                 }
                                 CardBlock("STUDIO FEED", notice) {
                                     if (state.needsDecision) Text("A decision is waiting. Resolve it before advancing the calendar.", color = Color(0xFFFFD18A))
-                                    state.log.takeLast(8).reversed().forEach { Text("•  " + it.message, color = muted) }
+                                    state.log.takeLast(8).reversed().forEach { Text("•  " + it.text, color = muted) }
                                     if (state.log.isEmpty()) Text("Your studio updates will appear here.", color = muted)
                                 }
                                 if (state.games?.unseenReview != null) {
@@ -389,7 +389,7 @@ fun main() = application {
                             }
                             DesktopPage.GAMES -> {
                                 val g = state.games
-                                if (g == null) CardBlock("GAME STUDIO NOT OPEN", "Start a new run with the Games lane to manage game projects.")
+                                if (g == null) CardBlock("GAME STUDIO NOT OPEN", "Start a new run with the Games lane to manage game projects.") { }
                                 else {
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                                         MetricCard("FANS", Format.count(g.fans), "Studio fanbase", Modifier.weight(1f))
