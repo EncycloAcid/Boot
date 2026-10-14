@@ -24,7 +24,7 @@ private val panel = Color(0xFF202A24)
 private val muted = Color(0xFFB7C1BA)
 
 private enum class DesktopPage(val label: String) {
-    OVERVIEW("Overview"), MAKE("Make"), GAMES("Games"), BUSINESSES("Businesses"), MARKET("Market"),
+    OVERVIEW("Overview"), SETUP("New Game"), MAKE("Make"), GAMES("Games"), BUSINESSES("Businesses"), MARKET("Market"),
     TECH("Tech & Research"), STRATEGY("Strategy"), TEAM("Team"), COMPANY("Company"), NEWS("News")
 }
 
@@ -33,6 +33,14 @@ fun main() = application {
         var state by remember { mutableStateOf(newGame()) }
         var page by remember { mutableStateOf(DesktopPage.OVERVIEW) }
         var notice by remember { mutableStateOf("Welcome to your studio. Your next decision is yours.") }
+        var companyNameInput by remember { mutableStateOf("Boot Studio") }
+        var founderNameInput by remember { mutableStateOf("Founder") }
+        var startingLane by remember { mutableStateOf(Lane.GAMES) }
+        var startingDifficulty by remember { mutableStateOf(Difficulty.NORMAL) }
+        var startingPoint by remember { mutableStateOf(StartPoint.TODAY) }
+        var selectedScenario by remember { mutableStateOf<Scenario?>(null) }
+        var sandboxMode by remember { mutableStateOf(false) }
+        var tutorialMode by remember { mutableStateOf(false) }
         var projectTitle by remember { mutableStateOf("Untitled Project") }
         var topic by remember { mutableStateOf(Topic.FANTASY) }
         var genre by remember { mutableStateOf(Genre.RPG) }
@@ -119,11 +127,7 @@ fun main() = application {
                                 } else notice = "No desktop save found yet."
                             } catch (e: Exception) { notice = "Load failed: " + e.message }
                         }, modifier = Modifier.fillMaxWidth()) { Text("Load game") }
-                        OutlinedButton(onClick = {
-                            state = newGame()
-                            page = DesktopPage.OVERVIEW
-                            notice = "New studio founded. Good luck."
-                        }, modifier = Modifier.fillMaxWidth()) { Text("New game") }
+                        OutlinedButton(onClick = { page = DesktopPage.SETUP }, modifier = Modifier.fillMaxWidth()) { Text("New game") }
                     }
 
                     Column(
@@ -169,6 +173,69 @@ fun main() = application {
                             }
                         }
                         when (page) {
+                            DesktopPage.SETUP -> {
+                                CardBlock("START A NEW RUN", "Choose a starting business, era, and challenge. Scenarios set their own lane, year, and objectives.") {
+                                    FieldLabel("Company name")
+                                    OutlinedTextField(companyNameInput, { companyNameInput = it }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                                    FieldLabel("Founder name")
+                                    OutlinedTextField(founderNameInput, { founderNameInput = it }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                                    EnumPicker("Scenario", listOf(null) + Scenario.entries, selectedScenario, { scenario ->
+                                        selectedScenario = scenario
+                                        if (scenario != null) {
+                                            startingLane = scenario.lane
+                                            startingDifficulty = scenario.difficulty
+                                            startingPoint = StartPoint.TODAY
+                                        }
+                                    }, Modifier.fillMaxWidth()) { it?.title ?: "Free play" }
+                                    selectedScenario?.let { scenario ->
+                                        Text(scenario.blurb, color = muted)
+                                        Text("Goal: " + scenario.goal + " · deadline " + scenario.years + " years · lane " + scenario.lane.title, color = mint)
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                        EnumPicker("Starting business", Lane.entries.filter { startingPoint.laneOpen(it) }, startingLane, { lane ->
+                                            startingLane = lane
+                                            if (!startingPoint.laneOpen(lane)) startingPoint = StartPoint.TODAY
+                                        }, Modifier.weight(1f)) { it.title }
+                                        EnumPicker("Difficulty", Difficulty.entries, startingDifficulty, { startingDifficulty = it }, Modifier.weight(1f)) { it.title + " — " + it.blurb }
+                                    }
+                                    EnumPicker("Starting era", StartPoint.entries.filter { it.laneOpen(startingLane) }, startingPoint, { startingPoint = it }, Modifier.fillMaxWidth()) { it.title + " · " + it.blurb }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(checked = sandboxMode, onCheckedChange = { sandboxMode = it }, enabled = selectedScenario == null)
+                                        Column {
+                                            Text("Sandbox mode")
+                                            Text("Start with $1 billion and disable bankruptcy. Not eligible for Hall of Fame.", color = muted, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(checked = tutorialMode, onCheckedChange = { tutorialMode = it })
+                                        Column {
+                                            Text("Guided introduction")
+                                            Text("Adds tutorial guidance for a first run.", color = muted, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                    Button(onClick = {
+                                        try {
+                                            state = if (selectedScenario != null) {
+                                                GameState.scenario(selectedScenario!!, companyNameInput.ifBlank { "Boot Studio" }, founderNameInput.ifBlank { "Founder" })
+                                            } else {
+                                                GameState.create(
+                                                    companyName = companyNameInput.ifBlank { "Boot Studio" },
+                                                    founderName = founderNameInput.ifBlank { "Founder" },
+                                                    lane = startingLane,
+                                                    difficulty = startingDifficulty,
+                                                    start = startingPoint,
+                                                    sandbox = sandboxMode,
+                                                    tutorial = tutorialMode,
+                                                )
+                                            }
+                                            page = DesktopPage.OVERVIEW
+                                            notice = if (selectedScenario != null) "Scenario started: " + selectedScenario!!.title else "New studio founded. Good luck."
+                                        } catch (e: Exception) {
+                                            notice = e.message ?: "Couldn't start a new run."
+                                        }
+                                    }, modifier = Modifier.fillMaxWidth()) { Text("Start game") }
+                                }
+                            }
                             DesktopPage.OVERVIEW -> {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                                     MetricCard("CASH ON HAND", moneyDesktop(state.cash), "Current studio balance", Modifier.weight(1f))
