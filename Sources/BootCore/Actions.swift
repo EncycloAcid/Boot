@@ -99,6 +99,18 @@ extension GameState {
         addLog("Cancelled \(p.title) after \(p.weeksInDev) weeks.", .bad, lane: .games)
     }
 
+    public mutating func setGameFocus(_ focus: GameFocus) throws {
+        try require(.games)
+        guard var studio = games, var project = studio.project else {
+            throw ActionError.invalid("Start a game before changing its development focus.")
+        }
+        guard project.activeFocus != focus else { return }
+        project.focus = focus
+        studio.project = project
+        games = studio
+        addLog("\(project.title) shifts focus to \(focus.name.lowercased()). \(focus.description)", .neutral, lane: .games)
+    }
+
     public mutating func launchGame() throws {
         try require(.games)
         let report = try games!.launch(context(for: .games), rng: &rng)
