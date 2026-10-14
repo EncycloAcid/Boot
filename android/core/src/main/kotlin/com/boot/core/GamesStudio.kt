@@ -86,6 +86,8 @@ data class GameProject(
     var lastDesign: Double = 0.0,
     var lastTech: Double = 0.0,
     var lastBugs: Double = 0.0,
+    /** Development stages that have had a hands-on playtest (0–2 plus final polish stage 3). */
+    val playtestedStages: MutableSet<Int> = mutableSetOf(),
 ) {
     val title: String get() = concept.title
     val work: Double get() = concept.work
