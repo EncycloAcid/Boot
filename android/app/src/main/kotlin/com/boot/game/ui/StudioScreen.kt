@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -43,6 +44,7 @@ import com.boot.core.FocusArea
 import com.boot.core.Fit
 import com.boot.core.Format
 import com.boot.core.GameProject
+import com.boot.core.GameSeason
 import com.boot.core.Genre
 import com.boot.core.Lane
 import com.boot.core.GameState
@@ -169,6 +171,13 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
                 StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), if (g.releases.size == 1) "1 game" else "${g.releases.size} games")
                 StatTile("Research", "${state.researchPoints.toInt()}", Modifier.weight(1f), "RP to spend")
             }
+            val season = GameSeason.forWeek(state.week)
+            Spacer(Modifier.size(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Season: ${season.title}", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Text(season.weeksLabel, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Hint(season.marketTip)
         }
         if (g.lastRoyalties > 0 || g.lastMerch > 0) {
             RowDivider()
