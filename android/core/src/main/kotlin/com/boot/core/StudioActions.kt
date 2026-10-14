@@ -160,9 +160,9 @@ fun GameState.playtestGame(team: Int = 1) {
         2 -> "presentation"
         else -> "final polish"
     }
+    val feedback = if (bugsBefore < 1.0) " Few bugs were found, but feedback still improved the build." else ""
     addLog(
-        "Playtested ${p.title} during $stageName: fixed ${Format.count(fixed)} bugs and improved the build's design and tech. " +
-            "Cost ${money(cost)}${if (bugsBefore < 1.0) ". Few bugs were found, but feedback still improved the build." else "."},
+        "Playtested ${p.title} during $stageName: fixed ${Format.count(fixed)} bugs and improved the build's design and tech. Cost ${money(cost)}.$feedback",
         LogTone.GOOD, Lane.GAMES,
     )
 }
