@@ -1081,3 +1081,22 @@ private fun DrawScope.atmosphere(fx: Fx, light: Color, w: Float, h: Float, top: 
         Fx.NONE -> {}
     }
 }
+
+/** Blend this color toward [other] by [amount], where 0 keeps this color and 1 returns [other]. */
+private fun Color.mix(other: Color, amount: Float): Color {
+    val t = amount.coerceIn(0f, 1f)
+    return Color(
+        red = red + (other.red - red) * t,
+        green = green + (other.green - green) * t,
+        blue = blue + (other.blue - blue) * t,
+        alpha = alpha + (other.alpha - alpha) * t,
+    )
+}
+
+/** Scale the RGB channels to darken (< 1) or brighten (> 1) while preserving alpha. */
+private fun Color.shade(factor: Float): Color = Color(
+    red = (red * factor).coerceIn(0f, 1f),
+    green = (green * factor).coerceIn(0f, 1f),
+    blue = (blue * factor).coerceIn(0f, 1f),
+    alpha = alpha,
+)
