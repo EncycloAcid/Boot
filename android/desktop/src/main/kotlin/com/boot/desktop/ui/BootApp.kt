@@ -1,9 +1,10 @@
 package com.boot.desktop.ui
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,9 +14,11 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -85,35 +88,14 @@ private fun GameShell(
     }
 
     Box(Modifier.fillMaxSize()) {
-        // Full-bleed isometric office — inset so top HUD never covers the room ridge.
-        when (store.tab) {
-            Tab.OFFICE -> OfficeScene(
-                state,
-                store.playing,
-                Modifier.fillMaxSize(),
-                // Keep the room ridge below Menu / bubbles / project card.
-                insetTop = if (state.games?.project != null) 168.dp else 120.dp,
-            )
-            else -> {
-                WorldBackdrop(Modifier.fillMaxSize())
-                AnimatedContent(
-                    targetState = store.tab,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "desktopTab",
-                    modifier = Modifier.fillMaxSize(),
-                ) { tab ->
-                    when (tab) {
-                        Tab.OFFICE -> Unit
-                        Tab.LANES -> LanesScreen(store, state)
-                        Tab.RESEARCH -> ResearchScreen(store, state)
-                        Tab.TEAM -> TeamScreen(store, state)
-                        Tab.COMPANY -> CompanyScreen(store, state)
-                    }
-                }
-            }
-        }
+        // Office is always the main screen — tabs open as floating windows over it.
+        OfficeScene(
+            state,
+            store.playing,
+            Modifier.fillMaxSize(),
+            insetTop = if (state.games?.project != null) 168.dp else 120.dp,
+        )
 
-        // Floating HUD overlays the office.
         GdtHud(
             store = store,
             state = state,
@@ -125,10 +107,11 @@ private fun GameShell(
             onAbandon = { store.abandon(); menuOpen = false },
         )
 
+        FloatingTabWindow(store, state)
+
         FloatingNav(store, Modifier.align(Alignment.BottomCenter))
 
         if (toast != null) {
-            // Sit under the center HUD stack so toasts never cover bubbles or the project card.
             Box(Modifier.align(Alignment.TopCenter).padding(top = 210.dp)) {
                 ToastBanner(toast) { store.dismissNotice() }
             }
@@ -136,8 +119,53 @@ private fun GameShell(
     }
 }
 
+/** Non-office tabs as a single floating window; Office stays visible underneath. */
+@Composable
+private fun FloatingTabWindow(store: DesktopStore, state: GameState) {
+    val open = store.tab != Tab.OFFICE
+    // Keep last tab so exit animation still has content while tab snaps back to Office.
+    var shown by remember { mutableStateOf(Tab.LANES) }
+    if (store.tab != Tab.OFFICE) shown = store.tab
+    val title = when (shown) {
+        Tab.LANES -> "Lanes"
+        Tab.RESEARCH -> "Research"
+        Tab.TEAM -> "Team"
+        Tab.COMPANY -> "Company"
+        Tab.OFFICE -> ""
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        AnimatedVisibility(
+            visible = open,
+            enter = fadeIn() + scaleIn(initialScale = 0.96f),
+            exit = fadeOut() + scaleOut(targetScale = 0.96f),
+        ) {
+            // Leave generous office margins so the window reads as chrome, not a page.
+            BoxWithConstraints(Modifier.fillMaxSize().padding(start = 72.dp, end = 72.dp, top = 132.dp, bottom = 108.dp)) {
+                FloatingWindow(
+                    title = title,
+                    onClose = { store.tab = Tab.OFFICE },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .widthIn(min = 380.dp, max = 560.dp)
+                        .fillMaxWidth(0.55f)
+                        .heightIn(min = 280.dp, max = maxHeight * 0.78f)
+                        .fillMaxHeight(0.68f),
+                ) {
+                    when (shown) {
+                        Tab.LANES -> LanesScreen(store, state)
+                        Tab.RESEARCH -> ResearchScreen(store, state)
+                        Tab.TEAM -> TeamScreen(store, state)
+                        Tab.COMPANY -> CompanyScreen(store, state)
+                        Tab.OFFICE -> Unit
+                    }
+                }
+            }
+        }
+    }
+}
+
 /**
- * Studio floating chrome (layout unchanged):
+ * Studio floating chrome:
  * Menu · resource discs · project card · stacked status chips · transport.
  */
 @Composable
@@ -154,13 +182,11 @@ private fun GdtHud(
     val h = hudColors
     val project = state.games?.project
     val menuShape = RoundedCornerShape(8.dp)
-    // Side gutters reserve Menu + status chips; center stack is width-capped so nothing collides.
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 20.dp)) {
         val sideGutter = 168.dp
         val centerMax = (maxWidth - sideGutter * 2).coerceIn(200.dp, 340.dp)
         val bubbleSize = if (maxWidth < 960.dp) 46.dp else 52.dp
 
-        // Top-left Menu
         Row(
             Modifier
                 .align(Alignment.TopStart)
@@ -212,7 +238,6 @@ private fun GdtHud(
 
         val season = GameSeason.forWeek(state.week)
 
-        // Center stack: discs then project card — one column so they never overlap each other or the side chrome.
         Column(
             Modifier
                 .align(Alignment.TopCenter)
@@ -259,7 +284,8 @@ private fun GdtHud(
                     ProgressRow("Progress", project.completion.toFloat(), h.accent)
                     ProgressRow("Hype ${project.hype.toInt()}", (project.hype / 100.0).toFloat().coerceIn(0f, 1f), h.hype)
                 }
-            } else if (store.tab == Tab.OFFICE) {
+            } else {
+                // Always show company tip over the office (windows float below / around it).
                 GlassPanel(Modifier.widthIn(max = 280.dp)) {
                     Text(
                         state.companyName,
@@ -274,7 +300,6 @@ private fun GdtHud(
             }
         }
 
-        // Top-right stacked chips — fixed end column, never shares space with the center stack.
         Column(
             Modifier
                 .align(Alignment.TopEnd)

@@ -155,10 +155,10 @@ fun LanesScreen(store: DesktopStore, state: GameState) {
     val lane = store.lane?.takeIf { it in state.lanes } ?: state.lanes.first()
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = ScreenPad,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = WindowPad,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { SectionTitle("Lanes", "Each business is its own management game.") }
+        item { Hint("Each business is its own management game.") }
         if (state.lanes.size > 1) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -263,13 +263,12 @@ fun ResearchScreen(store: DesktopStore, state: GameState) {
     }
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = ScreenPad,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = WindowPad,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { SectionTitle("Research", "${state.researchPoints.toInt()} RP in the bank") }
         item {
             GlassPanel {
-                Hint("Buy unlocks with research points.")
+                Hint("${state.researchPoints.toInt()} RP in the bank · buy unlocks below.")
                 Text("Unlocked: ${state.researched.size}", style = MaterialTheme.typography.titleMedium, color = h.cash)
             }
         }
@@ -296,10 +295,10 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
     val h = hudColors
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = ScreenPad,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = WindowPad,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { SectionTitle("Team", "${state.staff.size} hired · ${state.office.title}") }
+        item { Hint("${state.staff.size} hired · ${state.office.title}") }
         item {
             GlassPanel {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -356,10 +355,10 @@ fun CompanyScreen(store: DesktopStore, state: GameState) {
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(ScreenPad),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(WindowPad),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SectionTitle("Company", state.companyName)
+        Hint(state.companyName)
         GlassPanel {
             Text(Format.money(state.valuation), style = MaterialTheme.typography.displayLarge, color = h.accent)
             Hint("Valuation")

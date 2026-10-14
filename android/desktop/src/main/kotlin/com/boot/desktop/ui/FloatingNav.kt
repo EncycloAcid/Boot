@@ -75,7 +75,14 @@ fun FloatingNav(store: DesktopStore, modifier: Modifier = Modifier) {
                 FloatingNavTab(
                     item = item,
                     selected = store.tab == item.tab,
-                    onClick = { store.tab = item.tab },
+                    onClick = {
+                        // Office clears any window; other tabs toggle their floating window.
+                        store.tab = when {
+                            item.tab == Tab.OFFICE -> Tab.OFFICE
+                            store.tab == item.tab -> Tab.OFFICE
+                            else -> item.tab
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                 )
             }

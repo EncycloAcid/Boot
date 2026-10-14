@@ -233,7 +233,7 @@ fun ToastBanner(message: String, onDismiss: () -> Unit) {
     }
 }
 
-/** Cool mist paper wash for non-office tabs / new game. */
+/** Cool mist paper wash for new game / empty worlds. */
 @Composable
 fun WorldBackdrop(modifier: Modifier = Modifier) {
     val h = hudColors
@@ -245,4 +245,60 @@ fun WorldBackdrop(modifier: Modifier = Modifier) {
     )
 }
 
+private val WindowShape = RoundedCornerShape(12.dp)
+
+/**
+ * Floating studio window over the office — title bar + close, scrollable body.
+ * Does not cover the whole screen; the isometric room stays visible around it.
+ */
+@Composable
+fun FloatingWindow(
+    title: String,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val h = hudColors
+    Column(
+        modifier
+            .shadow(10.dp, WindowShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            .clip(WindowShape)
+            .background(h.panel)
+            .border(1.dp, h.panelBorder, WindowShape),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(h.accentSoft)
+                .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                color = h.ink,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+            )
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onClose)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Close", style = MaterialTheme.typography.labelLarge, color = h.accent, fontWeight = FontWeight.Bold)
+            }
+        }
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            content()
+        }
+    }
+}
+
+/** Full-page padding (new game only). Tab content uses [WindowPad] inside floating windows. */
 val ScreenPad = PaddingValues(start = 32.dp, end = 32.dp, top = 128.dp, bottom = 124.dp)
+
+/** Compact padding for content inside [FloatingWindow]. */
+val WindowPad = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
