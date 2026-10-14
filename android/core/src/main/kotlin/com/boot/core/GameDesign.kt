@@ -54,8 +54,8 @@ enum class Genre(val code: Char) {
 @Serializable
 enum class GameSeason(val featuredGenre: Genre, val runnerUpGenre: Genre) {
     SPRING(Genre.SIMULATION, Genre.CASUAL),
-    SUMMER(Genre.ACTION, Genre.RACING),
-    AUTUMN(Genre.HORROR, Genre.STRATEGY),
+    SUMMER(Genre.ACTION, Genre.CASUAL),
+    AUTUMN(Genre.STRATEGY, Genre.RPG),
     WINTER(Genre.RPG, Genre.ADVENTURE);
 
     val title: String get() = when (this) {
