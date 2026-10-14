@@ -45,6 +45,12 @@ fun main() = application {
         var sequelOf by remember { mutableStateOf<Int?>(null) }
         var deviceCategory by remember { mutableStateOf(DeviceCategory.PHONE) }
         var deviceTier by remember { mutableStateOf(DeviceTier.FLAGSHIP) }
+        var deviceFormFactor by remember { mutableStateOf(FormFactor.defaultFor(DeviceCategory.PHONE)) }
+        var deviceFocusValues by remember { mutableStateOf(List(DeviceFocus.ALL.size) { 1f / DeviceFocus.ALL.size }) }
+        var bundleOs by remember { mutableStateOf(false) }
+        var appPack by remember { mutableStateOf(false) }
+        var appCategory by remember { mutableStateOf(AppCategory.PRODUCTIVITY) }
+        var updateFocus by remember { mutableStateOf(UpdateFocus.FEATURES) }
         var trainingSize by remember { mutableStateOf(TrainingSize.SMALL) }
         var aiProduct by remember { mutableStateOf(AIProduct.CHATBOT) }
         var osTarget by remember { mutableStateOf(OsTarget.PC) }
@@ -447,9 +453,13 @@ fun main() = application {
                                                         ValueLine("Active users", Format.count(app.users))
                                                         ValueLine("Quality", app.quality.toInt().toString() + "/100")
                                                         ValueLine("Last installs", Format.count(app.lastInstalls))
+                                                        EnumPicker("Category", AppCategory.entries, app.category, { choice -> appCategory = choice; perform("App category changed.") { setAppCategory(choice) } }, Modifier.fillMaxWidth()) { it.title }
                                                         EnumPicker("Monetization", AppMonetization.entries, app.monetization, { choice -> perform("App monetization changed.") { setMonetization(choice) } }, Modifier.fillMaxWidth()) { it.title }
                                                         EnumPicker("Update cadence", UpdateStyle.entries, app.updateStyle, { choice -> perform("App update cadence changed.") { setUpdateStyle(choice) } }, Modifier.fillMaxWidth()) { it.title }
-                                                        EnumPicker("Pricing", AppPricing.entries, app.pricing, { choice -> perform("App pricing changed.") { apps!!.pricing = choice } }, Modifier.fillMaxWidth()) { it.title }
+                                                        EnumPicker("Update focus", UpdateFocus.entries, app.updateFocus, { choice -> updateFocus = choice; perform("App update focus changed.") { setUpdateFocus(choice) } }, Modifier.fillMaxWidth()) { it.title + " — " + it.detail }
+                                                        EnumPicker("Pricing", AppPricing.entries, app.pricing, { choice -> perform("App pricing changed.") { apps!!.pricing = choice } }, Modifier.fillMaxWidth()) { it.title + " — " + it.detail }
+                                                        ValueLine("Design / tech", app.design.toInt().toString() + " / " + app.tech.toInt())
+                                                        Text("Research features: " + (app.features.joinToString { it.title }.ifBlank { "none" }), color = muted)
                                                         Meter("Next update", app.updateProgress / app.buildWork)
                                                     }
                                                 }
@@ -483,16 +493,65 @@ fun main() = application {
                                                         ValueLine("Inventory", lab.inventory.toString())
                                                         ValueLine("Lifetime units", lab.lifetimeUnits.toString())
                                                         lab.design?.let { design ->
-                                                            Text(design.name + " · " + design.spec.category.title + " · " + design.spec.tier.title, style = MaterialTheme.typography.titleMedium)
+                                                            Text(design.name + " · " + design.spec.category.title + " · " + design.spec.tier.title + " · " + design.formFactor.title, style = MaterialTheme.typography.titleMedium)
                                                             Meter("Device design", design.completion)
-                                                            if (design.isReady) Button(onClick = { perform("Launched device.") { launchDevice() } }) { Text("Launch device") }
+                                                            ValueLine("Design / tech", design.design.toInt().toString() + " / " + design.tech.toInt())
+                                                            ValueLine("Planned BOM", moneyDesktop(design.effectiveUnitCost))
+                                                            ValueLine("Suggested price band", moneyDesktop(design.priceBand.start) + "–" + moneyDesktop(design.priceBand.endInclusive))
+                                                            if (design.isReady) Button(onClick = { perform("Launched device.") { launchDevice() } }, enabled = lab.inventory > 0) { Text("Launch device") }
                                                         }
                                                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                                            EnumPicker("Device", DeviceCategory.entries, deviceCategory, { deviceCategory = it }, Modifier.weight(1f)) { it.title }
+                                                            EnumPicker("Device", DeviceCategory.entries, deviceCategory, { deviceCategory = it; deviceFormFactor = FormFactor.defaultFor(it) }, Modifier.weight(1f)) { it.title }
                                                             EnumPicker("Tier", DeviceTier.entries, deviceTier, { deviceTier = it }, Modifier.weight(1f)) { it.title }
                                                         }
-                                                        Button(onClick = { perform("Started device design.") { startDevice(deviceCategory, deviceTier) } }, enabled = lab.design == null) { Text("Start device design") }
-                                                        if (lab.design != null) Button(onClick = { perform("Booked 100 production units.") { orderUnits(100) } }, enabled = lab.design?.isReady == true && state.cash > lab.design!!.spec.unitCost * 100) { Text("Book 100 units") }
+                                                        EnumPicker("Form factor", FormFactor.options(deviceCategory), deviceFormFactor, { deviceFormFactor = it }, Modifier.fillMaxWidth()) { it.title }
+                                                        Text("Component focus", style = MaterialTheme.typography.titleMedium)
+                                                        DeviceFocus.entries.forEachIndexed { index, focus ->
+                                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                    Text(focus.title(deviceCategory), Modifier.weight(1f))
+                                                                    Text((deviceFocusValues[index] * 100).toInt().toString() + "%", color = muted)
+                                                                }
+                                                                Slider(value = deviceFocusValues[index], onValueChange = { value -> deviceFocusValues = deviceFocusValues.toMutableList().also { it[index] = value } })
+                                                            }
+                                                        }
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Checkbox(checked = bundleOs, onCheckedChange = { bundleOs = it }, enabled = state.canBundleOs())
+                                                            Column {
+                                                                Text("Bundle recent OS")
+                                                                Text(if (state.canBundleOs()) "Boosts device appeal and the platform ecosystem." else "Ship an OS version first to unlock this.", color = muted, style = MaterialTheme.typography.bodySmall)
+                                                            }
+                                                        }
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Checkbox(checked = appPack, onCheckedChange = { appPack = it }, enabled = state.canOfferAppPack())
+                                                            Column {
+                                                                Text("Include first-party app pack")
+                                                                Text("A coordinated ecosystem launch when Apps is open.", color = muted, style = MaterialTheme.typography.bodySmall)
+                                                            }
+                                                        }
+                                                        Button(
+                                                            onClick = { perform("Started device design.") { startDevice(deviceCategory, deviceTier, deviceFormFactor, deviceFocusValues.map { it.toDouble() }, bundleOs, appPack) } },
+                                                            enabled = lab.design == null,
+                                                        ) { Text("Start device design") }
+                                                        if (lab.design?.isReady == true) {
+                                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                                listOf(100, 500, 1000).forEach { units ->
+                                                                    Button(onClick = { perform("Booked " + units + " production units.") { orderUnits(units) } }, enabled = state.cash > lab.design!!.effectiveUnitCost * units) { Text("Book " + units) }
+                                                                }
+                                                            }
+                                                        }
+                                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                            Text("Launch event", Modifier.weight(1f))
+                                                            OutlinedButton(onClick = { perform("Launch event set to none.") { hardware!!.keynote = 0 } }) { Text("None") }
+                                                            OutlinedButton(onClick = { perform("Launch livestream selected.") { hardware!!.keynote = 1 } }) { Text("Livestream") }
+                                                            OutlinedButton(onClick = { perform("Keynote selected.") { hardware!!.keynote = 2 } }) { Text("Keynote") }
+                                                        }
+                                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                            Text("Price shift " + String.format(Locale.US, "%+.0f%%", lab.priceShift * 100), Modifier.weight(1f), color = muted)
+                                                            OutlinedButton(onClick = { perform("Device price lowered.") { hardware!!.priceShift = (hardware!!.priceShift - 0.05).coerceAtLeast(-0.2) } }, enabled = lab.priceShift > -0.2) { Text("−5%") }
+                                                            OutlinedButton(onClick = { perform("Device price raised.") { hardware!!.priceShift = (hardware!!.priceShift + 0.05).coerceAtMost(0.2) } }, enabled = lab.priceShift < 0.2) { Text("+5%") }
+                                                        }
+                                                        lab.orders.forEach { order -> Text(order.model + " · " + order.units + " units · arrives week " + order.arrivalWeek, color = muted) }
                                                         lab.onMarket?.let { ValueLine("On sale", it.name + " · " + it.unitsSold + " units sold") }
                                                     }
                                                 }
