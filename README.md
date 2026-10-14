@@ -6,6 +6,12 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.5 (Android):** a deeper game-studio workflow.
+
+- **Paid playtesting in the development screen.** Test a project at each development stage (once per stage). Playtests cost money, remove up to 35% of current bugs, and add design and technology feedback. The button shows the stage-specific cost, whether you have enough cash, and whether that stage has already been tested.
+- **Seasonal market guidance.** Your active project now shows the current season, the genres receiving the seasonal boost, and the launch-sales modifier for your game's genre. Use it alongside the score forecast, bug count, genre-fit meter and rival-release warnings to decide whether to ship or keep polishing.
+- **Clearer quality-assurance feedback.** The development card explains when testing is available and what it can improve, making the playtest mechanic actionable instead of hidden behind the simulation engine.
+
 **New in 3.4 (Android):** a tutorial and a How to play guide.
 
 - **Rosa shows you the ropes.** A new career can start with a mentor: Rosa, a founder who's started four companies and sold three, walks you through your first weeks in seven lessons on the office screen. Make your first thing (design a game, take a contract, design a device, start a training run, or watch your app or platform being built), let time run, hire, read your numbers and spend research points. Each lesson ticks itself off when you do it, its button takes you to the right place, and you can skip the lot. It's on by default for your first run and a switch on the new game screen after that.

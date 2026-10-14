@@ -1393,3 +1393,51 @@ class RatingTest {
         assertTrue(next.score > hit.score - 2.5)
     }
 }
+
+
+class GameSeasonTest {
+    @Test
+    fun seasonCalendarRepeatsEveryFiftyTwoWeeks() {
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(1))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(13))
+        assertEquals(GameSeason.SUMMER, GameSeason.forWeek(14))
+        assertEquals(GameSeason.AUTUMN, GameSeason.forWeek(27))
+        assertEquals(GameSeason.WINTER, GameSeason.forWeek(40))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(53))
+    }
+
+    @Test
+    fun featuredGenresReceiveTheLargestLaunchBoost() {
+        assertEquals(1.18, GameSeason.SPRING.launchMultiplier(Genre.SIMULATION))
+        assertEquals(1.08, GameSeason.SPRING.launchMultiplier(Genre.CASUAL))
+        assertEquals(0.96, GameSeason.SPRING.launchMultiplier(Genre.RPG))
+    }
+}
+
+class PlaytestTest {
+    @Test
+    fun paidPlaytestFixesBugsImprovesBuildAndPersistsStageHistory() {
+        val s = game(Lane.GAMES, 431)
+        s.cash = 100_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        s.startGame(GameConcept("Playtest Demo", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL))
+        val p = s.games!!.project!!
+        p.bugs = 20.0
+        val designBefore = p.design
+        val techBefore = p.tech
+        val cashBefore = s.cash
+
+        s.playtestGame()
+
+        assertEquals(13.0, p.bugs, 0.0001)
+        assertTrue(p.design > designBefore)
+        assertTrue(p.tech > techBefore)
+        assertTrue(s.cash < cashBefore)
+        assertTrue(0 in p.playtestedStages)
+        assertFailsWith<GameException> { s.playtestGame() }
+
+        val restored = GameState.decode(s.encode())
+        assertTrue(0 in restored.games!!.project!!.playtestedStages)
+    }
+}

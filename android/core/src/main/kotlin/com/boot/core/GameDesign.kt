@@ -51,6 +51,36 @@ enum class Genre(val code: Char) {
     }
 }
 
+@Serializable
+enum class GameSeason(val featuredGenre: Genre, val runnerUpGenre: Genre) {
+    SPRING(Genre.SIMULATION, Genre.CASUAL),
+    SUMMER(Genre.ACTION, Genre.CASUAL),
+    AUTUMN(Genre.STRATEGY, Genre.RPG),
+    WINTER(Genre.RPG, Genre.ADVENTURE);
+
+    val title: String get() = when (this) {
+        SPRING -> "Spring"
+        SUMMER -> "Summer"
+        AUTUMN -> "Autumn"
+        WINTER -> "Winter"
+    }
+    val weeksLabel: String get() = when (this) {
+        SPRING -> "Weeks 1–13"
+        SUMMER -> "Weeks 14–26"
+        AUTUMN -> "Weeks 27–39"
+        WINTER -> "Weeks 40–52"
+    }
+    val marketTip: String get() = "${featuredGenre.title} games are in season; ${runnerUpGenre.title.lowercase()} games also get a smaller boost."
+    fun launchMultiplier(genre: Genre): Double = when (genre) {
+        featuredGenre -> 1.18
+        runnerUpGenre -> 1.08
+        else -> 0.96
+    }
+    companion object {
+        fun forWeek(week: Int): GameSeason = entries[((week.coerceAtLeast(1) - 1) % 52) / 13]
+    }
+}
+
 /** The nine areas a team splits its time between, three per development stage. */
 @Serializable
 enum class FocusArea(val stage: Int, val designShare: Double) {
