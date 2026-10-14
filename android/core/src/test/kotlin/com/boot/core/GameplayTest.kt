@@ -1393,3 +1393,45 @@ class RatingTest {
         assertTrue(next.score > hit.score - 2.5)
     }
 }
+
+class GameSeasonTest {
+    @Test
+    fun seasonCalendarRepeatsEveryYear() {
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(1))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(13))
+        assertEquals(GameSeason.SUMMER, GameSeason.forWeek(14))
+        assertEquals(GameSeason.AUTUMN, GameSeason.forWeek(27))
+        assertEquals(GameSeason.WINTER, GameSeason.forWeek(40))
+        assertEquals(GameSeason.SPRING, GameSeason.forWeek(53))
+    }
+
+    @Test
+    fun seasonalDemandRewardsFeaturedGenres() {
+        assertTrue(GameSeason.SUMMER.launchMultiplier(Genre.ACTION) > GameSeason.SUMMER.launchMultiplier(Genre.CASUAL))
+        assertTrue(GameSeason.AUTUMN.launchMultiplier(Genre.STRATEGY) > 1.0)
+        assertTrue(GameSeason.WINTER.launchMultiplier(Genre.RPG) > 1.0)
+        assertTrue(GameSeason.SPRING.launchMultiplier(Genre.SIMULATION) > GameSeason.SPRING.launchMultiplier(Genre.RPG))
+        // Off-season titles take a small haircut.
+        assertTrue(GameSeason.SUMMER.launchMultiplier(Genre.STRATEGY) < 1.0)
+    }
+
+    @Test
+    fun launchReportMentionsSeasonalDemand() {
+        val s = game(Lane.GAMES, 406)
+        s.cash = 1e7
+        s.week = 1
+        s.games!!.topics += Topic.CITY
+        s.startGame(GameConcept("Spring Tide", Topic.CITY, Genre.SIMULATION, platforms = listOf(Platform.PC), size = GameSize.SMALL))
+        val p = s.games!!.project!!
+        p.progress = p.work
+        p.design = 80.0
+        p.tech = 60.0
+        p.bugs = 2.0
+        p.polish = p.work * 0.4
+        p.matchSum = 90.0
+        p.matchWork = 100.0
+        s.launchGame()
+        val report = s.games!!.releases.first().report
+        assertTrue(report.any { "Spring launch timing" in it && "seasonal demand" in it }, report.joinToString(" | "))
+    }
+}
