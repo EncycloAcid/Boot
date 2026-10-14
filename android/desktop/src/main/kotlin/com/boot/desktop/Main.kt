@@ -43,6 +43,8 @@ fun main() = application {
         var selectedPlatforms by remember { mutableStateOf(listOf(Platform.PC)) }
         var liveService by remember { mutableStateOf(false) }
         var sequelOf by remember { mutableStateOf<Int?>(null) }
+        var remasterOf by remember { mutableStateOf<Int?>(null) }
+        var selectedEngineId by remember { mutableIntStateOf(1) }
         var deviceCategory by remember { mutableStateOf(DeviceCategory.PHONE) }
         var deviceTier by remember { mutableStateOf(DeviceTier.FLAGSHIP) }
         var deviceFormFactor by remember { mutableStateOf(FormFactor.defaultFor(DeviceCategory.PHONE)) }
@@ -231,6 +233,11 @@ fun main() = application {
                                             EnumPicker("Size", state.unlockedSizes, size, { size = it }, Modifier.weight(1f)) { it.title }
                                             EnumPicker("Price", PriceTier.entries, price, { price = it }, Modifier.weight(1f)) { it.title }
                                         }
+                                        if (studio?.engines?.isNotEmpty() == true) {
+                                            val engineChoices = studio.engines
+                                            val selectedEngine = engineChoices.firstOrNull { it.id == selectedEngineId } ?: engineChoices.maxBy { it.level }
+                                            EnumPicker("Engine", engineChoices, selectedEngine, { selectedEngineId = it.id }, Modifier.fillMaxWidth()) { it.name + " · level " + it.level }
+                                        }
                                         if (Research.MULTI_GENRE in state.researched) {
                                             EnumPicker("Second genre (optional)", listOf(null) + Genre.entries.filter { it != genre }, secondGenre, { secondGenre = it }, Modifier.fillMaxWidth()) { it?.title ?: "Single genre" }
                                         }
@@ -258,15 +265,15 @@ fun main() = application {
                                             title = projectTitle.ifBlank { "Untitled Project" }.trim(),
                                             topic = topic, genre = genre, genre2 = secondGenre, audience = audience,
                                             platforms = selectedPlatforms, size = size, price = price,
-                                            engineId = studio?.engines?.maxByOrNull { it.level }?.id ?: 0,
-                                            sequelOf = sequelOf, live = liveService,
+                                            engineId = selectedEngineId.takeIf { id -> studio?.engines?.any { it.id == id } == true } ?: (studio?.engines?.maxByOrNull { it.level }?.id ?: 0),
+                                            sequelOf = sequelOf, remasterOf = remasterOf, live = liveService,
                                         )
                                         val blocker = state.conceptBlocker(concept, team = targetTeam)
                                         Text("Target platform: PC · " + state.estimatedWeeks(concept) + " estimated weeks", color = muted)
                                         Text("Budget: " + moneyDesktop(size.weeklyBudget) + "/week · " + moneyDesktop(size.weeklyBudget * 4) + " first-month planning cost", color = muted)
                                         if (blocker != null) Text(blocker, color = Color(0xFFFFD18A))
                                         Button(
-                                            onClick = { perform("Started " + concept.title + " for team " + targetTeam + ".") { startGame(concept, team = targetTeam) }; sequelOf = null },
+                                            onClick = { perform("Started " + concept.title + " for team " + targetTeam + ".") { startGame(concept, team = targetTeam) }; sequelOf = null; remasterOf = null },
                                             enabled = blocker == null,
                                         ) { Text("Start development") }
                                     }
@@ -357,11 +364,36 @@ fun main() = application {
                                                             price = sequel.price
                                                             selectedPlatforms = sequel.platforms
                                                             sequelOf = sequel.sequelOf
+                                                            remasterOf = sequel.remasterOf
+                                                            selectedEngineId = sequel.engineId
                                                             liveService = sequel.live
                                                             page = DesktopPage.MAKE
                                                             notice = "Sequel concept loaded into the designer."
                                                         }
                                                     }) { Text("Design sequel") }
+                                                    if (Research.REMASTERS in state.researched) OutlinedButton(onClick = {
+                                                        val remaster = release.concept.copy(
+                                                            title = release.title + " Remastered",
+                                                            sequelOf = null,
+                                                            remasterOf = release.id,
+                                                            engineId = state.games!!.engines.maxBy { it.level }.id,
+                                                            platforms = release.concept.platforms.filter { state.availablePlatform(it) }.ifEmpty { listOf(Platform.PC) },
+                                                        )
+                                                        projectTitle = remaster.title
+                                                        topic = remaster.topic
+                                                        genre = remaster.genre
+                                                        secondGenre = remaster.genre2
+                                                        size = remaster.size
+                                                        audience = remaster.audience
+                                                        price = remaster.price
+                                                        selectedPlatforms = remaster.platforms
+                                                        selectedEngineId = remaster.engineId
+                                                        sequelOf = null
+                                                        remasterOf = release.id
+                                                        liveService = false
+                                                        page = DesktopPage.MAKE
+                                                        notice = "Remaster concept loaded into the designer."
+                                                    }) { Text("Design remaster") }
                                                 }
                                                 if (release.live != null) {
                                                     val live = release.live!!
