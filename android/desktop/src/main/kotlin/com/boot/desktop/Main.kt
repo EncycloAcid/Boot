@@ -254,11 +254,16 @@ fun main() = application {
                                             Text("No game in production.", color = muted)
                                             Button(onClick = { page = DesktopPage.MAKE }) { Text("Design a game") }
                                         } else {
-                                            Text(p.title, style = MaterialTheme.typography.titleLarge)
-                                            Text(p.concept.topic.title + " · " + p.concept.genre.title + " · " + p.concept.size.title, color = muted)
-                                            Meter("Production", p.completion)
-                                            Text(if (p.isReady) "Ready to launch" else "Stage " + (p.stage + 1) + " of 3 · " + p.weeksInDev + " weeks in", color = muted)
-                                            Button(onClick = { page = DesktopPage.MAKE }) { Text("Open project") }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
+                                                GameCover(p.concept, 88.dp, studio = state.companyName)
+                                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Text(p.title, style = MaterialTheme.typography.titleLarge)
+                                                    Text(p.concept.topic.title + " · " + p.concept.genre.title + " · " + p.concept.size.title, color = muted)
+                                                    Meter("Production", p.completion)
+                                                    Text(if (p.isReady) "Ready to launch" else "Stage " + (p.stage + 1) + " of 3 · " + p.weeksInDev + " weeks in", color = muted)
+                                                    Button(onClick = { page = DesktopPage.MAKE }) { Text("Open project") }
+                                                }
+                                            }
                                         }
                                     }
                                     CardBlock("WEEKLY FINANCES", modifier = Modifier.weight(1f)) {
@@ -336,6 +341,19 @@ fun main() = application {
                                             sequelOf = sequelOf, remasterOf = remasterOf, live = liveService,
                                         )
                                         val blocker = state.conceptBlocker(concept, team = targetTeam)
+                                        Row(
+                                            Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            GameCover(concept, 108.dp, studio = state.companyName)
+                                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Text("BOX ART PREVIEW", style = MaterialTheme.typography.labelLarge, color = mint)
+                                                Text(concept.title, style = MaterialTheme.typography.titleLarge)
+                                                Text(concept.topic.title + " · " + concept.genre.title + " · " + (selectedPlatforms.firstOrNull()?.title ?: "PC"), color = muted)
+                                                Text("Theme, genre and platform shape the cover as your concept changes.", color = muted, style = MaterialTheme.typography.bodySmall)
+                                            }
+                                        }
                                         Text("Target platform: PC · " + state.estimatedWeeks(concept) + " estimated weeks", color = muted)
                                         Text("Budget: " + moneyDesktop(size.weeklyBudget) + "/week · " + moneyDesktop(size.weeklyBudget * 4) + " first-month planning cost", color = muted)
                                         if (blocker != null) Text(blocker, color = Color(0xFFFFD18A))
@@ -406,8 +424,12 @@ fun main() = application {
                                         if (g.releases.isEmpty()) Text("No games released yet. Finish a project and launch it to begin building a catalogue.", color = muted)
                                         g.releases.sortedByDescending { it.week }.forEach { release ->
                                             Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    Column(Modifier.weight(1f)) {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    GameCover(release.concept, 84.dp, studio = state.companyName)
+                                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                         Text(release.title, style = MaterialTheme.typography.titleMedium)
                                                         Text(release.concept.topic.title + " · " + release.concept.genreTitle + " · " + release.concept.size.title, color = muted)
                                                     }
