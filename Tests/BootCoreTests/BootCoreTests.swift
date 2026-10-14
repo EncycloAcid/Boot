@@ -116,6 +116,32 @@ final class LaneTests: XCTestCase {
         XCTAssertEqual(s.stats.releases, 1)
     }
 
+    func testGameDevelopmentFocusChangesAndPersists() throws {
+        var s = GameState(companyName: "T", founderName: "F", lane: .games, seed: 12)
+        try s.startGame(.small)
+        try s.setGameFocus(.visuals)
+        XCTAssertEqual(s.games?.project?.activeFocus, .visuals)
+        XCTAssertGreaterThan(GameFocus.visuals.polishMultiplier, GameFocus.balanced.polishMultiplier)
+        XCTAssertLessThan(GameFocus.visuals.workMultiplier, GameFocus.balanced.workMultiplier)
+
+        try s.setGameFocus(.content)
+        XCTAssertEqual(s.games?.project?.activeFocus, .content)
+        XCTAssertGreaterThan(GameFocus.content.workMultiplier, GameFocus.balanced.workMultiplier)
+        XCTAssertLessThan(GameFocus.content.polishMultiplier, GameFocus.balanced.polishMultiplier)
+
+        let data = try JSONEncoder().encode(s)
+        let restored = try JSONDecoder().decode(GameState.self, from: data)
+        XCTAssertEqual(restored.games?.project?.activeFocus, .content)
+    }
+
+    func testOldGameProjectSaveDefaultsToBalancedFocus() throws {
+        let oldSave = """
+        {"title":"Old Save","scope":"small","progress":12,"polish":3,"weeksInDev":2}
+        """.data(using: .utf8)!
+        let project = try JSONDecoder().decode(GameProject.self, from: oldSave)
+        XCTAssertEqual(project.activeFocus, .balanced)
+    }
+
     func testAcceptingAContractPaysUpfront() throws {
         var s = GameState(companyName: "T", founderName: "F", lane: .websites, seed: 2)
         while s.web?.offers.isEmpty ?? true { try s.advance() }
