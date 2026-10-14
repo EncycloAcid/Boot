@@ -68,12 +68,24 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build Windows installers (compiles the shared engine)
-        run: ./gradlew.bat :desktop:packageDistributionForCurrentOS
+      - name: Build portable Windows game
+        run: ./gradlew.bat :desktop:createDistributable
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          $appDir = "desktop/build/compose/binaries/main/app/Boot Game Tycoon"
+          $distDir = "desktop/build/distributions"
+          @"
+          Boot Game Tycoon (Windows portable)
+
+          1. Extract the entire ZIP to a folder.
+          2. Open `"Boot Game Tycoon.exe`" from the extracted folder.
+
+          The game includes its runtime and does not need an installer.
+          "@ | Set-Content -LiteralPath "$appDir/README.txt" -Encoding utf8
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+          Compress-Archive -Path "$appDir/*" -DestinationPath "$distDir/Boot-Game-Tycoon-Windows-Portable.zip" -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: boot-windows-desktop
-          path: |
-            android/desktop/build/compose/binaries/main/**/*.msi
-            android/desktop/build/compose/binaries/main/**/*.exe
+          name: boot-windows-portable
+          path: android/desktop/build/distributions/Boot-Game-Tycoon-Windows-Portable.zip
