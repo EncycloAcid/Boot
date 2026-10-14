@@ -95,6 +95,65 @@ enum class GameSeason(val featuredGenre: Genre, val runnerUpGenre: Genre) {
     }
 }
 
+/**
+ * Weekly creative direction for the game in development. Each choice trades production
+ * speed, polish, bugs and shipped quality — so advancing a week is a decision, not a tick.
+ */
+@Serializable
+enum class GameFocus {
+    BALANCED, GAMEPLAY, VISUALS, PERFORMANCE, CONTENT;
+
+    val title: String get() = when (this) {
+        BALANCED -> "Balanced"
+        GAMEPLAY -> "Gameplay first"
+        VISUALS -> "Visual polish"
+        PERFORMANCE -> "Performance first"
+        CONTENT -> "More content"
+    }
+
+    val blurb: String get() = when (this) {
+        BALANCED -> "Steady progress and polish."
+        GAMEPLAY -> "Slower production, stronger core experience."
+        VISUALS -> "More polish, slower content progress."
+        PERFORMANCE -> "Fewer bugs and a safer ship, with a small pace cost."
+        CONTENT -> "Ship content faster, but leave less time for polish."
+    }
+
+    val workMultiplier: Double get() = when (this) {
+        BALANCED -> 1.0
+        GAMEPLAY -> 0.94
+        VISUALS -> 0.90
+        PERFORMANCE -> 0.96
+        CONTENT -> 1.14
+    }
+
+    val polishMultiplier: Double get() = when (this) {
+        BALANCED -> 1.0
+        GAMEPLAY -> 1.08
+        VISUALS -> 1.28
+        PERFORMANCE -> 1.12
+        CONTENT -> 0.72
+    }
+
+    /** Extra bug accumulation while building (1 = normal). */
+    val bugMultiplier: Double get() = when (this) {
+        BALANCED -> 1.0
+        GAMEPLAY -> 0.95
+        VISUALS -> 1.05
+        PERFORMANCE -> 0.75
+        CONTENT -> 1.15
+    }
+
+    /** Added to critic score parts (same scale as studio-craft bonuses). */
+    val qualityBonus: Double get() = when (this) {
+        BALANCED -> 0.0
+        GAMEPLAY -> 4.0
+        VISUALS -> 3.0
+        PERFORMANCE -> 3.0
+        CONTENT -> -3.0
+    }
+}
+
 /** The nine areas a team splits its time between, three per development stage. */
 @Serializable
 enum class FocusArea(val stage: Int, val designShare: Double) {

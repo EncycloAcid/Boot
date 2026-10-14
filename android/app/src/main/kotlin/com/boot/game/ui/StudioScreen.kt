@@ -43,6 +43,7 @@ import com.boot.core.timelineWeek
 import com.boot.core.FocusArea
 import com.boot.core.Fit
 import com.boot.core.Format
+import com.boot.core.GameFocus
 import com.boot.core.GameProject
 import com.boot.core.GameSeason
 import com.boot.core.Genre
@@ -66,7 +67,9 @@ import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
+import com.boot.core.playtestGame
 import com.boot.core.sequelConcept
+import com.boot.core.setCreativeFocus
 import com.boot.core.setStageFocus
 import com.boot.core.gameTeam
 import com.boot.core.teamSize
@@ -123,7 +126,7 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
     when {
         p != null -> {
             item { DevelopmentSection(store, state, p) }
-            if (!p.isReady) item { FocusSection(store, g, p) }
+            item { FocusSection(store, g, p) }
             item { HypeSection(store, state, p) }
         }
         x != null -> item {
@@ -197,7 +200,7 @@ private fun LazyListScope.secondTeamItems(store: GameStore, state: GameState, g:
     val p2 = g.project2
     if (p2 != null) {
         item { DevelopmentSection(store, state, p2, team = 2) }
-        if (!p2.isReady) item { FocusSection(store, g, p2, team = 2) }
+        item { FocusSection(store, g, p2, team = 2) }
         item { HypeSection(store, state, p2, team = 2) }
     } else {
         item {
@@ -312,6 +315,24 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 PointTile("Tech", p.tech, p.lastTech, colors.tech, state.week, Modifier.weight(1f))
                 PointTile("Bugs", p.bugs, p.lastBugs, colors.bad, state.week, Modifier.weight(1f))
             }
+            val playtestStage = if (p.isReady) 3 else p.stage
+            val playtested = playtestStage in p.playtestedStages
+            val playtestCost = c.size.weeklyBudget * (1.5 + playtestStage * 0.5)
+            if (!playtested) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Playtest this build", style = MaterialTheme.typography.titleSmall)
+                        Hint("Catch 35% of current bugs and get design feedback. One test per stage.")
+                    }
+                    PrimaryButton(
+                        "Test · ${Format.money(playtestCost)}",
+                        { store.perform { playtestGame(team) } },
+                        enabled = state.cash >= playtestCost,
+                    )
+                }
+            } else {
+                Hint("Stage playtest complete. You can test again when development moves to the next stage.", colors.good)
+            }
             if (!p.isReady) {
                 val lean = p.projectedDesignShare()
                 val delta = p.designLeanDelta()
@@ -350,6 +371,17 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                         Hint("Ship when bugs are down, or keep polishing for a cleaner score.")
                     }
                 }
+                val season = GameSeason.forWeek(state.week)
+                val lift = season.launchMultiplier(c.genre)
+                ValueRow(
+                    "${season.title} demand",
+                    "${if (lift >= 1) "+" else ""}${((lift - 1) * 100).toInt()}%",
+                )
+                Hint(
+                    if (lift >= 1.08) "In season for ${c.genreLower} — shipping now boosts launch sales."
+                    else if (lift < 1.0) "Off-season for ${c.genre.lower}. Wait for ${GameSeason.entries.first { it.featuredGenre == c.genre || it.runnerUpGenre == c.genre }.title}, or ship anyway."
+                    else season.marketTip,
+                )
             }
         }
     }
@@ -395,18 +427,35 @@ private fun PointTile(label: String, value: Double, delta: Double, color: Color,
 
 @Composable
 private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject, team: Int = 1) {
-    val stage = p.stage
-    val areas = FocusArea.forStage(stage)
-    val alloc = p.focus[stage]
     GroupedSection(
-        (if (team == 2) "Team 2 · " else "") + "Focus · ${FocusArea.STAGES[stage]}",
-        footer = "Rebalance this stage any time. Finishing a stage teaches one sharper genre lesson; shipping still fills the notebook.",
+        (if (team == 2) "Team 2 · " else "") + "Direction",
+        footer = if (p.isReady) {
+            "Polish weeks still follow creative direction — visuals and performance shine here."
+        } else {
+            "Creative direction sets the week's trade-offs. Stage sliders still decide where the hours go."
+        },
     ) {
         CardBlock {
-            areas.forEachIndexed { i, area ->
-                FocusSlider(area, alloc, i, insight(g, p.concept.genre, area)) { v ->
-                    val next = alloc.toMutableList().also { it[i] = v }
-                    store.perform { setStageFocus(stage, next, team) }
+            Segmented(GameFocus.entries.toList(), p.creativeFocus, { it.title }) { f ->
+                store.perform { setCreativeFocus(f, team) }
+            }
+            Hint(p.creativeFocus.blurb)
+        }
+    }
+    if (!p.isReady) {
+        val stage = p.stage
+        val areas = FocusArea.forStage(stage)
+        val alloc = p.focus[stage]
+        GroupedSection(
+            (if (team == 2) "Team 2 · " else "") + "Focus · ${FocusArea.STAGES[stage]}",
+            footer = "Rebalance this stage any time. Finishing a stage teaches one sharper genre lesson; shipping still fills the notebook.",
+        ) {
+            CardBlock {
+                areas.forEachIndexed { i, area ->
+                    FocusSlider(area, alloc, i, insight(g, p.concept.genre, area)) { v ->
+                        val next = alloc.toMutableList().also { it[i] = v }
+                        store.perform { setStageFocus(stage, next, team) }
+                    }
                 }
             }
         }
