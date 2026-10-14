@@ -17,6 +17,8 @@ The installer task is configured to produce Windows MSI and EXE packages. CI upl
 
 ## Current desktop port
 
+The Android Gradle file on the source branch currently declares `versionName = "3.4.0"`; the requested 3.4.1 source isn't present in that file, so this port uses the latest Android simulation source available in the repository plus the newer playtesting and seasonal-demand changes on the feature branch. If 3.4.1 is a separate unpushed APK/build, its extra changes will need to be supplied before exact version-to-version parity can be guaranteed.
+
 The desktop interface is being brought up to parity with the Android simulation. It currently includes:
 
 - Shared serialized game state and desktop save/load.
