@@ -62,6 +62,7 @@ import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
+import com.boot.core.playtestGame
 import com.boot.core.sequelConcept
 import com.boot.core.setStageFocus
 import com.boot.core.gameTeam
@@ -299,6 +300,24 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 PointTile("Design", p.design, p.lastDesign, colors.design, state.week, Modifier.weight(1f))
                 PointTile("Tech", p.tech, p.lastTech, colors.tech, state.week, Modifier.weight(1f))
                 PointTile("Bugs", p.bugs, p.lastBugs, colors.bad, state.week, Modifier.weight(1f))
+            }
+            val playtestStage = if (p.isReady) 3 else p.stage
+            val playtested = playtestStage in p.playtestedStages
+            val playtestCost = c.size.weeklyBudget * (1.5 + playtestStage * 0.5)
+            if (!playtested) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Playtest this build", style = MaterialTheme.typography.titleSmall)
+                        Hint("Catch 35% of current bugs and get design feedback. One test per stage.")
+                    }
+                    PrimaryButton(
+                        "Test · ${Format.money(playtestCost)}",
+                        { store.perform { playtestGame(team) } },
+                        enabled = state.cash >= playtestCost,
+                    )
+                }
+            } else {
+                Hint("Stage playtest complete. You can test again when development moves to the next stage.", colors.good)
             }
             if (p.isReady) {
                 Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
