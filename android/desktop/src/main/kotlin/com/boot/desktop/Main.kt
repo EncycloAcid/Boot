@@ -129,7 +129,7 @@ fun main() = application {
                             CardBlock("DECISION REQUIRED", event.title) {
                                 Text(event.body, color = muted)
                                 event.choices.forEachIndexed { index, choice ->
-                                    Button(onClick = { perform("Decision resolved: " + event.title) { choose(index) } }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
+                                    Button(onClick = { perform("Decision resolved: " + event.title) { choose(index) } }, modifier = Modifier.fillMaxWidth()) { Text(choice.label + " — " + choice.detail) }
                                 }
                             }
                         }
@@ -137,7 +137,7 @@ fun main() = application {
                             CardBlock("INBOX · EXPIRES WEEK " + item.expiresWeek, item.title) {
                                 Text(item.body, color = muted)
                                 item.choices.forEachIndexed { index, choice ->
-                                    OutlinedButton(onClick = { perform("Inbox answered: " + item.title) { answer(item.id, index) } }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
+                                    OutlinedButton(onClick = { perform("Inbox answered: " + item.title) { answer(item.id, index) } }, modifier = Modifier.fillMaxWidth()) { Text(choice.label + " — " + choice.detail) }
                                 }
                             }
                         }
