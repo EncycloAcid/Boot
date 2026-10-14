@@ -122,6 +122,10 @@ fun GameState.estimatedWeeks(size: GameSize): Int = ceil(size.work / max(1.0, st
 /** Weeks a concept takes with today's team: remasters take half as long. */
 fun GameState.estimatedWeeks(c: GameConcept): Int = ceil(c.work / max(1.0, staffing(Lane.GAMES).output)).toInt()
 
+/** Public title invent for UI modules that cannot see the internal RNG. */
+fun GameState.suggestGameTitle(topic: Topic, genre: Genre): String =
+    studio().suggestTitle(rng, topic, genre)
+
 fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> = evenFocus(), team: Int = 1) {
     val g = studio()
     conceptBlocker(concept, team = team)?.let { throw notAvailable(it) }

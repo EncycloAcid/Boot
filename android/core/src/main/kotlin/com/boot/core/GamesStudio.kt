@@ -383,7 +383,7 @@ class GamesStudio {
             .sortedByDescending { it.lifetime }
 
     /** Suggest a name nobody has used, in the voice of the topic and genre. */
-    internal fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
+    fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
         gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title, project2?.title))
 
     // Weekly simulation
