@@ -9,7 +9,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -209,7 +208,8 @@ fun OfficePreview(state: GameState, office: Office, modifier: Modifier = Modifie
 
 @Composable
 private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolean) {
-    val night = isSystemInDarkTheme()
+    // Keep the game's room art bright even when Windows itself is set to dark mode.
+    val night = false
     val colors = gameColors
     val primary = MaterialTheme.colorScheme.primary
     val measurer = rememberTextMeasurer()
