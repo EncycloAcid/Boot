@@ -24,7 +24,7 @@ private val panel = Color(0xFF202A24)
 private val muted = Color(0xFFB7C1BA)
 
 private enum class DesktopPage(val label: String) {
-    OVERVIEW("Overview"), MAKE("Make"), GAMES("Games"), MARKET("Market"),
+    OVERVIEW("Overview"), MAKE("Make"), GAMES("Games"), BUSINESSES("Businesses"), MARKET("Market"),
     TECH("Tech & Research"), TEAM("Team"), COMPANY("Company"), NEWS("News")
 }
 
@@ -43,6 +43,10 @@ fun main() = application {
         var selectedPlatforms by remember { mutableStateOf(listOf(Platform.PC)) }
         var liveService by remember { mutableStateOf(false) }
         var sequelOf by remember { mutableStateOf<Int?>(null) }
+        var deviceCategory by remember { mutableStateOf(DeviceCategory.PHONE) }
+        var deviceTier by remember { mutableStateOf(DeviceTier.FLAGSHIP) }
+        var trainingSize by remember { mutableStateOf(TrainingSize.SMALL) }
+        var aiProduct by remember { mutableStateOf(AIProduct.CHATBOT) }
         var focusStage by remember { mutableIntStateOf(0) }
         var focusValues by remember { mutableStateOf(listOf(0.6f, 0.6f, 0.6f)) }
         var rename by remember { mutableStateOf("Boot Studio") }
@@ -356,6 +360,132 @@ fun main() = application {
                                     }
                                     if (g.published.isNotEmpty()) CardBlock("PUBLISHED INDIE GAMES", "Your label's catalogue.") {
                                         g.published.forEach { Text(it.title + " · " + String.format(Locale.US, "%.1f/10", it.score), color = muted) }
+                                    }
+                                }
+                            }
+                            DesktopPage.BUSINESSES -> {
+                                Text("These panels use the same simulation state as Android. Each business has its own operating loop; inactive lanes stay visible so you can see what unlocking a second business would mean.", color = muted)
+                                Lane.entries.forEach { lane ->
+                                    CardBlock(lane.businessName, lane.pitch) {
+                                        if (lane !in state.lanes) {
+                                            ValueLine("Status", "Not open")
+                                            ValueLine("Setup cost", moneyDesktop(lane.setupCost))
+                                            Text("This run does not operate this lane yet.", color = muted)
+                                        } else {
+                                            ValueLine("Status", "Active")
+                                            ValueLine("Weekly revenue (recent)", moneyDesktop(state.trailingRevenue(lane, 4) / 4))
+                                            ValueLine("Weekly profit (recent)", moneyDesktop(state.trailingProfit(lane, 4) / 4))
+                                            when (lane) {
+                                                Lane.GAMES -> {
+                                                    Text("Game development, releases, seasonal demand, live games, and esports are on the dedicated pages.", color = muted)
+                                                    Button(onClick = { page = DesktopPage.MAKE }) { Text("Open game studio") }
+                                                }
+                                                Lane.WEBSITES -> {
+                                                    val web = state.web
+                                                    if (web != null) {
+                                                        ValueLine("Agency standing", (web.standing * 100).toInt().toString() + "%")
+                                                        EnumPicker("Scope policy", ScopePolicy.entries, web.policy, { choice -> perform("Scope policy updated.") { setScopePolicy(choice) } }, Modifier.fillMaxWidth()) { it.title }
+                                                        EnumPicker("Agency rate", AgencyRate.entries, web.rate, { choice -> perform("Agency rate updated.") { setAgencyRate(choice) } }, Modifier.fillMaxWidth()) { it.title }
+                                                        Text("Client offers", style = MaterialTheme.typography.titleMedium)
+                                                        web.offers.forEach { offer ->
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                Column(Modifier.weight(1f)) {
+                                                                    Text(offer.client)
+                                                                    Text(moneyDesktop(offer.value) + " · " + offer.weeksAllowed + " weeks", color = muted)
+                                                                }
+                                                                Button(onClick = { perform("Accepted client contract.") { acceptContract(offer.id) } }) { Text("Accept") }
+                                                                OutlinedButton(onClick = { perform("Declined client contract.") { declineContract(offer.id) } }) { Text("Decline") }
+                                                            }
+                                                        }
+                                                        web.active.forEach { contract ->
+                                                            Text(contract.client + " · " + (contract.completion * 100).toInt() + "% complete" + if (contract.isOverdue) " · OVERDUE" else "", color = muted)
+                                                            Meter("Contract progress", contract.completion)
+                                                        }
+                                                        Text("Retainers: " + web.retainers.size + " · completed contracts: " + web.completed, color = muted)
+                                                    }
+                                                }
+                                                Lane.APPS -> {
+                                                    val app = state.apps
+                                                    if (app != null) {
+                                                        ValueLine("App", app.name)
+                                                        ValueLine("Release status", if (app.isLive) "Live · " + app.rankLabel else "In development · " + (app.buildProgress / app.buildWork * 100).toInt() + "%")
+                                                        ValueLine("Active users", Format.count(app.users))
+                                                        ValueLine("Quality", app.quality.toInt().toString() + "/100")
+                                                        ValueLine("Last installs", Format.count(app.lastInstalls))
+                                                        EnumPicker("Monetization", AppMonetization.entries, app.monetization, { choice -> perform("App monetization changed.") { setMonetization(choice) } }, Modifier.fillMaxWidth()) { it.title }
+                                                        EnumPicker("Update cadence", UpdateStyle.entries, app.updateStyle, { choice -> perform("App update cadence changed.") { setUpdateStyle(choice) } }, Modifier.fillMaxWidth()) { it.title }
+                                                        EnumPicker("Pricing", AppPricing.entries, app.pricing, { choice -> perform("App pricing changed.") { apps!!.pricing = choice } }, Modifier.fillMaxWidth()) { it.title }
+                                                        Meter("Next update", app.updateProgress / app.buildWork)
+                                                    }
+                                                }
+                                                Lane.SOCIAL -> {
+                                                    val social = state.social
+                                                    if (social != null) {
+                                                        ValueLine("Platform", social.name + if (social.isLive) " · LIVE" else " · BUILDING")
+                                                        ValueLine("Users", Format.count(social.users))
+                                                        ValueLine("Real users", Format.count(social.realUsers))
+                                                        ValueLine("Bot share", (social.botShare * 100).toInt().toString() + "%")
+                                                        ValueLine("Toxicity", (social.toxicity * 100).toInt().toString() + "%")
+                                                        EnumPicker("Content policy", ContentPolicy.entries, social.policy, { choice -> perform("Content policy changed.") { social!!.policy = choice } }, Modifier.fillMaxWidth()) { it.title }
+                                                        Column {
+                                                            ValueLine("Moderation", (social.moderation * 100).toInt().toString() + "%")
+                                                            Slider(value = social.moderation.toFloat(), onValueChange = { value -> perform("Moderation budget adjusted.") { setModeration(value.toDouble()) } })
+                                                        }
+                                                        Column {
+                                                            ValueLine("Ad load", (social.adLoad * 100).toInt().toString() + "%")
+                                                            Slider(value = social.adLoad.toFloat(), onValueChange = { value -> perform("Ad load adjusted.") { setAdLoad(value.toDouble()) } })
+                                                        }
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Text("Premium tier", Modifier.weight(1f))
+                                                            Switch(checked = social.premium, onCheckedChange = { value -> perform("Premium tier setting changed.") { social!!.premium = value } })
+                                                        }
+                                                    }
+                                                }
+                                                Lane.HARDWARE -> {
+                                                    val lab = state.hardware
+                                                    if (lab != null) {
+                                                        ValueLine("Brand awareness", (lab.brandAwareness * 100).toInt().toString() + "%")
+                                                        ValueLine("Inventory", lab.inventory.toString())
+                                                        ValueLine("Lifetime units", lab.lifetimeUnits.toString())
+                                                        lab.design?.let { design ->
+                                                            Text(design.name + " · " + design.spec.category.title + " · " + design.spec.tier.title, style = MaterialTheme.typography.titleMedium)
+                                                            Meter("Device design", design.completion)
+                                                            if (design.isReady) Button(onClick = { perform("Launched device.") { launchDevice() } }) { Text("Launch device") }
+                                                        }
+                                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                                            EnumPicker("Device", DeviceCategory.entries, deviceCategory, { deviceCategory = it }, Modifier.weight(1f)) { it.title }
+                                                            EnumPicker("Tier", DeviceTier.entries, deviceTier, { deviceTier = it }, Modifier.weight(1f)) { it.title }
+                                                        }
+                                                        Button(onClick = { perform("Started device design.") { startDevice(deviceCategory, deviceTier) } }, enabled = lab.design == null) { Text("Start device design") }
+                                                        if (lab.design != null) Button(onClick = { perform("Booked 100 production units.") { orderUnits(100) } }, enabled = lab.design?.isReady == true && state.cash > lab.design!!.spec.unitCost * 100) { Text("Book 100 units") }
+                                                        lab.onMarket?.let { ValueLine("On sale", it.name + " · " + it.unitsSold + " units sold") }
+                                                    }
+                                                }
+                                                Lane.AI -> {
+                                                    val lab = state.ai
+                                                    if (lab != null) {
+                                                        ValueLine("Best model", lab.modelName ?: "No model shipped")
+                                                        ValueLine("Capability", lab.capability.toInt().toString())
+                                                        ValueLine("Generation", lab.generation.toString())
+                                                        ValueLine("GPU units owned", lab.gpusOwned.toString())
+                                                        ValueLine("Subscribers", Format.count(lab.subscribers))
+                                                        ValueLine("Regulatory heat", (lab.regulatoryHeat * 100).toInt().toString() + "%")
+                                                        EnumPicker("Product focus", AIProduct.entries, aiProduct, { choice -> aiProduct = choice; perform("AI product focus changed.") { setAIFocus(choice) } }, Modifier.fillMaxWidth()) { it.title }
+                                                        lab.training?.let { run ->
+                                                            Text(run.codename + " · " + run.size.title, style = MaterialTheme.typography.titleMedium)
+                                                            Meter("Training run", run.completion)
+                                                        }
+                                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                            TrainingSize.entries.forEach { option ->
+                                                                Button(onClick = { trainingSize = option; perform("Started " + option.title + ".") { startTraining(option) } }, enabled = lab.training == null) { Text(option.title) }
+                                                            }
+                                                        }
+                                                        Button(onClick = { perform("Bought one GPU unit.") { buyGPUs(1) }, enabled = state.cash >= state.gpuCost(1)) { Text("Buy one GPU · " + moneyDesktop(state.gpuCost(1))) }
+                                                        lab.pendingModel?.let { Text("Model ready for release: " + it.codename + " · capability gain " + it.gain.toInt(), color = mint) }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
