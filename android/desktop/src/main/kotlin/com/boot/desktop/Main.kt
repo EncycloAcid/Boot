@@ -480,7 +480,7 @@ fun main() = application {
                                                                 Button(onClick = { trainingSize = option; perform("Started " + option.title + ".") { startTraining(option) } }, enabled = lab.training == null) { Text(option.title) }
                                                             }
                                                         }
-                                                        Button(onClick = { perform("Bought one GPU unit.") { buyGPUs(1) }, enabled = state.cash >= state.gpuCost(1)) { Text("Buy one GPU · " + moneyDesktop(state.gpuCost(1))) }
+                                                        Button(onClick = { perform("Bought one GPU unit.") { buyGPUs(1) } }, enabled = state.cash >= state.gpuCost(1)) { Text("Buy one GPU · " + moneyDesktop(state.gpuCost(1))) }
                                                         lab.pendingModel?.let { Text("Model ready for release: " + it.codename + " · capability gain " + it.gain.toInt(), color = mint) }
                                                     }
                                                 }
