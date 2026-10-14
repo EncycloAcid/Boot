@@ -125,6 +125,37 @@ fun main() = application {
                             }
                             Text("SEASON · " + GameSeason.forWeek(state.week + 1).title.uppercase(), color = mint, style = MaterialTheme.typography.labelLarge)
                         }
+                        state.events.firstOrNull()?.let { event ->
+                            CardBlock("DECISION REQUIRED", event.title) {
+                                Text(event.body, color = muted)
+                                event.choices.forEachIndexed { index, choice ->
+                                    Button(onClick = { perform("Decision resolved: " + event.title) { choose(index) } }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
+                                }
+                            }
+                        }
+                        state.inbox.forEach { item ->
+                            CardBlock("INBOX · EXPIRES WEEK " + item.expiresWeek, item.title) {
+                                Text(item.body, color = muted)
+                                item.choices.forEachIndexed { index, choice ->
+                                    OutlinedButton(onClick = { perform("Inbox answered: " + item.title) { answer(item.id, index) } }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
+                                }
+                            }
+                        }
+                        state.pendingPivot?.let { offer ->
+                            CardBlock("PIVOT POINT", offer.headline) {
+                                Text(offer.body, color = muted)
+                                if (offer.trigger == PivotTrigger.BUYOUT_OFFER) {
+                                    Button(onClick = { perform("Accepted the buyout offer.") { acceptPivotBuyout() } }, modifier = Modifier.fillMaxWidth()) { Text("Accept buyout · " + moneyDesktop(offer.salePrice)) }
+                                }
+                                Lane.entries.filter { it !in state.lanes }.forEach { lane ->
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                        Button(onClick = { perform("Expanded into " + lane.title) { resolvePivot(lane, PivotMode.EXPAND) } }, enabled = state.pivotBlocker(lane, PivotMode.EXPAND, false) == null, modifier = Modifier.weight(1f)) { Text("Expand into " + lane.title) }
+                                        Button(onClick = { perform("Pivoted to " + lane.title) { resolvePivot(lane, PivotMode.PIVOT) } }, enabled = state.pivotBlocker(lane, PivotMode.PIVOT, false) == null, modifier = Modifier.weight(1f)) { Text("Pivot to " + lane.title) }
+                                    }
+                                }
+                                OutlinedButton(onClick = { perform("Stayed focused on the current business.") { stayFocused() } }) { Text("Stay focused") }
+                            }
+                        }
                         when (page) {
                             DesktopPage.OVERVIEW -> {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
