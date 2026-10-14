@@ -869,6 +869,115 @@ fun main() = application {
                                     ValueLine("Valuation", moneyDesktop(state.valuation))
                                     ValueLine("Research", state.researchPoints.toInt().toString() + " RP")
                                 }
+                                CardBlock("OFFICE & PERKS", "Your office controls headcount capacity, rent, and the perks you can support.") {
+                                    ValueLine("Current office", state.office.title)
+                                    ValueLine("Desks", state.freeDesks.toString() + " free of " + state.office.desks)
+                                    ValueLine("Weekly rent", moneyDesktop(state.office.rent))
+                                    state.office.next?.let { next ->
+                                        Button(onClick = { perform("Moved into " + next.title) { moveOffice() } }, enabled = state.cash >= next.moveCost) { Text("Move to " + next.title + " · " + moneyDesktop(next.moveCost)) }
+                                    }
+                                    Text("Installed perks", style = MaterialTheme.typography.titleMedium)
+                                    if (state.perks.isEmpty()) Text("No office perks yet.", color = muted)
+                                    state.perks.forEach { perk ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(perk.title)
+                                                Text(perk.blurb, color = muted, style = MaterialTheme.typography.bodySmall)
+                                            }
+                                            OutlinedButton(onClick = { perform("Removed " + perk.title) { removePerk(perk) } }) { Text("Remove") }
+                                        }
+                                    }
+                                    Perk.entries.filter { it !in state.perks }.forEach { perk ->
+                                        val blocker = state.perkBlocker(perk)
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(perk.title)
+                                                Text(perk.blurb + " · " + moneyDesktop(perk.cost) + " upfront", color = muted, style = MaterialTheme.typography.bodySmall)
+                                            }
+                                            Button(onClick = { perform("Bought " + perk.title) { buyPerk(perk) } }, enabled = blocker == null) { Text("Buy") }
+                                        }
+                                    }
+                                }
+                                CardBlock("BANK LOAN", "Loans give you cash now but lock in weekly repayments.") {
+                                    if (state.loan == null) {
+                                        val offer = state.loanOffer()
+                                        ValueLine("Maximum offer", moneyDesktop(state.loanLimit))
+                                        ValueLine("Weekly payment", moneyDesktop(offer.weeklyPayment))
+                                        ValueLine("Rate", String.format(Locale.US, "%.1f%%", offer.rate * 100))
+                                        Button(onClick = { perform("Took a bank loan.") { takeLoan() } }, enabled = state.loanBlocker == null) { Text("Take maximum loan") }
+                                    } else {
+                                        ValueLine("Remaining balance", moneyDesktop(state.loan!!.balance))
+                                        ValueLine("Weekly payment", moneyDesktop(state.loan!!.weeklyPayment))
+                                        ValueLine("Early payoff", moneyDesktop(state.loanPayoff ?: 0.0))
+                                        Button(onClick = { perform("Paid off the bank loan early.") { repayLoan() } }, enabled = state.cash >= (state.loanPayoff ?: Double.POSITIVE_INFINITY)) { Text("Repay early") }
+                                    }
+                                }
+                                CardBlock("STOCK MARKET", "Trade listed companies and watch the value of your portfolio.") {
+                                    ValueLine("Portfolio value", moneyDesktop(state.portfolio.holdings.sumOf { state.holdingValue(it) }))
+                                    ValueLine("Realized gains / dividends", moneyDesktop(state.portfolio.realized + state.portfolio.dividends))
+                                    state.stocks().filter { it.listed }.take(12).forEach { stock ->
+                                        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(stock.name + " (" + stock.ticker + ")", style = MaterialTheme.typography.titleMedium)
+                                                    Text(stock.lane?.title ?: "Conglomerate" + " · " + String.format(Locale.US, "%+.1f%%", stock.change * 100), color = muted)
+                                                }
+                                                Text(moneyDesktop(stock.price) + "/share", color = mint)
+                                            }
+                                            val holding = state.portfolio.holdings.firstOrNull { it.key == stock.key }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                listOf(5_000.0, 25_000.0).forEach { amount ->
+                                                    Button(onClick = { perform("Bought shares in " + stock.name) { buyShares(stock.key, amount) } }, enabled = state.buyBlocker(stock.key, amount) == null) { Text("Buy " + moneyDesktop(amount)) }
+                                                }
+                                                if (holding != null && holding.shares > 0) OutlinedButton(onClick = { perform("Sold part of " + stock.name) { sellShares(stock.key, 0.25) } }) { Text("Sell 25%") }
+                                            }
+                                        }
+                                        HorizontalDivider(color = Color(0xFF354139))
+                                    }
+                                }
+                                if (state.games != null) {
+                                    CardBlock("ACQUISITIONS", "Buy a studio to add its releases and profit to your portfolio.") {
+                                        state.games!!.subsidiaries.forEach { sub ->
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(sub.name)
+                                                    Text("Lifetime profit " + moneyDesktop(sub.lifetimeProfit), color = muted)
+                                                }
+                                                OutlinedButton(onClick = { perform("Divested " + sub.name) { divest(sub.name) } }) { Text("Sell studio") }
+                                            }
+                                        }
+                                        state.studiosForSale().take(10).forEach { studio ->
+                                            val blocker = state.acquisitionBlocker(studio)
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(studio.name + if (studio.indie) " · indie" else "")
+                                                    Text("Valuation " + moneyDesktop(state.studioValue(studio)) + " · asking " + moneyDesktop(state.acquisitionPrice(studio)), color = muted)
+                                                }
+                                                Button(onClick = { perform("Acquired " + studio.name) { acquire(studio.name) } }, enabled = blocker == null) { Text("Acquire") }
+                                            }
+                                        }
+                                    }
+                                }
+                                CardBlock("CROSSOVER PRODUCTS", "Pair two active businesses to build a product unique to your company.") {
+                                    Combo.available(state.lanes).forEach { combo ->
+                                        val crossover = state.crossovers.firstOrNull { it.combo == combo }
+                                        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                            Text(combo.product, style = MaterialTheme.typography.titleMedium)
+                                            Text(combo.pitch, color = muted)
+                                            if (crossover == null) {
+                                                Button(onClick = { perform("Started crossover " + combo.product) { buildCrossover(combo) } }, enabled = state.cash >= combo.buildCost) { Text("Build · " + moneyDesktop(combo.buildCost) + " · " + combo.buildWeeks + " weeks") }
+                                            } else {
+                                                ValueLine("Status", if (crossover.built) "Built" else "Building · " + crossover.buildWeeksLeft + " weeks left")
+                                                if (crossover.built) {
+                                                    ValueLine("Pressure", (crossover.pressure * 100).toInt().toString() + "%")
+                                                    ValueLine("Intensity", (crossover.intensity * 100).toInt().toString() + "%")
+                                                    Slider(value = crossover.intensity.toFloat(), onValueChange = { value -> perform("Adjusted " + combo.product + " intensity.") { setIntensity(combo, value.toDouble()) } })
+                                                    Text("Risk: " + combo.problem, color = muted, style = MaterialTheme.typography.bodySmall)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             DesktopPage.NEWS -> {
                                 CardBlock("THE PRESS & INDUSTRY", "Stories are generated by the shared simulation and react to your choices.") {
