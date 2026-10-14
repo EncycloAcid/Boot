@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,10 +45,10 @@ private val NavItems = listOf(
     NavItem(Tab.COMPANY, "Company", "C"),
 )
 
-private val DockShape = RoundedCornerShape(12.dp)
-private val TabShape = RoundedCornerShape(8.dp)
+private val DockShape = RoundedCornerShape(18.dp)
+private val TabShape = RoundedCornerShape(12.dp)
 
-/** Floating studio dock — matte sheet, letter marks, teal selected block (no pill glow). */
+/** Soft white floating dock — same five tabs, GDT-light materials. */
 @Composable
 fun FloatingNav(store: DesktopStore, modifier: Modifier = Modifier) {
     val h = hudColors
@@ -63,7 +62,7 @@ fun FloatingNav(store: DesktopStore, modifier: Modifier = Modifier) {
             Modifier
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
-                .shadow(6.dp, DockShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+                .shadow(12.dp, DockShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
                 .clip(DockShape)
                 .background(h.panel)
                 .border(1.dp, h.panelBorder, DockShape)
@@ -76,7 +75,6 @@ fun FloatingNav(store: DesktopStore, modifier: Modifier = Modifier) {
                     item = item,
                     selected = store.tab == item.tab,
                     onClick = {
-                        // Office clears any window; other tabs toggle their floating window.
                         store.tab = when {
                             item.tab == Tab.OFFICE -> Tab.OFFICE
                             store.tab == item.tab -> Tab.OFFICE
@@ -123,7 +121,7 @@ private fun FloatingNavTab(
             )
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Text(
             item.mark,
@@ -139,7 +137,7 @@ private fun FloatingNavTab(
         )
         Box(
             Modifier
-                .width(if (selected) 18.dp else 0.dp)
+                .width(if (selected) 16.dp else 0.dp)
                 .height(2.dp)
                 .clip(RoundedCornerShape(1.dp))
                 .background(if (selected) h.accent else Color.Transparent),

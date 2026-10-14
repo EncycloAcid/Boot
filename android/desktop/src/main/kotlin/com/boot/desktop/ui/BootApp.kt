@@ -181,27 +181,27 @@ private fun GdtHud(
 ) {
     val h = hudColors
     val project = state.games?.project
-    val menuShape = RoundedCornerShape(8.dp)
+    val menuShape = RoundedCornerShape(12.dp)
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 20.dp)) {
         val sideGutter = 168.dp
         val centerMax = (maxWidth - sideGutter * 2).coerceIn(200.dp, 340.dp)
-        val bubbleSize = if (maxWidth < 960.dp) 46.dp else 52.dp
+        val bubbleSize = if (maxWidth < 960.dp) 48.dp else 54.dp
 
         Row(
             Modifier
                 .align(Alignment.TopStart)
-                .shadow(3.dp, menuShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+                .shadow(6.dp, menuShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
                 .clip(menuShape)
                 .background(h.panel)
                 .border(1.dp, h.panelBorder, menuShape)
                 .clickable(onClick = onMenu)
-                .padding(horizontal = 12.dp, vertical = 9.dp),
+                .padding(horizontal = 13.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 repeat(3) {
-                    Box(Modifier.width(12.dp).height(1.5.dp).background(h.ink, RoundedCornerShape(1.dp)))
+                    Box(Modifier.width(12.dp).height(1.5.dp).background(h.inkMute, RoundedCornerShape(1.dp)))
                 }
             }
             Text("Menu", style = MaterialTheme.typography.labelLarge, color = h.ink, fontWeight = FontWeight.SemiBold)
@@ -338,10 +338,10 @@ private fun ProgressRow(label: String, value: Float, color: Color) {
         }
         LinearProgressIndicator(
             progress = { value.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(2.dp)),
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
             color = color,
-            trackColor = h.worldDeep,
-            strokeCap = StrokeCap.Butt,
+            trackColor = Color(0x22000000),
+            strokeCap = StrokeCap.Round,
         )
     }
 }
@@ -349,15 +349,15 @@ private fun ProgressRow(label: String, value: Float, color: Color) {
 @Composable
 private fun TinyChip(label: String, filled: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val h = hudColors
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(12.dp)
     Box(
         Modifier
-            .shadow(if (filled && enabled) 2.dp else 0.dp, shape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            .shadow(if (filled && enabled) 4.dp else 2.dp, shape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
             .clip(shape)
             .background(if (filled && enabled) h.accent else h.panel)
             .border(1.dp, if (filled && enabled) h.accent else h.panelBorder, shape)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 11.dp, vertical = 7.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
     ) {
         Text(
             label,

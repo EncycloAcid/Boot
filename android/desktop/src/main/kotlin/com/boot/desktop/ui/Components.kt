@@ -32,16 +32,22 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Soft studio sheet — 10dp corners, ink border, single light lift (not frosted glass). */
-private val PanelShape = RoundedCornerShape(10.dp)
-private val ChipShape = RoundedCornerShape(8.dp)
+/** Soft GDT float — white panel, soft shadow, light rim. */
+private val PanelShape = RoundedCornerShape(14.dp)
+private val ChipShape = RoundedCornerShape(12.dp)
 private val DiscShape = CircleShape
 
 @Composable
 fun Modifier.hudSurface(elevated: Boolean = true): Modifier {
     val h = hudColors
     return this
-        .then(if (elevated) Modifier.shadow(4.dp, PanelShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow) else Modifier)
+        .then(
+            if (elevated) {
+                Modifier.shadow(8.dp, PanelShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            } else {
+                Modifier
+            },
+        )
         .clip(PanelShape)
         .background(h.panel)
         .border(1.dp, h.panelBorder, PanelShape)
@@ -53,8 +59,8 @@ fun GlassPanel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier.hudSurface().padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+        modifier.hudSurface().padding(horizontal = 14.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
         content = content,
     )
 }
@@ -70,23 +76,29 @@ fun StatusPill(
     val h = hudColors
     Row(
         Modifier
-            .shadow(3.dp, ChipShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            .shadow(6.dp, ChipShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
             .clip(ChipShape)
             .background(h.panel)
             .border(1.dp, h.panelBorder, ChipShape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(start = 8.dp, end = 12.dp, top = 7.dp, bottom = 7.dp),
+            .padding(start = 9.dp, end = 12.dp, top = 7.dp, bottom = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // Colored tick instead of emoji badge.
         Box(
             Modifier
-                .width(3.dp)
-                .height(16.dp)
-                .clip(RoundedCornerShape(1.dp))
-                .background(iconTint),
-        )
+                .size(18.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(iconTint.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(iconTint),
+            )
+        }
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
@@ -97,7 +109,7 @@ fun StatusPill(
     }
 }
 
-/** Matte GDT-style resource disc — solid fill, thin ink rim, no white glow. */
+/** Bright GDT resource disc — saturated fill, soft rim, bold value. */
 @Composable
 fun ResourceBubble(
     value: String,
@@ -109,33 +121,36 @@ fun ResourceBubble(
     Box(
         Modifier
             .size(size)
-            .shadow(5.dp, DiscShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            .shadow(7.dp, DiscShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
             .clip(DiscShape)
             .background(
                 Brush.verticalGradient(
-                    listOf(fill.copy(alpha = 1f), fill.copy(red = fill.red * 0.88f, green = fill.green * 0.88f, blue = fill.blue * 0.88f)),
+                    listOf(
+                        fill,
+                        fill.copy(red = fill.red * 0.9f, green = fill.green * 0.9f, blue = fill.blue * 0.9f),
+                    ),
                 ),
             )
-            .border(1.5.dp, Color.Black.copy(alpha = 0.18f), DiscShape),
+            .border(2.dp, Color.White.copy(alpha = 0.45f), DiscShape),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy((-1).dp),
+            verticalArrangement = Arrangement.spacedBy((-2).dp),
         ) {
             Text(
                 glyph,
-                fontSize = (size.value * 0.2f).sp,
-                color = Color.White.copy(alpha = 0.92f),
-                lineHeight = (size.value * 0.22f).sp,
+                fontSize = (size.value * 0.18f).sp,
+                color = Color.White.copy(alpha = 0.9f),
+                lineHeight = (size.value * 0.2f).sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 value,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = (size.value * 0.3f).sp,
-                lineHeight = (size.value * 0.32f).sp,
+                fontSize = (size.value * 0.32f).sp,
+                lineHeight = (size.value * 0.34f).sp,
                 maxLines = 1,
             )
         }
@@ -152,7 +167,7 @@ fun MacButton(
 ) {
     val h = hudColors
     val bg = when {
-        !enabled -> Color(0xFFE2E8F0)
+        !enabled -> Color(0xFFE8E4DC)
         primary -> h.accent
         else -> h.panel
     }
@@ -163,10 +178,10 @@ fun MacButton(
     }
     Box(
         modifier
-            .shadow(if (primary && enabled) 3.dp else 0.dp, ChipShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            .shadow(if (primary && enabled) 4.dp else 0.dp, ChipShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
             .clip(ChipShape)
             .background(bg)
-            .then(if (!primary && enabled) Modifier.border(1.dp, h.panelBorder, ChipShape) else Modifier)
+            .then(if (!primary && enabled) Modifier.border(1.dp, Color(0x22000000), ChipShape) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
@@ -182,7 +197,7 @@ fun SelectChip(label: String, selected: Boolean, onClick: () -> Unit) {
         Modifier
             .clip(ChipShape)
             .background(if (selected) h.accentSoft else h.panel)
-            .border(1.dp, if (selected) h.accent.copy(alpha = 0.55f) else h.panelBorder, ChipShape)
+            .border(1.dp, if (selected) h.accent.copy(alpha = 0.4f) else Color(0x22000000), ChipShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
@@ -233,24 +248,17 @@ fun ToastBanner(message: String, onDismiss: () -> Unit) {
     }
 }
 
-/** Cool mist paper wash for new game / empty worlds. */
 @Composable
 fun WorldBackdrop(modifier: Modifier = Modifier) {
     val h = hudColors
     Box(
-        modifier
-            .background(
-                Brush.verticalGradient(listOf(h.world, h.worldDeep, Color(0xFFCBD8E2))),
-            ),
+        modifier.background(Brush.verticalGradient(listOf(h.world, h.worldDeep, Color(0xFFD2CBBF)))),
     )
 }
 
-private val WindowShape = RoundedCornerShape(12.dp)
+private val WindowShape = RoundedCornerShape(16.dp)
 
-/**
- * Floating studio window over the office — title bar + close, scrollable body.
- * Does not cover the whole screen; the isometric room stays visible around it.
- */
+/** Floating window over the office — soft white chrome, title + Close. */
 @Composable
 fun FloatingWindow(
     title: String,
@@ -261,7 +269,7 @@ fun FloatingWindow(
     val h = hudColors
     Column(
         modifier
-            .shadow(10.dp, WindowShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            .shadow(14.dp, WindowShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
             .clip(WindowShape)
             .background(h.panel)
             .border(1.dp, h.panelBorder, WindowShape),
@@ -269,8 +277,8 @@ fun FloatingWindow(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(h.accentSoft)
-                .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                .background(Color(0xFFF4F6F8))
+                .padding(start = 14.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -283,9 +291,10 @@ fun FloatingWindow(
             )
             Box(
                 Modifier
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(h.accentSoft)
                     .clickable(onClick = onClose)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 11.dp, vertical = 5.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("Close", style = MaterialTheme.typography.labelLarge, color = h.accent, fontWeight = FontWeight.Bold)
@@ -297,8 +306,6 @@ fun FloatingWindow(
     }
 }
 
-/** Full-page padding (new game only). Tab content uses [WindowPad] inside floating windows. */
 val ScreenPad = PaddingValues(start = 32.dp, end = 32.dp, top = 128.dp, bottom = 124.dp)
 
-/** Compact padding for content inside [FloatingWindow]. */
 val WindowPad = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
