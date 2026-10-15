@@ -159,6 +159,13 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                                     r.concept.platforms.joinToString { it.title } + (r.publisher?.let { " · published by $it" } ?: "") +
                                     (r.developer?.let { " · made by $it, published by you" } ?: ""),
                             )
+                            r.publisher?.let {
+                                Spacer(Modifier.size(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    CompanyLogo(it, size = 28.dp)
+                                    Text(it, style = MaterialTheme.typography.labelLarge)
+                                }
+                            }
                         }
                     }
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { ScoreSummary(r) }
