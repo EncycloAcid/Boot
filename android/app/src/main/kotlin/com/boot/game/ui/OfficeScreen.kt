@@ -48,9 +48,11 @@ import com.boot.core.freeDesks
 import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.researchBlocker
+import com.boot.core.researchPerWeek
 import com.boot.game.GameStore
 import com.boot.game.StudioPage
 import com.boot.game.Tab
+import java.util.Locale
 
 /**
  * Today briefing: everything that used to sit under the office card. The isometric office is now
@@ -59,6 +61,7 @@ import com.boot.game.Tab
 @Composable
 fun OfficeScreen(store: GameStore, state: GameState) {
     ScreenColumn {
+        item { VitalsGlance(store, state) }
         item {
             GroupedSection("Office") {
                 CardBlock {
@@ -111,6 +114,107 @@ fun OfficeScreen(store: GameStore, state: GameState) {
                 }
             }
         }
+    }
+}
+
+/** Scannable vitals that used to live only on the top HUD — labeled so nothing is cryptic. */
+@Composable
+private fun VitalsGlance(store: GameStore, state: GameState) {
+    val colors = gameColors
+    val weekly = state.trailingProfit(weeks = 4) / 4
+    val fans = state.games?.fans
+    val avgMorale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
+    GroupedSection("At a glance") {
+        CardBlock {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GlanceTile("Cash", Format.money(state.cash), Format.signedMoney(weekly) + "/wk", if (state.cash < 0) colors.bad else colors.good, Modifier.weight(1f)) {
+                    store.companyPage = 1
+                    store.tab = Tab.COMPANY
+                }
+                GlanceTile(
+                    "Research",
+                    "${state.researchPoints.toInt()} RP",
+                    "+${String.format(Locale.US, "%.1f", state.researchPerWeek)}/wk",
+                    colors.milestone,
+                    Modifier.weight(1f),
+                ) { store.tab = Tab.RESEARCH }
+                if (fans != null && Lane.GAMES in state.lanes) {
+                    GlanceTile("Fans", Format.count(fans), "buy launches", Color(0xFFC44D8A), Modifier.weight(1f)) {
+                        store.openStudio(StudioPage.GAMES)
+                    }
+                }
+                GlanceTile("Rep", "${state.reputation.score.toInt()}", "out of 100", colors.warn, Modifier.weight(1f)) {
+                    store.companyPage = 0
+                    store.tab = Tab.COMPANY
+                }
+            }
+            Spacer(Modifier.size(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GlanceTile(
+                    "Team",
+                    "${state.staff.size + 1}",
+                    avgMorale?.let { "morale ${String.format(Locale.US, "%.0f", it * 100)}%" } ?: "just you",
+                    MaterialTheme.colorScheme.primary,
+                    Modifier.weight(1f),
+                ) { store.tab = Tab.TEAM }
+                GlanceTile(
+                    "Desks",
+                    "${state.staff.size}/${state.office.desks}",
+                    if (state.staff.size > state.office.desks) "crowded" else state.office.title,
+                    if (state.staff.size > state.office.desks) colors.bad else colors.other,
+                    Modifier.weight(1f),
+                ) { store.tab = Tab.TEAM }
+                state.listing?.let { listing ->
+                    GlanceTile(
+                        listing.ticker,
+                        "$${String.format(Locale.US, "%.0f", listing.price)}",
+                        Format.money(listing.marketCap) + " cap",
+                        MaterialTheme.colorScheme.primary,
+                        Modifier.weight(1f),
+                    ) {
+                        store.companyPage = 0
+                        store.tab = Tab.COMPANY
+                    }
+                } ?: GlanceTile(
+                    "Date",
+                    state.dateLabel,
+                    state.world.era.title.removePrefix("The "),
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    Modifier.weight(1f),
+                ) { /* calendar glance only */ }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GlanceTile(
+    label: String,
+    value: String,
+    caption: String,
+    color: Color,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(color.copy(alpha = 0.12f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleMedium, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            caption,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
