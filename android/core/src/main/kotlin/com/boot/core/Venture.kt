@@ -58,19 +58,9 @@ data class RoundOffer(val name: String, val amount: Double, val preMoney: Double
     val dilution: Double get() = amount / (preMoney + amount)
 }
 
-/** Who leads each stage of round. */
-private val leadInvestors = listOf(
-    listOf("Y Combinator", "First Round Capital", "SV Angel", "Initialized Capital"),
-    listOf("Sequoia Capital", "Andreessen Horowitz", "Benchmark", "Accel"),
-    listOf("Lightspeed Venture Partners", "Kleiner Perkins", "Index Ventures", "General Catalyst"),
-    listOf("Tiger Global", "Coatue", "Thrive Capital", "Insight Partners"),
-    listOf("SoftBank Vision Fund", "Fidelity", "T. Rowe Price"),
-    listOf("SoftBank Vision Fund", "BlackRock", "Mubadala"),
-)
-
 /** The lead for the next round. Picked from the seed so the offer doesn't change every time you look at it. */
 internal fun GameState.nextLead(): String {
-    val pool = leadInvestors[minOf(venture.rounds.size, leadInvestors.lastIndex)]
+    val pool = investorsIn(calendarYear, venture.rounds.size)
     return pool[Math.floorMod(seed + venture.rounds.size * 7919L, pool.size.toLong()).toInt()]
 }
 

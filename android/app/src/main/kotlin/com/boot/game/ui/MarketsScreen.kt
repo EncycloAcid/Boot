@@ -184,7 +184,7 @@ private fun StockRow(s: Stock, onClick: () -> Unit) {
         s.name,
         subtitle = if (s.listed) "${s.ticker} · ${sharePrice(s.price)}" + (if (s.stake > 0) " · you own ${Format.percent(s.stake, if (s.stake < 0.01) 1 else 0)}" else "")
         else "Private",
-        leading = s.lane?.let { l -> { LaneBadge(l, 40.dp) } },
+        leading = { CompanyLogo(s.name, size = 40.dp) },
         value = Format.money(s.value),
         valueDetail = if (s.listed) (if (s.change >= 0) "+" else "") + Format.percent(s.change, 1) else null,
         valueDetailColor = if (s.change >= 0) colors.good else colors.bad,

@@ -62,21 +62,7 @@ import com.boot.game.GameStore
 /** A studio's mark: its initials on a colour of its own. */
 @Composable
 fun StudioBadge(name: String, size: Dp = 40.dp) {
-    val hue = ((name.hashCode() % 360) + 360) % 360
-    val color = Color.hsl(hue.toFloat(), 0.55f, 0.48f)
-    Box(
-        Modifier
-            .size(size)
-            .background(Brush.linearGradient(listOf(color.mix(Color.White, 0.15f), color.shade(0.8f))), RoundedCornerShape(size * 0.28f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            name.split(" ", "-").filter { it.isNotEmpty() }.take(2).joinToString("") { it.take(1) }.uppercase(),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Black,
-            color = Color.White,
-        )
-    }
+    CompanyLogo(name, size = size)
 }
 
 private fun Studio.blurb(): String {

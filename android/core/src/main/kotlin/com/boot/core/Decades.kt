@@ -246,7 +246,7 @@ internal val RivalsThroughTime = mapOf(
 )
 
 /** [lane]'s main rival in [year]. */
-internal fun rivalIn(lane: Lane, year: Int): String =
+fun rivalIn(lane: Lane, year: Int): String =
     RivalsThroughTime.getValue(lane).lastOrNull { it.first <= year }?.second ?: RivalsThroughTime.getValue(lane).first().second
 
 /** When the big names in each lane were founded, for the news. */

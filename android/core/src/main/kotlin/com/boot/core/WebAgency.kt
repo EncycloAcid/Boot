@@ -101,7 +101,7 @@ class WebAgency {
             val work = value / RATE_PER_POINT * rng.range(0.8, 1.2)
             val pace = max(3.0, ctx.staffing.output * 0.8)
             offers += Contract(
-                id = nextId, client = rng.pick(if (value >= 25_000) Names.brands else Names.clients), value = value.roundToLong().toDouble(), work = work,
+                id = nextId, client = rng.pick(if (value >= 25_000) brandsIn(ctx.year) else Names.clients), value = value.roundToLong().toDouble(), work = work,
                 weeksAllowed = ceil(work / pace).toInt() + 2, expiresWeek = ctx.week + 2,
             )
             nextId += 1
@@ -121,7 +121,7 @@ class WebAgency {
         // Now and then a big brand wants pitches for a major project.
         if (standing >= 0.35 && rng.chance(0.006)) {
             val value = Math.round(rng.range(120_000.0, 400_000.0) * (0.5 + standing) / 10_000.0) * 10_000.0
-            report.add(Incident.Inbox(BigPitch(rng.pick(Names.brands), value, Math.round(value * 0.06 / 1_000.0) * 1_000.0, (0.15 + 0.5 * standing).coerceAtMost(0.7)), 4))
+            report.add(Incident.Inbox(BigPitch(rng.pick(brandsIn(ctx.year)), value, Math.round(value * 0.06 / 1_000.0) * 1_000.0, (0.15 + 0.5 * standing).coerceAtMost(0.7)), 4))
         }
         if (active.isEmpty()) return report
 

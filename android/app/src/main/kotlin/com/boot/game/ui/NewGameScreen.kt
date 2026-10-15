@@ -62,6 +62,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boot.core.Difficulty
+import com.boot.core.MODERN_YEAR
 import com.boot.core.StartPoint
 import com.boot.core.Scenario
 import com.boot.core.Medal
@@ -71,6 +72,9 @@ import com.boot.core.laneOpen
 import com.boot.core.years
 import com.boot.core.arrives
 import com.boot.core.arrival
+import com.boot.core.platformHoldersIn
+import com.boot.core.publishersIn
+import com.boot.core.rivalIn
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.ui.draw.alpha
 import com.boot.core.Format
@@ -357,6 +361,12 @@ fun medalColor(m: Medal, colors: GameColors): androidx.compose.ui.graphics.Color
 /** When the run starts: today, or at one of tech's revolutions, playing through to the present. */
 @Composable
 private fun StartSection(start: StartPoint, reason: String?, onPick: (StartPoint) -> Unit) {
+    val year = start.year ?: MODERN_YEAR
+    val faces = buildList {
+        add(rivalIn(Lane.GAMES, year))
+        addAll(publishersIn(year).take(5))
+        addAll(platformHoldersIn(year).take(3))
+    }.distinct().take(8)
     GroupedSection("When", footer = listOfNotNull(start.blurb, reason).joinToString("\n")) {
         StartPoint.entries.forEachIndexed { i, p ->
             if (i > 0) RowDivider(56.dp)
@@ -374,6 +384,16 @@ private fun StartSection(start: StartPoint, reason: String?, onPick: (StartPoint
                     )
                 },
             )
+        }
+        if (faces.isNotEmpty()) {
+            RowDivider()
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Firms of $year", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    faces.forEach { CompanyLogo(it, size = 32.dp) }
+                }
+                Hint(faces.joinToString(" · "))
+            }
         }
     }
 }
