@@ -2,9 +2,8 @@ package com.boot.core
 
 /*
  * Recognizable firms and logo ids for the UI. Names are historically year-gated so a 1977 run
- * never surfaces modern-only publishers, VCs or outlets. Visual marks are hand-drawn Compose
- * path recreations of real logo silhouettes (see BrandLogoDraw in app/desktop) — not scraped
- * PNG packs from the web.
+ * never surfaces modern-only publishers, VCs or outlets. Licensed pack PNGs map via
+ * [logoPackBasename]; UI falls back to hand-drawn Compose silhouettes in BrandLogoDraw.
  */
 
 /** What kind of firm a mark stands for. */
@@ -131,7 +130,8 @@ private fun m(
 
 // Catalog
 
-private val Marks: List<CompanyMark> = listOf(
+/** Full catalog (year-gated helpers filter from this). Soft-internal for pack coverage tests. */
+internal val Marks: List<CompanyMark> = listOf(
     m("Atari", 1972, MarkKind.PUBLISHER, "A", 0xFFE53935, LogoId.ATARI, closed = 2013),
     m("Activision", 1979, MarkKind.PUBLISHER, "AV", 0xFF1565C0, LogoId.ACTIVISION),
     m("Activision Blizzard", 1979, MarkKind.PUBLISHER, "AB", 0xFF0D47A1, LogoId.ACTIVISION),
