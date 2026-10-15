@@ -85,7 +85,11 @@ fun FloatingNav(store: DesktopStore, modifier: Modifier = Modifier) {
                         store.tab = when {
                             item.tab == Tab.OFFICE -> Tab.OFFICE
                             store.tab == item.tab -> Tab.OFFICE
-                            else -> item.tab
+                            else -> {
+                                // Open Company on Overview so equity / P&L / quarterly aren't hidden behind Money.
+                                if (item.tab == Tab.COMPANY) store.companyPage = 0
+                                item.tab
+                            }
                         }
                     },
                     modifier = Modifier.weight(1f),

@@ -3,8 +3,10 @@ package com.boot.desktop.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,6 +41,7 @@ import com.boot.core.localizeOfficeBlocker
 import com.boot.core.marketCycleLabel
 import com.boot.core.openOffice
 import com.boot.core.openOfficeBlocker
+import com.boot.core.rankings
 import com.boot.core.seedTicket
 import com.boot.core.seedVenture
 import com.boot.core.seedVentureBlocker
@@ -184,16 +187,23 @@ fun StrategyPanel(store: DesktopStore, state: GameState) {
     }
 }
 
+private enum class NewsPage { FRONT, DESK, MARKETS, LOG }
+
 @Composable
 fun NewsScreen(store: DesktopStore, state: GameState) {
     val h = hudColors
+    var page by remember { mutableStateOf(NewsPage.FRONT) }
     var desk by remember { mutableStateOf<NewsDesk?>(null) }
     LaunchedEffect(state.news.lastOrNull()?.id) {
         state.news.lastOrNull()?.let { store.newsSeen = maxOf(store.newsSeen, it.id) }
     }
-    val stories = remember(state.news, desk) {
+    val stories = remember(state.news, desk, page) {
         val all = state.news.asReversed()
-        if (desk == null) all else all.filter { it.desk == desk }
+        when (page) {
+            NewsPage.FRONT -> all
+            NewsPage.DESK -> if (desk == null) all else all.filter { it.desk == desk }
+            else -> emptyList()
+        }
     }
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -205,30 +215,93 @@ fun NewsScreen(store: DesktopStore, state: GameState) {
                 Text("The Boot Times", style = MaterialTheme.typography.headlineMedium, color = h.ink)
                 Hint("${state.dateLabel} · ${state.world.era.title}")
                 Hint(state.world.era.blurb)
+                stories.firstOrNull()?.let { lead ->
+                    Spacer(Modifier.height(4.dp))
+                    Hint("Lead · ${lead.desk.title}", h.accent)
+                    Text(lead.headline, style = MaterialTheme.typography.titleLarge, color = h.text)
+                }
             }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SelectChip("All", desk == null) { desk = null }
+                SelectChip("Front", page == NewsPage.FRONT) { page = NewsPage.FRONT; desk = null }
                 NewsDesk.entries.forEach { d ->
                     if (d == NewsDesk.GAMES && state.games == null) return@forEach
-                    SelectChip(d.title, desk == d) { desk = d }
+                    SelectChip(d.title, page == NewsPage.DESK && desk == d) {
+                        page = NewsPage.DESK
+                        desk = d
+                    }
+                }
+                SelectChip("Markets", page == NewsPage.MARKETS) { page = NewsPage.MARKETS }
+                SelectChip("Log", page == NewsPage.LOG) { page = NewsPage.LOG }
+            }
+        }
+        when (page) {
+            NewsPage.MARKETS -> {
+                item {
+                    GlassPanel {
+                        Text("Biggest companies", style = MaterialTheme.typography.titleLarge, color = h.accent)
+                        state.rankings().take(10).forEachIndexed { i, c ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Hint("${i + 1}.")
+                                if (!c.mine) CompanyLogo(c.name, size = 22.dp)
+                                Text(
+                                    c.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (c.mine) h.accent else h.text,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Hint(Format.money(c.value))
+                            }
+                        }
+                    }
                 }
             }
-        }
-        if (stories.isEmpty()) {
-            item {
-                EmptyState(
-                    title = "Quiet newsroom",
-                    body = "No headlines yet. Ship products and advance weeks — the press will notice.",
-                )
+            NewsPage.LOG -> {
+                val log = state.log.asReversed().take(40)
+                if (log.isEmpty()) {
+                    item {
+                        EmptyState(
+                            title = "Empty company log",
+                            body = "Decisions and milestones will show up here as you play.",
+                        )
+                    }
+                } else {
+                    items(log.size) { i ->
+                        val entry = log[i]
+                        GlassPanel(Modifier.fillMaxWidth()) {
+                            Hint(GameClock.label(entry.week))
+                            Text(entry.text, style = MaterialTheme.typography.bodyMedium, color = h.text)
+                        }
+                    }
+                }
             }
-        }
-        items(stories.take(40), key = { it.id }) { story ->
-            GlassPanel(Modifier.fillMaxWidth()) {
-                Hint("${GameClock.label(story.week)} · ${story.desk.title}")
-                Text(story.headline, style = MaterialTheme.typography.titleMedium, color = h.text)
-                Hint(story.body)
+            else -> {
+                if (stories.isEmpty()) {
+                    item {
+                        EmptyState(
+                            title = when (desk) {
+                                NewsDesk.YOU -> "No stories about you yet"
+                                NewsDesk.INDUSTRY -> "Quiet industry wire"
+                                NewsDesk.GAMES -> "No games desk copy yet"
+                                NewsDesk.MARKETS -> "Markets desk is quiet — try the Markets tab"
+                                else -> "Quiet newsroom"
+                            },
+                            body = "Ship products and advance weeks — the press will notice.",
+                        )
+                    }
+                }
+                items(stories.take(40), key = { it.id }) { story ->
+                    GlassPanel(Modifier.fillMaxWidth()) {
+                        Hint("${GameClock.label(story.week)} · ${story.desk.title}")
+                        Text(story.headline, style = MaterialTheme.typography.titleMedium, color = h.text)
+                        Hint(story.body)
+                    }
+                }
             }
         }
     }
