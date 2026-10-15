@@ -3,6 +3,8 @@ package com.boot.core
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CompanyMarksTest {
@@ -83,6 +85,34 @@ class CompanyMarksTest {
         assertTrue(eighties.any { it.contains("Computer Gaming") || it == "Electronic Games" || it == "Byte" })
         assertFalse("Polygon" in eighties)
         assertTrue("IGN" in outletsWithMarksIn(2010))
+    }
+
+    @Test
+    fun packSlugsMapMajorsAndNameOnlyFirms() {
+        assertEquals("apple", logoPackSlug(LogoId.APPLE))
+        assertEquals("ea", logoPackSlug(LogoId.EA))
+        assertEquals("epic-games", logoPackSlug(LogoId.EPIC))
+        assertEquals("y-combinator", logoPackSlug(LogoId.Y_COMBINATOR))
+        assertEquals("andreessen-horowitz", logoPackSlug(LogoId.A16Z))
+        assertEquals("cd-projekt-red", logoPackSlug(LogoId.CDPR))
+        assertEquals("steam", logoPackSlug(LogoId.STEAM))
+        assertEquals("valve", logoPackSlug(LogoId.VALVE))
+        assertNull(logoPackSlug(LogoId.NONE))
+        assertNull(logoPackSlug(LogoId.BYTE))
+        assertNull(logoPackSlug(LogoId.PINTEREST))
+
+        assertEquals("apple", companyLogoPackSlug("Apple"))
+        assertEquals("annapurna-interactive", companyLogoPackSlug("Annapurna Interactive"))
+        assertEquals("thq", companyLogoPackSlug("THQ"))
+        assertEquals("lucasarts", companyLogoPackSlug("LucasArts"))
+        assertEquals("fromsoftware", companyLogoPackSlug("FromSoftware"))
+        assertEquals("palm", companyLogoPackSlug("Palm OS"))
+        assertNotNull(companyLogoPackSlug(companyMark("Nintendo")))
+
+        // Most LogoIds should resolve to pack PNGs; a few stay silhouette-only.
+        assertTrue(logoIdsWithPackAssets() >= 70, "got ${logoIdsWithPackAssets()}")
+        assertTrue(logoIdsWithoutPackAssets() in 1..15, "got ${logoIdsWithoutPackAssets()}")
+        assertNull(companyLogoPackSlug("Moonlit Otter Games"))
     }
 
     @Test

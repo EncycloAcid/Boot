@@ -2,9 +2,9 @@ package com.boot.core
 
 /*
  * Recognizable firms and logo ids for the UI. Names are historically year-gated so a 1977 run
- * never surfaces modern-only publishers, VCs or outlets. Visual marks are hand-drawn Compose
- * path recreations of real logo silhouettes (see BrandLogoDraw in app/desktop) — not scraped
- * PNG packs from the web.
+ * never surfaces modern-only publishers, VCs or outlets. UI prefers licensed pack PNGs when
+ * present (see logoPackSlug / companyLogoPackSlug); otherwise BrandLogoDraw paints hand-drawn
+ * Compose silhouettes. Obscure indie names still fall back to a monogram tile.
  */
 
 /** What kind of firm a mark stands for. */
@@ -106,6 +106,135 @@ fun platformHoldersIn(year: Int): List<String> =
 /** Review / tech outlets with marks that existed in [year]. */
 fun outletsWithMarksIn(year: Int): List<String> =
     Marks.filter { it.kind == MarkKind.OUTLET && it.activeIn(year) }.map { it.name }
+
+/**
+ * Licensed pack filename stem (kebab-case, no extension) for [logo], or null when the pack
+ * has no matching PNG and the UI should use the vector silhouette / monogram.
+ */
+fun logoPackSlug(logo: LogoId): String? = when (logo) {
+    LogoId.NONE, LogoId.FACEBOOK, LogoId.PINTEREST, LogoId.TWITTER_X, LogoId.XAI,
+    LogoId.BYTE, LogoId.CGW,
+    -> null
+    LogoId.APPLE -> "apple"
+    LogoId.MICROSOFT -> "microsoft"
+    LogoId.GOOGLE -> "google"
+    LogoId.NINTENDO -> "nintendo"
+    LogoId.SONY -> "sony"
+    LogoId.PLAYSTATION -> "playstation"
+    LogoId.XBOX -> "xbox"
+    LogoId.SEGA -> "sega"
+    LogoId.ATARI -> "atari"
+    LogoId.EA -> "ea"
+    LogoId.UBISOFT -> "ubisoft"
+    LogoId.ACTIVISION -> "activision"
+    LogoId.STEAM -> "steam"
+    LogoId.VALVE -> "valve"
+    LogoId.EPIC -> "epic-games"
+    LogoId.NVIDIA -> "nvidia"
+    LogoId.AMAZON -> "amazon"
+    LogoId.META -> "meta"
+    LogoId.OPENAI -> "openai"
+    LogoId.NETFLIX -> "netflix"
+    LogoId.TESLA -> "tesla"
+    LogoId.SPOTIFY -> "spotify"
+    LogoId.DISCORD -> "discord"
+    LogoId.REDDIT -> "reddit"
+    LogoId.TIKTOK -> "tiktok"
+    LogoId.SNAP -> "snap"
+    LogoId.SEQUOIA -> "sequoia-capital"
+    LogoId.Y_COMBINATOR -> "y-combinator"
+    LogoId.A16Z -> "andreessen-horowitz"
+    LogoId.SOFTBANK -> "softbank"
+    LogoId.KLEINER_PERKINS -> "kleiner-perkins"
+    LogoId.IGN -> "ign"
+    LogoId.TECHCRUNCH -> "techcrunch"
+    LogoId.THE_VERGE -> "the-verge"
+    LogoId.WIRED -> "wired"
+    LogoId.BLOOMBERG -> "bloomberg"
+    LogoId.REUTERS -> "reuters"
+    LogoId.CNBC -> "cnbc"
+    LogoId.IBM -> "ibm"
+    LogoId.COMMODORE -> "commodore"
+    LogoId.CAPCOM -> "capcom"
+    LogoId.KONAMI -> "konami"
+    LogoId.SQUARE_ENIX -> "square-enix"
+    LogoId.BANDAI_NAMCO -> "bandai-namco"
+    LogoId.ROCKSTAR -> "rockstar-games"
+    LogoId.TAKE_TWO -> "take-two"
+    LogoId.BETHESDA -> "bethesda"
+    LogoId.DEVOLVER -> "devolver-digital"
+    LogoId.CDPR -> "cd-projekt-red"
+    LogoId.SUPERCELL -> "supercell"
+    LogoId.CANONICAL -> "canonical"
+    LogoId.SAMSUNG -> "samsung"
+    LogoId.DELL -> "dell"
+    LogoId.NOKIA -> "nokia"
+    LogoId.ROBLOX -> "roblox"
+    LogoId.SHOPIFY -> "shopify"
+    LogoId.DUOLINGO -> "duolingo"
+    LogoId.WORDPRESS -> "wordpress"
+    LogoId.SQUARESPACE -> "squarespace"
+    LogoId.WIX -> "wix"
+    LogoId.TENCENT -> "tencent"
+    LogoId.ANTHROPIC -> "anthropic"
+    LogoId.MYSPACE -> "myspace"
+    LogoId.AOL -> "aol"
+    LogoId.YAHOO -> "yahoo"
+    LogoId.GAMESPOT -> "gamespot"
+    LogoId.EUROGAMER -> "eurogamer"
+    LogoId.PC_GAMER -> "pc-gamer"
+    LogoId.EDGE -> "edge"
+    LogoId.KOTAKU -> "kotaku"
+    LogoId.POLYGON -> "polygon"
+    LogoId.ARS -> "ars-technica"
+    LogoId.ENGADGET -> "engadget"
+    LogoId.NYT -> "the-new-york-times"
+    LogoId.WSJ -> "the-wall-street-journal"
+    LogoId.FT -> "financial-times"
+}
+
+/**
+ * Pack stem for [mark]: LogoId mapping first, then name overrides for firms that still use
+ * [LogoId.NONE] but have a licensed PNG in the pack.
+ */
+fun companyLogoPackSlug(mark: CompanyMark): String? {
+    logoPackSlug(mark.logo)?.let { return it }
+    return NamePackSlugs[companyKey(mark.name)]
+        ?: NamePackSlugs[mark.name]
+        ?: NamePackSlugs.entries.firstOrNull { it.key.equals(mark.name, ignoreCase = true) }?.value
+}
+
+/** Pack stem for a display [name], or null when no licensed PNG is wired. */
+fun companyLogoPackSlug(name: String): String? = companyLogoPackSlug(companyMark(name))
+
+/** How many distinct [LogoId] values (excluding [LogoId.NONE]) resolve to a pack PNG. */
+fun logoIdsWithPackAssets(): Int =
+    LogoId.entries.count { it != LogoId.NONE && logoPackSlug(it) != null }
+
+/** How many [LogoId] values still rely on silhouette / monogram only. */
+fun logoIdsWithoutPackAssets(): Int =
+    LogoId.entries.count { it != LogoId.NONE && logoPackSlug(it) == null }
+
+/** Name → pack stem for marks that keep [LogoId.NONE] but ship a PNG. */
+private val NamePackSlugs = mapOf(
+    "Annapurna Interactive" to "annapurna-interactive",
+    "THQ" to "thq",
+    "THQ Nordic" to "thq-nordic",
+    "Sierra On-Line" to "sierra-on-line",
+    "LucasArts" to "lucasarts",
+    "Infocom" to "infocom",
+    "Broderbund" to "broderbund",
+    "Eidos" to "eidos-interactive",
+    "Acclaim" to "acclaim-entertainment",
+    "Midway" to "midway-games",
+    "FromSoftware" to "fromsoftware",
+    "Notion" to "notion",
+    "Netscape" to "netscape",
+    "Compaq" to "compaq",
+    "Palm" to "palm",
+    "Palm OS" to "palm",
+    "Symbian" to "symbian",
+)
 
 private fun fallbackMark(name: String): CompanyMark {
     val words = name.split(' ', '-', '&', '.').filter { it.isNotBlank() && it.lowercase() !in SkipWords }
