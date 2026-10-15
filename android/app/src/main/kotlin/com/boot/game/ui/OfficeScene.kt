@@ -150,14 +150,15 @@ internal fun GameState.founderLook(): Look = lookFor(founder.name.hashCode() xor
 private fun fit(room: Room, w: Float, fullHeight: Float, top: Float = 0f): Iso {
     val h = fullHeight - top
     // Bounds of the whole diorama at t = 1 with the origin at the back corner.
-    val minX = -room.d - 0.2f
-    val maxX = room.w + 0.2f
-    val minY = -0.15f - room.h * 1.15f - 0.1f
+    val minX = -room.d - 0.15f
+    val maxX = room.w + 0.15f
+    val minY = -0.1f - room.h * 1.15f - 0.05f
     // The empty front corner of the floor can run off the bottom: people matter more than floor.
-    val maxY = (room.w + room.d) / 2f - 0.55f
-    val t = min(w * 0.98f / (maxX - minX), h * 0.97f / (maxY - minY))
+    val maxY = (room.w + room.d) / 2f - 0.4f
+    // Pull in slightly so the office fills more of the viewport under the floating HUD.
+    val t = min(w * 1.08f / (maxX - minX), h * 1.05f / (maxY - minY))
     val ox = w / 2f - t * (minX + maxX) / 2f
-    val oy = top + h / 2f - t * (minY + maxY) / 2f
+    val oy = top + h * 0.52f - t * (minY + maxY) / 2f
     return Iso(ox, oy, t)
 }
 

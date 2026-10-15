@@ -164,12 +164,19 @@ class GameFlowTest {
         assertEquals(Difficulty.HARD, store.state!!.difficulty)
         assertNull(store.state!!.tutorial)
 
+        // Today briefing floats over the office; open it if the hire tip didn't already.
+        if (compose.onAllNodes(hasText("Today")).fetchSemanticsNodes().isEmpty()) {
+            tab("Office")
+        }
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("The studio is free"))
         compose.onNodeWithText("The studio is free").assertExists()
         assertEquals(listOf(Lane.GAMES), store.state!!.lanes)
         screen("02-office")
 
         tab("Lanes")
         screen("03-studio")
+        tab("Office")
+        // Returning to Office closes Today — open it again for the develop CTA.
         tab("Office")
         tapInList("Develop a new game")
         compose.waitForIdle()

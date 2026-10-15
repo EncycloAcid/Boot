@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,12 +25,10 @@ import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,16 +53,27 @@ import com.boot.game.StudioPage
 import com.boot.game.Tab
 
 /**
- * The home screen: your office with everyone at their desks, what each business is doing right
- * now, shortcuts to what's waiting for you, and the latest news. Everything important is one tap
- * from here.
+ * Today briefing: everything that used to sit under the office card. The isometric office is now
+ * the full-bleed stage behind floating windows — this panel keeps every home-screen feature.
  */
 @Composable
 fun OfficeScreen(store: GameStore, state: GameState) {
     ScreenColumn {
+        item {
+            GroupedSection("Office") {
+                CardBlock {
+                    val crowded = state.staff.size > state.office.desks
+                    Text(state.office.title, style = MaterialTheme.typography.titleLargeEmphasized)
+                    Hint(
+                        "${state.staff.size}/${state.office.desks} desks" +
+                            if (crowded) " · crowded — hire after you expand" else " · tap the room behind this window for Team",
+                    )
+                    Ticker(store, state)
+                }
+            }
+        }
         // The tutorial leads, so its button is on screen without scrolling.
         if (state.tutorial != null) item { LessonCard(store, state) }
-        item { OfficeCard(store, state) }
         if (state.scenario != null) item { ScenarioCard(state) }
         // While the tutorial runs, the next step only speaks up about money.
         if (nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true) {
@@ -106,66 +114,19 @@ fun OfficeScreen(store: GameStore, state: GameState) {
     }
 }
 
-@Composable
-private fun OfficeCard(store: GameStore, state: GameState) {
-    val colors = gameColors
-    Surface(shape = RoundedCornerShape(28.dp), color = colors.card, modifier = Modifier.fillMaxWidth()) {
-        Column {
-            val crowded = state.staff.size > state.office.desks
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(290.dp)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .clickable { store.tab = Tab.TEAM },
-            ) {
-                OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 40.dp)
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SceneChip(state.office.title)
-                    SceneChip(
-                        "${state.staff.size}/${state.office.desks} desks" + if (crowded) " · crowded" else "",
-                        icon = Icons.Filled.Groups,
-                        tint = if (crowded) colors.bad else MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-            Ticker(store, state)
-        }
-    }
-}
-
-/** A frosted label floating over the office. */
-@Composable
-private fun SceneChip(text: String, icon: ImageVector? = null, tint: Color = MaterialTheme.colorScheme.onSurface) {
-    Row(
-        Modifier
-            .clip(CircleShape)
-            .background(gameColors.card.copy(alpha = 0.86f))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        if (icon != null) Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
-        FitText(text, MaterialTheme.typography.labelLarge, color = tint)
-    }
-}
-
 /** The newest headline, sliding in as it happens. */
 @Composable
 private fun Ticker(store: GameStore, state: GameState) {
     val colors = gameColors
     val motion = MaterialTheme.motionScheme
     val latest = state.log.lastOrNull()
-    val hint = if (state.week < 2 && !store.playing) "Tap ▶ to let time run. It stops by itself when you're needed." else null
+    val hint = if (state.week < 2 && !store.playing) "Tap Play to let time run. It stops by itself when you're needed." else null
     Row(
         Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable { store.tab = Tab.NEWS }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AnimatedContent(
