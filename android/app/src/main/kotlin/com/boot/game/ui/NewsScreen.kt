@@ -206,6 +206,8 @@ private fun Byline(state: GameState, s: NewsStory) {
             Box(Modifier.size(6.dp).background(colors.bad, CircleShape))
             Spacer(Modifier.width(6.dp))
         }
+        CompanyLogo(s.outlet, size = 18.dp)
+        Spacer(Modifier.width(6.dp))
         Text(
             s.outlet.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = deskColor,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
@@ -226,7 +228,15 @@ private fun MarketsBoard(state: GameState) {
             if (i > 0) RowDivider(48.dp)
             ListRow(
                 c.name, subtitle = c.lane?.title,
-                leading = { Text("${i + 1}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(24.dp)) },
+                leading = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${i + 1}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(24.dp))
+                        if (!c.mine) {
+                            Spacer(Modifier.width(6.dp))
+                            CompanyLogo(c.name, size = 28.dp)
+                        }
+                    }
+                },
                 value = Format.money(c.value),
                 valueColor = if (c.mine) MaterialTheme.colorScheme.primary else Color.Unspecified,
             )

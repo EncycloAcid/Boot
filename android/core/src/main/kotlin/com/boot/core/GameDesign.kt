@@ -51,6 +51,109 @@ enum class Genre(val code: Char) {
     }
 }
 
+/**
+ * Four-season market calendar. Featured genres sell better at launch; off-season
+ * titles take a small hit. Repeats every 52 weeks starting at week 1 = Spring.
+ *
+ * Genres match the six [Genre] values (no horror/racing lanes).
+ */
+@Serializable
+enum class GameSeason(val featuredGenre: Genre, val runnerUpGenre: Genre) {
+    SPRING(Genre.SIMULATION, Genre.CASUAL),
+    SUMMER(Genre.ACTION, Genre.ADVENTURE),
+    AUTUMN(Genre.STRATEGY, Genre.ACTION),
+    WINTER(Genre.RPG, Genre.ADVENTURE);
+
+    val title: String
+        get() = when (this) {
+            SPRING -> "Spring"
+            SUMMER -> "Summer"
+            AUTUMN -> "Autumn"
+            WINTER -> "Winter"
+        }
+
+    val weeksLabel: String
+        get() = when (this) {
+            SPRING -> "Weeks 1–13"
+            SUMMER -> "Weeks 14–26"
+            AUTUMN -> "Weeks 27–39"
+            WINTER -> "Weeks 40–52"
+        }
+
+    val marketTip: String
+        get() = "${featuredGenre.title} games are in season; ${runnerUpGenre.title.lowercase()} games also get a smaller boost."
+
+    fun launchMultiplier(genre: Genre): Double = when (genre) {
+        featuredGenre -> 1.18
+        runnerUpGenre -> 1.08
+        else -> 0.96
+    }
+
+    companion object {
+        /** A repeating four-season calendar; week 1 begins Spring. */
+        fun forWeek(week: Int): GameSeason = entries[((week.coerceAtLeast(1) - 1) % 52) / 13]
+    }
+}
+
+/**
+ * Weekly creative direction for the game in development. Each choice trades production
+ * speed, polish, bugs and shipped quality — so advancing a week is a decision, not a tick.
+ */
+@Serializable
+enum class GameFocus {
+    BALANCED, GAMEPLAY, VISUALS, PERFORMANCE, CONTENT;
+
+    val title: String get() = when (this) {
+        BALANCED -> "Balanced"
+        GAMEPLAY -> "Gameplay first"
+        VISUALS -> "Visual polish"
+        PERFORMANCE -> "Performance first"
+        CONTENT -> "More content"
+    }
+
+    val blurb: String get() = when (this) {
+        BALANCED -> "Steady progress and polish."
+        GAMEPLAY -> "Slower production, stronger core experience."
+        VISUALS -> "More polish, slower content progress."
+        PERFORMANCE -> "Fewer bugs and a safer ship, with a small pace cost."
+        CONTENT -> "Ship content faster, but leave less time for polish."
+    }
+
+    val workMultiplier: Double get() = when (this) {
+        BALANCED -> 1.0
+        GAMEPLAY -> 0.94
+        VISUALS -> 0.90
+        PERFORMANCE -> 0.96
+        CONTENT -> 1.14
+    }
+
+    val polishMultiplier: Double get() = when (this) {
+        BALANCED -> 1.0
+        GAMEPLAY -> 1.08
+        VISUALS -> 1.28
+        PERFORMANCE -> 1.12
+        CONTENT -> 0.72
+    }
+
+    /** Extra bug accumulation while building (1 = normal). */
+    val bugMultiplier: Double get() = when (this) {
+        BALANCED -> 1.0
+        GAMEPLAY -> 0.95
+        VISUALS -> 1.05
+        PERFORMANCE -> 0.75
+        CONTENT -> 1.15
+    }
+
+    /** Added to critic score parts (same scale as studio-craft bonuses). */
+    val qualityBonus: Double get() = when (this) {
+        BALANCED -> 0.0
+        GAMEPLAY -> 4.0
+        VISUALS -> 3.0
+        PERFORMANCE -> 3.0
+        CONTENT -> -3.0
+    }
+}
+
 /** The nine areas a team splits its time between, three per development stage. */
 @Serializable
 enum class FocusArea(val stage: Int, val designShare: Double) {
@@ -457,8 +560,6 @@ internal object GameNames {
         "Rising Tide", "The Lost Isles", "Frozen Throne", "Second Wind", "Afterglow", "Echoes", "The Deep End",
         "Dark Harvest", "New Horizons", "Overtime", "Reloaded", "Wild Card",
     )
-    val publishers = listOf(
-        "Electronic Arts", "Ubisoft", "Bandai Namco", "Devolver Digital", "Annapurna Interactive", "Take-Two Interactive",
-        "Sega", "THQ Nordic", "Square Enix", "Xbox Game Studios",
-    )
+    /** Modern-day default list; prefer [publishersIn] so decades runs stay historically accurate. */
+    val publishers: List<String> get() = publishersIn(MODERN_YEAR)
 }

@@ -188,7 +188,7 @@ internal fun GameState.rollDecisions() {
         val lane = rng.pick(earning)
         val weeks = rng.int(6, 12)
         val pay = (stake(lane) * weeks * rng.range(0.35, 0.6)).roundedMoney()
-        offer(Partnership(lane, rng.pick(Names.brands), pay, weeks), 5)
+        offer(Partnership(lane, rng.pick(brandsIn(calendarYear)), pay, weeks), 5)
     }
     if (week > 52 && rng.chance(0.003)) {
         val lane = lanes.maxByOrNull { trailingRevenue(it, 13) } ?: lanes.first()

@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.boot.core.Campaign
 import com.boot.core.Format
 import com.boot.core.GameProject
+import com.boot.core.GameSeason
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.Research
@@ -292,6 +293,18 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
             MiniStat("Bugs", Format.count(p.bugs), colors.bad, Modifier.weight(1f))
             MiniStat("Hype", "${p.hype.toInt()}", colors.warn, Modifier.weight(1f))
         }
+        val season = GameSeason.forWeek(state.week)
+        val lift = season.launchMultiplier(c.genre)
+        val seasonPct = ((lift - 1) * 100).toInt()
+        Hint(
+            when {
+                lift > 1.0 -> "${season.title} · ${c.genreTitle} +$seasonPct% launch demand"
+                lift < 1.0 -> "${season.title} · ${c.genreTitle} $seasonPct% launch demand"
+                else -> "${season.title} · ${season.weeksLabel}"
+            },
+            if (lift >= 1.0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Hint("Direction · ${p.creativeFocus.title}. ${p.creativeFocus.blurb}")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             PrimaryButton("Release", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady)
             if (Research.MARKETING in state.researched) {

@@ -4,6 +4,12 @@ A company management game for Android and macOS. You start solo in a cramped apa
 
 The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
+**New in 3.5 (Android):** the phone shell matches the Windows studio HUD.
+
+- **Paper chrome.** The top bar is the same soft studio header as Windows: a Menu chip, the date and current season, and the play, pause, speed and week controls. While a game is in development, design, tech, research and bugs sit in the colored discs from the desktop HUD. Cash, fans and research stay one tap away.
+- **Office art.** The apartment uses the Windows daylight look: teal carpet, SPACE and MARS posters, floor nameplates, a founder ring, and work bubbles over occupied desks. Dark mode is still the night shift.
+- **Season on the project card.** The office card shows this season's launch demand for the game's genre, plus the creative direction in effect. Playtests, focus and shipping stay on the studio page.
+
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
 **New in 3.4 (Android):** a tutorial and a How to play guide.

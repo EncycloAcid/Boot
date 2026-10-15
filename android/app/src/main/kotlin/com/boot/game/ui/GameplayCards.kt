@@ -190,7 +190,11 @@ private fun ChartRow(rank: Int, e: ChartEntry, onOpen: ((Int) -> Unit)?) {
         )
         Spacer(Modifier.width(10.dp))
         CoverWithScore(e.coverConcept(), e.score, width = 40.dp)
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(8.dp))
+        if (!highlight) {
+            CompanyLogo(e.studio, size = 22.dp)
+            Spacer(Modifier.width(8.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(
                 e.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -224,12 +228,7 @@ fun ComingSoonCard(state: GameState, limit: Int) {
             ListRow(
                 a.title,
                 subtitle = "${a.studio} · ${a.size.title} ${a.genre.lower}" + if (a.mega) " · the big one" else "",
-                leading = {
-                    Icon(
-                        if (a.mega) Icons.Filled.Whatshot else Icons.Filled.Event, null,
-                        tint = if (a.mega) colors.warn else MaterialTheme.colorScheme.outline, modifier = Modifier.size(24.dp),
-                    )
-                },
+                leading = { CompanyLogo(a.studio, size = 28.dp) },
                 value = when (weeks) {
                     0 -> "This week"
                     1 -> "Next week"

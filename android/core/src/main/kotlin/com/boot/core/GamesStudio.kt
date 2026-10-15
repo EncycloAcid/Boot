@@ -86,6 +86,12 @@ data class GameProject(
     var lastDesign: Double = 0.0,
     var lastTech: Double = 0.0,
     var lastBugs: Double = 0.0,
+    /** Development stages that have had a hands-on playtest (0–2 plus final polish stage 3). */
+    val playtestedStages: MutableSet<Int> = mutableSetOf(),
+    /**
+     * Weekly creative direction. Older saves omit this field; kotlinx defaults it to [GameFocus.BALANCED].
+     */
+    var creativeFocus: GameFocus = GameFocus.BALANCED,
 ) {
     val title: String get() = concept.title
     val work: Double get() = concept.work
@@ -377,7 +383,7 @@ class GamesStudio {
             .sortedByDescending { it.lifetime }
 
     /** Suggest a name nobody has used, in the voice of the topic and genre. */
-    internal fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
+    fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
         gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title, project2?.title))
 
     // Weekly simulation
@@ -493,26 +499,29 @@ class GamesStudio {
     private fun develop(p: GameProject, work: Double, ctx: LaneContext, report: LaneReport) {
         p.weeksInDev += 1
         val engineMult = engine(p.concept.engineId).multiplier
+        val directive = p.creativeFocus
+        val paced = work * directive.workMultiplier
         if (!p.isReady) {
             val stage = p.stage
             val alloc = p.focus[stage]
             val total = alloc.sum().takeIf { it > 0 } ?: 1.0
             val areas = FocusArea.forStage(stage)
             val designShare = areas.indices.sumOf { alloc[it] / total * areas[it].designShare }
-            val d = work * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
-            val t = work * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
+            val d = paced * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
+            val t = paced * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
             val engineBugs = engine(p.concept.engineId).combo.bugRisk
-            val b = work * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0) * (1 + engineBugs)
+            val b = paced * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0) *
+                (1 + engineBugs) * directive.bugMultiplier
             p.design += d
             p.tech += t
             p.bugs += b
             p.lastDesign = d
             p.lastTech = t
             p.lastBugs = b
-            p.matchSum += focusMatch(p.concept, stage, alloc) * work
-            p.matchWork += work
+            p.matchSum += focusMatch(p.concept, stage, alloc) * paced
+            p.matchWork += paced
             val wasStage = stage
-            p.progress += work
+            p.progress += paced
             if (p.isReady) {
                 grantStageInsight(p, wasStage, report)
                 report.log("${p.title} is content complete. Fix bugs and polish, or ship it now.", LogTone.GOOD)
@@ -522,9 +531,9 @@ class GamesStudio {
             }
         } else {
             // Bug fixing and polish once the content is in.
-            val fixed = min(p.bugs, work * 0.6)
+            val fixed = min(p.bugs, paced * 0.6 / directive.bugMultiplier.coerceAtLeast(0.5))
             p.bugs -= fixed
-            p.polish = min(p.work * 0.4, p.polish + work * 0.5 * ctx.polishEfficiency)
+            p.polish = min(p.work * 0.4, p.polish + paced * 0.5 * ctx.polishEfficiency * directive.polishMultiplier)
             p.lastDesign = 0.0
             p.lastTech = 0.0
             p.lastBugs = -fixed
@@ -643,6 +652,14 @@ class GamesStudio {
         val rushedSequel = original != null && week - original.week < 52
         if (rushedSequel) part("Rushed sequel", -0.6, "Less than a year after ${original!!.title}.")
         part("Studio craft", ctx.mods.quality / 15, "Perfectionists, playtesting and the like.")
+        val directionBonus = p.creativeFocus.qualityBonus / 15
+        if (abs(directionBonus) >= 0.05) {
+            part(
+                "Creative direction",
+                directionBonus,
+                "${p.creativeFocus.title}: ${p.creativeFocus.blurb}",
+            )
+        }
         val recent = releases.filter { it.developer == null }.take(3).map { it.score }
         val before = SCORE_BASELINE + parts.sumOf { it.points }
         val stepBack = recent.isNotEmpty() && before < recent.average() - 1.5
@@ -738,9 +755,11 @@ class GamesStudio {
         // A remaster sells to the people who remember the original, and fewer of them than a new game finds.
         val remastered = c.remasterOf?.let { release(it) }
         val nostalgia = remastered?.let { remasterLift(it.score) } ?: 1.0
+        val season = GameSeason.forWeek(week)
+        val seasonalLift = season.launchMultiplier(c.genre)
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia
+            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia * seasonalLift
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 
@@ -751,6 +770,8 @@ class GamesStudio {
         }
         learn("TG:${c.topic.name}:${c.genre.name}", c.topic.fit(c.genre))
         lines += "${c.topic.title} + ${c.genre.title}: ${c.topic.fit(c.genre).title.lowercase()} combination."
+        val seasonPct = ((seasonalLift - 1) * 100).roundToInt()
+        lines += "${season.title} launch timing: ${season.marketTip} Your ${c.genre.lower} game received ${if (seasonPct >= 0) "+" else ""}$seasonPct% seasonal demand."
         c.genre2?.let {
             learn("TG:${c.topic.name}:${it.name}", c.topic.fit(it))
             lines += "${c.topic.title} + ${it.title}: ${c.topic.fit(it).title.lowercase()} combination."
@@ -902,14 +923,20 @@ class GamesStudio {
 
     // Offers
 
-    internal fun refreshOffers(week: Int, output: Double, rng: SeededRNG, unlockedSizes: List<GameSize>, platforms: List<Platform>) {
+    internal fun refreshOffers(
+        week: Int, year: Int, output: Double, rng: SeededRNG, unlockedSizes: List<GameSize>, platforms: List<Platform>,
+    ) {
         if (week % 4 == 0 && contractOffers.size < 2) {
             val work = rng.range(15.0, 45.0) * (1 + output / 40)
+            val clients = brandsIn(year) + GameNames.clients.filter { companyActive(it, year) }
             val title = rng.pick(
                 listOf(
-                    "Port a puzzle game to the iPhone", "An advergame for ${rng.pick(GameNames.clients)}",
-                    "Bug-fix sprint for Ubisoft", "A level pack for Electronic Arts", "A tech demo for ${rng.pick(GameNames.clients)}",
-                    "An educational game for ${rng.pick(GameNames.clients)}",
+                    "Port a puzzle game to ${if (year < 2007) "a handheld" else "the iPhone"}",
+                    "An advergame for ${rng.pick(clients)}",
+                    "Bug-fix sprint for ${rng.pick(publishersIn(year).ifEmpty { listOf("a publisher") })}",
+                    "A level pack for ${rng.pick(publishersIn(year).ifEmpty { listOf("Electronic Arts") })}",
+                    "A tech demo for ${rng.pick(clients)}",
+                    "An educational game for ${rng.pick(clients)}",
                 ),
             )
             contractOffers += GameContract(
@@ -923,8 +950,9 @@ class GamesStudio {
             val genre = rng.pick(Genre.entries)
             val topic = topics.filter { it.fit(genre) != Fit.BAD }.ifEmpty { topics }.let { rng.pick(it) }
             val platform = rng.pick(platforms.ifEmpty { listOf(Platform.PC) })
+            val pubs = publishersIn(year).ifEmpty { GameNames.publishers }
             dealOffers += PublisherDeal(
-                id = nextId(), publisher = rng.pick(GameNames.publishers), topic = topic, genre = genre, platform = platform,
+                id = nextId(), publisher = rng.pick(pubs), topic = topic, genre = genre, platform = platform,
                 size = size, minScore = minScore, advance = (size.launchSales * rng.range(0.6, 1.1) * minScore / 6).roundToInt().toDouble(),
                 share = 0.35, expiresWeek = week + 8,
             )

@@ -111,6 +111,8 @@ fun RivalSection(store: GameStore, state: GameState, lane: Lane) {
     ) {
         CardBlock(spacing = 10.dp) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                CompanyLogo(r.name, size = 36.dp)
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(r.name, style = MaterialTheme.typography.titleMedium)
                     Hint(if (quiet) "Out of the market for now" else r.stance.detail)

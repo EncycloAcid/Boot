@@ -268,7 +268,10 @@ private fun GameState.studioWeek() {
         }
     }
     val output = staffing(Lane.GAMES).output
-    g.refreshOffers(week, output, rng, unlockedSizes, Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE })
+    g.refreshOffers(
+        week, calendarYear, output, rng, unlockedSizes,
+        Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE },
+    )
 }
 
 private fun GameState.rollWorldEvents() {
@@ -292,7 +295,7 @@ private fun GameState.rollSmallEvents() {
     if (staff.size >= 6 && rng.chance(0.003)) enqueue(EventKind.Offsite)
     if (web != null && staff(Lane.WEBSITES).isNotEmpty() && rng.chance(0.006)) {
         val pay = max(15_000.0, trailingRevenue(Lane.WEBSITES, 4) / 4 * 3)
-        enqueue(EventKind.RushJob(rng.pick(Names.brands + Names.clients), Math.round(pay / 1_000.0) * 1_000.0))
+        enqueue(EventKind.RushJob(rng.pick(brandsIn(calendarYear) + Names.clients), Math.round(pay / 1_000.0) * 1_000.0))
     }
     if (apps?.isLive == true && rng.chance(0.004)) enqueue(EventKind.AppFeatured)
     if (social?.isLive == true && social?.caughtOn == true && rng.chance(0.004)) {

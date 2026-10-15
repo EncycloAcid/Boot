@@ -152,6 +152,8 @@ fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, st
     val measurer = rememberTextMeasurer()
     // Studio (64dp) and designer (104dp+) get lettering; tiny list thumbs stay pictorial.
     val detailed = width >= 56.dp
+    // Chart thumbs (~40dp) need chunkier landmarks so topic/genre still read.
+    val thumb = width < 48.dp
     val seed = remember(concept.title, concept.topic, concept.genre, concept.genre2) {
         var h = concept.title.hashCode()
         h = 31 * h + concept.topic.ordinal
@@ -169,7 +171,7 @@ fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, st
         val h = size.height
         // Guard zero-size layouts (blank canvas) — nothing to paint yet.
         if (w <= 0f || h <= 0f) return@Canvas
-        val band = h * 0.09f
+        val band = h * (if (thumb) 0.07f else 0.09f)
         val art = concept.topic.art
         val rng = java.util.Random(seed.toLong() * 31L + concept.topic.ordinal * 17L + concept.genre.ordinal)
         // Half the covers put the title at the top, half at the bottom; the hero takes the other end.
@@ -182,14 +184,27 @@ fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, st
             drawRect(art.ground, topLeft = Offset(0f, horizon), size = Size(w, h - horizon))
             val lightAt = Offset(if (mirror) w * 0.28f else w * 0.72f, band + h * (0.16f + 0.06f * rng.nextFloat()))
             rays(lightAt, art.light, w, h)
-            scene(art, concept.topic, w, h, band, horizon, lightAt, rng)
+            scene(art, concept.topic, w, h, band, horizon, lightAt, rng, thumb)
             val heroX = if (mirror) w * 0.68f else w * 0.32f
-            // The hero stands on the horizon under a bottom title, and at the front under a top one.
+            // Thumbs push the hero larger and lower so the silhouette still reads at 40dp.
             val heroBase = if (titleTop || !detailed) h * 0.97f else horizon + h * 0.02f
-            hero(concept.genre, heroX, heroBase, h * (if (titleTop || !detailed) 0.44f else 0.34f), art, lightAt, mirror)
-            atmosphere(art.fx, art.light, w, h, band, rng)
-            // Vignette.
-            drawRect(Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f)), Offset(w / 2, h * 0.5f), h * 0.75f))
+            val heroH = h * when {
+                thumb -> 0.52f
+                titleTop || !detailed -> 0.46f
+                else -> 0.34f
+            }
+            hero(concept.genre, heroX, heroBase, heroH, art, lightAt, mirror)
+            // Skip fine atmosphere on thumbs — it muddies the silhouette.
+            if (!thumb) atmosphere(art.fx, art.light, w, h, band, rng)
+            // Vignette (lighter on thumbs so landmarks stay bright).
+            drawRect(
+                Brush.radialGradient(
+                    listOf(Color.Transparent, Color.Black.copy(alpha = if (thumb) 0.28f else 0.5f)),
+                    Offset(w / 2, h * 0.5f),
+                    h * 0.75f,
+                ),
+            )
+            if (thumb) topicBadge(concept.topic, art, w, h, mirror)
         }
 
         // The platform band.
@@ -384,28 +399,79 @@ private fun DrawScope.mountains(color: Color, base: Float, w: Float, h: Float, r
 
 // Scenes, one per topic
 
-private fun DrawScope.scene(a: Art, topic: Topic, w: Float, h: Float, top: Float, horizon: Float, light: Offset, rng: java.util.Random) {
+/** Crisp topic mark for chart thumbs — reads when the full scene is too small. */
+private fun DrawScope.topicBadge(topic: Topic, art: Art, w: Float, h: Float, mirror: Boolean) {
+    val pad = w * 0.06f
+    val r = w * 0.13f
+    val cx = if (mirror) pad + r else w - pad - r
+    val cy = h * 0.18f
+    val at = Offset(cx, cy)
+    drawCircle(Color.Black.copy(alpha = 0.35f), r * 1.15f, at + Offset(0f, r * 0.08f))
+    drawCircle(Brush.radialGradient(listOf(art.light.mix(Color.White, 0.35f), art.light.shade(0.85f)), at - Offset(r * 0.3f, r * 0.3f), r * 1.4f), r, at)
+    drawCircle(Color.White.copy(alpha = 0.35f), r, at, style = Stroke(w * 0.02f))
+    // Tiny emblem keyed to topic family.
+    when (topic) {
+        Topic.SPACE, Topic.SCI_FI, Topic.ALIENS, Topic.MARS -> {
+            drawCircle(Color.White.copy(alpha = 0.9f), r * 0.35f, at)
+            if (topic != Topic.MARS) drawOval(Color.White.copy(alpha = 0.85f), Offset(at.x - r * 0.7f, at.y - r * 0.12f), Size(r * 1.4f, r * 0.24f), style = Stroke(w * 0.025f))
+        }
+        Topic.FANTASY, Topic.MEDIEVAL, Topic.MYTHOLOGY -> {
+            poly(Color.White.copy(alpha = 0.92f), at.x, at.y - r * 0.55f, at.x + r * 0.35f, at.y + r * 0.4f, at.x - r * 0.35f, at.y + r * 0.4f)
+        }
+        Topic.RACING -> {
+            drawCircle(Color.White.copy(alpha = 0.9f), r * 0.45f, at, style = Stroke(w * 0.04f))
+            drawCircle(Color.White.copy(alpha = 0.9f), r * 0.12f, at)
+        }
+        Topic.SPORTS, Topic.ESPORTS_SCENE -> {
+            drawCircle(Color.White.copy(alpha = 0.9f), r * 0.42f, at, style = Stroke(w * 0.035f))
+            drawLine(Color.White.copy(alpha = 0.9f), Offset(at.x - r * 0.42f, at.y), Offset(at.x + r * 0.42f, at.y), strokeWidth = w * 0.03f)
+        }
+        Topic.HORROR, Topic.ZOMBIES, Topic.VAMPIRES -> {
+            poly(Color.White.copy(alpha = 0.9f), at.x - r * 0.35f, at.y + r * 0.35f, at.x, at.y - r * 0.5f, at.x + r * 0.35f, at.y + r * 0.35f)
+        }
+        Topic.OCEAN, Topic.PIRATES -> {
+            drawArc(Color.White.copy(alpha = 0.9f), 200f, 140f, false, Offset(at.x - r * 0.4f, at.y - r * 0.15f), Size(r * 0.8f, r * 0.55f), style = Stroke(w * 0.035f, cap = StrokeCap.Round))
+        }
+        Topic.MUSIC -> {
+            drawCircle(Color.White.copy(alpha = 0.9f), r * 0.18f, at + Offset(-r * 0.15f, r * 0.25f))
+            drawLine(Color.White.copy(alpha = 0.9f), Offset(at.x - r * 0.02f, at.y + r * 0.25f), Offset(at.x + r * 0.25f, at.y - r * 0.35f), strokeWidth = w * 0.04f, cap = StrokeCap.Round)
+        }
+        Topic.CYBERPUNK, Topic.HACKING, Topic.ARTIFICIAL_INTELLIGENCE, Topic.ROBOTS -> {
+            drawRoundRect(Color.White.copy(alpha = 0.9f), Offset(at.x - r * 0.35f, at.y - r * 0.28f), Size(r * 0.7f, r * 0.56f), CornerRadius(r * 0.1f), style = Stroke(w * 0.035f))
+            drawCircle(Color.White.copy(alpha = 0.9f), r * 0.1f, at)
+        }
+        else -> {
+            drawCircle(Color.White.copy(alpha = 0.9f), r * 0.22f, at)
+            drawLine(Color.White.copy(alpha = 0.9f), Offset(at.x, at.y - r * 0.45f), Offset(at.x, at.y + r * 0.45f), strokeWidth = w * 0.03f, cap = StrokeCap.Round)
+            drawLine(Color.White.copy(alpha = 0.9f), Offset(at.x - r * 0.45f, at.y), Offset(at.x + r * 0.45f, at.y), strokeWidth = w * 0.03f, cap = StrokeCap.Round)
+        }
+    }
+}
+
+private fun DrawScope.scene(a: Art, topic: Topic, w: Float, h: Float, top: Float, horizon: Float, light: Offset, rng: java.util.Random, thumb: Boolean = false) {
     val dark = a.ground
     val mid = a.sky.mix(a.horizon, 0.45f).shade(0.55f)
+    // Thumbs inflate landmark scale so castles/planets don't dissolve into noise.
+    val boost = if (thumb) 1.28f else 1f
     when (a.scene) {
         Scene.CASTLE, Scene.DRAGON -> {
-            drawCircle(a.light.mix(Color.White, 0.5f), w * 0.1f, light)
-            mountains(mid, horizon, w, h, rng, 0.2f)
+            drawCircle(a.light.mix(Color.White, 0.5f), w * 0.1f * boost, light)
+            mountains(mid, horizon, w, h, rng, 0.2f * boost)
             val cx = w * (0.4f + 0.2f * rng.nextFloat())
             val base = horizon + h * 0.02f
             for (k in -2..2) {
-                val tx = cx + k * w * 0.09f
-                val th = h * (0.14f + 0.08f * (2 - kotlin.math.abs(k)))
-                drawRect(dark, Offset(tx - w * 0.035f, base - th), Size(w * 0.07f, th))
-                poly(dark, tx - w * 0.05f, base - th, tx, base - th - h * 0.07f, tx + w * 0.05f, base - th)
-                drawRect(a.light, Offset(tx - w * 0.008f, base - th + h * 0.04f), Size(w * 0.016f, h * 0.025f))
+                val tx = cx + k * w * 0.09f * boost
+                val th = h * (0.14f + 0.08f * (2 - kotlin.math.abs(k))) * boost
+                drawRect(dark, Offset(tx - w * 0.035f * boost, base - th), Size(w * 0.07f * boost, th))
+                poly(dark, tx - w * 0.05f * boost, base - th, tx, base - th - h * 0.07f * boost, tx + w * 0.05f * boost, base - th)
+                drawRect(a.light, Offset(tx - w * 0.008f * boost, base - th + h * 0.04f), Size(w * 0.016f * boost, h * 0.025f * boost))
                 // Banners.
-                poly(a.light.shade(0.8f), tx, base - th - h * 0.07f, tx + w * 0.04f, base - th - h * 0.06f, tx, base - th - h * 0.05f)
+                poly(a.light.shade(0.8f), tx, base - th - h * 0.07f * boost, tx + w * 0.04f * boost, base - th - h * 0.06f * boost, tx, base - th - h * 0.05f * boost)
             }
             if (a.scene == Scene.DRAGON) {
                 // A dragon circling the keep.
                 val d = Offset(w * (0.25f + 0.5f * rng.nextFloat()), top + h * 0.2f)
-                val s = w * 0.12f
+                val s = w * 0.12f * boost
                 poly(dark.shade(0.8f), d.x - s * 1.6f, d.y - s * 0.2f, d.x, d.y + s * 0.15f, d.x - s * 0.3f, d.y - s * 0.9f)
                 poly(dark.shade(0.8f), d.x + s * 1.6f, d.y - s * 0.3f, d.x, d.y + s * 0.15f, d.x + s * 0.4f, d.y - s * 0.95f)
                 drawOval(dark.shade(0.8f), Offset(d.x - s * 0.5f, d.y - s * 0.1f), Size(s, s * 0.35f))
@@ -452,29 +518,29 @@ private fun DrawScope.scene(a: Art, topic: Topic, w: Float, h: Float, top: Float
             }
         }
         Scene.PLANET, Scene.UFO, Scene.MARS -> {
-            glow(Offset(w * 0.3f, h * 0.4f), w * 0.6f, a.horizon, 0.5f)
+            glow(Offset(w * 0.3f, h * 0.4f), w * 0.6f * boost, a.horizon, 0.5f)
             val pc = Offset(if (light.x > w / 2) w * 0.68f else w * 0.32f, top + h * 0.25f)
-            val pr = w * (if (a.scene == Scene.MARS) 0.16f else 0.26f)
+            val pr = w * (if (a.scene == Scene.MARS) 0.16f else 0.26f) * boost
             val pcol = if (a.scene == Scene.MARS) Color(0xFFFF8A5B) else a.light
             drawCircle(Brush.radialGradient(listOf(pcol.mix(Color.White, 0.3f), pcol.shade(0.45f), pcol.shade(0.2f)), Offset(pc.x - pr * 0.4f, pc.y - pr * 0.4f), pr * 1.6f), pr, pc)
-            if (a.scene == Scene.PLANET) drawOval(Color(0xFFFFE3A8).copy(alpha = 0.75f), Offset(pc.x - pr * 1.7f, pc.y - pr * 0.25f), Size(pr * 3.4f, pr * 0.5f), style = Stroke(w * 0.012f))
+            if (a.scene == Scene.PLANET) drawOval(Color(0xFFFFE3A8).copy(alpha = 0.75f), Offset(pc.x - pr * 1.7f, pc.y - pr * 0.25f), Size(pr * 3.4f, pr * 0.5f), style = Stroke(w * 0.012f * boost))
             if (a.scene == Scene.MARS) {
-                mountains(Color(0xFF8A3A22), horizon, w, h, rng, 0.08f)
+                mountains(Color(0xFF8A3A22), horizon, w, h, rng, 0.08f * boost)
                 drawRect(Color(0xFF6B2A18), Offset(0f, horizon), Size(w, h - horizon))
                 // A rover.
                 val rx = w * 0.62f
-                drawRect(Color(0xFFDDDDDD), Offset(rx, horizon + h * 0.04f), Size(w * 0.14f, h * 0.035f))
-                for (k in 0..2) drawCircle(Color(0xFF2B2B2B), w * 0.02f, Offset(rx + w * (0.02f + k * 0.05f), horizon + h * 0.085f))
+                drawRect(Color(0xFFDDDDDD), Offset(rx, horizon + h * 0.04f), Size(w * 0.14f * boost, h * 0.035f * boost))
+                for (k in 0..2) drawCircle(Color(0xFF2B2B2B), w * 0.02f * boost, Offset(rx + w * (0.02f + k * 0.05f) * boost, horizon + h * 0.085f))
             } else {
                 // A curved horizon of a moon.
                 drawOval(dark, Offset(-w * 0.3f, horizon - h * 0.03f), Size(w * 1.6f, h * 0.6f))
             }
             if (a.scene == Scene.UFO) {
                 val u = Offset(w * 0.5f, top + h * 0.42f)
-                poly(a.light.copy(alpha = 0.25f), u.x - w * 0.06f, u.y, u.x + w * 0.06f, u.y, u.x + w * 0.22f, horizon + h * 0.05f, u.x - w * 0.22f, horizon + h * 0.05f)
-                drawOval(Color(0xFF9AA4B2), Offset(u.x - w * 0.17f, u.y - h * 0.02f), Size(w * 0.34f, h * 0.045f))
-                drawOval(a.light.mix(Color.White, 0.4f), Offset(u.x - w * 0.07f, u.y - h * 0.055f), Size(w * 0.14f, h * 0.05f))
-                for (k in -2..2) drawCircle(a.light, w * 0.012f, Offset(u.x + k * w * 0.06f, u.y + h * 0.003f))
+                poly(a.light.copy(alpha = 0.25f), u.x - w * 0.06f * boost, u.y, u.x + w * 0.06f * boost, u.y, u.x + w * 0.22f * boost, horizon + h * 0.05f, u.x - w * 0.22f * boost, horizon + h * 0.05f)
+                drawOval(Color(0xFF9AA4B2), Offset(u.x - w * 0.17f * boost, u.y - h * 0.02f), Size(w * 0.34f * boost, h * 0.045f * boost))
+                drawOval(a.light.mix(Color.White, 0.4f), Offset(u.x - w * 0.07f * boost, u.y - h * 0.055f), Size(w * 0.14f * boost, h * 0.05f * boost))
+                for (k in -2..2) drawCircle(a.light, w * 0.012f * boost, Offset(u.x + k * w * 0.06f * boost, u.y + h * 0.003f))
             }
         }
         Scene.VORTEX -> {
