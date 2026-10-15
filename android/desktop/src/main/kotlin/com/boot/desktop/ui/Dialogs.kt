@@ -258,20 +258,80 @@ fun EndingDialog(store: DesktopStore, state: GameState) {
 fun ReviewSheet(store: DesktopStore, state: GameState, releaseId: Int) {
     val r = state.games?.release(releaseId) ?: return
     val colors = gameColors
+    val h = hudColors
     ModalScaffold(
         title = "The reviews are in",
         subtitle = r.title,
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    String.format("%.1f", r.score),
-                    style = MaterialTheme.typography.displayLarge,
-                    color = colors.good,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            String.format("%.1f", r.score),
+                            style = MaterialTheme.typography.displayLarge,
+                            color = colors.good,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Hint("Critics · ${r.metascore}")
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val player = if (r.userScore > 0) String.format("%.1f", r.userScore) else "—"
+                        Text(
+                            player,
+                            style = MaterialTheme.typography.displayLarge,
+                            color = h.ink,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Hint(
+                            when {
+                                r.userScore <= 0 -> "Players · no data"
+                                !r.userScoreSettled -> "Players · settling"
+                                else -> "Players"
+                            },
+                        )
+                    }
+                }
                 Hint("${r.verdict} · launch week ${Format.money(r.salesHistory.firstOrNull() ?: r.weeklySales)}")
                 if (r.chartRank > 0) Hint("#${r.chartRank} on the charts", colors.milestone)
-                r.reviews.take(3).forEach { review ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Hint("Earned")
+                        Text(Format.money(r.lifetimeSales), style = MaterialTheme.typography.titleMedium, color = h.ink)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Hint("Copies")
+                        Text(Format.count(r.unitsSold), style = MaterialTheme.typography.titleMedium, color = h.ink)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Hint("Best rank")
+                        Text(
+                            if (r.bestRank > 0) "#${r.bestRank}" else "—",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = h.ink,
+                        )
+                    }
+                }
+                Hint(
+                    "Dev cost ${Format.money(r.devCost)} · profit ${Format.signedMoney(r.lifetimeSales - r.devCost)}",
+                    if (r.lifetimeSales >= r.devCost) colors.good else colors.bad,
+                )
+                if (r.salesHistory.size > 1) {
+                    Hint(
+                        "Sales trail: " + r.salesHistory.takeLast(6).joinToString(" → ") { Format.money(it) },
+                    )
+                }
+                if (r.breakdown.isNotEmpty()) {
+                    Hint("Score breakdown")
+                    r.breakdown.take(6).forEach { part ->
+                        val pts = String.format("%+.1f", part.points)
+                        Hint("${part.label} $pts · ${part.note}")
+                    }
+                }
+                r.reviews.forEach { review ->
                     GlassPanel(Modifier.fillMaxWidth()) {
                         Text(
                             "${review.outlet.title} · ${review.formatted}",
@@ -281,8 +341,12 @@ fun ReviewSheet(store: DesktopStore, state: GameState, releaseId: Int) {
                         Hint("“${review.comment}”")
                     }
                 }
-                if (r.pros.isNotEmpty()) Hint("Pros: ${r.pros.take(2).joinToString()}", colors.good)
-                if (r.cons.isNotEmpty()) Hint("Cons: ${r.cons.take(2).joinToString()}", colors.bad)
+                if (r.pros.isNotEmpty()) Hint("Pros: ${r.pros.take(3).joinToString()}", colors.good)
+                if (r.cons.isNotEmpty()) Hint("Cons: ${r.cons.take(3).joinToString()}", colors.bad)
+                Hint(
+                    "Shipped D${r.design.toInt()} · T${r.tech.toInt()} · hype ${r.hype.toInt()} · bugs ${r.bugs.toInt()}" +
+                        if (r.patched) " · patched" else "",
+                )
             }
         },
         actions = {

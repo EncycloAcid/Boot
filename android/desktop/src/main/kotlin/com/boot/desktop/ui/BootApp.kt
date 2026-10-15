@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
@@ -49,6 +47,7 @@ import com.boot.core.Format
 import com.boot.core.GameSeason
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.gameForecast
 import com.boot.desktop.DesktopStore
 import com.boot.desktop.Speed
 import com.boot.desktop.Tab
@@ -370,6 +369,8 @@ private fun GdtHud(
         }
 
         val season = GameSeason.forWeek(state.week)
+        val weekly = state.trailingProfit(weeks = 4) / 4
+        val colors = gameColors
 
         Column(
             Modifier
@@ -379,17 +380,42 @@ private fun GdtHud(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-                val design = project?.design?.toInt() ?: 0
-                val tech = project?.tech?.toInt() ?: 0
-                val bugs = project?.bugs?.toInt() ?: 0
-                ResourceBubble("$design", h.designBubble, HudGlyph.DESIGN, size = bubbleSize, caption = "Design")
-                ResourceBubble("$tech", h.techBubble, HudGlyph.TECH, size = bubbleSize, caption = "Tech")
-                Spacer(Modifier.width(8.dp))
-                ResourceBubble("${state.researchPoints.toInt()}", h.research, HudGlyph.RESEARCH, size = bubbleSize, caption = "RP")
-                ResourceBubble("$bugs", h.bugs, HudGlyph.BUGS, size = bubbleSize, caption = "Bugs")
-            }
             if (project != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                    ResourceBubble(
+                        "${project.design.toInt()}",
+                        h.designBubble,
+                        HudGlyph.DESIGN,
+                        size = bubbleSize,
+                        caption = "Design",
+                        onClick = { store.openLane(Lane.GAMES) },
+                    )
+                    ResourceBubble(
+                        "${project.tech.toInt()}",
+                        h.techBubble,
+                        HudGlyph.TECH,
+                        size = bubbleSize,
+                        caption = "Tech",
+                        onClick = { store.openLane(Lane.GAMES) },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    ResourceBubble(
+                        "${state.researchPoints.toInt()}",
+                        h.research,
+                        HudGlyph.RESEARCH,
+                        size = bubbleSize,
+                        caption = "RP",
+                        onClick = { store.tab = Tab.RESEARCH },
+                    )
+                    ResourceBubble(
+                        "${project.bugs.toInt()}",
+                        h.bugs,
+                        HudGlyph.BUGS,
+                        size = bubbleSize,
+                        caption = "Bugs",
+                        onClick = { store.openLane(Lane.GAMES) },
+                    )
+                }
                 val lift = season.launchMultiplier(project.concept.genre)
                 val seasonPct = ((lift - 1) * 100).toInt()
                 val seasonLine = when {
@@ -397,6 +423,7 @@ private fun GdtHud(
                     lift < 1.0 -> "${season.title} · ${project.concept.genreTitle} $seasonPct% demand"
                     else -> "${season.title} · ${season.weeksLabel}"
                 }
+                val forecast = state.gameForecast()
                 GlassPanel(Modifier.fillMaxWidth()) {
                     Text(
                         project.title,
@@ -414,8 +441,31 @@ private fun GdtHud(
                     )
                     Hint(seasonLine, if (lift >= 1.0) h.accent else h.inkMute)
                     Spacer(Modifier.height(4.dp))
-                    ProgressRow("Progress", project.completion.toFloat(), h.accent)
-                    ProgressRow("Hype ${project.hype.toInt()}", (project.hype / 100.0).toFloat().coerceIn(0f, 1f), h.hype)
+                    StatMeter(
+                        "Progress",
+                        project.completion.toFloat(),
+                        h.accent,
+                        caption = forecast?.weeksToReady?.let { "${(project.completion * 100).toInt()}% · ~${it}w" }
+                            ?: "${(project.completion * 100).toInt()}%",
+                    )
+                    StatMeter(
+                        "Hype ${project.hype.toInt()}",
+                        (project.hype / 100.0).toFloat().coerceIn(0f, 1f),
+                        h.hype,
+                    )
+                    if (!project.isReady) {
+                        StatMeter(
+                            "Genre fit",
+                            project.designLeanFit().toFloat(),
+                            if (project.designLeanFit() >= 0.7) colors.design else colors.warn,
+                        )
+                    } else {
+                        StatMeter(
+                            "Polish",
+                            (project.polish / (project.work * 0.4)).toFloat().coerceIn(0f, 1f),
+                            colors.milestone,
+                        )
+                    }
                     if (project.isReady) {
                         MacButton(
                             "Open Lanes · ship ${project.title}",
@@ -424,8 +474,47 @@ private fun GdtHud(
                         )
                     }
                 }
-            } else if (store.tab == Tab.OFFICE) {
-                // Idle tip only on the office floor — hide when a floating tab is open.
+            } else {
+                // Idle: match Android — Cash / RP / Fans discs instead of empty Design/Tech/Bugs zeros.
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                    ResourceBubble(
+                        Format.money(state.cash),
+                        h.cash,
+                        HudGlyph.CASH,
+                        size = bubbleSize,
+                        caption = "Cash",
+                        onClick = { store.companyPage = 1; store.tab = Tab.COMPANY },
+                    )
+                    ResourceBubble(
+                        "${state.researchPoints.toInt()}",
+                        h.research,
+                        HudGlyph.RESEARCH,
+                        size = bubbleSize,
+                        caption = "RP",
+                        onClick = { store.tab = Tab.RESEARCH },
+                    )
+                    val fans = state.games?.fans
+                    if (fans != null && Lane.GAMES in state.lanes) {
+                        ResourceBubble(
+                            Format.count(fans),
+                            h.fans,
+                            HudGlyph.FANS,
+                            size = bubbleSize,
+                            caption = "Fans",
+                            onClick = { store.openLane(Lane.GAMES) },
+                        )
+                    } else {
+                        ResourceBubble(
+                            "${state.reputation.score.toInt()}",
+                            h.fans,
+                            HudGlyph.FANS,
+                            size = bubbleSize,
+                            caption = "Rep",
+                            onClick = { store.companyPage = 0; store.tab = Tab.COMPANY },
+                        )
+                    }
+                }
+                // Compact company strip always visible when idle (even with a floating tab open).
                 GlassPanel(Modifier.widthIn(max = 300.dp)) {
                     Text(
                         state.companyName,
@@ -436,7 +525,7 @@ private fun GdtHud(
                     )
                     Hint("${state.world.era.title} · ${state.office.title}")
                     Hint("${season.title} · ${season.marketTip}", h.accent)
-                    if (state.games?.project == null && Lane.GAMES in state.lanes) {
+                    if (store.tab == Tab.OFFICE && Lane.GAMES in state.lanes) {
                         MacButton(
                             "Start a game",
                             onClick = { store.openLane(Lane.GAMES) },
@@ -450,18 +539,37 @@ private fun GdtHud(
         Column(
             Modifier
                 .align(Alignment.TopEnd)
-                .widthIn(min = 132.dp, max = 200.dp),
+                .widthIn(min = 132.dp, max = 220.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End,
         ) {
             StatusPill(h.accent, HudGlyph.CALENDAR, "${state.dateLabel} · ${season.title}")
             val fans = state.games?.fans
-            if (fans != null) {
-                StatusPill(h.fans, HudGlyph.FANS, "${Format.count(fans)} Fans") { store.openLane(Lane.GAMES) }
+            if (fans != null && Lane.GAMES in state.lanes) {
+                val trust = state.games?.fanTrust
+                StatusPill(
+                    h.fans,
+                    HudGlyph.FANS,
+                    "${Format.count(fans)} Fans",
+                    detail = trust?.let { "Trust ${Format.percent(it)}" },
+                ) { store.openLane(Lane.GAMES) }
             } else {
-                StatusPill(h.fans, HudGlyph.FANS, "Rep ${state.reputation.score.toInt()}") { store.tab = Tab.COMPANY }
+                val scars = state.reputation.scars.size
+                StatusPill(
+                    h.fans,
+                    HudGlyph.FANS,
+                    "Rep ${state.reputation.score.toInt()}",
+                    detail = if (scars > 0) "$scars scar${if (scars == 1) "" else "s"}" else "Clean",
+                ) { store.tab = Tab.COMPANY }
             }
-            StatusPill(h.cash, HudGlyph.CASH, Format.money(state.cash), h.cash) { store.tab = Tab.COMPANY }
+            StatusPill(
+                h.cash,
+                HudGlyph.CASH,
+                Format.money(state.cash),
+                valueColor = if (state.cash < 0) colors.bad else h.cash,
+                detail = "${Format.signedMoney(weekly)}/wk",
+                detailColor = if (weekly >= 0) colors.good else colors.bad,
+            ) { store.companyPage = 1; store.tab = Tab.COMPANY }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TransportChip(store.speed.label) {
                     store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
@@ -476,24 +584,6 @@ private fun GdtHud(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ProgressRow(label: String, value: Float, color: Color) {
-    val h = hudColors
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = h.inkMute)
-            Text("${(value * 100).toInt()}%", style = MaterialTheme.typography.labelMedium, color = h.inkMute)
-        }
-        LinearProgressIndicator(
-            progress = { value.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-            color = color,
-            trackColor = Color(0x22000000),
-            strokeCap = StrokeCap.Round,
-        )
     }
 }
 

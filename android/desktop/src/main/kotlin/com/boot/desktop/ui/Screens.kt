@@ -78,15 +78,20 @@ import com.boot.core.moveOffice
 import com.boot.core.orderUnits
 import com.boot.core.playtestGame
 import com.boot.core.rankings
+import com.boot.core.awareness
+import com.boot.core.brandLift
+import com.boot.core.naturalAwareness
 import com.boot.core.raiseRound
 import com.boot.core.repayLoan
 import com.boot.core.research
 import com.boot.core.researchBlocker
+import com.boot.core.researchPerWeek
 import com.boot.core.researchTopic
 import com.boot.core.roundOffer
 import com.boot.core.setAgencyRate
 import com.boot.core.setCreativeFocus
 import com.boot.core.setCrunch
+import com.boot.core.setFocus
 import com.boot.core.setFreelancing
 import com.boot.core.setScopePolicy
 import com.boot.core.setStageFocus
@@ -295,9 +300,31 @@ fun LanesScreen(store: DesktopStore, state: GameState) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Stat("Revenue /wk", Format.money(rev))
                     Stat("Profit /wk", Format.signedMoney(profit), if (profit >= 0) colors.good else colors.bad)
-                    Stat("Team", "${state.staff(lane).size}")
+                    val team = state.staff(lane).size
+                    val attention = state.founder.attentionShare(lane, state.lanes)
+                    Stat(
+                        "Team",
+                        if (attention > 0.05) "$team · you ${Format.percent(attention)}" else "$team",
+                    )
                     Stat("Market", Format.percent(state.world.era.demand(lane) * state.world.competition(lane)))
                 }
+                state.world.rival(lane)?.let { rival ->
+                    Hint("vs ${rival.name} on the market")
+                }
+                val awareness = state.awareness(lane)
+                val lift = state.brandLift(lane)
+                StatMeter(
+                    "Brand awareness",
+                    awareness.toFloat().coerceIn(0f, 1f),
+                    colors.lane(lane),
+                    caption = Format.percent(awareness) +
+                        if (lift > 1.001) " · demand +${Format.percent(lift - 1)}" else "",
+                )
+                val natural = state.naturalAwareness(lane)
+                Hint(
+                    "${Format.percent(natural)} on its own" +
+                        if (awareness > natural + 0.005) ", ${Format.percent(awareness - natural)} from marketing" else "",
+                )
             }
         }
         item { LaneDepthPanel(store, state, lane) }
@@ -341,6 +368,7 @@ private fun WebAgencyPanel(store: DesktopStore, state: GameState) {
             Stat("Offers", "${w.offers.size}")
             Stat("Done", "${w.completed}")
         }
+        StatMeter("Client wariness", w.clientWariness.toFloat().coerceIn(0f, 1f), gameColors.warn)
         Hint("Scope · ${w.policy.title}")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ScopePolicy.entries.forEach { p ->
@@ -374,7 +402,9 @@ private fun WebAgencyPanel(store: DesktopStore, state: GameState) {
         if (w.active.isNotEmpty()) {
             Hint("In progress")
             w.active.take(4).forEach { c ->
-                Hint("${c.client} · ${Format.percent(c.completion)} · sat ${Format.percent(c.satisfaction)}")
+                Text(c.client, style = MaterialTheme.typography.titleMedium, color = h.text)
+                StatMeter("Done", c.completion.toFloat().coerceIn(0f, 1f), h.accent)
+                StatMeter("Happiness", c.satisfaction.toFloat().coerceIn(0f, 1f), gameColors.good)
             }
         }
     }
@@ -391,8 +421,12 @@ private fun HardwarePanel(store: DesktopStore, state: GameState) {
             Hint("Hardware lane not open.")
             return@GlassPanel
         }
-        Stat("Brand", Format.percent(hw.brandAwareness))
-        Hint("${hw.modelsShipped} models shipped")
+        StatMeter("Brand awareness", hw.brandAwareness.toFloat().coerceIn(0f, 1f), h.accent)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Stat("Models", "${hw.modelsShipped}")
+            Stat("Demand", Format.count(hw.lastDemand))
+            Stat("Sold", Format.count(hw.lifetimeUnits.toDouble()))
+        }
         val d = hw.design
         if (d != null) {
             Text(d.name, style = MaterialTheme.typography.titleMedium, color = h.text)
@@ -400,6 +434,9 @@ private fun HardwarePanel(store: DesktopStore, state: GameState) {
                 "${d.formFactor.title} · ${Format.money(d.spec.price)} · " +
                     if (d.isReady) "locked" else Format.percent(d.completion),
             )
+            if (!d.isReady) {
+                StatMeter("Design", d.completion.toFloat().coerceIn(0f, 1f), colors.design)
+            }
             Hint("Stock booked: ${d.preorderedStock}")
             var units by remember { mutableIntStateOf(5_000) }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -457,10 +494,22 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Stat("Fans", Format.count(g.fans))
+            Stat("Trust", Format.percent(g.fanTrust))
             Stat("Best", if (g.topScore > 0) "%.1f".format(g.topScore) else "—")
-            Stat("Season", season.title, h.accent)
+            Stat("Games", "${g.releases.size}")
         }
         Hint(season.marketTip)
+        if (g.lastRoyalties > 0 || g.lastMerch > 0) {
+            Hint(
+                buildString {
+                    if (g.lastRoyalties > 0) append("Royalties ${Format.money(g.lastRoyalties)}")
+                    if (g.lastRoyalties > 0 && g.lastMerch > 0) append(" · ")
+                    if (g.lastMerch > 0) append("Merch ${Format.money(g.lastMerch)}")
+                    append(" last week")
+                },
+                colors.good,
+            )
+        }
         state.world.rival(Lane.GAMES)?.let { rival ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CompanyLogo(rival.name, size = 26.dp)
@@ -486,7 +535,7 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
             }
         }
 
-        if (g.contractOffers.isNotEmpty() && g.project == null) {
+        if (g.contractOffers.isNotEmpty() && g.project == null && g.contract == null) {
             Hint("Contract work")
             g.contractOffers.take(2).forEach { c ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -499,6 +548,19 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
             }
         }
 
+        g.contract?.let { c ->
+            Spacer(Modifier.height(4.dp))
+            Text(c.title, style = MaterialTheme.typography.titleMedium, color = h.text)
+            Hint("Contract · ${Format.money(c.pay)} on delivery")
+            StatMeter("Progress", c.completion.toFloat(), h.accent)
+        }
+        g.expansion?.let { x ->
+            Spacer(Modifier.height(4.dp))
+            Text(x.title, style = MaterialTheme.typography.titleMedium, color = h.text)
+            Hint("Expansion pack in progress")
+            StatMeter("Progress", x.completion.toFloat(), h.accent)
+        }
+
         val project = g.project
         if (project != null) {
             Spacer(Modifier.height(4.dp))
@@ -508,10 +570,43 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
                     "stage ${if (project.isReady) "polish" else "${project.stage + 1}/3"} · ${Format.percent(project.completion)}",
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Stat("Design", Format.count(project.design), colors.design)
-                Stat("Tech", Format.count(project.tech), colors.tech)
-                Stat("Bugs", Format.count(project.bugs), colors.bad)
+                Stat(
+                    "Design",
+                    Format.count(project.design) + deltaSuffix(project.lastDesign),
+                    colors.design,
+                )
+                Stat(
+                    "Tech",
+                    Format.count(project.tech) + deltaSuffix(project.lastTech),
+                    colors.tech,
+                )
+                Stat(
+                    "Bugs",
+                    Format.count(project.bugs) + deltaSuffix(project.lastBugs),
+                    colors.bad,
+                )
                 Stat("Hype", "${project.hype.toInt()}", colors.warn)
+            }
+            StatMeter("Development", project.completion.toFloat(), h.accent)
+            StatMeter(
+                "Hype",
+                (project.hype / 100.0).toFloat().coerceIn(0f, 1f),
+                colors.warn,
+                caption = "${project.hype.toInt()}",
+            )
+            if (!project.isReady) {
+                StatMeter(
+                    "Genre fit",
+                    project.designLeanFit().toFloat(),
+                    if (project.designLeanFit() >= 0.7) colors.design else colors.warn,
+                    caption = "${Format.percent(project.projectedDesignShare())} design",
+                )
+            } else {
+                StatMeter(
+                    "Polish",
+                    (project.polish / (project.work * 0.4)).toFloat().coerceIn(0f, 1f),
+                    colors.milestone,
+                )
             }
             state.gameForecast()?.let { f ->
                 Hint("Expected ~${"%.1f".format(f.expectedScore)} (${f.low}–${f.high})")
@@ -613,7 +708,7 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
                 primary = false,
                 modifier = Modifier.fillMaxWidth(),
             )
-        } else {
+        } else if (g.contract == null && g.expansion == null) {
             EmptyState(
                 title = "No game in development",
                 body = "Design a concept — topic, genre, platforms, size, and stage focus. This is your primary studio action.",
@@ -632,7 +727,30 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
 
         g.project2?.let { p2 ->
             Spacer(Modifier.height(4.dp))
-            Hint("Team 2 · ${p2.title} · ${Format.percent(p2.completion)}")
+            Text("Team 2 · ${p2.title}", style = MaterialTheme.typography.titleMedium, color = h.text)
+            Hint(
+                "${p2.concept.size.title} ${p2.concept.genreLower} · " +
+                    "stage ${if (p2.isReady) "polish" else "${p2.stage + 1}/3"}",
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Stat("Design", Format.count(p2.design) + deltaSuffix(p2.lastDesign), colors.design)
+                Stat("Tech", Format.count(p2.tech) + deltaSuffix(p2.lastTech), colors.tech)
+                Stat("Bugs", Format.count(p2.bugs) + deltaSuffix(p2.lastBugs), colors.bad)
+                Stat("Hype", "${p2.hype.toInt()}", colors.warn)
+            }
+            StatMeter("Development", p2.completion.toFloat(), h.accent)
+            if (!p2.isReady) {
+                StatMeter("Genre fit", p2.designLeanFit().toFloat(), colors.design)
+            } else {
+                StatMeter(
+                    "Polish",
+                    (p2.polish / (p2.work * 0.4)).toFloat().coerceIn(0f, 1f),
+                    colors.milestone,
+                )
+            }
+            state.gameForecast(2)?.let { f ->
+                Hint("Expected ~${"%.1f".format(f.expectedScore)} (${f.low}–${f.high})")
+            }
             if (p2.isReady) {
                 MacButton("Release Team 2's ${p2.title}", onClick = { store.perform { launchGame(2) } })
             }
@@ -642,8 +760,14 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
             Spacer(Modifier.height(4.dp))
             Hint("Recent releases")
             g.releases.take(4).forEach { r ->
+                val player = if (r.userScore > 0) {
+                    " · players ${"%.1f".format(r.userScore)}${if (!r.userScoreSettled) "…" else ""}"
+                } else {
+                    ""
+                }
+                val weekly = if (r.onSale) " · ${Format.money(r.weeklySales)}/wk" else ""
                 Text(
-                    "★ ${r.title} · ${"%.1f".format(r.score)} · ${Format.money(r.lifetimeSales)}",
+                    "★ ${r.title} · critics ${"%.1f".format(r.score)}$player · ${Format.money(r.lifetimeSales)}$weekly",
                     style = MaterialTheme.typography.bodyMedium,
                     color = h.textDim,
                 )
@@ -651,6 +775,13 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
         }
     }
 }
+
+private fun deltaSuffix(delta: Double): String =
+    when {
+        delta >= 1 -> " (+${delta.toInt()})"
+        delta <= -1 -> " (${delta.toInt()})"
+        else -> ""
+    }
 
 @Composable
 fun ResearchScreen(store: DesktopStore, state: GameState) {
@@ -675,9 +806,12 @@ fun ResearchScreen(store: DesktopStore, state: GameState) {
                     style = MaterialTheme.typography.headlineMedium,
                     color = h.accent,
                 )
-                Hint("Unlocked · ${state.researched.size} · buy from the list below.")
+                Hint(
+                    String.format("+%.1f RP a week · %d researched", state.researchPerWeek, state.researched.size),
+                    colors.milestone,
+                )
                 state.world.era.let { era ->
-                    Hint("Era · ${era.title}: ${era.blurb}", colors.milestone)
+                    Hint("Era · ${era.title}: ${era.blurb}")
                 }
             }
         }
@@ -687,12 +821,14 @@ fun ResearchScreen(store: DesktopStore, state: GameState) {
                     Text("Topics", style = MaterialTheme.typography.titleLarge, color = h.accent)
                     Hint("New topics open fresh genre combos.")
                     lockedTopics.take(12).forEach { t ->
+                        val trending = state.games?.trend?.topic == t
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 3.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(t.title, style = MaterialTheme.typography.titleMedium, color = h.text)
+                                if (trending) Hint("Trending now", colors.good)
                             }
                             MacButton(
                                 "${t.researchCost} RP",
@@ -711,9 +847,14 @@ fun ResearchScreen(store: DesktopStore, state: GameState) {
                     Column(Modifier.weight(1f)) {
                         Text(r.title, style = MaterialTheme.typography.titleMedium, color = h.text)
                         Hint(r.detail)
-                        Hint("${r.rp} RP · ${r.kind.name.lowercase()}", h.accent)
+                        val cashBit = if (r.cash > 0) " · ${Format.money(r.cash)}" else ""
+                        Hint("${r.rp} RP$cashBit · ${r.kind.name.lowercase()}", h.accent)
                     }
-                    MacButton("Buy", onClick = { store.perform { research(r) } })
+                    MacButton(
+                        if (r.cash > 0) "Buy · ${r.rp} RP" else "Buy",
+                        onClick = { store.perform { research(r) } },
+                        enabled = state.researchPoints >= r.rp && state.cash >= r.cash,
+                    )
                 }
             }
         }
@@ -739,7 +880,7 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
         item {
             SectionTitle(
                 "Team",
-                "${state.staff.size} hired · ${state.office.title} · ${state.freeDesks} free desks",
+                "${state.staff.size} hired · ${state.office.title} · ${state.freeDesks}/${state.office.desks} desks · rent ${Format.money(state.office.rent)}/wk",
             )
         }
         item {
@@ -748,7 +889,29 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
                     FounderPortrait(state, 48.dp)
                     Column(Modifier.weight(1f)) {
                         Text(state.founder.name, style = MaterialTheme.typography.titleLarge, color = h.text)
-                        Hint("Founder")
+                        Hint("Founder · ${Format.percent(state.venture.founderEquity)} of company")
+                    }
+                }
+                state.lanes.forEach { lane ->
+                    val bonus = state.founder.skillBonus(lane)
+                    if (bonus > 0.05) {
+                        Hint("${lane.title} skill +${"%.1f".format(bonus)}")
+                    }
+                }
+                if (state.lanes.size > 1) {
+                    Hint("Your attention across lanes")
+                    state.lanes.forEach { lane ->
+                        val share = state.founder.attentionShare(lane, state.lanes)
+                        Text(
+                            "${lane.title} · ${Format.percent(share)}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = h.text,
+                        )
+                        Slider(
+                            value = (state.founder.focus[lane] ?: 1.0).toFloat().coerceIn(0.05f, 3f),
+                            onValueChange = { v -> store.perform { setFocus(lane, v.toDouble()) } },
+                            valueRange = 0.05f..3f,
+                        )
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -756,7 +919,11 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
                         store.perform { setCrunch(!state.crunch) }
                     }
                     SelectChip(
-                        if (state.founder.freelancing) "Freelance · on" else "Freelance · off",
+                        if (state.founder.freelancing) {
+                            "Freelance · ${Format.money(state.founder.freelanceIncome(state.week))}/wk"
+                        } else {
+                            "Freelance · off"
+                        },
                         state.founder.freelancing,
                     ) {
                         store.perform { setFreelancing(!state.founder.freelancing) }
@@ -764,20 +931,31 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
                 }
                 val nextOffice = Office.entries.firstOrNull { it.ordinal == state.office.ordinal + 1 }
                 if (nextOffice != null) {
-                    Hint("Next: ${nextOffice.title} · ${nextOffice.desks} desks · move ${Format.money(nextOffice.moveCost)}")
+                    Hint("Next: ${nextOffice.title} · ${nextOffice.desks} desks · rent ${Format.money(nextOffice.rent)}/wk · move ${Format.money(nextOffice.moveCost)}")
                     MacButton("Move office", onClick = { store.perform { moveOffice() } }, primary = false)
                 }
             }
         }
         items(state.staff, key = { it.id }) { e ->
+            val colors = gameColors
             GlassPanel {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StaffPortrait(e, 44.dp)
                     Column(Modifier.weight(1f)) {
                         Text(e.name, style = MaterialTheme.typography.titleMedium, color = h.text)
-                        Hint("${e.role.title} · ${e.lane?.title ?: "unassigned"} · ${Format.money(e.salary)}/wk")
+                        Hint("${e.role.title} · Lv ${e.level} · ${e.lane?.title ?: "unassigned"} · ${Format.money(e.salary)}/wk")
+                        Hint("Skill ${e.skill} · D${e.design} · T${e.tech} · R${e.research}")
                         e.trait?.let { Hint(it.title, h.cash) }
                     }
+                }
+                StatMeter("Morale", e.morale.toFloat().coerceIn(0f, 1f), if (e.morale >= 0.5) colors.good else colors.bad)
+                if (!e.maxLevel) {
+                    StatMeter(
+                        "XP",
+                        (e.xp / e.xpToNext).toFloat().coerceIn(0f, 1f),
+                        colors.milestone,
+                        caption = "${e.xp.toInt()}/${e.xpToNext.toInt()}",
+                    )
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SelectChip("Unassigned", e.lane == null) { store.perform { assign(e.id, null) } }
@@ -806,7 +984,8 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(cand.name, style = MaterialTheme.typography.titleMedium, color = h.text)
-                                Hint("${cand.role.title} · ${Format.money(cand.askingSalary)}/wk ask")
+                                Hint("${cand.role.title} · skill ${cand.skill} · D${cand.design} T${cand.tech} R${cand.research}")
+                                Hint("${Format.money(cand.askingSalary)}/wk ask" + (cand.contestedBy?.let { " · contested by $it" } ?: ""))
                             }
                             val hireLane = store.lane?.takeIf { it in state.lanes } ?: state.startingLane
                             MacButton("Hire", onClick = { store.perform { hire(cand.id, hireLane) } })
@@ -843,14 +1022,93 @@ fun CompanyScreen(store: DesktopStore, state: GameState) {
             2 -> ExpandPanel(store, state)
             3 -> StrategyPanel(store, state)
             else -> {
+                val listing = state.listing
                 GlassPanel {
-                    Text(Format.money(state.valuation), style = MaterialTheme.typography.displayLarge, color = h.accent)
-                    Hint("Valuation")
+                    Text(
+                        Format.money(listing?.marketCap ?: state.valuation),
+                        style = MaterialTheme.typography.displayLarge,
+                        color = h.accent,
+                    )
+                    Hint(
+                        listing?.let {
+                            "${it.ticker} · \$${"%.2f".format(it.price)}/share · market cap"
+                        } ?: "Valuation",
+                    )
+                    Hint(
+                        "${Format.signedMoney(weekly)}/wk · you own ${Format.percent(state.venture.founderEquity)}",
+                        if (weekly >= 0) colors.good else colors.bad,
+                    )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Stat("Cash", Format.money(state.cash), if (state.cash < 0) colors.bad else h.text)
                         Stat("Weekly", Format.signedMoney(weekly), if (weekly >= 0) colors.good else colors.bad)
-                        Stat("Reputation", "${state.reputation.score.toInt()}")
-                        Stat("Runway", if (state.runwayWeeks.isInfinite()) "∞" else "${state.runwayWeeks.toInt()}w")
+                        val scars = state.reputation.scars.size
+                        Stat(
+                            "Reputation",
+                            "${state.reputation.score.toInt()}",
+                            if (scars > 0) colors.warn else h.text,
+                        )
+                        val runway = state.runwayWeeks
+                        Stat(
+                            "Runway",
+                            when {
+                                !runway.isFinite() -> "∞"
+                                runway > 260 -> "5+ yrs"
+                                runway >= 52 -> String.format("%.1fy", runway / 52)
+                                else -> "${runway.toInt()}w"
+                            },
+                        )
+                    }
+                    if (state.reputation.scars.isNotEmpty()) {
+                        Hint("Scars: ${state.reputation.scars.joinToString { it.kind.title }}", colors.bad)
+                        state.reputation.scars.take(3).forEach { scar ->
+                            StatMeter(scar.kind.title, scar.severity.toFloat().coerceIn(0f, 1f), colors.bad)
+                        }
+                    }
+                }
+                if (state.venture.board != null || state.listing != null) {
+                    val board = state.venture.board
+                    if (board != null) {
+                        GlassPanel {
+                            Text("Board", style = MaterialTheme.typography.titleLarge, color = h.accent)
+                            StatMeter("Confidence", board.confidence.toFloat().coerceIn(0f, 1f), colors.milestone)
+                            Hint("Growth target ${Format.percent(board.growthTarget)}")
+                        }
+                    }
+                }
+                GlassPanel {
+                    Text("Lane P&L · 4 weeks", style = MaterialTheme.typography.titleLarge, color = h.accent)
+                    state.lanes.forEach { lane ->
+                        val rev = state.trailingRevenue(lane, 4) / 4
+                        val profit = state.trailingProfit(lane, 4) / 4
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Hint(lane.businessName)
+                            Hint(
+                                "${Format.money(rev)} · ${Format.signedMoney(profit)}",
+                                if (profit >= 0) colors.good else colors.bad,
+                            )
+                        }
+                    }
+                }
+                GlassPanel {
+                    Text("Quarterly results", style = MaterialTheme.typography.titleLarge, color = h.accent)
+                    Hint("Most recent first · 13-week windows")
+                    (0 until 4).forEach { q ->
+                        val rev = state.trailingRevenue(weeks = 13, offset = q * 13)
+                        val end = state.ledger.size - q * 13
+                        val profit = if (end <= 0) {
+                            0.0
+                        } else {
+                            state.ledger.subList(maxOf(0, end - 13), end).sumOf { it.profit }
+                        }
+                        if (rev > 0 || profit != 0.0) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Hint(if (q == 0) "Last 13 weeks" else "${q * 13}–${q * 13 + 13} weeks ago")
+                                Hint(
+                                    "${Format.money(rev)} · ${Format.signedMoney(profit)}",
+                                    if (profit >= 0) colors.good else colors.bad,
+                                )
+                            }
+                        }
                     }
                 }
                 GlassPanel {
@@ -859,7 +1117,10 @@ fun CompanyScreen(store: DesktopStore, state: GameState) {
                 }
                 GlassPanel {
                     Text("Biggest companies", style = MaterialTheme.typography.titleLarge, color = h.accent)
-                    state.rankings().take(6).forEachIndexed { i, c ->
+                    val ranks = state.rankings()
+                    val myRank = ranks.indexOfFirst { it.mine } + 1
+                    if (myRank > 0) Hint("You're #$myRank of ${ranks.size}")
+                    ranks.take(6).forEachIndexed { i, c ->
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 3.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -936,6 +1197,19 @@ private fun MoneyPanel(store: DesktopStore, state: GameState) {
         GlassPanel {
             Text("Going public", style = MaterialTheme.typography.titleLarge, color = h.text)
             Hint(ipo ?: "List and keep running, or retire.")
+            // Soft progress toward typical IPO gates (shown even when blocked).
+            StatMeter(
+                "Valuation toward IPO",
+                (state.valuation / 50_000_000.0).toFloat().coerceIn(0f, 1f),
+                colors.milestone,
+                caption = Format.money(state.valuation),
+            )
+            StatMeter(
+                "Annual revenue",
+                (state.trailingRevenue(weeks = 52) / 10_000_000.0).toFloat().coerceIn(0f, 1f),
+                h.accent,
+                caption = Format.money(state.trailingRevenue(weeks = 52)),
+            )
             MacButton(
                 "Go public and keep going",
                 onClick = { store.perform { goPublic(keepRunning = true) } },
@@ -947,6 +1221,13 @@ private fun MoneyPanel(store: DesktopStore, state: GameState) {
                 enabled = ipo == null,
                 primary = false,
             )
+        }
+    } else {
+        val listing = state.listing!!
+        GlassPanel {
+            Text("${listing.ticker} listing", style = MaterialTheme.typography.titleLarge, color = h.accent)
+            Hint("\$${"%.2f".format(listing.price)}/share · cap ${Format.money(listing.marketCap)}")
+            Hint("You own ${Format.percent(state.venture.founderEquity)}")
         }
     }
 }

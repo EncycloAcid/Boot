@@ -53,13 +53,17 @@ internal fun AppsLanePanel(store: DesktopStore, state: GameState) {
             Hint("Apps lane not open.")
             return@GlassPanel
         }
+        val colors = gameColors
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             LaneStat("Users", Format.count(a.users))
             LaneStat("Quality", "${a.quality.toInt()}")
-            LaneStat("Status", if (a.isLive) "Live" else "Building")
+            LaneStat("Status", if (a.isLive) a.rankLabel else "Building")
         }
         Hint(a.name)
         if (!a.isLive) {
+            StatMeter("Build progress", (a.buildProgress / a.buildWork).toFloat().coerceIn(0f, 1f), h.accent)
+            StatMeter("Design", (a.design / 100.0).toFloat().coerceIn(0f, 1f), colors.design, caption = "${a.design.toInt()}")
+            StatMeter("Tech", (a.tech / 100.0).toFloat().coerceIn(0f, 1f), colors.tech, caption = "${a.tech.toInt()}")
             Hint("Category (locked after ship)")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AppCategory.entries.forEach { c ->
@@ -68,6 +72,27 @@ internal fun AppsLanePanel(store: DesktopStore, state: GameState) {
             }
         } else {
             Hint("${a.category.title} · ${a.monetization.title}")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                LaneStat("Churn", Format.percent(a.lastChurn, 1))
+                LaneStat("Installs", Format.count(a.lastInstalls))
+                LaneStat("Updates", "${a.updatesShipped}")
+            }
+            StatMeter(
+                "Store score",
+                (a.quality / 100.0).toFloat().coerceIn(0f, 1f),
+                h.accent,
+                caption = "${a.quality.toInt()}",
+            )
+            StatMeter(
+                "Design share",
+                a.designShare().toFloat().coerceIn(0f, 1f),
+                colors.design,
+            )
+            StatMeter(
+                "Next update",
+                (a.updateProgress / a.updateStyle.work).toFloat().coerceIn(0f, 1f),
+                colors.milestone,
+            )
         }
         Hint("Monetization")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -101,11 +126,14 @@ internal fun SocialLanePanel(store: DesktopStore, state: GameState) {
             Hint("Social lane not open.")
             return@GlassPanel
         }
+        val colors = gameColors
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             LaneStat("People", Format.count(s.realUsers))
             LaneStat("Bots", Format.percent(s.botShare))
             LaneStat("Status", if (s.isLive) "Live" else "Building")
         }
+        StatMeter("Bots", s.botShare.toFloat().coerceIn(0f, 1f), colors.warn)
+        StatMeter("Toxicity", s.toxicity.toFloat().coerceIn(0f, 1f), colors.bad)
         Hint("Moderation ${Format.percent(s.moderation)}")
         Slider(
             value = s.moderation.toFloat(),
@@ -139,6 +167,13 @@ internal fun AiLanePanel(store: DesktopStore, state: GameState) {
             LaneStat("Subs", Format.count(lab.subscribers))
         }
         lab.modelName?.let { Hint("Live model · $it", colors.good) }
+        if (lab.failedRuns > 0) Hint("${lab.failedRuns} failed training run${if (lab.failedRuns == 1) "" else "s"}", colors.bad)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            LaneStat("API", Format.count(lab.apiVolume))
+            LaneStat("Enterprise", "${lab.enterpriseClients}")
+            LaneStat("Heat", Format.percent(lab.regulatoryHeat))
+        }
+        StatMeter("Regulatory heat", lab.regulatoryHeat.toFloat().coerceIn(0f, 1f), colors.bad)
         Hint("Product focus · ${lab.focus.title}")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AIProduct.entries.forEach { p ->
@@ -150,7 +185,8 @@ internal fun AiLanePanel(store: DesktopStore, state: GameState) {
             MacButton("Buy 4 GPUs", onClick = { store.perform { buyGPUs(4) } }, primary = false)
         }
         lab.training?.let { t ->
-            Hint("Training ${t.codename} · ${t.size.title} · ${Format.percent(t.completion)}")
+            Hint("Training ${t.codename} · ${t.size.title}")
+            StatMeter("Training", t.completion.toFloat().coerceIn(0f, 1f), colors.milestone)
         } ?: run {
             Hint("Start a training run — burns compute every week.")
             TrainingSize.entries.forEach { size ->
@@ -184,11 +220,17 @@ internal fun OsLanePanel(store: DesktopStore, state: GameState) {
             LaneStat("Versions", "${lab.versionsShipped}")
             LaneStat("OEM trust", Format.percent(lab.oemTrust))
         }
+        if (lab.lastLicense > 0) {
+            Hint("License income ${Format.money(lab.lastLicense)}/wk", colors.good)
+        }
         val p = lab.project
         if (p != null) {
             Text(p.codename, style = MaterialTheme.typography.titleMedium, color = h.text)
             Hint("v${p.version} · ${p.target.title} · ${if (p.isReady) "ready" else Format.percent(p.completion)}")
-            Hint("Design ${p.design.toInt()} · tech ${p.tech.toInt()} · bugs ${p.bugs.toInt()}")
+            StatMeter("Progress", p.completion.toFloat().coerceIn(0f, 1f), h.accent)
+            StatMeter("Design", (p.design / 100.0).toFloat().coerceIn(0f, 1f), colors.design, caption = "${p.design.toInt()}")
+            StatMeter("Tech", (p.tech / 100.0).toFloat().coerceIn(0f, 1f), colors.tech, caption = "${p.tech.toInt()}")
+            StatMeter("Bugs", (p.bugs / 80.0).toFloat().coerceIn(0f, 1f), colors.bad, caption = "${p.bugs.toInt()}")
             if (p.inBeta) {
                 Hint("In beta · ${p.betaWeeksLeft}w left", colors.milestone)
             } else if (!p.isReady) {

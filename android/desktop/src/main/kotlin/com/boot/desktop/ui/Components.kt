@@ -75,6 +75,8 @@ fun StatusPill(
     glyph: HudGlyph,
     label: String,
     valueColor: Color = hudColors.ink,
+    detail: String? = null,
+    detailColor: Color = hudColors.inkMute,
     onClick: (() -> Unit)? = null,
 ) {
     val h = hudColors
@@ -99,13 +101,24 @@ fun StatusPill(
         ) {
             HudIcon(glyph, iconTint, 13.dp)
         }
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = valueColor,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                color = valueColor,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+            if (detail != null) {
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = detailColor,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -117,9 +130,14 @@ fun ResourceBubble(
     glyph: HudGlyph,
     size: Dp = 56.dp,
     caption: String? = null,
+    onClick: (() -> Unit)? = null,
 ) {
     val h = hudColors
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
+    ) {
         Box(
             Modifier
                 .size(size)
@@ -157,6 +175,43 @@ fun ResourceBubble(
                 style = MaterialTheme.typography.labelSmall,
                 color = h.inkMute,
                 fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+/** Shared progress meter used by HUD project card and floating panels. */
+@Composable
+fun StatMeter(
+    label: String,
+    value: Float,
+    color: Color,
+    caption: String? = null,
+) {
+    val h = hudColors
+    val clamped = value.coerceIn(0f, 1f)
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = h.inkMute)
+            Text(
+                caption ?: "${(clamped * 100).toInt()}%",
+                style = MaterialTheme.typography.labelMedium,
+                color = h.inkMute,
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0x22000000)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(clamped)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(color),
             )
         }
     }
