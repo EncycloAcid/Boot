@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,14 +36,14 @@ import androidx.compose.ui.unit.dp
 import com.boot.desktop.DesktopStore
 import com.boot.desktop.Tab
 
-private data class NavItem(val tab: Tab, val label: String, val mark: String)
+private data class NavItem(val tab: Tab, val label: String, val glyph: HudGlyph)
 
 private val NavItems = listOf(
-    NavItem(Tab.OFFICE, "Office", "O"),
-    NavItem(Tab.LANES, "Lanes", "L"),
-    NavItem(Tab.RESEARCH, "Research", "R"),
-    NavItem(Tab.TEAM, "Team", "T"),
-    NavItem(Tab.COMPANY, "Company", "C"),
+    NavItem(Tab.OFFICE, "Office", HudGlyph.OFFICE),
+    NavItem(Tab.LANES, "Lanes", HudGlyph.LANES),
+    NavItem(Tab.RESEARCH, "Research", HudGlyph.RESEARCH),
+    NavItem(Tab.TEAM, "Team", HudGlyph.TEAM),
+    NavItem(Tab.COMPANY, "Company", HudGlyph.COMPANY),
 )
 
 private val DockShape = RoundedCornerShape(18.dp)
@@ -123,12 +124,9 @@ private fun FloatingNavTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(
-            item.mark,
-            style = MaterialTheme.typography.labelLarge,
-            color = tint,
-            fontWeight = FontWeight.Bold,
-        )
+        Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+            HudIcon(item.glyph, tint, 18.dp)
+        }
         Text(
             item.label,
             style = MaterialTheme.typography.labelMedium,

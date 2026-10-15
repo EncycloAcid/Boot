@@ -68,7 +68,7 @@ fun GlassPanel(
 @Composable
 fun StatusPill(
     iconTint: Color,
-    icon: String,
+    glyph: HudGlyph,
     label: String,
     valueColor: Color = hudColors.ink,
     onClick: (() -> Unit)? = null,
@@ -87,17 +87,12 @@ fun StatusPill(
     ) {
         Box(
             Modifier
-                .size(18.dp)
-                .clip(RoundedCornerShape(5.dp))
+                .size(20.dp)
+                .clip(RoundedCornerShape(6.dp))
                 .background(iconTint.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(iconTint),
-            )
+            HudIcon(glyph, iconTint, 12.dp)
         }
         Text(
             label,
@@ -109,12 +104,12 @@ fun StatusPill(
     }
 }
 
-/** Bright GDT resource disc — saturated fill, soft rim, bold value. */
+/** Bright GDT resource disc — saturated fill, soft rim, silhouette glyph + value. */
 @Composable
 fun ResourceBubble(
     value: String,
     fill: Color,
-    glyph: String,
+    glyph: HudGlyph,
     size: Dp = 56.dp,
 ) {
     val h = hudColors
@@ -136,21 +131,15 @@ fun ResourceBubble(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy((-2).dp),
+            verticalArrangement = Arrangement.spacedBy((-1).dp),
         ) {
-            Text(
-                glyph,
-                fontSize = (size.value * 0.18f).sp,
-                color = Color.White.copy(alpha = 0.9f),
-                lineHeight = (size.value * 0.2f).sp,
-                fontWeight = FontWeight.Bold,
-            )
+            HudIcon(glyph, Color.White, size * 0.4f)
             Text(
                 value,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = (size.value * 0.32f).sp,
-                lineHeight = (size.value * 0.34f).sp,
+                fontSize = (size.value * 0.26f).sp,
+                lineHeight = (size.value * 0.28f).sp,
                 maxLines = 1,
             )
         }

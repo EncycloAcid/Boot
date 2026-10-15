@@ -885,9 +885,48 @@ private fun DrawScope.drawPosterFace(
     val ph = iso.t * 0.92f * scale
     drawRoundRect(p.frame, Offset(-iso.t * 0.04f, -iso.t * 0.04f), Size(pw + iso.t * 0.08f, ph + iso.t * 0.08f), CornerRadius(iso.t * 0.04f))
     drawRect(Brush.verticalGradient(listOf(tint.shade(1.12f), tint.shade(0.72f)), 0f, ph), Offset.Zero, Size(pw, ph))
-    drawCircle(Color.White.copy(alpha = 0.9f), pw * 0.18f, Offset(pw * 0.5f, ph * 0.34f))
-    drawCircle(tint.shade(0.55f).copy(alpha = 0.55f), pw * 0.18f, Offset(pw * 0.58f, ph * 0.34f))
-    drawRect(Color.White.copy(alpha = 0.2f), Offset(pw * 0.14f, ph * 0.58f), Size(pw * 0.72f, ph * 0.03f))
+    // Topic-readable glyph art (not a generic circle).
+    when (caption.uppercase()) {
+        "SPACE" -> {
+            for (k in 0 until 8) {
+                val sx = pw * (0.12f + (k * 37 % 80) / 100f)
+                val sy = ph * (0.1f + (k * 53 % 45) / 100f)
+                drawCircle(Color.White.copy(alpha = 0.55f + 0.05f * (k % 3)), iso.t * 0.018f * scale, Offset(sx, sy))
+            }
+            val pc = Offset(pw * 0.48f, ph * 0.36f)
+            val pr = pw * 0.2f
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFB8D4FF), Color(0xFF3A5F9A)), pc - Offset(pr * 0.3f, pr * 0.3f), pr * 1.5f), pr, pc)
+            drawOval(Color(0xFFFFE3A8).copy(alpha = 0.9f), Offset(pc.x - pr * 1.55f, pc.y - pr * 0.18f), Size(pr * 3.1f, pr * 0.36f), style = Stroke(iso.t * 0.035f * scale))
+        }
+        "MARS" -> {
+            val pc = Offset(pw * 0.5f, ph * 0.34f)
+            val pr = pw * 0.22f
+            drawCircle(Brush.radialGradient(listOf(Color(0xFFFFB080), Color(0xFFB03A22)), pc - Offset(pr * 0.35f, pr * 0.35f), pr * 1.5f), pr, pc)
+            drawCircle(Color(0xFF8A2A18).copy(alpha = 0.45f), pr * 0.22f, pc + Offset(-pr * 0.25f, pr * 0.1f))
+            drawCircle(Color(0xFF8A2A18).copy(alpha = 0.35f), pr * 0.14f, pc + Offset(pr * 0.3f, -pr * 0.15f))
+            // Horizon dunes + rover silhouette.
+            val dune = Path().apply {
+                moveTo(0f, ph * 0.58f)
+                lineTo(pw * 0.2f, ph * 0.5f)
+                lineTo(pw * 0.45f, ph * 0.56f)
+                lineTo(pw * 0.75f, ph * 0.48f)
+                lineTo(pw, ph * 0.54f)
+                lineTo(pw, ph * 0.62f)
+                lineTo(0f, ph * 0.62f)
+                close()
+            }
+            drawPath(dune, Color(0xFF6B2A18).copy(alpha = 0.55f))
+            val rx = pw * 0.58f
+            val ry = ph * 0.52f
+            drawRect(Color.White.copy(alpha = 0.85f), Offset(rx, ry), Size(pw * 0.16f, ph * 0.04f))
+            for (k in 0..2) drawCircle(Color(0xFF2B2B2B), pw * 0.025f, Offset(rx + pw * (0.02f + k * 0.055f), ry + ph * 0.05f))
+        }
+        else -> {
+            drawCircle(Color.White.copy(alpha = 0.9f), pw * 0.18f, Offset(pw * 0.5f, ph * 0.34f))
+            drawCircle(tint.shade(0.55f).copy(alpha = 0.55f), pw * 0.18f, Offset(pw * 0.58f, ph * 0.34f))
+        }
+    }
+    drawRect(Color.White.copy(alpha = 0.2f), Offset(pw * 0.14f, ph * 0.62f), Size(pw * 0.72f, ph * 0.03f))
     val style = TextStyle(
         fontSize = (iso.t * 0.16f * scale).toSp(),
         fontWeight = FontWeight.Black,
@@ -895,7 +934,7 @@ private fun DrawScope.drawPosterFace(
         letterSpacing = 0.8.sp,
     )
     val layout = measurer.measure(caption, style)
-    drawText(layout, topLeft = Offset((pw - layout.size.width) / 2f, ph * 0.68f))
+    drawText(layout, topLeft = Offset((pw - layout.size.width) / 2f, ph * 0.72f))
 }
 
 private fun DrawScope.whiteboard(iso: Iso, yStart: Float, p: RoomPalette) {

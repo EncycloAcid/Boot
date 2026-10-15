@@ -199,11 +199,7 @@ private fun GdtHud(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                repeat(3) {
-                    Box(Modifier.width(12.dp).height(1.5.dp).background(h.inkMute, RoundedCornerShape(1.dp)))
-                }
-            }
+            HudIcon(HudGlyph.MENU, h.inkMute, 14.dp)
             Text("Menu", style = MaterialTheme.typography.labelLarge, color = h.ink, fontWeight = FontWeight.SemiBold)
         }
         if (menuOpen) {
@@ -250,11 +246,11 @@ private fun GdtHud(
                 val design = project?.design?.toInt() ?: 0
                 val tech = project?.tech?.toInt() ?: 0
                 val bugs = project?.bugs?.toInt() ?: 0
-                ResourceBubble("$design", h.designBubble, "D", size = bubbleSize)
-                ResourceBubble("$tech", h.techBubble, "T", size = bubbleSize)
+                ResourceBubble("$design", h.designBubble, HudGlyph.DESIGN, size = bubbleSize)
+                ResourceBubble("$tech", h.techBubble, HudGlyph.TECH, size = bubbleSize)
                 Spacer(Modifier.width(12.dp))
-                ResourceBubble("${state.researchPoints.toInt()}", h.research, "R", size = bubbleSize)
-                ResourceBubble("$bugs", h.bugs, "B", size = bubbleSize)
+                ResourceBubble("${state.researchPoints.toInt()}", h.research, HudGlyph.RESEARCH, size = bubbleSize)
+                ResourceBubble("$bugs", h.bugs, HudGlyph.BUGS, size = bubbleSize)
             }
             if (project != null) {
                 val lift = season.launchMultiplier(project.concept.genre)
@@ -307,14 +303,14 @@ private fun GdtHud(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End,
         ) {
-            StatusPill(h.accent, "", "${state.dateLabel} · ${season.title}")
+            StatusPill(h.accent, HudGlyph.CALENDAR, "${state.dateLabel} · ${season.title}")
             val fans = state.games?.fans
             if (fans != null) {
-                StatusPill(h.fans, "", "${Format.count(fans)} Fans") { store.openLane(com.boot.core.Lane.GAMES) }
+                StatusPill(h.fans, HudGlyph.FANS, "${Format.count(fans)} Fans") { store.openLane(com.boot.core.Lane.GAMES) }
             } else {
-                StatusPill(h.fans, "", "Rep ${state.reputation.score.toInt()}") { store.tab = Tab.COMPANY }
+                StatusPill(h.fans, HudGlyph.FANS, "Rep ${state.reputation.score.toInt()}") { store.tab = Tab.COMPANY }
             }
-            StatusPill(h.cash, "", Format.money(state.cash), h.cash) { store.tab = Tab.COMPANY }
+            StatusPill(h.cash, HudGlyph.CASH, Format.money(state.cash), h.cash) { store.tab = Tab.COMPANY }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 TinyChip(store.speed.label) {
                     store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
