@@ -1394,6 +1394,48 @@ class RatingTest {
     }
 }
 
+class GamePlaytestTest {
+    private fun newProject(): GameState {
+        val s = GameState.create("Test Studio", "Founder", Lane.GAMES, 918L)
+        s.cash = 1_000_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        s.startGame(
+            GameConcept("Test Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL),
+            evenFocus(),
+        )
+        return s
+    }
+
+    @Test
+    fun playtestCostsMoneyImprovesBuildAndCanOnlyBeUsedOncePerStage() {
+        val s = newProject()
+        val p = s.games!!.project!!
+        p.bugs = 20.0
+        val cash = s.cash
+        val design = p.design
+        val tech = p.tech
+
+        s.playtestGame()
+
+        assertTrue(s.cash < cash)
+        assertTrue(p.bugs < 20.0)
+        assertTrue(p.design > design)
+        assertTrue(p.tech > tech)
+        assertTrue(0 in p.playtestedStages)
+        assertFailsWith<GameException> { s.playtestGame() }
+    }
+
+    @Test
+    fun playtestStageAndCostPersistAcrossSaves() {
+        val s = newProject()
+        s.playtestGame()
+        val restored = GameState.decode(s.encode())
+        assertTrue(0 in restored.games!!.project!!.playtestedStages)
+        assertFailsWith<GameException> { restored.playtestGame() }
+    }
+}
+
 class GameSeasonTest {
     @Test
     fun seasonCalendarRepeatsEveryYear() {
@@ -1433,5 +1475,69 @@ class GameSeasonTest {
         s.launchGame()
         val report = s.games!!.releases.first().report
         assertTrue(report.any { "Spring launch timing" in it && "seasonal demand" in it }, report.joinToString(" | "))
+    }
+}
+
+class GameFocusTest {
+    private fun newProject(): GameState {
+        val s = GameState.create("Focus Studio", "Founder", Lane.GAMES, 4242L)
+        s.cash = 1_000_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        s.startGame(
+            GameConcept("Focus Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL),
+            evenFocus(),
+        )
+        return s
+    }
+
+    @Test
+    fun contentFocusAdvancesFasterThanVisuals() {
+        val content = newProject()
+        val visuals = newProject()
+        content.setCreativeFocus(GameFocus.CONTENT)
+        visuals.setCreativeFocus(GameFocus.VISUALS)
+        content.play(4)
+        visuals.play(4)
+        assertTrue(
+            content.games!!.project!!.progress > visuals.games!!.project!!.progress,
+            "content ${content.games!!.project!!.progress} vs visuals ${visuals.games!!.project!!.progress}",
+        )
+    }
+
+    @Test
+    fun performanceFocusProducesFewerBugsThanContent() {
+        // Medium so a few weeks cannot finish and enter polish (which clears bugs).
+        fun mid(focus: GameFocus): GameState {
+            val s = GameState.create("Focus Studio", "Founder", Lane.GAMES, 4242L)
+            s.cash = 1_000_000.0
+            s.researched += Research.MEDIUM_GAMES
+            s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+            s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+            s.startGame(
+                GameConcept("Mid Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.MEDIUM),
+                evenFocus(),
+            )
+            s.setCreativeFocus(focus)
+            return s
+        }
+        val perf = mid(GameFocus.PERFORMANCE)
+        val lots = mid(GameFocus.CONTENT)
+        perf.play(6)
+        lots.play(6)
+        assertTrue(!perf.games!!.project!!.isReady && !lots.games!!.project!!.isReady)
+        assertTrue(
+            perf.games!!.project!!.bugs < lots.games!!.project!!.bugs,
+            "perf ${perf.games!!.project!!.bugs} vs content ${lots.games!!.project!!.bugs}",
+        )
+    }
+
+    @Test
+    fun creativeFocusPersistsAcrossSavesAndDefaultsToBalanced() {
+        assertEquals(GameFocus.BALANCED, newProject().games!!.project!!.creativeFocus)
+        val s = newProject()
+        s.setCreativeFocus(GameFocus.GAMEPLAY)
+        val restored = GameState.decode(s.encode())
+        assertEquals(GameFocus.GAMEPLAY, restored.games!!.project!!.creativeFocus)
     }
 }

@@ -86,6 +86,12 @@ data class GameProject(
     var lastDesign: Double = 0.0,
     var lastTech: Double = 0.0,
     var lastBugs: Double = 0.0,
+    /** Development stages that have had a hands-on playtest (0–2 plus final polish stage 3). */
+    val playtestedStages: MutableSet<Int> = mutableSetOf(),
+    /**
+     * Weekly creative direction. Older saves omit this field; kotlinx defaults it to [GameFocus.BALANCED].
+     */
+    var creativeFocus: GameFocus = GameFocus.BALANCED,
 ) {
     val title: String get() = concept.title
     val work: Double get() = concept.work
@@ -377,7 +383,7 @@ class GamesStudio {
             .sortedByDescending { it.lifetime }
 
     /** Suggest a name nobody has used, in the voice of the topic and genre. */
-    internal fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
+    fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
         gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title, project2?.title))
 
     // Weekly simulation
@@ -493,26 +499,29 @@ class GamesStudio {
     private fun develop(p: GameProject, work: Double, ctx: LaneContext, report: LaneReport) {
         p.weeksInDev += 1
         val engineMult = engine(p.concept.engineId).multiplier
+        val directive = p.creativeFocus
+        val paced = work * directive.workMultiplier
         if (!p.isReady) {
             val stage = p.stage
             val alloc = p.focus[stage]
             val total = alloc.sum().takeIf { it > 0 } ?: 1.0
             val areas = FocusArea.forStage(stage)
             val designShare = areas.indices.sumOf { alloc[it] / total * areas[it].designShare }
-            val d = work * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
-            val t = work * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
+            val d = paced * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
+            val t = paced * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
             val engineBugs = engine(p.concept.engineId).combo.bugRisk
-            val b = work * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0) * (1 + engineBugs)
+            val b = paced * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0) *
+                (1 + engineBugs) * directive.bugMultiplier
             p.design += d
             p.tech += t
             p.bugs += b
             p.lastDesign = d
             p.lastTech = t
             p.lastBugs = b
-            p.matchSum += focusMatch(p.concept, stage, alloc) * work
-            p.matchWork += work
+            p.matchSum += focusMatch(p.concept, stage, alloc) * paced
+            p.matchWork += paced
             val wasStage = stage
-            p.progress += work
+            p.progress += paced
             if (p.isReady) {
                 grantStageInsight(p, wasStage, report)
                 report.log("${p.title} is content complete. Fix bugs and polish, or ship it now.", LogTone.GOOD)
@@ -522,9 +531,9 @@ class GamesStudio {
             }
         } else {
             // Bug fixing and polish once the content is in.
-            val fixed = min(p.bugs, work * 0.6)
+            val fixed = min(p.bugs, paced * 0.6 / directive.bugMultiplier.coerceAtLeast(0.5))
             p.bugs -= fixed
-            p.polish = min(p.work * 0.4, p.polish + work * 0.5 * ctx.polishEfficiency)
+            p.polish = min(p.work * 0.4, p.polish + paced * 0.5 * ctx.polishEfficiency * directive.polishMultiplier)
             p.lastDesign = 0.0
             p.lastTech = 0.0
             p.lastBugs = -fixed
@@ -643,6 +652,14 @@ class GamesStudio {
         val rushedSequel = original != null && week - original.week < 52
         if (rushedSequel) part("Rushed sequel", -0.6, "Less than a year after ${original!!.title}.")
         part("Studio craft", ctx.mods.quality / 15, "Perfectionists, playtesting and the like.")
+        val directionBonus = p.creativeFocus.qualityBonus / 15
+        if (abs(directionBonus) >= 0.05) {
+            part(
+                "Creative direction",
+                directionBonus,
+                "${p.creativeFocus.title}: ${p.creativeFocus.blurb}",
+            )
+        }
         val recent = releases.filter { it.developer == null }.take(3).map { it.score }
         val before = SCORE_BASELINE + parts.sumOf { it.points }
         val stepBack = recent.isNotEmpty() && before < recent.average() - 1.5

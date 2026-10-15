@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,15 +33,35 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import com.boot.core.Difficulty
+import com.boot.core.Fit
 import com.boot.core.Format
+import com.boot.core.GameConcept
+import com.boot.core.GameFocus
 import com.boot.core.GameSeason
+import com.boot.core.GameSize
 import com.boot.core.GameState
+import com.boot.core.Genre
 import com.boot.core.Lane
+import com.boot.core.Platform
 import com.boot.core.Research
 import com.boot.core.StartPoint
+import com.boot.core.GameException
+import com.boot.core.acknowledgeReview
+import com.boot.core.estimatedWeeks
+import com.boot.core.evenFocus
+import com.boot.core.gameForecast
+import com.boot.core.gameTeam
 import com.boot.core.hire
+import com.boot.core.launchGame
+import com.boot.core.platformPlayers
+import com.boot.core.platformsOnSale
+import com.boot.core.playtestGame
 import com.boot.core.research
 import com.boot.core.researchBlocker
+import com.boot.core.setCreativeFocus
+import com.boot.core.startGame
+import com.boot.core.suggestGameTitle
+import com.boot.core.unlockedSizes
 import com.boot.desktop.DesktopStore
 
 @Composable
@@ -183,7 +205,7 @@ fun LanesScreen(store: DesktopStore, state: GameState) {
                 }
             }
         }
-        item { LaneDepthPanel(state, lane) }
+        item { LaneDepthPanel(store, state, lane) }
     }
 }
 
@@ -196,44 +218,10 @@ private fun Stat(label: String, value: String, valueColor: Color = hudColors.tex
 }
 
 @Composable
-private fun LaneDepthPanel(state: GameState, lane: Lane) {
+private fun LaneDepthPanel(store: DesktopStore, state: GameState, lane: Lane) {
     val h = hudColors
     when (lane) {
-        Lane.GAMES -> {
-            val g = state.games
-            val season = GameSeason.forWeek(state.week)
-            GlassPanel {
-                Text("Game studio", style = MaterialTheme.typography.titleLarge, color = h.accent)
-                if (g == null) {
-                    Hint("Games lane book not open yet.")
-                    return@GlassPanel
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Stat("Fans", Format.count(g.fans))
-                    Stat("Season", season.title)
-                }
-                Hint("${season.weeksLabel} · ${season.marketTip}", h.accent)
-                val project = g.project
-                if (project != null) {
-                    val lift = season.launchMultiplier(project.concept.genre)
-                    val seasonPct = ((lift - 1) * 100).toInt()
-                    Hint("In progress: ${project.title} · stage ${project.stage + 1}/3")
-                    Hint("Progress ${Format.percent(project.completion)}")
-                    Hint(
-                        when {
-                            lift > 1.0 -> "Shipping now: ${project.concept.genreTitle} gets +$seasonPct% seasonal demand"
-                            lift < 1.0 -> "Shipping now: ${project.concept.genreTitle} is $seasonPct% soft this season"
-                            else -> "Shipping now: neutral seasonal demand"
-                        },
-                    )
-                } else {
-                    Hint("No game in development — start one on Android; desktop shows live status.")
-                }
-                g.releases.takeLast(3).reversed().forEach { r ->
-                    Text("★ ${r.title} · ${"%.1f".format(r.score)}", style = MaterialTheme.typography.bodyMedium, color = h.textDim)
-                }
-            }
-        }
+        Lane.GAMES -> GamesStudioPanel(store, state)
         Lane.WEBSITES -> {
             val w = state.web
             GlassPanel {
@@ -253,6 +241,144 @@ private fun LaneDepthPanel(state: GameState, lane: Lane) {
             }
         }
     }
+}
+
+/** Games lane with real choices: start, creative direction, playtest, seasonal timing, ship. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
+    val h = hudColors
+    val colors = gameColors
+    val g = state.games
+    val season = GameSeason.forWeek(state.week)
+
+    GlassPanel {
+        Text("Game studio", style = MaterialTheme.typography.titleLarge, color = h.accent)
+        if (g == null) {
+            Hint("Games lane book not open yet.")
+            return@GlassPanel
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Stat("Fans", Format.count(g.fans))
+            Stat("Best", if (g.topScore > 0) "%.1f".format(g.topScore) else "—")
+            Stat("Season", season.title, h.accent)
+        }
+        Hint(season.marketTip)
+
+        g.unseenReview?.let { id -> g.release(id) }?.let { review ->
+            Spacer(Modifier.height(4.dp))
+            Hint("${review.title} scored ${"%.1f".format(review.score)} — ${review.verdict}", colors.good)
+            MacButton("Continue", onClick = { store.perform { acknowledgeReview() } })
+        }
+
+        val project = g.project
+        if (project != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(project.title, style = MaterialTheme.typography.titleMedium, color = h.text)
+            Hint(
+                "${project.concept.size.title} ${project.concept.topic.title.lowercase()} ${project.concept.genreLower} · " +
+                    "stage ${if (project.isReady) "polish" else "${project.stage + 1}/3"} · ${Format.percent(project.completion)}",
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Stat("Design", Format.count(project.design), colors.design)
+                Stat("Tech", Format.count(project.tech), colors.tech)
+                Stat("Bugs", Format.count(project.bugs), colors.bad)
+            }
+            state.gameForecast()?.let { f ->
+                Hint("Expected ~${"%.1f".format(f.expectedScore)} (${f.low}–${f.high})")
+            }
+
+            Hint("Creative direction — trades speed, polish, bugs, and score:")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (focus in GameFocus.entries) {
+                    SelectChip(focus.title, project.creativeFocus == focus) {
+                        store.perform { setCreativeFocus(focus) }
+                    }
+                }
+            }
+            Hint(project.creativeFocus.blurb)
+
+            val playStage = if (project.isReady) 3 else project.stage
+            val playCost = project.concept.size.weeklyBudget * (1.5 + playStage * 0.5)
+            if (playStage !in project.playtestedStages) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Hint("Playtest this stage — cut ~35% of bugs and gain craft.")
+                        Hint(Format.money(playCost), h.accent)
+                    }
+                    MacButton(
+                        "Playtest",
+                        onClick = { store.perform { playtestGame() } },
+                        enabled = state.cash >= playCost,
+                    )
+                }
+            } else {
+                Hint("Stage playtested. Next stage unlocks another test.", colors.good)
+            }
+
+            if (project.isReady) {
+                val lift = season.launchMultiplier(project.concept.genre)
+                Hint(
+                    if (lift >= 1.08) "${season.title} boosts ${project.concept.genre.lower} launches (+${((lift - 1) * 100).toInt()}%)."
+                    else if (lift < 1.0) "Off-season for ${project.concept.genre.lower} (−${((1 - lift) * 100).toInt()}%). Wait or ship anyway."
+                    else season.marketTip,
+                )
+                MacButton("Release ${project.title}", onClick = { store.perform { launchGame() } }, primary = true)
+            } else {
+                Hint("Advance weeks from the HUD — change direction or playtest between ticks.")
+            }
+        } else {
+            Hint("No game in development. Kick off a solid concept with one click.")
+            MacButton(
+                "Start a new game",
+                onClick = { store.perform { quickStartDesktopGame() } },
+                primary = true,
+            )
+        }
+
+        if (g.releases.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Hint("Recent releases")
+            g.releases.take(4).forEach { r ->
+                Text(
+                    "★ ${r.title} · ${"%.1f".format(r.score)} · ${Format.money(r.lifetimeSales)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = h.textDim,
+                )
+            }
+        }
+    }
+}
+
+/** Desktop one-click concept: best known topic/genre fit, biggest affordable size, PC (plus reach). */
+private fun GameState.quickStartDesktopGame() {
+    val g = games ?: throw GameException(GameException.Kind.INVALID, "Games lane isn't open.")
+    val genre = Genre.entries.maxBy { candidate ->
+        g.topics.maxOf { t -> (g.knownFit(t, candidate)?.multiplier ?: 0.98) }
+    }
+    val topic = g.topics.maxBy { (g.knownFit(it, genre)?.multiplier ?: 0.98) }
+    val size = unlockedSizes
+        .filter { gameTeam >= it.minTeam }
+        .lastOrNull { cash > it.weeklyBudget * estimatedWeeks(it) * 2.5 + 10_000 }
+        ?: GameSize.SMALL
+    val platforms = platformsOnSale
+        .filter { it.fit(genre) != Fit.BAD || it == Platform.PC }
+        .sortedByDescending { platformPlayers(it) * it.spend }
+        .take(if (Research.MULTI_PLATFORM in researched) 2 else 1)
+        .ifEmpty { listOf(Platform.PC) }
+    val concept = GameConcept(
+        title = suggestGameTitle(topic, genre),
+        topic = topic,
+        genre = genre,
+        platforms = platforms,
+        size = size,
+        engineId = g.engines.maxBy { it.level }.id,
+    )
+    startGame(concept, evenFocus())
 }
 
 @Composable
