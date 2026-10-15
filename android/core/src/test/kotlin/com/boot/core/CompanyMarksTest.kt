@@ -51,13 +51,20 @@ class CompanyMarksTest {
     fun companyMarkResolvesMajorsAndAliases() {
         val ea = companyMark("Electronic Arts")
         assertEquals("EA", ea.initials)
-        assertTrue(ea.bg != 0L)
+        assertEquals(LogoId.EA, ea.logo)
+        assertEquals(LogoId.APPLE, companyMark("Apple").logo)
+        assertEquals(LogoId.NINTENDO, companyMark("Nintendo").logo)
+        assertEquals(LogoId.MICROSOFT, companyMark("Microsoft").logo)
+        assertEquals(LogoId.STEAM, companyMark("Steam").logo)
+        assertEquals(LogoId.ATARI, companyMark("Atari").logo)
 
         val activision = companyMark("Activision")
-        assertEquals(companyMark("Activision Blizzard").bg, activision.bg)
+        assertEquals(LogoId.ACTIVISION, activision.logo)
+        assertEquals(companyMark("Activision Blizzard").logo, activision.logo)
 
         val unknown = companyMark("Moonlit Otter Games")
         assertTrue(unknown.initials.isNotEmpty())
+        assertEquals(LogoId.NONE, unknown.logo)
         assertTrue(companyActive("Moonlit Otter Games", 1977))
     }
 
