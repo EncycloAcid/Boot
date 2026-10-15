@@ -233,7 +233,7 @@ fun InboxPanel(store: DesktopStore, state: GameState) {
     val colors = gameColors
     GlassPanel {
         Text("Inbox · ${state.inbox.size}", style = MaterialTheme.typography.titleLarge, color = h.accent)
-        Hint("These don't stop the clock. Leave one too long and it's as good as a no.")
+        Hint("Optional — the clock keeps running. Ignore one too long and it counts as a no.")
         state.inbox.forEach { item ->
             Spacer(Modifier.height(6.dp))
             val left = item.expiresWeek - state.week
@@ -242,16 +242,16 @@ fun InboxPanel(store: DesktopStore, state: GameState) {
             Hint(if (left <= 0) "Last week" else "${Format.weeks(left)} left", if (left <= 1) colors.warn else h.inkMute)
             item.choices.forEachIndexed { c, choice ->
                 Row(
-                    Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Hint(choice.label)
+                        Text(choice.label, style = MaterialTheme.typography.labelLarge, color = h.text)
                         Hint(choice.detail)
                     }
                     MacButton(
-                        "Choose",
+                        if (c == 0) "Yes" else "Reply",
                         onClick = { store.perform { answer(item.id, c) } },
                         primary = c == 0,
                     )

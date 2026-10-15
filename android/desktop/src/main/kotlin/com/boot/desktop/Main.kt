@@ -22,10 +22,12 @@ fun main() = application {
     val store = remember {
         DesktopStore(File(System.getProperty("user.home"), ".boot-desktop"))
     }
-    var fullscreen by remember { mutableStateOf(true) }
+    // Start windowed with a solid size — some software-GL hosts report 1×1 in fullscreen
+    // and clip the bottom dock. F11 still toggles fullscreen once metrics are healthy.
+    var fullscreen by remember { mutableStateOf(false) }
     val windowState = rememberWindowState(
         placement = if (fullscreen) WindowPlacement.Fullscreen else WindowPlacement.Floating,
-        size = DpSize(1280.dp, 800.dp),
+        size = DpSize(1400.dp, 900.dp),
     )
 
     Window(
@@ -35,11 +37,20 @@ fun main() = application {
         undecorated = fullscreen,
         onKeyEvent = { event ->
             if (event.type == KeyEventType.KeyDown && event.key == Key.Escape) {
-                if (fullscreen) {
-                    fullscreen = false
-                    true
-                } else {
-                    false
+                when {
+                    store.designing -> {
+                        store.closeDesigner()
+                        true
+                    }
+                    store.tab != Tab.OFFICE -> {
+                        store.tab = Tab.OFFICE
+                        true
+                    }
+                    fullscreen -> {
+                        fullscreen = false
+                        true
+                    }
+                    else -> false
                 }
             } else if (event.type == KeyEventType.KeyDown && event.key == Key.F11) {
                 fullscreen = !fullscreen
