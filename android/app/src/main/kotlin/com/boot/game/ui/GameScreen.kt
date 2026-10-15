@@ -26,13 +26,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,20 +46,12 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Desk
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -79,18 +71,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.boot.core.Format
+import com.boot.core.GameSeason
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.game.GameStore
@@ -104,14 +96,14 @@ fun BootApp(store: GameStore) {
     if (state == null) NewGameScreen(store) else GameScreen(store, state)
 }
 
-private data class TabSpec(val tab: Tab, val label: String, val icon: ImageVector)
+private data class TabSpec(val tab: Tab, val label: String, val glyph: HudGlyph)
 
 private val tabs = listOf(
-    TabSpec(Tab.OFFICE, "Office", Icons.Filled.Desk),
-    TabSpec(Tab.LANES, "Lanes", Icons.Filled.Work),
-    TabSpec(Tab.RESEARCH, "Research", Icons.Filled.Science),
-    TabSpec(Tab.TEAM, "Team", Icons.Filled.Groups),
-    TabSpec(Tab.COMPANY, "Company", Icons.Filled.AccountBalance),
+    TabSpec(Tab.OFFICE, "Office", HudGlyph.OFFICE),
+    TabSpec(Tab.LANES, "Lanes", HudGlyph.LANES),
+    TabSpec(Tab.RESEARCH, "Research", HudGlyph.RESEARCH),
+    TabSpec(Tab.TEAM, "Team", HudGlyph.TEAM),
+    TabSpec(Tab.COMPANY, "Company", HudGlyph.COMPANY),
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -204,85 +196,33 @@ private fun GameScreen(store: GameStore, state: GameState) {
 }
 
 /**
- * The header, always on top: who you are and when, the clock controls, and the three numbers you
- * check constantly (cash, research points, fans or reputation), as plain text on the page. A thin
- * line under it fills as each week passes while the game runs.
+ * Phone studio chrome, matching the Windows paper HUD: menu, date and season, clock, then either
+ * the development discs (design, tech, research, bugs) or cash, research and fans.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
     val colors = gameColors
     var menuOpen by remember { mutableStateOf(false) }
     val weekly = state.trailingProfit(weeks = 4) / 4
+    val season = GameSeason.forWeek(state.week)
+    val project = state.games?.project
+    val unread = state.news.count { it.id > store.newsSeen }
     Surface(color = colors.grouped) {
         Column(Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
-            Row(Modifier.padding(start = 16.dp, end = 12.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .clip(CircleShape)
-                        .clickable { store.tab = Tab.TEAM }
-                        .semantics { contentDescription = "You, ${state.founder.name}" },
-                ) { FounderPortrait(state, 40.dp) }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    FitText(state.companyName, MaterialTheme.typography.titleLarge, min = 14.sp)
-                    FitText(
-                        "${state.dateLabel} · ${state.world.era.title.removePrefix("The ")}",
-                        MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                ClockControls(store)
-            }
             Row(
-                Modifier.padding(start = 8.dp, end = 4.dp, top = 6.dp, bottom = 4.dp),
+                Modifier.padding(start = 12.dp, end = 8.dp, top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // The numbers take what room there is and shrink to fit; the menu always keeps its place.
-                // With large text the little words beside the icons go, so the numbers themselves fit.
-                val roomy = LocalDensity.current.fontScale <= 1.15f
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                HudChip(
-                    Format.money(state.cash),
-                    detail = "${Format.signedMoney(weekly)}/wk",
-                    detailColor = if (weekly >= 0) colors.good else colors.bad,
-                    valueColor = if (state.cash < 0) colors.bad else MaterialTheme.colorScheme.onSurface,
-                    description = "Cash",
-                    tip = "Cash in the bank, and what you've made or lost a week lately. Tap for money.",
-                    modifier = Modifier.weight(1.8f, fill = false),
-                ) {
-                    store.companyPage = 1
-                    store.tab = Tab.COMPANY
-                }
-                HudChip(
-                    "${state.researchPoints.toInt()}", detail = if (roomy) "RP" else null, icon = Icons.Filled.Science, iconTint = colors.milestone,
-                    description = "Research points", tip = "Research points, to spend on new tech. Tap for research.",
-                    modifier = Modifier.weight(1f, fill = false),
-                ) {
-                    store.tab = Tab.RESEARCH
-                }
-                val fans = state.games?.fans
-                if (fans != null && Lane.GAMES in state.lanes) {
-                    HudChip(
-                        Format.count(fans), detail = if (roomy) "fans" else null, icon = Icons.Filled.Star, iconTint = colors.warn,
-                        description = "Fans", tip = "Fans buy your games at launch. Hits win more; flops lose some. Tap for your games.",
-                        modifier = Modifier.weight(1f, fill = false),
-                    ) { store.openStudio(StudioPage.GAMES) }
-                } else {
-                    HudChip(
-                        "${state.reputation.score.toInt()}", detail = if (roomy) "rep" else null, icon = Icons.Filled.Star, iconTint = colors.warn,
-                        description = "Reputation", tip = "Reputation, out of 100. Scandals leave scars. Tap for the company.",
-                        modifier = Modifier.weight(1f, fill = false),
-                    ) {
-                        store.companyPage = 0
-                        store.tab = Tab.COMPANY
-                    }
-                }
-                }
                 Box {
-                    val unread = state.news.count { it.id > store.newsSeen }
-                    IconButton(onClick = { menuOpen = true }) {
-                        BadgedBox(badge = { if (unread > 0) Badge() }) { Icon(Icons.Filled.MoreHoriz, if (unread > 0) "More, $unread new stories" else "More") }
+                    BadgedBox(badge = { if (unread > 0) Badge() }) {
+                        PaperChip(
+                            onClick = { menuOpen = true },
+                            description = if (unread > 0) "More, $unread new stories" else "More",
+                        ) {
+                            HudIcon(HudGlyph.MENU, colors.inkMute(), 14.dp)
+                            Text("Menu", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(text = { Text(if (unread > 0) "News · $unread new" else "News") }, onClick = {
@@ -293,6 +233,14 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                             menuOpen = false
                             store.guideOpen = true
                         })
+                        DropdownMenuItem(text = { Text(if (store.playing) "Pause" else "Play") }, onClick = {
+                            menuOpen = false
+                            store.togglePlay()
+                        })
+                        DropdownMenuItem(text = { Text("Advance week") }, onClick = {
+                            menuOpen = false
+                            if (store.canAdvance && !store.playing) store.advance(1)
+                        }, enabled = store.canAdvance && !store.holdsClock && !store.playing)
                         DropdownMenuItem(text = { Text("Abandon run and start over") }, onClick = {
                             menuOpen = false
                             store.pause()
@@ -300,9 +248,190 @@ private fun Hud(store: GameStore, state: GameState, onAbandon: () -> Unit) {
                         })
                     }
                 }
+                Column(Modifier.weight(1f)) {
+                    FitText(state.companyName, MaterialTheme.typography.titleLarge, min = 14.sp)
+                    FitText(
+                        "${state.dateLabel} · ${season.title}",
+                        MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box(
+                    Modifier
+                        .clip(CircleShape)
+                        .clickable { store.tab = Tab.TEAM }
+                        .semantics { contentDescription = "You, ${state.founder.name}" },
+                ) { FounderPortrait(state, 36.dp) }
+                ClockControls(store)
+            }
+            val roomy = LocalDensity.current.fontScale <= 1.15f
+            if (project != null) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ResourceDisc("${project.design.toInt()}", Color(0xFFF08A24), HudGlyph.DESIGN, "Design points", Modifier.weight(1f)) {
+                        store.openStudio(StudioPage.MAKE)
+                    }
+                    ResourceDisc("${project.tech.toInt()}", Color(0xFFE8B923), HudGlyph.TECH, "Tech points", Modifier.weight(1f)) {
+                        store.openStudio(StudioPage.MAKE)
+                    }
+                    ResourceDisc("${state.researchPoints.toInt()}", colors.milestone, HudGlyph.RESEARCH, "Research points", Modifier.weight(1f)) {
+                        store.tab = Tab.RESEARCH
+                    }
+                    ResourceDisc("${project.bugs.toInt()}", colors.bad, HudGlyph.BUGS, "Bugs", Modifier.weight(1f)) {
+                        store.openStudio(StudioPage.MAKE)
+                    }
+                }
+                Row(
+                    Modifier.padding(start = 8.dp, end = 8.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HudChip(
+                        Format.money(state.cash),
+                        detail = "${Format.signedMoney(weekly)}/wk",
+                        detailColor = if (weekly >= 0) colors.good else colors.bad,
+                        valueColor = if (state.cash < 0) colors.bad else MaterialTheme.colorScheme.onSurface,
+                        glyph = HudGlyph.CASH,
+                        glyphTint = colors.good,
+                        description = "Cash",
+                        tip = "Cash in the bank, and what you've made or lost a week lately. Tap for money.",
+                        modifier = Modifier.weight(1.4f, fill = false),
+                    ) {
+                        store.companyPage = 1
+                        store.tab = Tab.COMPANY
+                    }
+                    FansOrRep(store, state, roomy, Modifier.weight(1f, fill = false))
+                }
+            } else {
+                Row(
+                    Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HudChip(
+                        Format.money(state.cash),
+                        detail = "${Format.signedMoney(weekly)}/wk",
+                        detailColor = if (weekly >= 0) colors.good else colors.bad,
+                        valueColor = if (state.cash < 0) colors.bad else MaterialTheme.colorScheme.onSurface,
+                        glyph = HudGlyph.CASH,
+                        glyphTint = colors.good,
+                        description = "Cash",
+                        tip = "Cash in the bank, and what you've made or lost a week lately. Tap for money.",
+                        modifier = Modifier.weight(1.8f, fill = false),
+                    ) {
+                        store.companyPage = 1
+                        store.tab = Tab.COMPANY
+                    }
+                    HudChip(
+                        "${state.researchPoints.toInt()}",
+                        detail = if (roomy) "RP" else null,
+                        glyph = HudGlyph.RESEARCH,
+                        glyphTint = colors.milestone,
+                        description = "Research points",
+                        tip = "Research points, to spend on new tech. Tap for research.",
+                        modifier = Modifier.weight(1f, fill = false),
+                    ) { store.tab = Tab.RESEARCH }
+                    FansOrRep(store, state, roomy, Modifier.weight(1f, fill = false))
+                }
             }
             WeekProgress(store, state)
-            HorizontalDivider(thickness = 0.5.dp, color = colors.separator)
+        }
+    }
+}
+
+@Composable
+private fun FansOrRep(store: GameStore, state: GameState, roomy: Boolean, modifier: Modifier) {
+    val colors = gameColors
+    val fans = state.games?.fans
+    if (fans != null && Lane.GAMES in state.lanes) {
+        HudChip(
+            Format.count(fans),
+            detail = if (roomy) "fans" else null,
+            glyph = HudGlyph.FANS,
+            glyphTint = Color(0xFFC44D8A),
+            description = "Fans",
+            tip = "Fans buy your games at launch. Hits win more; flops lose some. Tap for your games.",
+            modifier = modifier,
+        ) { store.openStudio(StudioPage.GAMES) }
+    } else {
+        HudChip(
+            "${state.reputation.score.toInt()}",
+            detail = if (roomy) "rep" else null,
+            glyph = HudGlyph.FANS,
+            glyphTint = colors.warn,
+            description = "Reputation",
+            tip = "Reputation, out of 100. Scandals leave scars. Tap for the company.",
+            modifier = modifier,
+        ) {
+            store.companyPage = 0
+            store.tab = Tab.COMPANY
+        }
+    }
+}
+
+private fun GameColors.inkMute(): Color = other
+
+@Composable
+private fun PaperChip(
+    onClick: () -> Unit,
+    description: String,
+    content: @Composable () -> Unit,
+) {
+    val colors = gameColors
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .shadow(4.dp, shape, clip = false)
+            .clip(shape)
+            .background(colors.bar)
+            .border(1.dp, colors.separator, shape)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = description }
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) { content() }
+}
+
+/** Saturated development disc from the Windows HUD, sized for a phone row. */
+@Composable
+private fun ResourceDisc(
+    value: String,
+    fill: Color,
+    glyph: HudGlyph,
+    description: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val shape = CircleShape
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Column(
+            Modifier
+                .size(48.dp)
+                .shadow(5.dp, shape, clip = false)
+                .clip(shape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(fill, Color(fill.red * 0.86f, fill.green * 0.86f, fill.blue * 0.86f)),
+                    ),
+                )
+                .border(1.5.dp, Color.White.copy(alpha = 0.45f), shape)
+                .clickable(onClick = onClick)
+                .semantics { contentDescription = description },
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            HudIcon(glyph, Color.White, 14.dp)
+            Text(
+                value,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -314,8 +443,8 @@ private fun HudChip(
     detail: String? = null,
     detailColor: Color = Color.Unspecified,
     valueColor: Color = Color.Unspecified,
-    icon: ImageVector? = null,
-    iconTint: Color = Color.Unspecified,
+    glyph: HudGlyph? = null,
+    glyphTint: Color = Color.Unspecified,
     description: String,
     tip: String = description,
     onClick: () -> Unit,
@@ -329,7 +458,7 @@ private fun HudChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        if (icon != null) Icon(icon, null, tint = iconTint, modifier = Modifier.size(16.dp))
+        if (glyph != null) HudIcon(glyph, if (glyphTint == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else glyphTint, 16.dp)
         // The last one in the row gets what width is left, so its text shrinks rather than clips.
         FitText(value, MaterialTheme.typography.titleSmall, color = valueColor, modifier = Modifier.weight(1f, fill = false))
         if (detail != null) {
@@ -439,17 +568,17 @@ private fun FloatingTabBar(store: GameStore, modifier: Modifier, snackbar: Snack
             contentAlignment = Alignment.Center,
         ) {
             Surface(
-                shape = CircleShape,
+                shape = RoundedCornerShape(18.dp),
                 color = colors.bar,
-                shadowElevation = 6.dp,
+                shadowElevation = 8.dp,
                 border = BorderStroke(1.dp, colors.separator),
                 modifier = Modifier
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp)
-                    .widthIn(max = 480.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
+                    .widthIn(max = 520.dp)
                     .fillMaxWidth(),
             ) {
-                Row(Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
+                Row(Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
                     for (t in tabs) FloatingTab(t, store.tab == t.tab, Modifier.weight(1f)) { store.tab = t.tab }
                 }
             }
@@ -472,8 +601,8 @@ private fun FloatingTab(t: TabSpec, selected: Boolean, modifier: Modifier, onCli
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Box(Modifier.width(width).height(30.dp).background(indicator, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(t.icon, null, tint = if (selected) scheme.primary else scheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+        Box(Modifier.width(width).height(30.dp).background(indicator, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+            HudIcon(t.glyph, if (selected) scheme.primary else scheme.onSurfaceVariant, 18.dp)
         }
         FitText(
             t.label,
