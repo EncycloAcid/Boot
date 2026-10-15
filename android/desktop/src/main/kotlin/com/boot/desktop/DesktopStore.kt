@@ -5,20 +5,31 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.boot.core.Difficulty
+import com.boot.core.GameConcept
 import com.boot.core.GameException
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.LegacyPerk
+import com.boot.core.Scenario
 import com.boot.core.StartPoint
 import com.boot.core.advance
 import com.boot.core.decodeHall
 import com.boot.core.encodeHall
 import com.boot.core.runRecord
+import com.boot.core.scenario
 import com.boot.core.with
 import java.io.File
 import kotlin.random.Random
 
-enum class Tab { OFFICE, LANES, RESEARCH, TEAM, COMPANY }
+enum class Tab { OFFICE, LANES, RESEARCH, TEAM, COMPANY, NEWS }
+
+/** Games studio sub-pages (mirrors Android StudioPage). */
+enum class StudioPage(val title: String) {
+    MAKE("Make"),
+    GAMES("Games"),
+    MARKET("Market"),
+    TECH("Tech"),
+}
 
 enum class Speed(val label: String, val millis: Long) {
     NORMAL("1×", 1_100),
@@ -58,12 +69,41 @@ class DesktopStore(dataDir: File) {
 
     var companyPage by mutableIntStateOf(0)
 
+    /** Games studio sub-page (Make / Games / Market / Tech). */
+    var studioPage by mutableStateOf(StudioPage.MAKE)
+
+    /** Newest news story id the player has seen (unread badge). */
+    var newsSeen by mutableIntStateOf(state?.news?.lastOrNull()?.id ?: 0)
+
+    /** Dismissed office next-step key. */
+    var dismissedStep by mutableStateOf<String?>(null)
+
+    /** Game designer overlay is open. */
+    var designing by mutableStateOf(false)
+    var draft by mutableStateOf<GameConcept?>(null)
+    var designTeam by mutableIntStateOf(1)
+
+    /** Hardware device designer overlay. */
+    var designingDevice by mutableStateOf(false)
+
+    /** Released game report sheet (patch / expansion / sequel). */
+    var openRelease by mutableStateOf<Int?>(null)
+
+    /** Marketing planner for this lane. */
+    var campaignLane by mutableStateOf<Lane?>(null)
+
+    /** Stock trade sheet for this company key. */
+    var openStock by mutableStateOf<String?>(null)
+
     var playing by mutableStateOf(false)
         private set
     var speed by mutableStateOf(Speed.NORMAL)
 
     val canAdvance: Boolean
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
+
+    val holdsClock: Boolean
+        get() = designing || designingDevice || openRelease != null || campaignLane != null || openStock != null
 
     fun newGame(
         company: String,
@@ -84,16 +124,37 @@ class DesktopStore(dataDir: File) {
         )
     }
 
+    fun newScenario(scenario: Scenario, company: String, founder: String, seed: Long = Random.nextLong()) {
+        begin(GameState.scenario(scenario, company, founder, seed, LegacyPerk.earned(hall)))
+    }
+
     private fun begin(s: GameState) {
         state = s
         playing = false
+        designing = false
+        designingDevice = false
+        openRelease = null
+        campaignLane = null
+        openStock = null
+        draft = null
+        designTeam = 1
+        dismissedStep = null
         tab = Tab.OFFICE
         lane = s.startingLane
+        companyPage = 0
+        studioPage = StudioPage.MAKE
+        newsSeen = 0
         save(s)
     }
 
     fun abandon() {
         playing = false
+        designing = false
+        designingDevice = false
+        openRelease = null
+        campaignLane = null
+        openStock = null
+        draft = null
         state = null
         json = null
         runCatching { saveFile.delete() }
@@ -113,6 +174,7 @@ class DesktopStore(dataDir: File) {
     }
 
     fun advance(weeks: Int) {
+        if (holdsClock) return
         val done = state?.goalsDone?.size ?: 0
         val had = state?.achievements?.keys.orEmpty()
         perform { this.advance(weeks) }
@@ -121,7 +183,7 @@ class DesktopStore(dataDir: File) {
     }
 
     fun play() {
-        if (canAdvance) playing = true
+        if (canAdvance && !holdsClock) playing = true
     }
 
     fun pause() {
@@ -132,19 +194,23 @@ class DesktopStore(dataDir: File) {
 
     fun tick() {
         val before = state ?: return
-        if (!canAdvance) {
+        if (!canAdvance || holdsClock) {
             playing = false
             return
         }
         val wasReady = before.games?.project?.isReady == true
+        val wasReady2 = before.games?.project2?.isReady == true
         val wasSolvent = before.cash >= 0
         advance(1)
         val now = state ?: return
         val project = now.games?.project
         val reason = when {
             !canAdvance -> ""
-            !wasReady && project?.isReady == true -> "${project.title} is ready to ship."
-            wasSolvent && now.cash < 0 -> "You're overdrawn."
+            !wasReady && project?.isReady == true -> "${project.title} is ready to ship. Release it, or keep polishing."
+            !wasReady2 && now.games?.project2?.isReady == true ->
+                "Team 2's ${now.games?.project2?.title} is ready to ship."
+            wasSolvent && now.cash < 0 ->
+                "You're overdrawn. ${now.difficulty.redWeeks} weeks in the red and it's over. A bank loan can buy time."
             else -> null
         }
         if (reason != null) {
@@ -153,14 +219,43 @@ class DesktopStore(dataDir: File) {
         }
     }
 
+    fun designGame(seed: GameConcept? = null, team: Int = 1) {
+        pause()
+        draft = seed
+        designTeam = team
+        designing = true
+    }
+
+    fun closeDesigner() {
+        designing = false
+        draft = null
+        designTeam = 1
+    }
+
+    fun designDevice() {
+        pause()
+        designingDevice = true
+    }
+
+    fun closeDeviceDesigner() {
+        designingDevice = false
+    }
+
     fun openLane(lane: Lane) {
         this.lane = lane
         tab = Tab.LANES
     }
 
+    fun dismissError() {
+        error = null
+    }
+
     fun dismissNotice() {
         notice = null
-        error = null
+    }
+
+    fun dismissToast() {
+        if (error != null) error = null else notice = null
     }
 
     private fun save(s: GameState) {
