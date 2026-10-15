@@ -66,7 +66,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -78,12 +77,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.boot.core.Format
+import com.boot.core.GameProject
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.gameForecast
+import com.boot.core.researchPerWeek
 import com.boot.game.GameStore
 import com.boot.game.Speed
 import com.boot.game.StudioPage
 import com.boot.game.Tab
+import java.util.Locale
 
 /** True when a tab body is hosted inside a floating window / phone sheet. */
 val LocalInFloatingPanel = compositionLocalOf { false }
@@ -161,22 +164,26 @@ private fun GameScreen(store: GameStore, state: GameState) {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.grouped)) {
         val phone = maxWidth < 600.dp
-        val project = state.games?.project != null
-        val insetTop = when {
-            phone && project -> 132.dp
-            phone -> 96.dp
-            project -> 168.dp
-            else -> 120.dp
-        }
+        // Discs are always on now — keep the office art clear of the HUD stack.
+        val insetTop = if (phone) 148.dp else 188.dp
         // Office is always the main plane — panels float over it.
-        OfficeScene(
-            state,
-            store.playing,
-            Modifier
-                .fillMaxSize()
-                .clickable { store.tab = Tab.TEAM },
-            insetTop = insetTop,
-        )
+        Box(Modifier.fillMaxSize()) {
+            OfficeScene(
+                state,
+                store.playing,
+                Modifier
+                    .fillMaxSize()
+                    .clickable { store.tab = Tab.TEAM },
+                insetTop = insetTop,
+            )
+            DeskChip(
+                state = state,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, bottom = 96.dp),
+            ) { store.tab = Tab.TEAM }
+        }
 
         FloatingHud(
             store = store,
@@ -200,11 +207,22 @@ private fun GameScreen(store: GameStore, state: GameState) {
                     todayOpen = false
                 }
             },
+            onOpenOther = { tab ->
+                todayOpen = false
+                store.tab = if (store.tab == tab) Tab.OFFICE else tab
+            },
             modifier = Modifier.align(Alignment.BottomCenter),
             snackbar = snackbar,
         )
 
-        WeekProgress(store, state, Modifier.align(Alignment.TopCenter).statusBarsPadding())
+        WeekProgress(
+            store,
+            state,
+            Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 2.dp),
+        )
     }
 
     when {
@@ -240,16 +258,14 @@ private fun FloatingPanels(
     onCloseToday: () -> Unit,
 ) {
     val open = store.tab != Tab.OFFICE || todayOpen
-    var shown by remember { mutableStateOf(Tab.LANES) }
-    var showingToday by remember { mutableStateOf(false) }
-    if (store.tab != Tab.OFFICE) {
-        shown = store.tab
-        showingToday = false
-    } else if (todayOpen) {
-        showingToday = true
+    var lastTab by remember { mutableStateOf(Tab.LANES) }
+    LaunchedEffect(store.tab) {
+        if (store.tab != Tab.OFFICE) lastTab = store.tab
     }
+    val showingToday = store.tab == Tab.OFFICE && todayOpen
+    val shown = if (store.tab != Tab.OFFICE) store.tab else lastTab
     val title = when {
-        showingToday && store.tab == Tab.OFFICE -> "Today"
+        showingToday -> "Today"
         shown == Tab.LANES -> "Lanes"
         shown == Tab.RESEARCH -> "Research"
         shown == Tab.TEAM -> "Team"
@@ -379,6 +395,7 @@ fun FloatingWindow(
 /**
  * Floating HUD: Menu · resource discs · tip/project card · status pills · transport.
  * Keeps Boot's colors/type; layout mirrors the Windows desktop chrome.
+ * Resource discs (Design / Tech / RP / Bugs) stay visible even when idle — Windows parity.
  */
 @Composable
 private fun FloatingHud(
@@ -391,31 +408,48 @@ private fun FloatingHud(
     val colors = gameColors
     var menuOpen by remember { mutableStateOf(false) }
     val weekly = state.trailingProfit(weeks = 4) / 4
-    val project = state.games?.project
+    val project = state.games?.project ?: state.games?.project2
+    val projectTeam = when {
+        state.games?.project != null -> 1
+        state.games?.project2 != null -> 2
+        else -> 1
+    }
     val unread = state.news.count { it.id > store.newsSeen }
+    val inbox = state.inbox.size
+    val attention = unread + inbox + if (state.tutorial != null) 1 else 0
     val season = seasonTitle(state.week)
-    val roomy = LocalDensity.current.fontScale <= 1.15f
 
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         val narrow = maxWidth < 420.dp
-        val bubble = if (narrow) 44.dp else 50.dp
+        val bubble = if (narrow) 40.dp else 48.dp
 
-        // Menu
+        // Menu — badge for news, inbox, or tutorial waiting
         Box(Modifier.align(Alignment.TopStart)) {
-            BadgedBox(badge = { if (unread > 0) Badge() }) {
-                SoftChip(onClick = { menuOpen = true }, description = if (unread > 0) "Menu, $unread new" else "Menu") {
+            BadgedBox(badge = { if (attention > 0) Badge() }) {
+                SoftChip(
+                    onClick = { menuOpen = true },
+                    description = if (attention > 0) "Menu, $attention waiting" else "Menu",
+                ) {
                     HudIcon(HudGlyph.MENU, colors.other, 14.dp)
                     Text("Menu", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
-                    text = { Text(if (todayOpen) "Hide Today" else "Today") },
+                    text = {
+                        Text(
+                            buildString {
+                                append(if (todayOpen) "Hide Today" else "Today")
+                                if (inbox > 0) append(" · $inbox inbox")
+                                if (state.tutorial != null) append(" · lesson")
+                            },
+                        )
+                    },
                     onClick = {
                         menuOpen = false
                         store.tab = Tab.OFFICE
@@ -450,98 +484,72 @@ private fun FloatingHud(
             }
         }
 
-        // Center: discs + tip / project
+        // Center: always-on discs + tip / project card (clear Menu left + status pills right)
         Column(
             Modifier
                 .align(Alignment.TopCenter)
-                .widthIn(max = if (narrow) maxWidth - 8.dp else 320.dp)
-                .padding(horizontal = if (narrow) 0.dp else 56.dp),
+                .widthIn(max = if (narrow) maxWidth - 8.dp else 340.dp)
+                .padding(start = if (narrow) 72.dp else 64.dp, end = if (narrow) 116.dp else 64.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            ResourceDiscRow(store, state, project, bubble, narrow)
             if (project != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ResourceDisc("${project.design.toInt()}", Color(0xFFF08A24), HudGlyph.DESIGN, "Design", bubble) {
-                        store.openStudio(StudioPage.MAKE)
-                    }
-                    ResourceDisc("${project.tech.toInt()}", Color(0xFFE8B923), HudGlyph.TECH, "Tech", bubble) {
-                        store.openStudio(StudioPage.MAKE)
-                    }
-                    Spacer(Modifier.width(6.dp))
-                    ResourceDisc("${state.researchPoints.toInt()}", colors.milestone, HudGlyph.RESEARCH, "Research", bubble) {
-                        store.tab = Tab.RESEARCH
-                    }
-                    ResourceDisc("${project.bugs.toInt()}", colors.bad, HudGlyph.BUGS, "Bugs", bubble) {
-                        store.openStudio(StudioPage.MAKE)
-                    }
-                }
-                SoftPanel(Modifier.fillMaxWidth()) {
-                    Text(project.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        "${project.concept.topic.title} / ${project.concept.genreTitle}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    ProgressRow("Progress", project.completion.toFloat(), MaterialTheme.colorScheme.primary)
-                    ProgressRow("Hype ${project.hype.toInt()}", (project.hype / 100.0).toFloat().coerceIn(0f, 1f), colors.warn)
-                }
+                ProjectSoftPanel(store, state, project, projectTeam, todayOpen, onToggleToday)
             } else {
-                SoftPanel(Modifier.widthIn(max = 280.dp).fillMaxWidth()) {
-                    Text(state.companyName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        "${state.world.era.title.removePrefix("The ")} · ${state.office.title}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        "$season · tap Office for Today",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
+                IdleSoftPanel(store, state, season, todayOpen, onToggleToday)
             }
         }
 
-        // Right: status + transport
+        // Right: status + transport — always show cash/wk, fans, rep, date, founder
         Column(
             Modifier
                 .align(Alignment.TopEnd)
-                .widthIn(max = if (narrow) 132.dp else 168.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .widthIn(max = if (narrow) 148.dp else 176.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
             horizontalAlignment = Alignment.End,
         ) {
-            StatusPill(HudGlyph.CALENDAR, MaterialTheme.colorScheme.primary, "${state.dateLabel} · $season")
+            Tip("Calendar week and season") {
+                StatusPill(HudGlyph.CALENDAR, MaterialTheme.colorScheme.primary, "${state.dateLabel} · $season")
+            }
             val fans = state.games?.fans
             if (fans != null && Lane.GAMES in state.lanes) {
-                StatusPill(HudGlyph.FANS, Color(0xFFC44D8A), "${Format.count(fans)} Fans") {
-                    store.openStudio(StudioPage.GAMES)
+                Tip("Fans buy your games at launch. Tap for your catalogue.") {
+                    StatusPill(HudGlyph.FANS, Color(0xFFC44D8A), "${Format.count(fans)} Fans") {
+                        store.openStudio(StudioPage.GAMES)
+                    }
                 }
-            } else {
+            }
+            Tip("Reputation out of 100. Scandals leave scars.") {
                 StatusPill(HudGlyph.FANS, colors.warn, "Rep ${state.reputation.score.toInt()}") {
                     store.companyPage = 0
                     store.tab = Tab.COMPANY
                 }
             }
-            StatusPill(
-                HudGlyph.CASH,
-                colors.good,
-                Format.money(state.cash),
-                valueColor = if (state.cash < 0) colors.bad else colors.good,
-            ) {
-                store.companyPage = 1
-                store.tab = Tab.COMPANY
+            Tip("Cash in the bank, and weekly profit or loss lately. Tap for money.") {
+                StatusPill(
+                    HudGlyph.CASH,
+                    colors.good,
+                    Format.money(state.cash),
+                    detail = "${Format.signedMoney(weekly)}/wk",
+                    detailColor = if (weekly >= 0) colors.good else colors.bad,
+                    valueColor = if (state.cash < 0) colors.bad else colors.good,
+                ) {
+                    store.companyPage = 1
+                    store.tab = Tab.COMPANY
+                }
             }
-            if (!narrow || roomy) {
-                Text(
-                    "${Format.signedMoney(weekly)}/wk",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (weekly >= 0) colors.good else colors.bad,
-                )
+            state.listing?.let { listing ->
+                Tip("${listing.ticker} share price. Tap for company overview.") {
+                    StatusPill(
+                        HudGlyph.COMPANY,
+                        MaterialTheme.colorScheme.primary,
+                        "${listing.ticker} $${String.format(Locale.US, "%.0f", listing.price)}",
+                    ) {
+                        store.companyPage = 0
+                        store.tab = Tab.COMPANY
+                    }
+                }
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -563,15 +571,215 @@ private fun FloatingHud(
                     description = if (store.playing) "Pause" else "Play",
                 ) { store.togglePlay() }
             }
-            if (!narrow) {
-                Box(
-                    Modifier
-                        .clip(CircleShape)
-                        .clickable { store.tab = Tab.TEAM }
-                        .semantics { contentDescription = "You, ${state.founder.name}" },
-                ) { FounderPortrait(state, 36.dp) }
-            }
+            Box(
+                Modifier
+                    .clip(CircleShape)
+                    .clickable { store.tab = Tab.TEAM }
+                    .semantics { contentDescription = "You, ${state.founder.name}" },
+            ) { FounderPortrait(state, if (narrow) 30.dp else 36.dp) }
         }
+    }
+}
+
+@Composable
+private fun ResourceDiscRow(
+    store: GameStore,
+    state: GameState,
+    project: GameProject?,
+    bubble: androidx.compose.ui.unit.Dp,
+    narrow: Boolean,
+) {
+    val colors = gameColors
+    val design = project?.design?.toInt() ?: 0
+    val tech = project?.tech?.toInt() ?: 0
+    val bugs = project?.bugs?.toInt() ?: 0
+    val gap = if (narrow) 4.dp else 8.dp
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(gap),
+        verticalAlignment = Alignment.Top,
+    ) {
+        LabeledDisc("$design", Color(0xFFF08A24), HudGlyph.DESIGN, "Design", "Design points on the active project. Tap to open Studio.", bubble) {
+            store.openStudio(StudioPage.MAKE)
+        }
+        LabeledDisc("$tech", Color(0xFFE8B923), HudGlyph.TECH, "Tech", "Tech points on the active project. Tap to open Studio.", bubble) {
+            store.openStudio(StudioPage.MAKE)
+        }
+        if (!narrow) Spacer(Modifier.width(4.dp))
+        LabeledDisc(
+            "${state.researchPoints.toInt()}",
+            colors.milestone,
+            HudGlyph.RESEARCH,
+            "RP",
+            "Research points to spend. +${String.format(Locale.US, "%.1f", state.researchPerWeek)} a week. Tap for Research.",
+            bubble,
+        ) {
+            store.tab = Tab.RESEARCH
+        }
+        LabeledDisc("$bugs", colors.bad, HudGlyph.BUGS, "Bugs", "Open bugs on the active project. Tap to open Studio.", bubble) {
+            store.openStudio(StudioPage.MAKE)
+        }
+    }
+}
+
+@Composable
+private fun LabeledDisc(
+    value: String,
+    fill: Color,
+    glyph: HudGlyph,
+    label: String,
+    tip: String,
+    size: androidx.compose.ui.unit.Dp,
+    onClick: () -> Unit,
+) {
+    Tip(tip) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            ResourceDisc(value, fill, glyph, label, size, onClick)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProjectSoftPanel(
+    store: GameStore,
+    state: GameState,
+    project: GameProject,
+    team: Int,
+    todayOpen: Boolean,
+    onToggleToday: () -> Unit,
+) {
+    val colors = gameColors
+    val stage = if (project.isReady) "Polish" else listOf("Foundations", "Content", "Presentation")[project.stage]
+    val forecast = state.gameForecast(team)
+    val eta = forecast?.weeksToReady
+    val etaLabel = when {
+        project.isReady -> forecast?.let { String.format(Locale.US, "Ship ~%.1f/10", it.expectedScore) } ?: "Ready to polish"
+        eta == null -> Format.weeks(project.weeksInDev) + " in"
+        eta <= 0 -> "Ready this week"
+        else -> "~${Format.weeks(eta)} left"
+    }
+    SoftPanel(
+        Modifier
+            .fillMaxWidth()
+            .clickable {
+                store.tab = Tab.OFFICE
+                if (!todayOpen) onToggleToday()
+            },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                stage,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            )
+            Text(
+                if (team == 2) "Team 2" else state.companyName,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(etaLabel, style = MaterialTheme.typography.labelSmall, color = colors.milestone, maxLines = 1)
+        }
+        Text(project.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            "${project.concept.topic.title} / ${project.concept.genreTitle}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        ProgressRow("Progress", project.completion.toFloat(), MaterialTheme.colorScheme.primary)
+        ProgressRow("Hype ${project.hype.toInt()}", (project.hype / 100.0).toFloat().coerceIn(0f, 1f), colors.warn)
+    }
+}
+
+@Composable
+private fun IdleSoftPanel(
+    store: GameStore,
+    state: GameState,
+    season: String,
+    todayOpen: Boolean,
+    onToggleToday: () -> Unit,
+) {
+    val crowded = state.staff.size > state.office.desks
+    val avgMorale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
+    val tip = when {
+        todayOpen -> "Today is open — Close or tap Office"
+        state.tutorial != null -> "Lesson waiting — open Today"
+        state.inbox.isNotEmpty() -> "${state.inbox.size} in inbox — open Today"
+        else -> "$season · tap Office for Today"
+    }
+    SoftPanel(
+        Modifier
+            .widthIn(max = 300.dp)
+            .fillMaxWidth()
+            .clickable {
+                store.tab = Tab.OFFICE
+                if (!todayOpen) onToggleToday()
+            },
+    ) {
+        Text(state.companyName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            "${state.world.era.title.removePrefix("The ")} · ${state.office.title}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            buildString {
+                append("+${String.format(Locale.US, "%.1f", state.researchPerWeek)} RP/wk")
+                append(" · ${state.staff.size}/${state.office.desks} desks")
+                if (crowded) append(" · crowded")
+                avgMorale?.let { append(" · morale ${String.format(Locale.US, "%.0f", it * 100)}%") }
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(tip, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Desk count over the office stage — restores the old SceneChip glance. */
+@Composable
+private fun DeskChip(state: GameState, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val colors = gameColors
+    val crowded = state.staff.size > state.office.desks
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        modifier
+            .shadow(6.dp, shape, clip = false)
+            .clip(shape)
+            .background(colors.bar.copy(alpha = 0.92f))
+            .border(1.dp, colors.separator, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        HudIcon(HudGlyph.TEAM, if (crowded) colors.bad else MaterialTheme.colorScheme.onSurface, 14.dp)
+        Text(
+            "${state.staff.size}/${state.office.desks} desks" + if (crowded) " · crowded" else "",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (crowded) colors.bad else MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
 
@@ -615,18 +823,21 @@ private fun StatusPill(
     tint: Color,
     label: String,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    detail: String? = null,
+    detailColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: (() -> Unit)? = null,
 ) {
     val colors = gameColors
     val shape = RoundedCornerShape(12.dp)
     Row(
         Modifier
+            .widthIn(max = 168.dp)
             .shadow(5.dp, shape, clip = false)
             .clip(shape)
             .background(colors.bar.copy(alpha = 0.94f))
             .border(1.dp, colors.separator, shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(start = 8.dp, end = 10.dp, top = 7.dp, bottom = 7.dp),
+            .padding(start = 8.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
@@ -637,7 +848,27 @@ private fun StatusPill(
                 .background(tint.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) { HudIcon(glyph, tint, 12.dp) }
-        Text(label, style = MaterialTheme.typography.labelLarge, color = valueColor, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Column(
+            Modifier.weight(1f, fill = false),
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                color = valueColor,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (detail != null) {
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = detailColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
@@ -735,6 +966,7 @@ private fun FloatingDock(
     store: GameStore,
     todayOpen: Boolean,
     onOffice: () -> Unit,
+    onOpenOther: (Tab) -> Unit,
     modifier: Modifier,
     snackbar: SnackbarHostState,
 ) {
@@ -774,12 +1006,7 @@ private fun FloatingDock(
                     ) {
                         when (t.tab) {
                             Tab.OFFICE -> onOffice()
-                            else -> {
-                                store.tab = when {
-                                    store.tab == t.tab -> Tab.OFFICE
-                                    else -> t.tab
-                                }
-                            }
+                            else -> onOpenOther(t.tab)
                         }
                     }
                 }
@@ -876,9 +1103,21 @@ fun ScreenColumn(content: LazyListScope.() -> Unit) {
     )
 }
 
-/** A tab's own title, at the top of its scrolling content. */
+/** A tab's own title, at the top of its scrolling content. Inside floating panels the window title already shows — keep only the useful subtitle. */
 @Composable
 fun ScreenHeader(title: String, subtitle: String? = null) {
+    val inPanel = LocalInFloatingPanel.current
+    if (inPanel) {
+        if (subtitle != null) {
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+            )
+        }
+        return
+    }
     Column(Modifier.padding(horizontal = 4.dp)) {
         Text(title, style = MaterialTheme.typography.headlineMediumEmphasized)
         if (subtitle != null) {

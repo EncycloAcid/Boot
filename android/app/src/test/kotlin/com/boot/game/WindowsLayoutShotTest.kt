@@ -103,6 +103,39 @@ class WindowsLayoutShotTest {
         compose.onNodeWithText("Today").assertExists()
         save("android-windows-layout-today")
     }
+
+    /** Idle HUD with always-on Design/Tech/RP/Bugs discs + cash/fans/rep/date pills. */
+    @Test
+    fun statsHudRestored() {
+        compose.runOnIdle { store.newGame("Garage Labs", "Rae", Lane.GAMES, seed = 7, tutorial = false) }
+        compose.waitForIdle()
+        clearBlocking()
+        compose.runOnIdle {
+            store.tab = Tab.OFFICE
+            store.dismissedStep = "first-hire"
+        }
+        compose.waitForIdle()
+        runCatching { compose.onNodeWithText("Close").performClick() }
+        compose.waitForIdle()
+        compose.onNodeWithText("RP").assertExists()
+        compose.onNodeWithText("Design").assertExists()
+        compose.onNodeWithText("Bugs").assertExists()
+        save("android-stats-hud")
+    }
+
+    /** Today panel with At a glance vitals (cash, RP, fans, rep, team, desks). */
+    @Test
+    fun statsTodayGlance() {
+        compose.runOnIdle { store.newGame("Garage Labs", "Rae", Lane.GAMES, seed = 7, tutorial = true) }
+        compose.waitForIdle()
+        clearBlocking()
+        compose.runOnIdle { store.tab = Tab.OFFICE }
+        compose.waitForIdle()
+        compose.onNodeWithText("At a glance").assertExists()
+        compose.onNodeWithText("8 RP").assertExists()
+        compose.onNodeWithText("out of 100").assertExists()
+        save("android-stats-today")
+    }
 }
 
 /** Tablet-width shot so the centered floating window is obvious over the office. */
