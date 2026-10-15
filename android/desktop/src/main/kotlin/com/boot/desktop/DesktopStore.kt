@@ -73,6 +73,9 @@ class DesktopStore(dataDir: File) {
         private set
     var speed by mutableStateOf(Speed.NORMAL)
 
+    /** First-run coach tip over the office after New Game / until dismissed. */
+    var showCoach by mutableStateOf(false)
+
     val canAdvance: Boolean
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
 
@@ -111,7 +114,12 @@ class DesktopStore(dataDir: File) {
         lane = s.startingLane
         companyPage = 0
         newsSeen = 0
+        showCoach = true
         save(s)
+    }
+
+    fun dismissCoach() {
+        showCoach = false
     }
 
     fun abandon() {

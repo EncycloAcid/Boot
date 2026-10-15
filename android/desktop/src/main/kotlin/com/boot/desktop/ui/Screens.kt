@@ -121,8 +121,8 @@ fun NewGameScreen(store: DesktopStore) {
         ) {
             Text("Boot", style = MaterialTheme.typography.displayLarge, color = h.ink)
             Text(
-                "Same company sim as Android — Windows studio shell over shared rules.",
-                style = MaterialTheme.typography.bodyMedium,
+                "Build a company across games, web, hardware, and more. Start a career below — the office and dock guide your next move.",
+                style = MaterialTheme.typography.bodyLarge,
                 color = h.inkMute,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -264,9 +264,14 @@ fun LanesScreen(store: DesktopStore, state: GameState) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = WindowPad,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item { Hint("Each business is its own management game.") }
+        item {
+            SectionTitle(
+                "Your businesses",
+                "Pick a lane below — each one is its own management game.",
+            )
+        }
         if (state.lanes.size > 1) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -274,6 +279,10 @@ fun LanesScreen(store: DesktopStore, state: GameState) {
                         SelectChip(l.title, l == lane) { store.lane = l }
                     }
                 }
+            }
+        } else {
+            item {
+                Hint("Starting lane · ${lane.title}", h.accent)
             }
         }
         item {
@@ -589,23 +598,34 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
                     else if (lift < 1.0) "Off-season for ${project.concept.genre.lower} (−${((1 - lift) * 100).toInt()}%). Wait or ship anyway."
                     else season.marketTip,
                 )
-                MacButton("Release ${project.title}", onClick = { store.perform { launchGame() } }, primary = true)
+                MacButton(
+                    "Release ${project.title}",
+                    onClick = { store.perform { launchGame() } },
+                    primary = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             } else {
-                Hint("Advance weeks from the HUD — change direction or playtest between ticks.")
+                Hint("Next · advance weeks from the HUD Play / Week controls, or playtest between ticks.")
             }
-            MacButton("Cancel project", onClick = { store.perform { cancelGame() } }, primary = false)
-        } else {
-            Hint("Design a concept — topic, genre, platforms, size, and stage focus.")
             MacButton(
-                "Design a game",
-                onClick = { store.designGame() },
-                primary = true,
+                "Cancel project",
+                onClick = { store.perform { cancelGame() } },
+                primary = false,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            EmptyState(
+                title = "No game in development",
+                body = "Design a concept — topic, genre, platforms, size, and stage focus. This is your primary studio action.",
+                actionLabel = "Design a game",
+                onAction = { store.designGame() },
             )
             if (Research.SECOND_TEAM in state.researched) {
                 MacButton(
                     "Design for Team 2",
                     onClick = { store.designGame(team = 2) },
                     primary = false,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -643,12 +663,19 @@ fun ResearchScreen(store: DesktopStore, state: GameState) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = WindowPad,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
+            SectionTitle("Research lab", "Spend RP to unlock tools, teams, and topics.")
+        }
+        item {
             GlassPanel {
-                Hint("${state.researchPoints.toInt()} RP in the bank · buy unlocks below.")
-                Text("Unlocked: ${state.researched.size}", style = MaterialTheme.typography.titleMedium, color = h.cash)
+                Text(
+                    "${state.researchPoints.toInt()} RP available",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = h.accent,
+                )
+                Hint("Unlocked · ${state.researched.size} · buy from the list below.")
                 state.world.era.let { era ->
                     Hint("Era · ${era.title}: ${era.blurb}", colors.milestone)
                 }
@@ -691,7 +718,12 @@ fun ResearchScreen(store: DesktopStore, state: GameState) {
             }
         }
         if (affordable.isEmpty() && lockedTopics.isEmpty()) {
-            item { Hint("Nothing affordable right now — advance weeks to earn RP.") }
+            item {
+                EmptyState(
+                    title = "Nothing to buy yet",
+                    body = "Advance weeks from the HUD to earn research points, then come back here.",
+                )
+            }
         }
     }
 }
@@ -702,9 +734,14 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = WindowPad,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Hint("${state.staff.size} hired · ${state.office.title} · ${state.freeDesks} free desks") }
+        item {
+            SectionTitle(
+                "Team",
+                "${state.staff.size} hired · ${state.office.title} · ${state.freeDesks} free desks",
+            )
+        }
         item {
             GlassPanel {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -755,8 +792,12 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
         item {
             GlassPanel {
                 Text("Talent pool", style = MaterialTheme.typography.titleLarge, color = h.accent)
+                Hint("Primary action · hire into your starting lane, then assign desks.")
                 if (state.candidates.isEmpty()) {
-                    Hint("No candidates this week. Advance time to refresh the pool.")
+                    EmptyState(
+                        title = "No candidates this week",
+                        body = "Advance time from the HUD to refresh the talent pool.",
+                    )
                 } else {
                     state.candidates.take(6).forEach { cand ->
                         Row(
@@ -790,7 +831,7 @@ fun CompanyScreen(store: DesktopStore, state: GameState) {
             .padding(WindowPad),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Hint(state.companyName)
+        SectionTitle(state.companyName, "Cash, expansion, and long-game strategy.")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectChip("Overview", page == 0) { page = 0; store.companyPage = 0 }
             SelectChip("Money", page == 1) { page = 1; store.companyPage = 1 }

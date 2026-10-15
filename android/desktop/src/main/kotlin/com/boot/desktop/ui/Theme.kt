@@ -137,7 +137,7 @@ private val LightScheme = lightColorScheme(
     outline = Color(0xFFD0CBC2),
 )
 
-/** Clean HUD sans; serif reserved for the Boot wordmark on New Game. */
+/** Clean HUD sans; serif reserved for the Boot wordmark on New Game. Bumped for desktop hit-scan. */
 private val BootType = Typography(
     displayLarge = TextStyle(
         fontFamily = FontFamily.Serif,
@@ -153,48 +153,48 @@ private val BootType = Typography(
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
+        fontSize = 21.sp,
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 17.sp,
+        fontSize = 18.sp,
         letterSpacing = (-0.1).sp,
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 14.sp,
+        fontSize = 15.sp,
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
-        lineHeight = 21.sp,
+        lineHeight = 22.sp,
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
     ),
     labelLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 12.sp,
-        letterSpacing = 0.15.sp,
+        fontSize = 13.sp,
+        letterSpacing = 0.1.sp,
     ),
     labelMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        letterSpacing = 0.1.sp,
+        fontSize = 12.sp,
+        letterSpacing = 0.08.sp,
     ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
-        fontSize = 10.sp,
-        letterSpacing = 0.2.sp,
+        fontSize = 11.sp,
+        letterSpacing = 0.15.sp,
     ),
 )
 

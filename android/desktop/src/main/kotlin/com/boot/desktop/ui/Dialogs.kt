@@ -72,17 +72,25 @@ private fun ModalScaffold(
 ) {
     val h = hudColors
     Dialog(onDismissRequest = {}, properties = modalProps) {
-        Box(Modifier.fillMaxSize().background(Color(0x66000000)), contentAlignment = Alignment.Center) {
+        // Heavy scrim — clock is blocked until the player picks an action.
+        Box(Modifier.fillMaxSize().background(Color(0x99000000)), contentAlignment = Alignment.Center) {
             Column(
                 Modifier
-                    .widthIn(min = 360.dp, max = 520.dp)
-                    .fillMaxWidth(0.55f)
-                    .heightIn(max = 640.dp)
+                    .widthIn(min = 380.dp, max = 540.dp)
+                    .fillMaxWidth(0.58f)
+                    .heightIn(max = 660.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(h.panel)
-                    .border(1.dp, h.panelBorder, RoundedCornerShape(16.dp)),
+                    .border(2.dp, h.accent.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
             ) {
-                Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
+                    Text(
+                        "Needs your choice",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = h.accent,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(6.dp))
                     Text(title, style = MaterialTheme.typography.headlineMedium, color = h.ink)
                     if (subtitle != null) {
                         Spacer(Modifier.height(4.dp))
@@ -94,17 +102,18 @@ private fun ModalScaffold(
                         .weight(1f, fill = false)
                         .heightIn(max = 420.dp)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 22.dp),
                 ) {
                     content()
                 }
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFFF4F6F8))
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .background(Color(0xFFEAF2FA))
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    Hint("Pick one option below — the calendar waits.")
                     actions()
                 }
             }

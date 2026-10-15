@@ -198,7 +198,7 @@ fun NewsScreen(store: DesktopStore, state: GameState) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = WindowPad,
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             GlassPanel {
@@ -217,7 +217,12 @@ fun NewsScreen(store: DesktopStore, state: GameState) {
             }
         }
         if (stories.isEmpty()) {
-            item { Hint("No news yet. The press hasn't noticed you.") }
+            item {
+                EmptyState(
+                    title = "Quiet newsroom",
+                    body = "No headlines yet. Ship products and advance weeks — the press will notice.",
+                )
+            }
         }
         items(stories.take(40), key = { it.id }) { story ->
             GlassPanel(Modifier.fillMaxWidth()) {
