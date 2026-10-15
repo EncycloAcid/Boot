@@ -560,8 +560,6 @@ internal object GameNames {
         "Rising Tide", "The Lost Isles", "Frozen Throne", "Second Wind", "Afterglow", "Echoes", "The Deep End",
         "Dark Harvest", "New Horizons", "Overtime", "Reloaded", "Wild Card",
     )
-    val publishers = listOf(
-        "Electronic Arts", "Ubisoft", "Bandai Namco", "Devolver Digital", "Annapurna Interactive", "Take-Two Interactive",
-        "Sega", "THQ Nordic", "Square Enix", "Xbox Game Studios",
-    )
+    /** Modern-day default list; prefer [publishersIn] so decades runs stay historically accurate. */
+    val publishers: List<String> get() = publishersIn(MODERN_YEAR)
 }

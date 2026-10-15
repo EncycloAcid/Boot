@@ -923,14 +923,20 @@ class GamesStudio {
 
     // Offers
 
-    internal fun refreshOffers(week: Int, output: Double, rng: SeededRNG, unlockedSizes: List<GameSize>, platforms: List<Platform>) {
+    internal fun refreshOffers(
+        week: Int, year: Int, output: Double, rng: SeededRNG, unlockedSizes: List<GameSize>, platforms: List<Platform>,
+    ) {
         if (week % 4 == 0 && contractOffers.size < 2) {
             val work = rng.range(15.0, 45.0) * (1 + output / 40)
+            val clients = brandsIn(year) + GameNames.clients.filter { companyActive(it, year) }
             val title = rng.pick(
                 listOf(
-                    "Port a puzzle game to the iPhone", "An advergame for ${rng.pick(GameNames.clients)}",
-                    "Bug-fix sprint for Ubisoft", "A level pack for Electronic Arts", "A tech demo for ${rng.pick(GameNames.clients)}",
-                    "An educational game for ${rng.pick(GameNames.clients)}",
+                    "Port a puzzle game to ${if (year < 2007) "a handheld" else "the iPhone"}",
+                    "An advergame for ${rng.pick(clients)}",
+                    "Bug-fix sprint for ${rng.pick(publishersIn(year).ifEmpty { listOf("a publisher") })}",
+                    "A level pack for ${rng.pick(publishersIn(year).ifEmpty { listOf("Electronic Arts") })}",
+                    "A tech demo for ${rng.pick(clients)}",
+                    "An educational game for ${rng.pick(clients)}",
                 ),
             )
             contractOffers += GameContract(
@@ -944,8 +950,9 @@ class GamesStudio {
             val genre = rng.pick(Genre.entries)
             val topic = topics.filter { it.fit(genre) != Fit.BAD }.ifEmpty { topics }.let { rng.pick(it) }
             val platform = rng.pick(platforms.ifEmpty { listOf(Platform.PC) })
+            val pubs = publishersIn(year).ifEmpty { GameNames.publishers }
             dealOffers += PublisherDeal(
-                id = nextId(), publisher = rng.pick(GameNames.publishers), topic = topic, genre = genre, platform = platform,
+                id = nextId(), publisher = rng.pick(pubs), topic = topic, genre = genre, platform = platform,
                 size = size, minScore = minScore, advance = (size.launchSales * rng.range(0.6, 1.1) * minScore / 6).roundToInt().toDouble(),
                 share = 0.35, expiresWeek = week + 8,
             )

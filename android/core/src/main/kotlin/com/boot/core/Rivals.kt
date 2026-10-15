@@ -251,7 +251,10 @@ internal fun GameState.describeRival(k: RivalEvent): Description? = when (k) {
             RivalMoveKind.EXCLUSIVE_DEAL -> Description(
                 "$r locked up an exclusive deal",
                 when (k.lane) {
-                    Lane.GAMES -> "$r signed an exclusive with a platform holder. Its players will be nudged toward their games for months."
+                    Lane.GAMES -> {
+                        val holders = platformHoldersIn(calendarYear).ifEmpty { listOf("a platform holder") }
+                        "$r signed an exclusive with ${rng.pick(holders)}. Its players will be nudged toward their games for months."
+                    }
                     Lane.WEBSITES -> "$r signed an exclusive with a big agency network. Fewer briefs will reach you."
                     Lane.APPS -> "$r has a featuring deal with the app stores. Their app is front and centre; yours isn't."
                     Lane.SOCIAL -> "$r signed the biggest creators to exclusive deals."

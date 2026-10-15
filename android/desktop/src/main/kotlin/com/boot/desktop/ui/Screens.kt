@@ -53,6 +53,7 @@ import com.boot.core.gameForecast
 import com.boot.core.gameTeam
 import com.boot.core.hire
 import com.boot.core.launchGame
+import com.boot.core.rankings
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
 import com.boot.core.playtestGame
@@ -264,6 +265,21 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
             Stat("Season", season.title, h.accent)
         }
         Hint(season.marketTip)
+        state.world.rival(Lane.GAMES)?.let { rival ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CompanyLogo(rival.name, size = 26.dp)
+                Hint("Rival · ${rival.name}")
+            }
+        }
+        if (g.dealOffers.isNotEmpty()) {
+            Hint("Publisher deals")
+            g.dealOffers.take(2).forEach { d ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CompanyLogo(d.publisher, size = 24.dp)
+                    Hint("${d.publisher} · ${d.topic.title} ${d.genre.title}")
+                }
+            }
+        }
 
         g.unseenReview?.let { id -> g.release(id) }?.let { review ->
             Spacer(Modifier.height(4.dp))
@@ -498,6 +514,26 @@ fun CompanyScreen(store: DesktopStore, state: GameState) {
         GlassPanel {
             Text("Era · ${state.world.era.title}", style = MaterialTheme.typography.titleLarge, color = h.text)
             Hint(state.world.era.blurb)
+        }
+        GlassPanel {
+            Text("Biggest companies", style = MaterialTheme.typography.titleLarge, color = h.accent)
+            state.rankings().take(6).forEachIndexed { i, c ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("${i + 1}", style = MaterialTheme.typography.labelLarge, color = h.textDim, modifier = Modifier.width(18.dp))
+                    if (!c.mine) CompanyLogo(c.name, size = 22.dp)
+                    Text(
+                        c.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (c.mine) h.accent else h.text,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Hint(Format.money(c.value))
+                }
+            }
         }
         GlassPanel {
             Text("Abandon run", style = MaterialTheme.typography.titleMedium, color = colors.bad)

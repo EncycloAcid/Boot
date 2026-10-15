@@ -523,6 +523,7 @@ private fun DealOffers(store: GameStore, g: GamesStudio) {
                 "${d.publisher}: ${d.topic.title} ${d.genre.title}",
                 "${d.size.title} for ${d.platform.title} · ${Format.money(d.advance)} advance · needs ${d.minScore}/10",
                 "Sign",
+                leading = { CompanyLogo(d.publisher, size = 32.dp) },
             ) { store.perform { acceptDeal(d.id) } }
         }
     }
