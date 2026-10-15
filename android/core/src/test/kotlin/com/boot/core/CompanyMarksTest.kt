@@ -104,4 +104,18 @@ class CompanyMarksTest {
         assertTrue(pubs.all { companyActive(it, s.calendarYear) }, pubs.toString())
         assertTrue(pubs.none { it.contains("Annapurna") || it.contains("Devolver") }, pubs.toString())
     }
+
+    @Test
+    fun logoPackMapsMajorsAndNoneOverrides() {
+        assertEquals("ea", logoPackBasename(companyMark("Electronic Arts")))
+        assertEquals("apple", logoPackBasename(companyMark("Apple")))
+        assertEquals("nintendo", logoPackBasename(companyMark("Nintendo")))
+        assertEquals("lucasarts", logoPackBasename(companyMark("LucasArts")))
+        assertEquals("fromsoftware", logoPackBasename(companyMark("FromSoftware")))
+        assertEquals("annapurna-interactive", logoPackBasename(companyMark("Annapurna Interactive")))
+        assertEquals("meta", logoPackBasename(LogoId.FACEBOOK))
+        assertEquals(null, logoPackBasename(companyMark("Moonlit Otter Games")))
+        assertTrue(logoPackCoverageCount() >= 90, "coverage=${logoPackCoverageCount()}")
+        assertTrue(logoPackBasenamesInUse().size >= 80)
+    }
 }

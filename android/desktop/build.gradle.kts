@@ -29,7 +29,15 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
-    implementation(compose.desktop.currentOs)
+    // Cross-compile fat JAR from Linux: -PbootDesktopOs=windows → windows_x64 natives.
+    val bootDesktopOs = (findProperty("bootDesktopOs") as String?)?.lowercase()
+    when (bootDesktopOs) {
+        "windows", "windows_x64" -> implementation(compose.desktop.windows_x64)
+        "macos", "macos_x64" -> implementation(compose.desktop.macos_x64)
+        "macos_arm64" -> implementation(compose.desktop.macos_arm64)
+        "linux", "linux_x64" -> implementation(compose.desktop.linux_x64)
+        else -> implementation(compose.desktop.currentOs)
+    }
     implementation(compose.material3)
 }
 
