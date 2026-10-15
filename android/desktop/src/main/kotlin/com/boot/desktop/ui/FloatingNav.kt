@@ -44,6 +44,7 @@ private val NavItems = listOf(
     NavItem(Tab.RESEARCH, "Research", HudGlyph.RESEARCH),
     NavItem(Tab.TEAM, "Team", HudGlyph.TEAM),
     NavItem(Tab.COMPANY, "Company", HudGlyph.COMPANY),
+    NavItem(Tab.NEWS, "News", HudGlyph.CALENDAR),
 )
 
 private val DockShape = RoundedCornerShape(18.dp)
@@ -61,7 +62,7 @@ fun FloatingNav(store: DesktopStore, modifier: Modifier = Modifier) {
     ) {
         Row(
             Modifier
-                .widthIn(max = 520.dp)
+                .widthIn(max = 600.dp)
                 .fillMaxWidth()
                 .shadow(12.dp, DockShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
                 .clip(DockShape)

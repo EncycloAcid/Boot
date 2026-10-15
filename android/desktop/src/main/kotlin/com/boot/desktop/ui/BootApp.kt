@@ -109,12 +109,33 @@ private fun GameShell(
 
         FloatingTabWindow(store, state)
 
+        // Office-layer actions (inbox) when no floating tab is open.
+        if (store.tab == Tab.OFFICE && !store.designing &&
+            state.events.isEmpty() && state.pendingPivot == null && !state.isOver &&
+            state.games?.unseenReview == null && state.inbox.isNotEmpty()
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 36.dp, bottom = 108.dp)
+                    .widthIn(max = 360.dp),
+            ) {
+                InboxPanel(store, state)
+            }
+        }
+
         FloatingNav(store, Modifier.align(Alignment.BottomCenter))
 
         if (toast != null) {
             Box(Modifier.align(Alignment.TopCenter).padding(top = 210.dp)) {
                 ToastBanner(toast) { store.dismissNotice() }
             }
+        }
+
+        // Same decision stack as Android GameScreen — blocks the calendar.
+        DecisionOverlays(store, state)
+        if (store.designing) {
+            GameDesigner(store, state)
         }
     }
 }
@@ -131,6 +152,7 @@ private fun FloatingTabWindow(store: DesktopStore, state: GameState) {
         Tab.RESEARCH -> "Research"
         Tab.TEAM -> "Team"
         Tab.COMPANY -> "Company"
+        Tab.NEWS -> "News"
         Tab.OFFICE -> ""
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -156,6 +178,7 @@ private fun FloatingTabWindow(store: DesktopStore, state: GameState) {
                         Tab.RESEARCH -> ResearchScreen(store, state)
                         Tab.TEAM -> TeamScreen(store, state)
                         Tab.COMPANY -> CompanyScreen(store, state)
+                        Tab.NEWS -> NewsScreen(store, state)
                         Tab.OFFICE -> Unit
                     }
                 }
