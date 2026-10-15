@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import com.boot.core.UpdateFocus
 import com.boot.core.UpdateStyle
 import com.boot.core.answer
 import com.boot.core.buyGPUs
+import com.boot.core.cancelOsBeta
 import com.boot.core.osTargetOpen
 import com.boot.core.setAIFocus
 import com.boot.core.setAdLoad
@@ -106,18 +106,16 @@ internal fun SocialLanePanel(store: DesktopStore, state: GameState) {
             LaneStat("Bots", Format.percent(s.botShare))
             LaneStat("Status", if (s.isLive) "Live" else "Building")
         }
-        Hint("Moderation ${Format.percent(s.moderation)}")
-        Slider(
-            value = s.moderation.toFloat(),
-            onValueChange = { v -> store.perform { setModeration(v.toDouble()) } },
+        CommitSlider(
+            s.moderation,
+            { v -> "Moderation ${Format.percent(v.toDouble())}" },
             valueRange = 0f..1f,
-        )
-        Hint("Ad load ${Format.percent(s.adLoad)}")
-        Slider(
-            value = s.adLoad.toFloat(),
-            onValueChange = { v -> store.perform { setAdLoad(v.toDouble()) } },
+        ) { v -> store.perform { setModeration(v) } }
+        CommitSlider(
+            s.adLoad,
+            { v -> "Ad load ${Format.percent(v.toDouble())}" },
             valueRange = 0f..1f,
-        )
+        ) { v -> store.perform { setAdLoad(v) } }
         Hint("Higher ads earn more and grow slower; moderation fights scandals and bots.")
     }
 }
@@ -191,18 +189,23 @@ internal fun OsLanePanel(store: DesktopStore, state: GameState) {
             Hint("Design ${p.design.toInt()} · tech ${p.tech.toInt()} · bugs ${p.bugs.toInt()}")
             if (p.inBeta) {
                 Hint("In beta · ${p.betaWeeksLeft}w left", colors.milestone)
+                MacButton("Cancel beta", onClick = { store.perform { cancelOsBeta() } }, primary = false)
             } else if (!p.isReady) {
                 Hint("Advance weeks to build; beta cuts bugs before ship.")
             }
-            if (!p.inBeta && p.completion > 0.55) {
+            if (p.isReady && !p.inBeta) {
                 MacButton("Start 6-week beta", onClick = { store.perform { startOsBeta(6) } }, primary = false)
             }
+            val canShip = p.isReady && (!p.inBeta || p.betaWeeksLeft <= 0)
             MacButton(
-                "Ship ${p.codename}",
+                if (p.inBeta && p.betaWeeksLeft <= 0) "Ship ${p.codename}" else if (!p.inBeta && p.isReady) "Ship raw ${p.codename}" else "Ship ${p.codename}",
                 onClick = { store.perform { shipOs() } },
-                enabled = p.isReady,
+                enabled = canShip,
                 primary = true,
             )
+            if (p.isReady && p.inBeta && p.betaWeeksLeft > 0) {
+                Hint("Beta still has ${p.betaWeeksLeft} weeks — wait or cancel first.", colors.warn)
+            }
         } else {
             Hint("Start a version — capital-intensive, OEM licensing after ship.")
             var target by remember { mutableStateOf(OsTarget.PC) }

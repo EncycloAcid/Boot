@@ -66,7 +66,11 @@ private val steps = listOf("Concept", "Platform & size", "Focus", "Summary")
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameDesigner(store: DesktopStore, state: GameState) {
-    val g = state.games ?: return
+    val g = state.games
+    if (g == null) {
+        store.closeDesigner()
+        return
+    }
     val seed = store.draft
     val team = store.designTeam
     val h = hudColors
@@ -287,19 +291,13 @@ fun GameDesigner(store: DesktopStore, state: GameState) {
                                     areas.forEachIndexed { i, area ->
                                         val alloc = focus[stage]
                                         val total = alloc.sum().takeIf { it > 0 } ?: 1.0
-                                        val share = alloc[i] / total
-                                        Text(
-                                            "${area.title} · ${Format.percent(share)}",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = h.text,
-                                        )
-                                        Slider(
-                                            value = alloc[i].toFloat(),
-                                            onValueChange = { v ->
-                                                alloc[i] = v.toDouble().coerceIn(0.05, 1.0)
+                                        CommitSlider(
+                                            alloc[i],
+                                            { v ->
+                                                val share = v.toDouble() / (total - alloc[i] + v.toDouble()).coerceAtLeast(0.01)
+                                                "${area.title} · ${Format.percent(share)}"
                                             },
-                                            valueRange = 0.05f..1f,
-                                        )
+                                        ) { v -> alloc[i] = v.coerceIn(0.05, 1.0) }
                                     }
                                 }
                             }
@@ -347,9 +345,11 @@ fun GameDesigner(store: DesktopStore, state: GameState) {
                             }
                             MacButton("Next", onClick = { step += 1 }, enabled = nextOk)
                         } else {
+                            store.error?.let { Hint(it, colors.bad) }
                             MacButton(
                                 "Start development",
                                 onClick = {
+                                    store.dismissError()
                                     val split = focus.map { it.toMutableList() }
                                     store.perform { startGame(concept, split, team) }
                                     if (store.state?.games?.projectOf(team) != null) close()
