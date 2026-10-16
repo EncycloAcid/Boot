@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.5 (Android):** play sideways, a stock market, marketing for every business, real company logos and better sprites.
+
+- **Sideways or upright.** The game now plays sideways by default: the office fills the screen, the tabs run down a rail on the left, everything opens in a tall window beside it, and your numbers and the clock stay on the right. Prefer the classic layout? Pick Upright on the new game screen, or "Play upright (classic)" from the menu, for the page-per-tab layout held vertically. Switch back any time with "Play sideways"; the choice is remembered.
+- **The stock market.** Every listed company in the league table has a share price. Buy up to 30% of one, collect dividends from the old giants, and bid for the rest: shareholders decide in four weeks. Companies you own pay you and count towards your value; take over your business rival and they're out of your market for good. Once you're public, raiders can build stakes in you and bid for the company.
+- **Marketing for every business.** Brand awareness, and campaigns on print, TV, PR, trade shows, search ads, social ads and influencers, each from its real year and suited to some businesses more than others, at the budget and length you choose. A report shows what each one cost and roughly earned.
+- **Real logos and a deeper studio.** Real company logos across rivals, news and the market; seasons for game launches, creative direction and paid playtests; regional offices, alliances and a venture arm; a deeper device designer.
+- **Better sprites.** Everyone wears their own clothes with a lanyard in their business's colour, portraits have more detail, and the office has soft shadows and sunlight through the windows.
+
 **New in 3.4 (Android):** a tutorial and a How to play guide.
 
 - **Rosa shows you the ropes.** A new career can start with a mentor: Rosa, a founder who's started four companies and sold three, walks you through your first weeks in seven lessons on the office screen. Make your first thing (design a game, take a contract, design a device, start a training run, or watch your app or platform being built), let time run, hire, read your numbers and spend research points. Each lesson ticks itself off when you do it, its button takes you to the right place, and you can skip the lot. It's on by default for your first run and a switch on the new game screen after that.

@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,23 +63,29 @@ import java.util.Locale
  */
 @Composable
 fun OfficeScreen(store: GameStore, state: GameState) {
+    val inPanel = LocalInFloatingPanel.current
     ScreenColumn {
-        item { VitalsGlance(store, state) }
-        item {
-            GroupedSection("Office") {
-                CardBlock {
-                    val crowded = state.staff.size > state.office.desks
-                    Text(state.office.title, style = MaterialTheme.typography.titleLargeEmphasized)
-                    Hint(
-                        "${state.staff.size}/${state.office.desks} desks" +
-                            if (crowded) " · crowded — hire after you expand" else " · tap the room behind this window for Team",
-                    )
-                    Ticker(store, state)
+        if (inPanel) {
+            // Sideways: the office is the stage behind this window, so lead with the numbers.
+            item { VitalsGlance(store, state) }
+            item {
+                GroupedSection("Office") {
+                    CardBlock {
+                        val crowded = state.staff.size > state.office.desks
+                        Text(state.office.title, style = MaterialTheme.typography.titleLargeEmphasized)
+                        Hint(
+                            "${state.staff.size}/${state.office.desks} desks" +
+                                if (crowded) " · crowded — hire after you expand" else " · tap the room behind this window for Team",
+                        )
+                        Ticker(store, state)
+                    }
                 }
             }
         }
         // The tutorial leads, so its button is on screen without scrolling.
         if (state.tutorial != null) item { LessonCard(store, state) }
+        // Upright: the office itself sits at the top of the home page, under the lesson.
+        if (!inPanel) item { OfficeCard(store, state) }
         if (state.scenario != null) item { ScenarioCard(state) }
         // While the tutorial runs, the next step only speaks up about money.
         if (nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true) {
@@ -115,6 +123,54 @@ fun OfficeScreen(store: GameStore, state: GameState) {
                 }
             }
         }
+    }
+}
+
+/** The office with everyone at their desks, for the upright layout, with the latest news under it. */
+@Composable
+private fun OfficeCard(store: GameStore, state: GameState) {
+    val colors = gameColors
+    androidx.compose.material3.Surface(shape = RoundedCornerShape(28.dp), color = colors.card, modifier = Modifier.fillMaxWidth()) {
+        Column {
+            val crowded = state.staff.size > state.office.desks
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(290.dp)
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .clickable { store.tab = Tab.TEAM },
+            ) {
+                OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 40.dp)
+                Row(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SceneChip(state.office.title)
+                    SceneChip(
+                        "${state.staff.size}/${state.office.desks} desks" + if (crowded) " · crowded" else "",
+                        icon = Icons.Filled.Groups,
+                        tint = if (crowded) colors.bad else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+            Ticker(store, state)
+        }
+    }
+}
+
+@Composable
+private fun SceneChip(text: String, icon: ImageVector? = null, tint: Color = MaterialTheme.colorScheme.onSurface) {
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(gameColors.card.copy(alpha = 0.86f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        if (icon != null) Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
+        FitText(text, MaterialTheme.typography.labelLarge, color = tint)
     }
 }
 

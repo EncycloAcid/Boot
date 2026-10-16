@@ -82,6 +82,7 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.MENTOR
 import com.boot.game.GameStore
+import com.boot.game.ScreenLayout
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -186,6 +187,13 @@ fun NewGameScreen(store: GameStore) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 GroupedSection("How to play", footer = mode.blurb) {
                     Column(Modifier.padding(8.dp)) { Segmented(GameMode.entries, mode, { it.title }) { mode = it } }
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                GroupedSection("Screen", footer = store.layout.blurb) {
+                    Column(Modifier.padding(8.dp)) {
+                        Segmented(ScreenLayout.entries, store.layout, { it.title }) { store.chooseLayout(it) }
+                    }
                 }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {

@@ -41,8 +41,29 @@ enum class Speed(val label: String, val millis: Long) {
 }
 
 /** Owns the running game, routes player actions into it, runs the clock, and autosaves. */
+/** How the game is laid out: sideways with the office filling the screen, or upright with the classic tabs. */
+enum class ScreenLayout(val title: String, val blurb: String) {
+    SIDEWAYS("Sideways", "Hold your phone sideways. The office fills the screen and everything opens in floating windows."),
+    VERTICAL("Upright", "Hold your phone upright with the classic layout: a page for each tab and the office on the home page."),
+}
+
 class GameStore(app: Application) : AndroidViewModel(app) {
     private val saveFile = File(app.filesDir, "autosave.json")
+    private val settings = app.getSharedPreferences("boot", android.content.Context.MODE_PRIVATE)
+
+    /** Sideways or upright. Remembered between runs. */
+    var layout by mutableStateOf(
+        runCatching { ScreenLayout.valueOf(settings.getString("layout", null) ?: "") }.getOrDefault(ScreenLayout.SIDEWAYS),
+    )
+        private set
+
+    fun chooseLayout(l: ScreenLayout) {
+        layout = l
+        settings.edit().putString("layout", l.name).apply()
+        // Each layout has its own idea of where you are; start from the office.
+        tab = Tab.OFFICE
+        todayOpen = false
+    }
     private val hallFile = File(app.filesDir, "hall.json")
 
     /** Every run that has ended, kept across games. */

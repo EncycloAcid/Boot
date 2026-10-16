@@ -83,6 +83,7 @@ import com.boot.core.Lane
 import com.boot.core.gameForecast
 import com.boot.core.researchPerWeek
 import com.boot.game.GameStore
+import com.boot.game.ScreenLayout
 import com.boot.game.Speed
 import com.boot.game.StudioPage
 import com.boot.game.Tab
@@ -94,7 +95,11 @@ val LocalInFloatingPanel = compositionLocalOf { false }
 @Composable
 fun BootApp(store: GameStore) {
     val state = store.state
-    if (state == null) NewGameScreen(store) else GameScreen(store, state)
+    when {
+        state == null -> NewGameScreen(store)
+        store.layout == ScreenLayout.VERTICAL -> ClassicGameScreen(store, state)
+        else -> GameScreen(store, state)
+    }
 }
 
 private data class TabSpec(val tab: Tab, val label: String, val glyph: HudGlyph)
@@ -106,6 +111,12 @@ private val tabs = listOf(
     TabSpec(Tab.TEAM, "Team", HudGlyph.TEAM),
     TabSpec(Tab.COMPANY, "Company", HudGlyph.COMPANY),
 )
+
+/** A phone held sideways: wide and short. The dock becomes a rail and windows open beside it. */
+private fun isLandscape(width: androidx.compose.ui.unit.Dp, height: androidx.compose.ui.unit.Dp) = width > height && height < 600.dp
+
+/** Width of the sideways rail, for everything else to clear. */
+private val RailWidth = 84.dp
 
 /** Display-only season label (matches the Windows calendar without requiring core seasons). */
 private fun seasonTitle(week: Int): String =
@@ -163,8 +174,13 @@ private fun GameScreen(store: GameStore, state: GameState) {
 
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.grouped)) {
         val phone = maxWidth < 600.dp
+        val landscape = isLandscape(maxWidth, maxHeight)
         // Discs are always on now — keep the office art clear of the HUD stack.
-        val insetTop = if (phone) 148.dp else 188.dp
+        val insetTop = when {
+            landscape -> 64.dp
+            phone -> 148.dp
+            else -> 188.dp
+        }
         // Office is always the main plane — panels float over it.
         Box(Modifier.fillMaxSize()) {
             OfficeScene(
@@ -180,7 +196,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = 96.dp),
+                    .padding(start = if (landscape) RailWidth + 8.dp else 16.dp, bottom = if (landscape) 12.dp else 96.dp),
             ) { store.tab = Tab.TEAM }
         }
 
@@ -195,6 +211,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
         FloatingPanels(store, state, store.todayOpen) { store.todayOpen = false }
 
         FloatingDock(
+            landscape = landscape,
             store = store,
             todayOpen = store.todayOpen,
             onOffice = {
@@ -224,6 +241,26 @@ private fun GameScreen(store: GameStore, state: GameState) {
         )
     }
 
+    GameOverlays(store, state)
+
+    if (confirmAbandon) {
+        ConfirmDialog(
+            title = "Abandon ${state.companyName}?",
+            text = "This run ends for good and you start over in the apartment.",
+            confirm = "Abandon",
+            destructive = true,
+            onConfirm = { store.abandon() },
+            onDismiss = { confirmAbandon = false },
+        )
+    }
+}
+
+/**
+ * Whatever sits above the game, in either layout. Decisions stop the clock; endings beat the
+ * Pivot Point, which beats ordinary events, then reviews, then the designers and the sheets.
+ */
+@Composable
+internal fun GameOverlays(store: GameStore, state: GameState) {
     when {
         state.isOver -> EndingDialog(store, state)
         state.pendingPivot != null -> PivotDialog(store, state)
@@ -235,17 +272,6 @@ private fun GameScreen(store: GameStore, state: GameState) {
         store.guideOpen -> GuideSheet(store, state)
         store.openStock != null -> StockSheet(store, state, store.openStock!!)
         store.campaignLane != null -> CampaignSheet(store, state, store.campaignLane!!)
-    }
-
-    if (confirmAbandon) {
-        ConfirmDialog(
-            title = "Abandon ${state.companyName}?",
-            text = "This run ends for good and you start over in the apartment.",
-            confirm = "Abandon",
-            destructive = true,
-            onConfirm = { store.abandon() },
-            onDismiss = { confirmAbandon = false },
-        )
     }
 }
 
@@ -273,10 +299,19 @@ private fun FloatingPanels(
         else -> ""
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val phone = maxWidth < 600.dp
+        val landscape = isLandscape(maxWidth, maxHeight)
+        val phone = maxWidth < 600.dp && !landscape
         val panelCap = maxHeight * 0.72f
+        val sheetWidth = minOf(460.dp, maxWidth * 0.52f)
         // Leave the floating HUD clear: generous top inset, dock clearance below.
-        val frame = if (phone) {
+        val frame = if (landscape) {
+            // Sideways: a full-height sheet beside the rail; the status column and play stay clear on the right.
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(start = RailWidth, top = 6.dp, bottom = 6.dp)
+        } else if (phone) {
             Modifier
                 .fillMaxSize()
                 // Below the HUD's week and play controls, so time can still be run with a panel open.
@@ -286,7 +321,7 @@ private fun FloatingPanels(
                 .fillMaxSize()
                 .padding(start = 48.dp, end = 48.dp, top = 132.dp, bottom = 108.dp)
         }
-        Box(frame, contentAlignment = if (phone) Alignment.BottomCenter else Alignment.Center) {
+        Box(frame, contentAlignment = if (landscape) Alignment.TopStart else if (phone) Alignment.BottomCenter else Alignment.Center) {
             AnimatedVisibility(
                 visible = open,
                 enter = fadeIn() + scaleIn(initialScale = 0.96f),
@@ -298,7 +333,11 @@ private fun FloatingPanels(
                         if (store.tab != Tab.OFFICE) store.tab = Tab.OFFICE else onCloseToday()
                     },
                     phoneSheet = phone,
-                    modifier = if (phone) {
+                    modifier = if (landscape) {
+                        Modifier
+                            .width(sheetWidth)
+                            .fillMaxHeight()
+                    } else if (phone) {
                         Modifier
                             .fillMaxWidth()
                             .fillMaxHeight(0.92f)
@@ -426,7 +465,8 @@ private fun FloatingHud(
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         val narrow = maxWidth < 420.dp
-        val bubble = if (narrow) 40.dp else 48.dp
+        val landscape = isLandscape(maxWidth, maxHeight)
+        val bubble = if (narrow || landscape) 40.dp else 48.dp
 
         // Menu — badge for news, inbox, or tutorial waiting
         Box(Modifier.align(Alignment.TopStart)) {
@@ -464,6 +504,10 @@ private fun FloatingHud(
                     menuOpen = false
                     store.guideOpen = true
                 })
+                DropdownMenuItem(text = { Text("Play upright (classic)") }, onClick = {
+                    menuOpen = false
+                    store.chooseLayout(ScreenLayout.VERTICAL)
+                })
                 DropdownMenuItem(text = { Text(if (store.playing) "Pause" else "Play") }, onClick = {
                     menuOpen = false
                     store.togglePlay()
@@ -486,10 +530,18 @@ private fun FloatingHud(
 
         // Center: always-on discs + tip / project card (clear Menu left + status pills right)
         Column(
-            Modifier
-                .align(Alignment.TopCenter)
-                .widthIn(max = if (narrow) maxWidth - 8.dp else 340.dp)
-                .padding(start = if (narrow) 72.dp else 64.dp, end = if (narrow) 116.dp else 64.dp),
+            if (landscape) {
+                // Sideways: between the rail and the status column, at a readable width.
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(start = RailWidth, end = 200.dp)
+                    .widthIn(max = 300.dp)
+            } else {
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .widthIn(max = if (narrow) maxWidth - 8.dp else 340.dp)
+                    .padding(start = if (narrow) 72.dp else 64.dp, end = if (narrow) 116.dp else 64.dp)
+            },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -505,7 +557,7 @@ private fun FloatingHud(
         Column(
             Modifier
                 .align(Alignment.TopEnd)
-                .widthIn(max = if (narrow) 148.dp else 176.dp),
+                .widthIn(max = if (narrow) 148.dp else if (landscape) 200.dp else 176.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp),
             horizontalAlignment = Alignment.End,
         ) {
@@ -551,25 +603,43 @@ private fun FloatingHud(
                     }
                 }
             }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TinyChip(store.speed.label, description = "Speed ${store.speed.label}") {
-                        store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
-                    }
-                    TinyChip(
-                        "Week",
-                        enabled = store.canAdvance && !store.playing && !store.holdsClock,
-                        description = "Next week",
-                    ) {
-                        store.advance(1)
-                    }
+            val speed: @Composable () -> Unit = {
+                TinyChip(store.speed.label, description = "Speed ${store.speed.label}") {
+                    store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
                 }
+            }
+            val nextWeek: @Composable () -> Unit = {
+                TinyChip(
+                    "Week",
+                    enabled = store.canAdvance && !store.playing && !store.holdsClock,
+                    description = "Next week",
+                ) {
+                    store.advance(1)
+                }
+            }
+            val play: @Composable () -> Unit = {
                 TinyChip(
                     if (store.playing) "Pause" else "Play",
                     filled = true,
                     enabled = store.canAdvance || store.playing,
                     description = if (store.playing) "Pause" else "Play",
                 ) { store.togglePlay() }
+            }
+            if (landscape) {
+                // Sideways there's room across but not down: the clock on one line.
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    speed()
+                    nextWeek()
+                    play()
+                }
+            } else {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        speed()
+                        nextWeek()
+                    }
+                    play()
+                }
             }
             Box(
                 Modifier
@@ -969,9 +1039,47 @@ private fun FloatingDock(
     onOpenOther: (Tab) -> Unit,
     modifier: Modifier,
     snackbar: SnackbarHostState,
+    landscape: Boolean = false,
 ) {
     val colors = gameColors
     val shape = RoundedCornerShape(18.dp)
+    if (landscape) {
+        // Sideways: a rail down the left edge, under the Menu chip; snackbars at the bottom.
+        Box(Modifier.fillMaxSize()) {
+            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 12.dp))
+            Column(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(start = 8.dp, top = 52.dp, bottom = 6.dp)
+                    .width(RailWidth - 14.dp)
+                    .shadow(12.dp, shape, clip = false)
+                    .clip(shape)
+                    .background(colors.bar.copy(alpha = 0.96f))
+                    .border(1.dp, colors.separator, shape)
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                for (t in tabs) {
+                    val onThis = store.tab == t.tab
+                    FloatingDockTab(
+                        t = t,
+                        selected = onThis,
+                        emphasized = if (t.tab == Tab.OFFICE) onThis && todayOpen else onThis,
+                        modifier = Modifier.fillMaxWidth(),
+                        compact = true,
+                    ) {
+                        when (t.tab) {
+                            Tab.OFFICE -> onOffice()
+                            else -> onOpenOther(t.tab)
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         SnackbarHost(snackbar)
         Box(
@@ -1021,6 +1129,7 @@ private fun FloatingDockTab(
     selected: Boolean,
     emphasized: Boolean,
     modifier: Modifier,
+    compact: Boolean = false,
     onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -1040,7 +1149,7 @@ private fun FloatingDockTab(
             .clip(RoundedCornerShape(14.dp))
             .background(bg)
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
-            .padding(vertical = 8.dp),
+            .padding(vertical = if (compact) 5.dp else 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
