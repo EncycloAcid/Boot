@@ -150,8 +150,9 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
             // Windows start just under the corner readouts, however tall big text makes them.
             var cornerHeight by remember { mutableIntStateOf(0) }
             val windowTop = with(LocalDensity.current) { cornerHeight.toDp() } + 22.dp
-            // The office, edge to edge, under everything.
-            OfficeScene(state, store.playing, Modifier.fillMaxSize().clickable { store.tab = Tab.TEAM }, insetTop = 48.dp)
+            // The office, edge to edge, under everything. It's for looking at: taps on it do nothing,
+            // so a stray touch never yanks you into another screen. The desk chip opens Team.
+            OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 48.dp)
 
             val safe = WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout)
             // Bottom left, above the dock: the desks.

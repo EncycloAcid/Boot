@@ -77,7 +77,7 @@ fun OfficeScreen(store: GameStore, state: GameState) {
                         Text(state.office.title, style = MaterialTheme.typography.titleLargeEmphasized)
                         Hint(
                             "${state.staff.size}/${state.office.desks} desks" +
-                                if (crowded) " · crowded — hire after you expand" else " · tap the room behind this window for Team",
+                                if (crowded) " · crowded — hire after you expand" else " · hire from the Team tab",
                         )
                         Ticker(store, state)
                     }

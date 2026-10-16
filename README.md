@@ -6,6 +6,8 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**3.8.1:** sideways, decisions pop up in a wider sheet with each choice as a card (three to a row, or two rows of two), with room to read them; and tapping the office no longer jumps to the Team tab (the desk count in the corner still does).
+
 **New in 3.8 (Android):** the show season. The year is full of stages now, each named for its time:
 
 - **Award shows.** Besides Game of the Year (decided at the Arkie Awards, then the Golden Joysticks, the Spike Video Game Awards and, from 2014, The Game Awards), the D.I.C.E. Awards, the Game Developers Choice Awards, the BAFTA Games Awards and the Golden Joysticks hand out prizes through the year: game design, technology, artistic achievement, best game, an audience award, a fan-voted Ultimate Game of the Year and best indie game. Each jury has its own taste (BAFTA loves a small game with a point of view, the Joysticks vote with their wallets), and the indie prizes keep the blockbusters out. A win brings fans, reputation and a sales bump, and they don't stop the clock.

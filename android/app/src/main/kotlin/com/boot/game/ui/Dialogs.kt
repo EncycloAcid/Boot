@@ -7,6 +7,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +26,11 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,6 +85,7 @@ import com.boot.core.ranked
 import com.boot.core.resolvePivot
 import com.boot.core.stayFocused
 import com.boot.game.GameStore
+import com.boot.game.audio.Sfx
 import kotlin.math.roundToInt
 
 private val fullScreen = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false)
@@ -104,6 +110,8 @@ fun EventSheet(store: GameStore, state: GameState) {
             sheetState = sheet,
             sheetGesturesEnabled = false,
             containerColor = gameColors.grouped,
+            // Sideways there's width to spare: let the sheet use it rather than squeezing the choices.
+            sheetMaxWidth = if (LocalCompact.current) 880.dp else BottomSheetDefaults.SheetMaxWidth,
             properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false, shouldDismissOnClickOutside = false),
         ) {
             Scaled {
@@ -111,9 +119,9 @@ fun EventSheet(store: GameStore, state: GameState) {
                 Column(
                     Modifier
                         .verticalScroll(rememberScrollState())
-                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
+                        .padding(start = if (compact) 28.dp else 20.dp, end = if (compact) 28.dp else 20.dp, bottom = if (compact) 22.dp else 16.dp)
                         .navigationBarsPadding(),
-                    verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     e.lane?.let { lane ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -127,10 +135,18 @@ fun EventSheet(store: GameStore, state: GameState) {
                     (e.kind as? ShowResults)?.report?.let { ShowFigures(it) }
                     Spacer(Modifier.size(4.dp))
                     if (compact) {
-                        // Sideways, every choice fits side by side, so they can be weighed at a glance.
-                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            e.choices.forEachIndexed { i, choice ->
-                                ChoiceButton(choice, primary = i == 0, Modifier.weight(1f).fillMaxHeight()) { store.perform { choose(i) } }
+                        // Sideways, the choices sit side by side as cards so they can be weighed at a
+                        // glance: three to a row, or two rows of two when there are four.
+                        val perRow = if (e.choices.size == 4) 2 else minOf(3, e.choices.size)
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            e.choices.withIndex().chunked(perRow).forEach { row ->
+                                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    for ((i, choice) in row) {
+                                        ChoiceCard(choice, primary = i == 0, Modifier.weight(1f).fillMaxHeight()) { store.perform { choose(i) } }
+                                    }
+                                    // Keep a short last row's cards the same width as the rest.
+                                    repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
+                                }
                             }
                         }
                     } else {
@@ -154,6 +170,35 @@ private fun ShowFigures(r: ShowReport) {
             StatTile("Visitors", Format.count(r.visitors.toDouble()), Modifier.weight(1f), r.booth.title.lowercase())
             if (r.game != null) StatTile("Hype", "+${r.hype.roundToInt()}", Modifier.weight(1f), r.game, colors.milestone)
             StatTile("New fans", Format.count(r.fans), Modifier.weight(1f), if (r.bestInShow) "Best in Show" else null, colors.good)
+        }
+    }
+}
+
+/** A choice as a card: the label over what it means, with room to read both. */
+@Composable
+private fun ChoiceCard(choice: EventChoice, primary: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val colors = gameColors
+    val sound = LocalSound.current
+    val shape = RoundedCornerShape(18.dp)
+    val container = if (primary) scheme.primary else colors.card
+    val content = if (primary) scheme.onPrimary else scheme.onSurface
+    Column(
+        modifier
+            .heightIn(min = 76.dp)
+            .clip(shape)
+            .background(container)
+            .then(if (primary) Modifier else Modifier.border(1.dp, colors.separator, shape))
+            .clickable(role = Role.Button) {
+                sound.play(Sfx.CLICK)
+                onClick()
+            }
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(choice.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = content)
+        if (choice.detail.isNotEmpty()) {
+            Text(choice.detail, style = MaterialTheme.typography.bodySmall, color = content.copy(alpha = 0.8f))
         }
     }
 }

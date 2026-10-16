@@ -215,9 +215,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
             OfficeScene(
                 state,
                 store.playing,
-                Modifier
-                    .fillMaxSize()
-                    .clickable { store.tab = Tab.TEAM },
+                Modifier.fillMaxSize(),
                 insetTop = insetTop,
             )
             DeskChip(
