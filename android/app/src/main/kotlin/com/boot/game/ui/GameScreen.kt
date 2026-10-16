@@ -98,13 +98,16 @@ fun BootApp(store: GameStore) {
     when {
         state == null -> NewGameScreen(store)
         store.layout == ScreenLayout.VERTICAL -> ClassicGameScreen(store, state)
-        else -> GameScreen(store, state)
+        // Sideways on a phone gets its own layout; tablets and unlocked screens keep the floating one.
+        else -> BoxWithConstraints(Modifier.fillMaxSize()) {
+            if (isLandscape(maxWidth, maxHeight)) LandscapeGameScreen(store, state) else GameScreen(store, state)
+        }
     }
 }
 
-private data class TabSpec(val tab: Tab, val label: String, val glyph: HudGlyph)
+internal data class TabSpec(val tab: Tab, val label: String, val glyph: HudGlyph)
 
-private val tabs = listOf(
+internal val dockTabs = listOf(
     TabSpec(Tab.OFFICE, "Office", HudGlyph.OFFICE),
     TabSpec(Tab.LANES, "Lanes", HudGlyph.LANES),
     TabSpec(Tab.RESEARCH, "Research", HudGlyph.RESEARCH),
@@ -113,13 +116,13 @@ private val tabs = listOf(
 )
 
 /** A phone held sideways: wide and short. The dock becomes a rail and windows open beside it. */
-private fun isLandscape(width: androidx.compose.ui.unit.Dp, height: androidx.compose.ui.unit.Dp) = width > height && height < 600.dp
+internal fun isLandscape(width: androidx.compose.ui.unit.Dp, height: androidx.compose.ui.unit.Dp) = width > height && height < 600.dp
 
 /** Width of the sideways rail, for everything else to clear. */
 private val RailWidth = 84.dp
 
 /** Display-only season label (matches the Windows calendar without requiring core seasons). */
-private fun seasonTitle(week: Int): String =
+internal fun seasonTitle(week: Int): String =
     listOf("Spring", "Summer", "Autumn", "Winter")[((week.coerceAtLeast(1) - 1) % 52) / 13]
 
 /**
@@ -723,7 +726,7 @@ private fun LabeledDisc(
 }
 
 @Composable
-private fun ProjectSoftPanel(
+internal fun ProjectSoftPanel(
     store: GameStore,
     state: GameState,
     project: GameProject,
@@ -834,7 +837,7 @@ private fun IdleSoftPanel(
 
 /** Desk count over the office stage — restores the old SceneChip glance. */
 @Composable
-private fun DeskChip(state: GameState, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun DeskChip(state: GameState, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = gameColors
     val crowded = state.staff.size > state.office.desks
     val shape = RoundedCornerShape(20.dp)
@@ -994,7 +997,7 @@ private fun ProgressRow(label: String, value: Float, color: Color) {
 }
 
 @Composable
-private fun TinyChip(
+internal fun TinyChip(
     label: String,
     filled: Boolean = false,
     enabled: Boolean = true,
@@ -1068,7 +1071,7 @@ private fun FloatingDock(
                     .padding(4.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                for (t in tabs) {
+                for (t in dockTabs) {
                     val onThis = store.tab == t.tab
                     FloatingDockTab(
                         t = t,
@@ -1106,7 +1109,7 @@ private fun FloatingDock(
                     .border(1.dp, colors.separator, shape)
                     .padding(horizontal = 4.dp, vertical = 4.dp),
             ) {
-                for (t in tabs) {
+                for (t in dockTabs) {
                     val onThis = store.tab == t.tab
                     // Office stays selected on the stage; underline only while the Today panel is open.
                     val emphasized = when (t.tab) {
@@ -1178,7 +1181,7 @@ private fun FloatingDockTab(
 }
 
 @Composable
-private fun WeekProgress(store: GameStore, state: GameState, modifier: Modifier = Modifier) {
+internal fun WeekProgress(store: GameStore, state: GameState, modifier: Modifier = Modifier) {
     val progress = remember { Animatable(0f) }
     LaunchedEffect(state.week, store.playing, store.speed) {
         progress.snapTo(0f)

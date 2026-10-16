@@ -14,6 +14,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import com.boot.core.Lane
+import com.boot.core.advance
+import com.boot.core.hire
+import com.boot.core.startGame
 import com.boot.game.ui.BootApp
 import com.boot.game.ui.BootTheme
 import org.junit.Assert.assertEquals
@@ -46,9 +49,12 @@ class LayoutModesTest {
         compose.waitForIdle()
     }
 
-    private fun save(name: String) {
+    /** Saves the screen, or with [top] the topmost window (a dialog or sheet). */
+    private fun save(name: String, top: Boolean = false) {
         compose.waitForIdle()
-        val view = (compose.onAllNodes(androidx.compose.ui.test.isRoot())[0].fetchSemanticsNode().root as ViewRootForTest).view
+        val roots = compose.onAllNodes(androidx.compose.ui.test.isRoot())
+        val index = if (top) roots.fetchSemanticsNodes().size - 1 else 0
+        val view = (roots[index].fetchSemanticsNode().root as ViewRootForTest).view
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
         File(DisplayRule.screenshots, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -77,6 +83,29 @@ class LayoutModesTest {
         assertTrue(store.state!!.week >= 1)
         compose.runOnIdle { store.tab = Tab.COMPANY }
         save("94-sideways-company")
+
+        // Mid-game: people at their desks and a game in development.
+        compose.runOnIdle {
+            store.newGame("Pixel Forge", "You", Lane.GAMES, seed = 9)
+            store.perform {
+                com.boot.core.Sandbox.setCash(this, 400_000.0)
+                repeat(2) { candidates.firstOrNull()?.let { c -> hire(c.id, Lane.GAMES) } }
+                startGame(com.boot.core.GameConcept("Moss Knight", com.boot.core.Topic.FANTASY, com.boot.core.Genre.RPG, platforms = listOf(com.boot.core.Platform.PC), size = com.boot.core.GameSize.SMALL))
+                repeat(3) { advance() }
+            }
+            store.todayOpen = false
+            store.tab = Tab.OFFICE
+        }
+        save("97-sideways-developing")
+        compose.runOnIdle { store.tab = Tab.TEAM }
+        save("98-sideways-team")
+        compose.runOnIdle { store.designGame() }
+        save("99-sideways-designer", top = true)
+        compose.runOnIdle {
+            store.designing = false
+            store.perform { com.boot.core.Sandbox.enqueue(this, com.boot.core.RivalMove("Electronic Arts", Lane.GAMES, com.boot.core.RivalMoveKind.PRICE_WAR)) }
+        }
+        save("99b-sideways-event", top = true)
     }
 
     @Test

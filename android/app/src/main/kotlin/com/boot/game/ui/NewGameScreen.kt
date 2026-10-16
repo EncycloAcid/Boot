@@ -19,6 +19,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -98,55 +103,53 @@ fun NewGameScreen(store: GameStore) {
     var whenReason by rememberSaveable { mutableStateOf<String?>(null) }
     val colors = gameColors
     val companyName = company.trim().ifEmpty { "Garage Labs" }
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val landscape = configuration.screenWidthDp > configuration.screenHeightDp && configuration.screenHeightDp < 600
     val founderName = founder.trim().ifEmpty { "You" }
 
-    Scaffold(
-        containerColor = colors.grouped,
-        bottomBar = {
-            Surface(color = colors.bar) {
-                Column {
-                    HorizontalDivider(thickness = 0.5.dp, color = colors.separator)
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        if (mode == GameMode.CAREER && lane.isCapitalIntensive) {
-                            Hint(
-                                "Hard mode: ${lane.title} starts with a seed round and a board that can overrule you, or fire you.",
-                                colors.warn,
-                            )
-                        }
-                        when (mode) {
-                            GameMode.SCENARIOS -> PrimaryButton(
-                                "Play ${scenario.title}", { store.newScenario(scenario, companyName, founderName) }, Modifier.fillMaxWidth(),
-                            )
-                            GameMode.SANDBOX -> PrimaryButton(
-                                "Start your sandbox ${lane.businessName.lowercase()}",
-                                {
-                                    store.newGame(
-                                        companyName, founderName, lane,
-                                        difficulty = difficulty, start = start, sandbox = true, tutorial = tutorial,
-                                    )
-                                },
-                                Modifier.fillMaxWidth(),
-                            )
-                            GameMode.CAREER -> PrimaryButton(
-                                "Start your ${lane.businessName.lowercase()}",
-                                { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start, tutorial = tutorial) },
-                                Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                }
+    // Start the run: a warning for the capital-intensive businesses, then the button.
+    val startPanel: @Composable () -> Unit = {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .then(if (landscape) Modifier else Modifier.navigationBarsPadding())
+                .padding(if (landscape) 0.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (mode == GameMode.CAREER && lane.isCapitalIntensive) {
+                Hint(
+                    "Hard mode: ${lane.title} starts with a seed round and a board that can overrule you, or fire you.",
+                    colors.warn,
+                )
             }
-        },
-    ) { padding ->
+            when (mode) {
+                GameMode.SCENARIOS -> PrimaryButton(
+                    "Play ${scenario.title}", { store.newScenario(scenario, companyName, founderName) }, Modifier.fillMaxWidth(),
+                )
+                GameMode.SANDBOX -> PrimaryButton(
+                    "Start your sandbox ${lane.businessName.lowercase()}",
+                    {
+                        store.newGame(
+                            companyName, founderName, lane,
+                            difficulty = difficulty, start = start, sandbox = true, tutorial = tutorial,
+                        )
+                    },
+                    Modifier.fillMaxWidth(),
+                )
+                GameMode.CAREER -> PrimaryButton(
+                    "Start your ${lane.businessName.lowercase()}",
+                    { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start, tutorial = tutorial) },
+                    Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    // Everything to choose, in a scrolling grid.
+    val settings: @Composable (Modifier, PaddingValues) -> Unit = { modifier, padding ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(160.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = modifier,
             contentPadding = PaddingValues(
                 start = 16.dp, end = 16.dp,
                 top = padding.calculateTopPadding() + 16.dp,
@@ -155,7 +158,7 @@ fun NewGameScreen(store: GameStore) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
+            if (!landscape) item(span = { GridItemSpan(maxLineSpan) }) {
                 // Where it all starts: the apartment, with a poster of whatever you pick.
                 val preview = remember(lane) { GameState.create("Garage Labs", "You", lane, 1) }
                 OfficeScene(
@@ -168,10 +171,7 @@ fun NewGameScreen(store: GameStore) {
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Image(painterResource(R.drawable.logo), contentDescription = null, modifier = Modifier.size(52.dp))
-                        Text("Boot", style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.primary)
-                    }
+                    if (!landscape) BootTitle()
                     Text(
                         "You start solo in a cramped apartment with ${Format.money(difficulty.startingCash)} in savings" +
                             (start.year?.let { " in $it" } ?: "") + ". Pick a lane.",
@@ -265,6 +265,48 @@ fun NewGameScreen(store: GameStore) {
                 item(span = { GridItemSpan(maxLineSpan) }) { HallOfFame(store.hall) }
             }
         }
+    }
+
+    if (landscape) {
+        // Sideways: the office, the name and the start button on the left; the choices scroll on the right.
+        Row(
+            Modifier
+                .fillMaxSize()
+                .background(colors.grouped)
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+        ) {
+            Column(
+                Modifier.width(320.dp).fillMaxHeight().padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                val preview = remember(lane) { GameState.create("Garage Labs", "You", lane, 1) }
+                OfficeScene(preview, playing = false, modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(24.dp)))
+                BootTitle()
+                startPanel()
+            }
+            settings(Modifier.weight(1f).fillMaxHeight(), PaddingValues(0.dp))
+        }
+    } else {
+        Scaffold(
+            containerColor = colors.grouped,
+            bottomBar = {
+                Surface(color = colors.bar) {
+                    Column {
+                        HorizontalDivider(thickness = 0.5.dp, color = colors.separator)
+                        startPanel()
+                    }
+                }
+            },
+        ) { padding -> settings(Modifier.fillMaxSize(), padding) }
+    }
+}
+
+/** The logo and the name. */
+@Composable
+private fun BootTitle() {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Image(painterResource(R.drawable.logo), contentDescription = null, modifier = Modifier.size(52.dp))
+        Text("Boot", style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.primary)
     }
 }
 

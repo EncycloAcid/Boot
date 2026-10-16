@@ -128,6 +128,27 @@ fun GameDesigner(store: GameStore, state: GameState) {
         store.draft = null
     }
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    // Sideways there's little height: Back and Next move up beside the title.
+    val landscape = configuration.screenWidthDp > configuration.screenHeightDp && configuration.screenHeightDp < 600
+    val blocker = state.conceptBlocker(concept, team = team)
+    val actions: @Composable () -> Unit = {
+        if (step > 0) PlainButton("Back", { step -= 1 })
+        if (step < steps.lastIndex) {
+            val nextOk = when (step) {
+                0 -> true
+                1 -> platforms.isNotEmpty() && blocker == null
+                else -> true
+            }
+            PrimaryButton("Next", { step += 1 }, enabled = nextOk)
+        } else {
+            PrimaryButton("Start development", {
+                val split = focus.map { it.toMutableList() }
+                store.perform { startGame(concept, split, team) }
+                if (store.state?.games?.projectOf(team) != null) close()
+            }, enabled = blocker == null)
+        }
+    }
     Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
@@ -144,6 +165,10 @@ fun GameDesigner(store: GameStore, state: GameState) {
                         Text(heading, style = MaterialTheme.typography.titleMedium)
                         Hint("Step ${step + 1} of ${steps.size} · ${steps[step]}")
                     }
+                    if (landscape) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { actions() }
+                }
+                if (landscape && (step == 1 || step == steps.lastIndex) && blocker != null) {
+                    Hint(blocker, colors.bad)
                 }
                 LinearWavyProgressIndicator(
                     progress = { (step + 1f) / steps.size },
@@ -181,8 +206,8 @@ fun GameDesigner(store: GameStore, state: GameState) {
                         }
                     }
                 }
+                if (!landscape) {
                 HorizontalDivider(thickness = 0.5.dp, color = colors.separator)
-                val blocker = state.conceptBlocker(concept, team = team)
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -215,6 +240,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                             }, enabled = blocker == null)
                         }
                     }
+                }
                 }
             }
         }

@@ -231,7 +231,7 @@ When an era reaches its peak, its moment comes round once: a decision with effec
 
 ## Layout: sideways or upright
 
-The Android app plays sideways by default: the isometric office is the stage, the tabs sit on a rail down the left edge, each tab opens as a full-height window beside the rail, and the date, fans, reputation, cash and clock stay in a column on the right so time can run with a window open. Upright is the classic layout: a header with the clock and your numbers, one scrolling page per tab with the office on the home page, and a tab bar at the bottom. The choice is made on the new game screen or from the menu, is remembered between runs, and locks the screen's rotation to match.
+The Android app plays sideways by default. On a phone held sideways nothing floats over anything else: a top bar (menu, company and date, design/tech/bugs while developing, research points, cash and weekly profit, fans or reputation, and the speed, week and play controls), a rail of tabs down the left (Office, Lanes, Research, Team, Company, News), the office in the middle with the game in development as a strip along its bottom and the desk count in its corner, and the open tab as a full-height window on the right; opening a window narrows the office rather than covering it. Office toggles the Today briefing. Tablets and unlocked screens use the floating layout. Upright is the classic layout: a header with the clock and your numbers, one scrolling page per tab with the office on the home page, and a tab bar at the bottom. The choice is made on the new game screen or from the menu, is remembered between runs, and locks the screen's rotation to match.
 
 ## Tutorial and How to play
 
