@@ -68,6 +68,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var notice by mutableStateOf<String?>(null)
 
     var tab by mutableStateOf(Tab.OFFICE)
+
+    /** The Today briefing (lessons, inbox, goals) is open over the office. */
+    var todayOpen by mutableStateOf(false)
     var lane by mutableStateOf<Lane?>(null)
 
     /** Company tab page: 0 overview, 1 money, 2 markets, 3 strategy, 4 combos, 5 goals. */
@@ -146,6 +149,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         newsSeen = 0
         playing = false
         tab = Tab.OFFICE
+        todayOpen = false
         this.lane = lane
         save(s)
     }

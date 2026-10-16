@@ -48,8 +48,6 @@ class WindowsLayoutShotTest {
         val view = (compose.onRoot().fetchSemanticsNode().root as ViewRootForTest).view
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
-        val media = File("/cursor/stores/bc-fea3e25b-5445-431d-9480-6019e889e493/media", "$name.png")
-        media.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         File(DisplayRule.screenshots, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
@@ -162,7 +160,7 @@ class WindowsLayoutTabletShotTest {
         val view = (compose.onRoot().fetchSemanticsNode().root as ViewRootForTest).view
         val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
-        File("/cursor/stores/bc-fea3e25b-5445-431d-9480-6019e889e493/media/android-windows-layout-lane-tablet.png")
+        File(DisplayRule.screenshots, "android-windows-layout-lane-tablet.png")
             .outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 }

@@ -121,13 +121,12 @@ private fun GameScreen(store: GameStore, state: GameState) {
     val colors = gameColors
     val snackbar = remember { SnackbarHostState() }
     var confirmAbandon by remember { mutableStateOf(false) }
-    var todayOpen by remember { mutableStateOf(false) }
     val needsToday = state.tutorial != null ||
         nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true ||
         state.inbox.isNotEmpty()
 
     LaunchedEffect(state.week, needsToday) {
-        if (needsToday && store.tab == Tab.OFFICE) todayOpen = true
+        if (needsToday && store.tab == Tab.OFFICE) store.todayOpen = true
     }
     LaunchedEffect(store.error) {
         store.error?.let {
@@ -154,11 +153,11 @@ private fun GameScreen(store: GameStore, state: GameState) {
     }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { store.pause() }
 
-    val panelOpen = store.tab != Tab.OFFICE || todayOpen
+    val panelOpen = store.tab != Tab.OFFICE || store.todayOpen
     BackHandler(enabled = panelOpen) {
         when {
             store.tab != Tab.OFFICE -> store.tab = Tab.OFFICE
-            todayOpen -> todayOpen = false
+            store.todayOpen -> store.todayOpen = false
         }
     }
 
@@ -188,27 +187,27 @@ private fun GameScreen(store: GameStore, state: GameState) {
         FloatingHud(
             store = store,
             state = state,
-            todayOpen = todayOpen,
-            onToggleToday = { todayOpen = !todayOpen },
+            todayOpen = store.todayOpen,
+            onToggleToday = { store.todayOpen = !store.todayOpen },
             onAbandon = { confirmAbandon = true },
         )
 
-        FloatingPanels(store, state, todayOpen) { todayOpen = false }
+        FloatingPanels(store, state, store.todayOpen) { store.todayOpen = false }
 
         FloatingDock(
             store = store,
-            todayOpen = todayOpen,
+            todayOpen = store.todayOpen,
             onOffice = {
                 if (store.tab == Tab.OFFICE) {
-                    todayOpen = !todayOpen
+                    store.todayOpen = !store.todayOpen
                 } else {
                     store.tab = Tab.OFFICE
                     // Returning to the stage keeps Today closed so the office stays visible.
-                    todayOpen = false
+                    store.todayOpen = false
                 }
             },
             onOpenOther = { tab ->
-                todayOpen = false
+                store.todayOpen = false
                 store.tab = if (store.tab == tab) Tab.OFFICE else tab
             },
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -280,7 +279,8 @@ private fun FloatingPanels(
         val frame = if (phone) {
             Modifier
                 .fillMaxSize()
-                .padding(start = 10.dp, end = 10.dp, top = 118.dp, bottom = 96.dp)
+                // Below the HUD's week and play controls, so time can still be run with a panel open.
+                .padding(start = 10.dp, end = 10.dp, top = 268.dp, bottom = 96.dp)
         } else {
             Modifier
                 .fillMaxSize()

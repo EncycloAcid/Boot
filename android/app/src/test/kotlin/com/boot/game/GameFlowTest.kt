@@ -126,6 +126,7 @@ class GameFlowTest {
      * rather than a touch, since scrolled-to content can sit under the floating tab bar.
      */
     private fun tapInList(text: String) {
+        reveal(text)
         compose.onNodeWithText(text).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
     }
@@ -137,6 +138,27 @@ class GameFlowTest {
 
     private fun tab(label: String) {
         compose.onNode(hasText(label) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)).performClick()
+        compose.waitForIdle()
+    }
+
+    /** Scroll whichever list on screen holds [text] until it shows. Panels float over the office, so there can be several. */
+    private fun reveal(text: String, substring: Boolean = false) {
+        val lists = compose.onAllNodes(hasScrollAction())
+        for (i in 0 until lists.fetchSemanticsNodes().size) {
+            if (runCatching { lists[i].performScrollToNode(hasText(text, substring = substring)) }.isSuccess) {
+                compose.waitForIdle()
+                return
+            }
+        }
+        throw AssertionError("No list shows \"$text\"")
+    }
+
+    /** Open the Today briefing over the office: lessons, the inbox, the studio, goals. */
+    private fun today() {
+        compose.runOnIdle {
+            store.tab = Tab.OFFICE
+            store.todayOpen = true
+        }
         compose.waitForIdle()
     }
 
@@ -164,10 +186,7 @@ class GameFlowTest {
         assertEquals(Difficulty.HARD, store.state!!.difficulty)
         assertNull(store.state!!.tutorial)
 
-        // Today briefing floats over the office; open it if the hire tip didn't already.
-        if (compose.onAllNodes(hasText("Today")).fetchSemanticsNodes().isEmpty()) {
-            tab("Office")
-        }
+        today()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("The studio is free"))
         compose.onNodeWithText("The studio is free").assertExists()
         assertEquals(listOf(Lane.GAMES), store.state!!.lanes)
@@ -175,9 +194,7 @@ class GameFlowTest {
 
         tab("Lanes")
         screen("03-studio")
-        tab("Office")
-        // Returning to Office closes Today — open it again for the develop CTA.
-        tab("Office")
+        today()
         tapInList("Develop a new game")
         compose.waitForIdle()
         overlay("15-designer-concept")
@@ -389,8 +406,8 @@ class GameFlowTest {
         compose.onNodeWithText(g.market.upcoming.first().title).assertExists()
         screen("40-coming-soon")
         studio(StudioPage.GAMES)
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(f.name))
-        compose.waitForIdle()
+        reveal("Your franchises")
+        reveal("Next")
         screen("41-franchises")
 
         compose.onAllNodesWithText("Next").onFirst().performSemanticsAction(SemanticsActions.OnClick)
@@ -473,7 +490,8 @@ class GameFlowTest {
         compose.runOnIdle { store.newGame("Lumen Labs", "Kai", Lane.AI, seed = 5) }
         tab("Lanes")
         screen("10-ai")
-        compose.onAllNodesWithText("Train")[0].performClick()
+        reveal("Train")
+        compose.onAllNodesWithText("Train")[0].performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         assertNotNull(store.state!!.ai!!.training)
     }
@@ -521,7 +539,8 @@ class GameFlowTest {
             store.perform { repeat(60) { if (!isOver && pendingPivot == null) pilot.playWeek(this) } }
             store.perform { while (events.isNotEmpty()) choose(0) }
         }
-        compose.onNodeWithText("Your business", ignoreCase = true).assertExists()
+        today()
+        reveal("Your business")
         screen("13-office-dark")
         tab("Lanes")
         screen("14-hardware-dark")
@@ -642,7 +661,7 @@ class GameFlowTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Team 2 · In development", substring = true, ignoreCase = true))
         compose.waitForIdle()
         screen("55-team-two")
-        tab("Office")
+        today()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Game studio", ignoreCase = true))
         compose.waitForIdle()
         screen("56-office-two-games")
@@ -916,6 +935,7 @@ class GameFlowTest {
         scrollToTop()
         compose.onNodeWithText("Only in the 8-bit console wars", substring = true, ignoreCase = true).assertExists()
         screen("74b-decades-research")
+        reveal("Engine")
         compose.onNodeWithText("Engine").performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Not invented until", substring = true))
@@ -994,6 +1014,7 @@ class GameFlowTest {
         val run = store.state!!.scenario!!
         assertEquals(com.boot.core.Scenario.SURVIVE_THE_BUST, run.scenario)
         assertEquals(2000, store.state!!.startYear)
+        today()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Gold by", substring = true))
         compose.waitForIdle()
         screen("80-scenario-card")
@@ -1059,7 +1080,7 @@ class GameFlowTest {
         assertEquals(TutorialStep.HIRE, store.state!!.lesson()!!.step)
 
         // How to play, from the menu.
-        compose.onNodeWithContentDescription("More", substring = true).performClick()
+        compose.onNodeWithContentDescription("Menu", substring = true).performClick()
         compose.waitForIdle()
         compose.onNodeWithText("How to play").performClick()
         compose.waitForIdle()
