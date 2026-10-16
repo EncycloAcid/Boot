@@ -472,6 +472,28 @@ Each show draws a stage after the real one (`StageLook`, picked by name): the sh
 
 Covers add a backlight halo and ground shadow behind the hero, a film grade (the scene's light screened in, the sky and ground multiplied over), grain, and the studio's initials on the platform band. Logos are lettered by genre and topic: serif gold (fantasy, RPG, adventure, strategy), monospaced neon (sci-fi, cyberpunk, hacking, AI, robots, space, time travel), serif bone-to-blood (horror), candy with a white outline (casual) and chrome italic (everything else). Fill passes set their draw style explicitly; a stroke pass otherwise carried over and left thin faces hollow.
 
+## The feed
+
+`GameState.feed` keeps the last 250 posts. Each post has an author, a handle, a kind of poster, its text, likes, reposts and replies, a tone, and the game it's about. Its id comes from the feed's own counter, so posting never shifts anything else's ids.
+
+**Where posts come from.**
+- Players and fans get generated handles (an adjective and a noun, sometimes a number).
+- Streamers, journalists, insiders and meme accounts come from fixed fictional rosters.
+- Rival developers post as "a developer at" an active studio.
+
+**When people post.** Posts are written at these moments, each with pools that follow how it went:
+- trailers, where the stage report's reaction picks the pool;
+- release dates;
+- delays (memes from the second one);
+- launches, which follow the review band and the number of bugs shipped;
+- awards, won or lost;
+- deals;
+- chart-toppers.
+
+Ambient posts come each week, about announced games (more with hype, and counting down once dated), games out in the last 12 weeks, and rivals' fresh releases.
+
+**Reach and trending.** Likes scale with the kind of poster and the size of the moment, by the founder's fanbase for your own account, and by era (×0.05 before 2006, ×0.4 to 2011). Trending ranks a month's hashtags by likes. All text uses `flavour` dice; the outlets' sign-off lines draw extra wording dice so review outcomes don't move.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

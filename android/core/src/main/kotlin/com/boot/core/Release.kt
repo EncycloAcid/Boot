@@ -112,6 +112,7 @@ fun GameState.setReleaseDate(team: Int, at: Int?) {
     } else {
         addLog("${p.title} launches ${GameClock.label(at)}.", LogTone.NEUTRAL, Lane.GAMES)
         if (announced) {
+            feedOnDate(p, GameClock.label(at))
             publish(
                 NewsDesk.YOU, "IGN", "${p.title} launches ${GameClock.label(at)}", "Wishlist it now. ${Format.count(p.wishlists)} people already have.", LogTone.GOOD, Lane.GAMES,
                 tag = NewsTag.SHOWS, quote = "We can't wait for everyone to play it.", quoteBy = founder.name, cover = p.newsCover(),
@@ -143,6 +144,7 @@ internal fun GameState.resolveSlip(k: ReleaseSlip, choice: Int) {
     val g = games ?: return
     val p = g.projectOf(k.team) ?: return
     p.delays += 1
+    feedOnDelay(p, indefinite = choice != 0)
     if (choice == 0) {
         p.releaseWeek = week + 4
         g.fanTrust = max(0.5, g.fanTrust - 0.02)

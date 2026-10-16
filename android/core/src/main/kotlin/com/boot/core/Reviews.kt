@@ -101,29 +101,29 @@ enum class ReviewAspect(val title: String, internal val areas: List<FocusArea>) 
     internal val strength: Pair<String, List<String>>
         get() = when (this) {
             GAMEPLAY -> "Superb moment-to-moment gameplay" to
-                listOf("the moment-to-moment gameplay is superb", "it just feels great to play", "the core loop is hard to put down")
+                listOf("the moment-to-moment gameplay is superb", "it just feels great to play", "the core loop is hard to put down", "every system clicks into place", "it's the kind of game you think about at work", "the controls are as tight as they come")
             STORY -> "A story and world worth getting lost in" to
-                listOf("its story and world are worth getting lost in", "the writing is genuinely moving", "the world-building is superb")
+                listOf("its story and world are worth getting lost in", "the writing is genuinely moving", "the world-building is superb", "the characters stay with you long after the credits", "the dialogue is sharp and often very funny", "it has one of the best endings in years")
             VISUALS -> "Gorgeous to look at" to
-                listOf("it looks gorgeous", "every frame is a screenshot", "the art direction is stunning")
+                listOf("it looks gorgeous", "every frame is a screenshot", "the art direction is stunning", "the lighting alone is worth the price", "it has a look all its own", "it's a showpiece for the hardware")
             SOUND -> "A fantastic soundtrack" to
-                listOf("the soundtrack is fantastic", "the sound design is superb", "the score will stay with you")
+                listOf("the soundtrack is fantastic", "the sound design is superb", "the score will stay with you", "you'll want to play it with headphones", "the music swells at exactly the right moments")
             POLISH -> "Rock solid at launch" to
-                listOf("it runs like a dream", "it's remarkably polished", "we didn't hit a single bug")
+                listOf("it runs like a dream", "it's remarkably polished", "we didn't hit a single bug", "it's polished to a mirror shine", "loading times are a thing of the past")
         }
 
     internal val weakness: Pair<String, List<String>>
         get() = when (this) {
             GAMEPLAY -> "Gameplay gets repetitive" to
-                listOf("the gameplay gets repetitive fast", "it's a chore to actually play", "the controls fight you")
+                listOf("the gameplay gets repetitive fast", "it's a chore to actually play", "the controls fight you", "the novelty wears off within the hour", "there's not enough to do", "the difficulty is all over the place")
             STORY -> "A thin story and world" to
-                listOf("the story and world feel thin", "the writing falls flat", "there's no reason to care about anyone in it")
+                listOf("the story and world feel thin", "the writing falls flat", "there's no reason to care about anyone in it", "the plot is held together with string", "the ending comes out of nowhere", "the world feels empty")
             VISUALS -> "Dated visuals" to
-                listOf("it looks dated", "the visuals are muddy", "it's ugly in places")
+                listOf("it looks dated", "the visuals are muddy", "it's ugly in places", "it looks a generation behind", "the animation is stiff", "the art has no identity")
             SOUND -> "Forgettable audio" to
-                listOf("the audio is forgettable", "the same few songs loop forever", "the sound design is flat")
+                listOf("the audio is forgettable", "the same few songs loop forever", "the sound design is flat", "you'll play it on mute", "the voice acting is wooden")
             POLISH -> "Buggy at launch" to
-                listOf("bugs and crashes keep getting in the way", "it crashed on us more than once", "it needed another month in the oven")
+                listOf("bugs and crashes keep getting in the way", "it crashed on us more than once", "it needed another month in the oven", "the frame rate tanks when it matters", "we lost two hours to a save bug", "it feels like a beta")
         }
 }
 
@@ -314,13 +314,13 @@ private fun pullQuote(outlet: Outlet, score: Double, rng: SeededRNG): String {
     }
     return rng.pick(
         when {
-            score >= 9.5 -> listOf("A masterpiece", "An instant classic", "Unmissable", "One for the ages")
-            score >= 8.5 -> listOf("Brilliant", "A triumph", "Superb", "Essential playing")
-            score >= 7.5 -> listOf("Great fun", "Easy to recommend", "Well worth your time", "A confident step")
-            score >= 6.5 -> listOf("Good, not great", "Solid", "Worth a look", "Flawed but fun")
-            score >= 5 -> listOf("A mixed bag", "Uneven", "So close", "Middling")
-            score >= 3.5 -> listOf("Disappointing", "A letdown", "Hard to love")
-            else -> listOf("Avoid", "A mess", "Not worth your time")
+            score >= 9.5 -> listOf("A masterpiece", "An instant classic", "Unmissable", "One for the ages", "A landmark", "Perfection, nearly")
+            score >= 8.5 -> listOf("Brilliant", "A triumph", "Superb", "Essential playing", "A stunner", "Top of its class")
+            score >= 7.5 -> listOf("Great fun", "Easy to recommend", "Well worth your time", "A confident step", "A real treat", "Hard to put down")
+            score >= 6.5 -> listOf("Good, not great", "Solid", "Worth a look", "Flawed but fun", "Promising", "A decent time")
+            score >= 5 -> listOf("A mixed bag", "Uneven", "So close", "Middling", "Forgettable", "Rough around the edges")
+            score >= 3.5 -> listOf("Disappointing", "A letdown", "Hard to love", "Missed potential", "Not there yet")
+            else -> listOf("Avoid", "A mess", "Not worth your time", "Broken", "A misfire")
         },
     )
 }
@@ -454,7 +454,7 @@ private fun topicClause(topic: Topic): Pair<String, String>? = when (topic) {
     else -> null
 }
 
-private fun outletEncore(outlet: Outlet, score: Double, rng: SeededRNG): String? {
+private fun outletEncore(outlet: Outlet, score: Double, rng: SeededRNG, words: SeededRNG = rng): String? {
     if (score < 8 && score > 4) return null
     val high = score >= 8
     return when (outlet) {
@@ -462,12 +462,14 @@ private fun outletEncore(outlet: Outlet, score: Double, rng: SeededRNG): String?
         else rng.pick(listOf("Skip it.", "Hard recommend: pass."))
         Outlet.GAMESPOT -> if (high) rng.pick(listOf("A must-play.", "It earns every point."))
         else rng.pick(listOf("Not worth your time.", "The problems stack up."))
-        Outlet.GAME_INFORMER -> if (high) "Fans of the genre should start here." else "Even die-hards will struggle."
-        Outlet.EUROGAMER -> if (high) "It belongs on this year's shortlists." else "There's little reason to return."
-        Outlet.PC_GAMER -> if (high) "PC players are spoiled this week." else "Even on PC, it frustrates more than it rewards."
-        Outlet.EDGE -> if (high) "A rare ten-adjacent triumph." else "Below the standard we expect."
+        Outlet.GAME_INFORMER -> if (high) words.pick(listOf("Fans of the genre should start here.", "A new benchmark for the genre.")) else words.pick(listOf("Even die-hards will struggle.", "Genre fans deserve better."))
+        Outlet.EUROGAMER -> if (high) words.pick(listOf("It belongs on this year's shortlists.", "One to cherish.")) else words.pick(listOf("There's little reason to return.", "A missed opportunity."))
+        Outlet.PC_GAMER -> if (high) words.pick(listOf("PC players are spoiled this week.", "Clear your weekend.")) else words.pick(listOf("Even on PC, it frustrates more than it rewards.", "Wait for the mods to fix it."))
+        Outlet.EDGE -> if (high) words.pick(listOf("A rare ten-adjacent triumph.", "Exemplary.")) else words.pick(listOf("Below the standard we expect.", "A muddle."))
         Outlet.NINTENDO_POWER -> if (high) "A new favourite on Nintendo hardware." else "Not up to Nintendo Power standards."
         Outlet.EGM -> if (high) "Four out of four of us would play again." else "The panel was not kind."
+        Outlet.ZZAP_64 -> if (high) "Get it now!" else "Save your pocket money."
+        Outlet.COMPUTER_GAMING_WORLD -> if (high) "A must for any serious player." else "Serious players will want more."
         else -> if (high) rng.pick(listOf("A standout.", "Highly recommended."))
         else rng.pick(listOf("Give it a miss.", "Not recommended."))
     }
@@ -539,7 +541,7 @@ private fun comment(
     // Drawn and unused: it once picked a sentence shape, and taking the draw keeps every game's dice where they were.
     rng.int(0, 2)
     val core = body.replaceFirstChar { it.uppercase() } + "."
-    val encore = outletEncore(outlet, score, rng)
+    val encore = outletEncore(outlet, score, rng, words)
     // The pull quote and the outlet's seal give the verdict, so the comment gets straight to the point.
     if (outlet == Outlet.EDGE) return if (encore != null && (score >= 8 || score <= 4)) "$core $encore" else core
     return if (encore != null) "$core $encore" else core

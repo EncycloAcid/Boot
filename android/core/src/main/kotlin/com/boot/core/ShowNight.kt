@@ -135,9 +135,9 @@ private val outlets = listOf("IGN", "GameSpot", "Polygon", "Kotaku", "Eurogamer"
 internal fun GameState.quotesFor(title: String, reaction: Double): List<PressQuote> {
     val rng = flavour("$title quotes")
     val lines = when {
-        reaction >= 0.75 -> listOf("$title stole the show.", "The best thing we saw all week.", "A genuine showstopper.", "Day one. No question.")
-        reaction >= 0.45 -> listOf("$title looks solid, if a little safe.", "Promising. We want to play more.", "Not the loudest trailer, but one of the most confident.")
-        else -> listOf("$title failed to make much of an impression.", "We've seen this before.", "Hard to get excited about yet.")
+        reaction >= 0.75 -> listOf("$title stole the show.", "The best thing we saw all week.", "A genuine showstopper.", "Day one. No question.", "$title is the one to watch.", "Nothing else came close.", "The crowd went wild for $title, and so did we.")
+        reaction >= 0.45 -> listOf("$title looks solid, if a little safe.", "Promising. We want to play more.", "Not the loudest trailer, but one of the most confident.", "$title has potential.", "A quietly impressive showing.", "We'll be keeping an eye on $title.")
+        else -> listOf("$title failed to make much of an impression.", "We've seen this before.", "Hard to get excited about yet.", "$title needs more time in the oven.", "A muted reception for $title.", "Not the reveal it needed.")
     }
     val picks = outlets.shuffledBy(rng).take(2)
     val said = lines.shuffledBy(rng)
@@ -148,9 +148,9 @@ internal fun GameState.quotesFor(title: String, reaction: Double): List<PressQuo
 internal fun GameState.chatFor(reaction: Double): List<String> {
     val rng = flavour("chat $reaction")
     val pool = when {
-        reaction >= 0.75 -> listOf("DAY ONE", "take my money", "GOTY already", "they cooked", "wishlisted instantly", "this is the one")
-        reaction >= 0.45 -> listOf("looks decent", "wishlisted", "need to see gameplay", "ok that's cool", "price?", "hope it runs well")
-        else -> listOf("skip", "next", "who asked", "looks dated", "is that it?", "wake me up when it's out")
+        reaction >= 0.75 -> listOf("DAY ONE", "take my money", "GOTY already", "they cooked", "wishlisted instantly", "this is the one", "CLIP IT", "chills", "the music!!!", "shut up and take my wallet", "no way", "best trailer of the night")
+        reaction >= 0.45 -> listOf("looks decent", "wishlisted", "need to see gameplay", "ok that's cool", "price?", "hope it runs well", "interesting", "co-op?", "release date?", "not bad", "on my radar", "pc port?")
+        else -> listOf("skip", "next", "who asked", "looks dated", "is that it?", "wake me up when it's out", "mid", "bathroom break", "zzz", "that's a no from me", "graphics downgrade incoming", "pass")
     }
     return pool.shuffledBy(rng).take(4)
 }

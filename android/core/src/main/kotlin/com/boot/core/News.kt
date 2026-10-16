@@ -83,15 +83,15 @@ private fun GameState.readersOn(desk: NewsDesk, tag: NewsTag, tone: LogTone, lea
     val count = (base * (if (lead) 3.0 else 1.0) * rng.range(0.6, 1.6)).toInt()
     val good = tone != LogTone.BAD
     val pool = when (tag) {
-        NewsTag.REVIEW -> if (good) listOf("Called it. Day one buy.", "Those scores are deserved.", "Finally, a studio that cares.", "Reviewers are being generous, but I'm in.")
-        else listOf("Saw this coming from the trailer.", "Wait for a sale.", "How do you get it this wrong?", "Patch it and maybe.")
+        NewsTag.REVIEW -> if (good) listOf("Called it. Day one buy.", "Those scores are deserved.", "Finally, a studio that cares.", "Reviewers are being generous, but I'm in.", "Already 20 hours in. Agree with every word.", "This is why I trust this outlet.", "Bought it on the strength of this review. No regrets.")
+        else listOf("Saw this coming from the trailer.", "Wait for a sale.", "How do you get it this wrong?", "Patch it and maybe.", "Glad I didn't pre-order.", "The trailers lied, again.", "Refunded after two hours.")
         NewsTag.AWARDS -> if (good) listOf("Deserved. No contest.", "That speech though.", "Told you all it was GOTY.") else listOf("Robbed.", "The jury didn't even play it.")
-        NewsTag.SHOWS -> listOf("Best trailer of the show.", "Need gameplay, not CGI.", "Wishlisted.", "That reveal got me.")
+        NewsTag.SHOWS -> listOf("Best trailer of the show.", "Need gameplay, not CGI.", "Wishlisted.", "That reveal got me.", "Release date or it didn't happen.", "Hoping it comes to my platform.", "Already rewatched it three times.")
         NewsTag.DELAY -> listOf("A delayed game is eventually good.", "Again?", "Rather that than a broken launch.", "Take your time.")
         NewsTag.CHARTS -> listOf("Deserved.", "People will buy anything.", "Number one, and still no sequel announced?")
         NewsTag.RUMOUR -> listOf("Source: trust me.", "Please be real.", "Calling it now: shadow drop.", "Every year they say this.")
         NewsTag.MONEY -> listOf("Buy the dip.", "Overvalued.", "Wish I'd bought in years ago.")
-        NewsTag.NEWS -> if (good) listOf("Big if true.", "Good for them.", "Love to see it.") else listOf("Yikes.", "This won't end well.", "Not a good look.")
+        NewsTag.NEWS -> if (good) listOf("Big if true.", "Good for them.", "Love to see it.", "About time.", "This is the way.") else listOf("Yikes.", "This won't end well.", "Not a good look.", "Called it.", "Oof.")
     }
     return count to rng.pick(pool)
 }

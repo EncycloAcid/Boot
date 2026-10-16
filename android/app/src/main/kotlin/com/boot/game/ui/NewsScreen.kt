@@ -1,5 +1,8 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.draw.clip
+import com.boot.core.trending
+import com.boot.core.feedName
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -55,7 +58,7 @@ import com.boot.core.rankings
 import com.boot.game.GameStore
 
 /** What the paper shows: the front page, one desk, or your own company's log. */
-private enum class Page(val title: String) { FRONT("Front page"), YOU("Your company"), INDUSTRY("Industry"), GAMES("Games"), MARKETS("Markets"), LOG("Log") }
+private enum class Page(val title: String) { FRONT("Front page"), SOCIAL("Social"), YOU("Your company"), INDUSTRY("Industry"), GAMES("Games"), MARKETS("Markets"), LOG("Log") }
 
 @Composable
 fun NewsScreen(store: GameStore, state: GameState) {
@@ -67,7 +70,7 @@ fun NewsScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { Masthead(state) }
         item {
-            ChipRow(Page.entries.filter { it != Page.GAMES || state.games != null }, page, { it.title }, tag = "desks") { page = it }
+            ChipRow(Page.entries.filter { (it != Page.GAMES && it != Page.SOCIAL) || state.games != null }, page, { if (it == Page.SOCIAL) state.feedName else it.title }, tag = "desks") { page = it }
         }
         when (page) {
             Page.FRONT -> {
@@ -76,10 +79,39 @@ fun NewsScreen(store: GameStore, state: GameState) {
                 val eraStory = { s: NewsStory -> s.desk == NewsDesk.INDUSTRY && s.body == state.world.era.blurb }
                 val lead = stories.firstOrNull { it.lead && state.week - it.week <= 26 && !eraStory(it) }
                     ?: stories.firstOrNull { !eraStory(it) }
-                if (lead != null) item { LeadStory(state, lead) }
+                // The lead, with what people are saying beside it when there's room (under it when there isn't).
+                val posts = state.feed.asReversed().filter { it.likes >= 20 || it.kind == com.boot.core.Poster.YOU }.take(3)
+                if (lead != null || posts.isNotEmpty()) item {
+                    androidx.compose.foundation.layout.BoxWithConstraints {
+                        val feed: @Composable (Modifier) -> Unit = { m ->
+                            if (posts.isNotEmpty()) Column(m) { FeedSection("On ${state.feedName}", state, posts, onMore = { page = Page.SOCIAL }) }
+                        }
+                        if (maxWidth >= 640.dp && lead != null && posts.isNotEmpty()) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Column(Modifier.weight(1.3f)) { LeadStory(state, lead) }
+                                feed(Modifier.weight(1f))
+                            }
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                lead?.let { LeadStory(state, it) }
+                                feed(Modifier)
+                            }
+                        }
+                    }
+                }
                 val rest = stories.filter { it.id != lead?.id && !eraStory(it) }.take(12)
                 if (rest.isNotEmpty()) item { StoryList("Latest", state, rest) }
                 if (stories.isEmpty()) item { GroupedSection(null) { CardBlock { Hint("No news yet. The press hasn't noticed you.") } } }
+            }
+            Page.SOCIAL -> {
+                val tags = state.trending()
+                if (tags.isNotEmpty()) item { Trending(tags) }
+                val posts = state.feed.asReversed().take(60)
+                if (posts.isEmpty()) {
+                    item { GroupedSection(null) { CardBlock { Hint("Nobody's talking about you yet. Announce something.") } } }
+                } else {
+                    item { FeedSection(null, state, posts) }
+                }
             }
             Page.YOU -> desk(state, stories.filter { it.desk == NewsDesk.YOU }, "Nobody's written about you yet. Ship something, raise money, make a splash.")
             Page.INDUSTRY -> desk(state, stories.filter { it.desk == NewsDesk.INDUSTRY }, "The era's trends, rivals' launches and the rumours.")
@@ -344,5 +376,88 @@ fun HeadlinesCard(store: GameStore, state: GameState) {
                 Text(s.headline, style = MaterialTheme.typography.titleSmall, fontFamily = FontFamily.Serif, fontWeight = FontWeight.SemiBold)
             }
         }
+    }
+}
+
+
+/** Posts, newest first, the way the feed shows them. */
+@Composable
+private fun FeedSection(title: String?, state: GameState, posts: List<com.boot.core.Post>, onMore: (() -> Unit)? = null) {
+    GroupedSection(title, action = onMore?.let { { PlainButton("See all", it) } }) {
+        posts.forEachIndexed { i, p ->
+            if (i > 0) RowDivider(68.dp)
+            PostRow(state, p)
+        }
+    }
+}
+
+/** One post: who, when, what they said, and how far it went. */
+@Composable
+private fun PostRow(state: GameState, p: com.boot.core.Post) {
+    val colors = gameColors
+    val tint = when (p.kind) {
+        com.boot.core.Poster.YOU -> MaterialTheme.colorScheme.primary
+        com.boot.core.Poster.STREAMER -> Color(0xFF9146FF)
+        com.boot.core.Poster.PRESS -> colors.milestone
+        com.boot.core.Poster.INSIDER -> colors.warn
+        com.boot.core.Poster.RIVAL -> colors.lane(Lane.GAMES)
+        com.boot.core.Poster.MEME -> Color(0xFFE5484D)
+        else -> Color(0xFF6B7A90).let { base -> listOf(base, Color(0xFF2E9E8F), Color(0xFFC7772E), Color(0xFF5B7BFF), Color(0xFFB04BFF))[Math.floorMod(p.handle.hashCode(), 5)] }
+    }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (p.kind == com.boot.core.Poster.YOU) {
+            CompanyLogo(state.companyName, size = 40.dp)
+        } else {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(tint), contentAlignment = Alignment.Center) {
+                Text(p.author.split(' ').filter { it.isNotEmpty() }.take(2).joinToString("") { it.take(1) }.uppercase().ifEmpty { "?" }, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(p.author, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (p.kind in setOf(com.boot.core.Poster.YOU, com.boot.core.Poster.STREAMER, com.boot.core.Poster.PRESS)) {
+                    Spacer(Modifier.width(4.dp))
+                    Box(Modifier.size(14.dp).clip(CircleShape).background(tint), contentAlignment = Alignment.Center) {
+                        Text("✓", style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+            Text(
+                "${p.handle} · ${ago(state, p.week)}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            Text(p.text, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "${Format.count(p.replies.toDouble())} replies · ${Format.count(p.reposts.toDouble())} reposts · ${Format.count(p.likes.toDouble())} likes",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** The tags everyone's using this month. */
+@Composable
+private fun Trending(tags: List<String>) {
+    GroupedSection("Trending") {
+        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            tags.forEachIndexed { i, t ->
+                Column(
+                    Modifier.clip(RoundedCornerShape(12.dp)).background(gameColors.fill).padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Text("${i + 1} · Trending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(t, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+    }
+}
+
+private fun ago(state: GameState, week: Int): String {
+    val n = state.week - week
+    return when {
+        n <= 0 -> "this week"
+        n == 1 -> "1w"
+        n < 52 -> "${n}w"
+        else -> "${n / 52}y"
     }
 }

@@ -214,6 +214,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var pendingCategories: List<Category> = emptyList()
         internal set
 
+    /** What people are posting about you, newest last. */
+    var feed: List<Post> = emptyList()
+        internal set
+
     /** The staff stories under way, and the last few that ended. */
     var stories: List<StaffStory> = emptyList()
         internal set

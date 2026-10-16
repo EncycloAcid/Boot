@@ -239,19 +239,23 @@ fun GameState.launchGame(team: Int = 1) {
     g.releases.firstOrNull()?.let { r ->
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)
         val outlet = rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon"))
-        val headline = when {
-            r.score >= 9 -> "${r.title} review: a masterpiece"
-            r.score >= 8 -> "${r.title} review: $companyName has a hit"
-            r.score >= 6.5 -> "${r.title} review: solid, if not spectacular"
-            r.score >= 5 -> "${r.title} review: a mixed bag"
-            else -> "${r.title} review: avoid"
-        }
+        val words = flavour("${r.title} headline")
+        val headline = "${r.title} review: " + words.pick(
+            when {
+                r.score >= 9 -> listOf("a masterpiece", "an instant classic", "$companyName's finest hour", "believe the hype", "one for the ages")
+                r.score >= 8 -> listOf("$companyName has a hit", "a must-play", "easy to love", "the real deal", "a triumph for $companyName")
+                r.score >= 6.5 -> listOf("solid, if not spectacular", "good fun with rough edges", "worth a look", "promising, not perfect", "a decent night in")
+                r.score >= 5 -> listOf("a mixed bag", "so close, and yet", "uneven but interesting", "wait for a sale", "it never quite clicks")
+                else -> listOf("avoid", "a misfire", "not ready", "a costly mistake", "back to the drawing board")
+            },
+        )
         // A roundup of the critics, and the line everyone will quote.
         val roundup = r.reviews.take(4).joinToString(" · ") { "${it.outlet.title} ${it.formatted}${if (it.outlet.scale.isNotEmpty()) it.outlet.scale else ""}" }
         val body = "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game averages $sc/10. $roundup." +
             (if (r.userScore > 0) " Players: ${String.format(java.util.Locale.US, "%.1f", r.userScore)}." else "")
         val quoted = r.reviews.maxByOrNull { if (r.score >= 6.5) it.exact else -it.exact }
         val tone = if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL
+        feedOnLaunch(r)
         for (desk in listOf(NewsDesk.GAMES, NewsDesk.YOU)) {
             publish(
                 desk, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9,

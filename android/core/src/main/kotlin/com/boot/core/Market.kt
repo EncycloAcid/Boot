@@ -133,6 +133,7 @@ internal fun GameState.marketWeek() {
             if (rank == 1 && !wasTop) {
                 stats.chartToppers += 1
                 addLog("${r.title} is the best-selling game in the world this week.", LogTone.MILESTONE, Lane.GAMES)
+                feedOnChart(r.title)
                 publish(
                     NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
                     "${r.title} tops the charts",
@@ -178,14 +179,16 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
         val sc = String.format(java.util.Locale.US, "%.1f", score)
         publish(
             NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
-            when {
-                game.mega -> "$title is here, and everyone's playing it"
-                score >= 9 -> "$title review: an instant classic"
-                score >= 8 -> "$title review: $studio does it again"
-                score >= 7 -> "$title review: critics warm to $studio's latest"
-                score >= 5.5 -> "$title review: mixed notices for $studio"
-                else -> "$studio's $title is a costly misfire"
-            },
+            flavour("$title rival headline").pick(
+                when {
+                    game.mega -> listOf("$title is here, and everyone's playing it", "$title arrives to record crowds", "The world stops for $title")
+                    score >= 9 -> listOf("$title review: an instant classic", "$title review: $studio at its very best", "$title is the year's one to beat")
+                    score >= 8 -> listOf("$title review: $studio does it again", "$title review: a must-play", "Critics love $studio's $title")
+                    score >= 7 -> listOf("$title review: critics warm to $studio's latest", "$title review: good, not great", "$studio's $title lands well")
+                    score >= 5.5 -> listOf("$title review: mixed notices for $studio", "$title review: not quite there", "Critics split on $studio's $title")
+                    else -> listOf("$studio's $title is a costly misfire", "$title review: avoid", "$title stumbles out of the gate")
+                },
+            ),
             "${Format.a(size.lower).replaceFirstChar { it.uppercase() }} ${topic.title.lowercase()} ${genre.lower} game by $studio. $sc/10.",
             lane = Lane.GAMES, lead = game.mega, tag = NewsTag.REVIEW, cover = game.newsCover(),
             quote = flavour(title).pick(
@@ -300,6 +303,7 @@ internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>
             tag = NewsTag.AWARDS, cover = NewsCover(winner.title, winner.topic, winner.genre),
         )
     }
+    feedOnAward(winner.title, "Game of the Year", show, nominees.any { it.mine }, winner.mine)
     val size = { e: ChartEntry -> g.release(e.releaseId ?: -1)?.concept?.size ?: g.market.games.firstOrNull { it.title == e.title }?.size ?: GameSize.LARGE }
     return Category(
         "Game of the Year",

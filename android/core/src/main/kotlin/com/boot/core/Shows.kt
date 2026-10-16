@@ -146,6 +146,7 @@ internal fun GameState.awardPrize(prize: Prize, show: String): Category? {
             tag = NewsTag.AWARDS, cover = NewsCover(winner.title, winner.topic, winner.genre, winner.size),
         )
     }
+    feedOnAward(winner.title, prize.title, show, nominees.any { it.mine }, winner.mine)
     return Category(prize.title, nominees.map { it.nominee }, nominees.indexOf(winner))
 }
 
@@ -186,6 +187,7 @@ internal fun GameState.reveal(p: GameProject, stage: String, base: Double, appea
 /** Counts a trailer, with the wishlists it brings, and makes the first one the game's announcement in the news. */
 internal fun GameState.revealed(p: GameProject, stage: String, hype: Double) {
     p.wishlists += wishlistsFrom(hype)
+    feedOnTrailer(p, stage, reactionFor(appealOf(if (games?.project2 === p) 2 else 1)))
     if (p.reveals == 0) {
         stats.announcements += 1
         val said = quotesFor(p.title, reactionFor(appealOf(if (games?.project2 === p) 2 else 1))).first()

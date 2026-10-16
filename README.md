@@ -6,6 +6,19 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.15 (Android):** a social feed, and far more variety in everything the game writes.
+
+*The feed.* The News tab has a new page: Chirp (the message boards, in runs set before 2006). Players, fans, streamers, journalists, insiders, rival developers, meme accounts and your own account post about every moment: your announcements (how a trailer landed changes what they say), release dates, launch day (following the reviews), delays (the second one gets the memes), awards won and lost, buyouts and chart-toppers. In between they keep asking about your next game and talking about what's out. Posts show replies, reposts and likes, and a Trending row shows the month's hashtags. The front page puts the latest posts beside the lead story.
+
+*More variety.* Many more lines everywhere:
+- critics' clauses for every part of a game;
+- pull quotes, and more outlets' sign-off lines;
+- launch-review and rival-release headlines;
+- stage-report press quotes and chat;
+- readers' comments.
+
+Like all the game's writing, it draws its own dice, so none of it changes what happens.
+
 **New in 3.14 (Android):** buying a company is a deal now, the stages look like the real ones, and the box art looks like real boxes.
 
 *Buying a studio.* Tap any studio to look it over: its recent games and series, and how its owners feel about selling (open to offers, needs convincing, or not for sale). Due diligence costs a fee and tells you what's under the hood: a gem in development, key people planning to walk, a worn-out team, or a studio past its best. Whatever's there comes with the studio either way. Then make an offer: the premium is yours to pick, and the odds of a yes move with it. A listed company can pay half in shares. The owners answer in two weeks: yes, a counter-offer, or no (and no more calls for six months). A big studio can draw a rival bidder into a bidding war, and the biggest deals go before the regulators. Once it's yours, decide how to run it: leave them be (all the profit), fold them in (their three best people join your team), or cut costs (more profit now, worse games and bad press later). You can change that once a year from the studio's page.

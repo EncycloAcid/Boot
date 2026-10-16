@@ -851,6 +851,7 @@ class GameFlowTest {
         compose.onNodeWithText("The Daily Byte").assertExists()
         screen("67-news-front")
         assertEquals(store.state!!.news.last().id, store.newsSeen)
+        compose.onNodeWithTag("desks").performScrollToNode(hasText("Industry"))
         compose.onNodeWithText("Industry").performClick()
         compose.waitForIdle()
         screen("68-news-industry")

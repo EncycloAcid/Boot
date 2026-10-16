@@ -229,6 +229,7 @@ private fun GameState.complete(s: Studio, price: Double, inShares: Boolean) {
         LogTone.GOOD, Lane.GAMES, lead = !s.indie, tag = NewsTag.MONEY,
         quote = "We've admired ${s.name} for years. Nothing changes for their players.", quoteBy = founder.name,
     )
+    feedOnDeal(s.name)
     enqueue(IntegrationChoice(s.name))
 }
 
