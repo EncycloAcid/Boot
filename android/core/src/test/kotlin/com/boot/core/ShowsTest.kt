@@ -15,10 +15,13 @@ class ShowsTest {
     }
 
     private fun GameState.pick(label: String) {
+        // Read any stage report first.
+        while (events.firstOrNull()?.kind is ShowResults) choose(0)
         val e = events.first()
         val i = e.choices.indexOfFirst { it.label == label }
         assertTrue(i >= 0, "no \"$label\" in ${e.choices.map { it.label }}")
         choose(i)
+        while (events.firstOrNull()?.kind is ShowResults) choose(0)
     }
 
     /** Moves the calendar to a week of the year without simulating the weeks between. */

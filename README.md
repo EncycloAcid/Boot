@@ -6,6 +6,20 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.13 (Android):** show night, and a better press.
+
+*Award nights.* When a game of yours is nominated, you watch the ceremony on a lit stage: each category's nominees with their covers, then the envelope. Win, and you choose what to say at the microphone: thank the team (morale and experience), tease what's next (hype and wishlists for the game you're making) or thank the fans (more of them). It covers D.I.C.E., GDC, BAFTA, the Golden Joysticks and the year-end show with Game of the Year.
+
+*Every stage reports back.* A console maker's showcase, a world premiere and your own stream now report like the trade show does: how many watched, the hype, wishlists and fans it brought, a crowd meter from cold to on fire, two outlets' verdicts and what the chat said.
+
+*New moments around the shows.* A big streamer asks for a preview build (a buggy one can crash live). Fans can be rallied for the prizes the public votes on. And a founder with a good name gets asked to present an award.
+
+*Decisions have faces.* A decision about someone shows their portrait, level and morale; one about a show shows the stage.
+
+*Better reviews.* Every critic has a pull quote in their own voice (Edge in one word, Zzap!64 shouting), and the best games earn the outlet's own seal: Editor's Choice, Eurogamer Essential, a Zzap!64 Sizzler or Gold Medal. Comments name the game now and then and back a point up with a second one. Players leave reviews too: a thumb, the hours they played and what they said.
+
+*Better news.* Stories have a kicker (Review, Awards, Shows, Charts, Rumour, Delay), the game's cover, a quote from someone who matters, and from the late nineties on, the readers' comments. A launch makes the news with the critics' roundup and the line everyone quotes. There's a monthly charts story, and rumours the week before each show.
+
 **New in 3.12 (Android):** the founder grows, and your team has stories.
 
 *You level up.* Running the company earns experience: a little every week, more for every launch, most for a hit. Each level, up to 10, brings a skill point for a small skill tree in three branches, learned in order:

@@ -246,10 +246,18 @@ fun GameState.launchGame(team: Int = 1) {
             r.score >= 5 -> "${r.title} review: a mixed bag"
             else -> "${r.title} review: avoid"
         }
-        val body = "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game. $sc/10."
+        // A roundup of the critics, and the line everyone will quote.
+        val roundup = r.reviews.take(4).joinToString(" · ") { "${it.outlet.title} ${it.formatted}${if (it.outlet.scale.isNotEmpty()) it.outlet.scale else ""}" }
+        val body = "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game averages $sc/10. $roundup." +
+            (if (r.userScore > 0) " Players: ${String.format(java.util.Locale.US, "%.1f", r.userScore)}." else "")
+        val quoted = r.reviews.maxByOrNull { if (r.score >= 6.5) it.exact else -it.exact }
         val tone = if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL
-        publish(NewsDesk.GAMES, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9)
-        publish(NewsDesk.YOU, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9)
+        for (desk in listOf(NewsDesk.GAMES, NewsDesk.YOU)) {
+            publish(
+                desk, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9,
+                tag = NewsTag.REVIEW, quote = quoted?.comment, quoteBy = quoted?.outlet?.title, cover = r.newsCover(),
+            )
+        }
     }
     cash += report.revenue - report.expenses
     recordRevenue(report.revenue, Lane.GAMES)

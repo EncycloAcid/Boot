@@ -104,6 +104,7 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
                     }
                 }
                 ProsCons(r.pros, r.cons)
+                PlayerReviews(r.playerQuotes)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TonalButton("Game report", {
                         store.openRelease = r.id
@@ -206,6 +207,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     }
                     AspectBreakdown(r.aspects)
                     ProsCons(r.pros, r.cons)
+                    PlayerReviews(r.playerQuotes)
                     if (r.breakdown.isNotEmpty()) ScoreBreakdown(r)
                     GroupedSection(
                         "What you learned",

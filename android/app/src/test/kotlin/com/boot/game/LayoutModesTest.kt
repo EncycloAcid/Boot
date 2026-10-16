@@ -192,9 +192,9 @@ class LayoutModesTest {
         assertEquals("Moss Knight", report.game)
         compose.onNodeWithText("Visitors").assertExistsCompat()
         save("99e-sideways-show-report", top = true)
-        compose.onNodeWithText("Back to work").performClick()
+        compose.onNodeWithText("Back to work").performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
-        assertTrue(!store.state!!.needsDecision)
+        assertTrue(store.state!!.events.map { it.title }.toString(), !store.state!!.needsDecision)
     }
 
     @Test
@@ -215,6 +215,10 @@ class LayoutModesTest {
         compose.onNodeWithText("Show a trailer").performClick()
         compose.waitForIdle()
         assertEquals(1, store.state!!.games!!.project!!.reveals)
+        // The stage report comes first.
+        save("99f2-sideways-stage-report", top = true)
+        compose.onNodeWithText("Back to work").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
         assertTrue(store.state!!.news.any { it.headline == "Pixel Forge announces Moss Knight" })
         compose.runOnIdle { store.perform { com.boot.core.Sandbox.enqueue(this, com.boot.core.PremiereSlot("The Game Awards", 250_000.0, 1)) } }
         save("99g-sideways-premiere", top = true)

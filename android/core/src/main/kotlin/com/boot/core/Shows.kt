@@ -64,17 +64,21 @@ fun yearEndShow(year: Int): String = when {
 }
 
 /** A game in the running for an award. */
-internal data class Contender(val title: String, val studio: String, val score: Double, val sales: Double, val size: GameSize, val releaseId: Int?) {
+internal data class Contender(
+    val title: String, val studio: String, val score: Double, val sales: Double, val size: GameSize, val releaseId: Int?,
+    val topic: Topic = Topic.CITY, val genre: Genre = Genre.ACTION,
+) {
     val mine: Boolean get() = releaseId != null
+    val nominee: Nominee get() = Nominee(title, studio, score, mine, topic, genre, size)
 }
 
 /** Games out in the last year, yours and everyone else's, worth a jury's time. */
 internal fun GameState.contenders(): List<Contender> {
     val g = games ?: return emptyList()
     val rivals = g.market.games.filter { week - it.week in 0 until 52 && it.score >= 7.0 }
-        .map { Contender(it.title, it.studio, it.score, it.lifetime + it.weeklySales, it.size, null) }
+        .map { Contender(it.title, it.studio, it.score, it.lifetime + it.weeklySales, it.size, null, it.topic, it.genre) }
     val mine = g.releases.filter { week - it.week in 0 until 52 && it.publisher == null && it.score >= 7.0 }
-        .map { Contender(it.title, companyName, it.score, it.lifetimeSales, it.concept.size, it.id) }
+        .map { Contender(it.title, companyName, it.score, it.lifetimeSales, it.concept.size, it.id, it.concept.topic, it.concept.genre) }
     return rivals + mine
 }
 
@@ -97,17 +101,22 @@ internal fun Prize.rate(c: Contender): Double = when (vote) {
 }
 
 internal fun GameState.holdAwardShow(show: AwardShow) {
-    for (prize in show.prizes) awardPrize(prize, show.title)
+    val categories = show.prizes.mapNotNull { awardPrize(it, show.title) }
+    if (voteDrive == show.title) voteDrive = null
+    watchCeremony(show.title, categories)
 }
 
 /** One prize: five nominees, and a jury that usually, but not always, picks the best. */
-internal fun GameState.awardPrize(prize: Prize, show: String) {
-    val g = games ?: return
+internal fun GameState.awardPrize(prize: Prize, show: String): Category? {
+    val g = games ?: return null
     val field = contenders().filter { !prize.indie || it.size == GameSize.SMALL || it.size == GameSize.MEDIUM }
-    if (field.isEmpty()) return
-    val nominees = field.sortedByDescending { prize.rate(it) }.take(5)
-    val top = prize.rate(nominees.first())
-    val weights = nominees.map { exp((prize.rate(it) - top) * 3) }
+    if (field.isEmpty()) return null
+    // Rallied fans count in a public vote.
+    val rallied = prize.vote == Vote.FANS && voteDrive == show
+    fun rate(c: Contender) = prize.rate(c) + if (rallied && c.mine) 0.6 else 0.0
+    val nominees = field.sortedByDescending { rate(it) }.take(5)
+    val top = rate(nominees.first())
+    val weights = nominees.map { exp((rate(it) - top) * 3) }
     var roll = rng.range(0.0, weights.sum())
     var winner = nominees.first()
     for ((i, w) in weights.withIndex()) {
@@ -124,12 +133,20 @@ internal fun GameState.awardPrize(prize: Prize, show: String) {
         reputation.adjust(2.0)
         g.release(winner.releaseId ?: -1)?.let { it.weeklySales *= 1.25 }
         addLog("${winner.title} won ${prize.title} at $show.", LogTone.MILESTONE, Lane.GAMES)
-        publish(NewsDesk.YOU, "IGN", "${winner.title} wins ${prize.title}", "$companyName picks up a prize at $show.", LogTone.GOOD, Lane.GAMES)
+        publish(
+            NewsDesk.YOU, "IGN", "${winner.title} wins ${prize.title}", "$companyName picks up a prize at $show, beating ${nominees.size - 1} other nominees.", LogTone.GOOD, Lane.GAMES,
+            tag = NewsTag.AWARDS, quote = flavour(prize.title).pick(listOf("This one's for the team.", "We made it for the players. This is theirs too.", "We didn't expect this. Thank you.")),
+            quoteBy = founder.name, cover = NewsCover(winner.title, winner.topic, winner.genre, winner.size),
+        )
     } else {
         val mine = nominees.filter { it.mine }
         if (mine.isNotEmpty()) addLog("${mine.joinToString(" and ") { it.title }} was nominated for ${prize.title} at $show, but ${winner.title} took it.", LogTone.NEUTRAL, Lane.GAMES)
-        publish(NewsDesk.GAMES, "IGN", "${winner.title} wins ${prize.title}", "${winner.studio} takes the prize at $show.", lane = Lane.GAMES)
+        publish(
+            NewsDesk.GAMES, "IGN", "${winner.title} wins ${prize.title}", "${winner.studio} takes the prize at $show.", lane = Lane.GAMES,
+            tag = NewsTag.AWARDS, cover = NewsCover(winner.title, winner.topic, winner.genre, winner.size),
+        )
     }
+    return Category(prize.title, nominees.map { it.nominee }, nominees.indexOf(winner))
 }
 
 // Reveals
@@ -171,7 +188,12 @@ internal fun GameState.revealed(p: GameProject, stage: String, hype: Double) {
     p.wishlists += wishlistsFrom(hype)
     if (p.reveals == 0) {
         stats.announcements += 1
-        publish(NewsDesk.YOU, "IGN", "$companyName announces ${p.title}", "The first trailer premiered at $stage.", LogTone.GOOD, Lane.GAMES)
+        val said = quotesFor(p.title, reactionFor(appealOf(if (games?.project2 === p) 2 else 1))).first()
+        publish(
+            NewsDesk.YOU, "IGN", "$companyName announces ${p.title}",
+            "The first trailer premiered at $stage: ${Format.a(p.concept.size.lower)} ${p.concept.topic.title.lowercase()} ${p.concept.genreLower} game.",
+            LogTone.GOOD, Lane.GAMES, tag = NewsTag.SHOWS, quote = said.line, quoteBy = said.outlet, cover = p.newsCover(),
+        )
     }
     p.reveals += 1
 }
@@ -195,7 +217,10 @@ internal fun GameState.shadowDrop(team: Int, stage: String) {
     p.hype = min(100.0, p.hype + 20.0)
     stats.shadowDrops += 1
     addLog("${p.title} shadow-dropped during $stage. It's out now.", LogTone.GOOD, Lane.GAMES)
-    publish(NewsDesk.YOU, "IGN", "${p.title} is out now", "$companyName shadow-dropped it live during $stage.", LogTone.GOOD, Lane.GAMES, lead = true)
+    publish(
+        NewsDesk.YOU, "IGN", "${p.title} is out now", "$companyName shadow-dropped it live during $stage.", LogTone.GOOD, Lane.GAMES, lead = true,
+        tag = NewsTag.SHOWS, quote = "Nobody saw that coming.", quoteBy = "The chat", cover = p.newsCover(),
+    )
     launchGame(team)
 }
 
@@ -368,8 +393,7 @@ internal fun GameState.resolveShows(kind: EventKind, choice: Int) {
             when (labels.getOrNull(choice)) {
                 "Show a trailer" -> {
                     spend(trailerCost(p), Lane.GAMES)
-                    val hype = reveal(p, stage, 14.0, appealOf(kind.team))
-                    addLog("${p.title} was in $stage. Hype +${hype.toInt()}.", LogTone.GOOD, Lane.GAMES)
+                    onStage(p, stage, appealOf(kind.team), 2_000_000.0) { reveal(p, stage, 14.0, appealOf(kind.team)) }
                 }
                 "Take their marketing deal" -> {
                     cash += marketingDeal(p)
@@ -377,8 +401,10 @@ internal fun GameState.resolveShows(kind: EventKind, choice: Int) {
                     p.exclusiveWith = kind.maker
                     g.fanTrust = max(0.5, g.fanTrust - 0.03)
                     stats.platformDeals += 1
-                    val hype = reveal(p, stage, 14.0, appealOf(kind.team), extra = 1.35)
-                    addLog("${kind.maker} paid ${money(marketingDeal(p))} to feature ${p.title} in $stage. Hype +${hype.toInt()}; fans on other platforms are muttering.", LogTone.GOOD, Lane.GAMES)
+                    addLog("${kind.maker} paid ${money(marketingDeal(p))} to feature ${p.title} in $stage; fans on other platforms are muttering.", LogTone.GOOD, Lane.GAMES)
+                    onStage(p, stage, appealOf(kind.team), 2_500_000.0, listOf("${kind.maker} gave ${p.title} extra stage time.")) {
+                        reveal(p, stage, 14.0, appealOf(kind.team), extra = 1.35)
+                    }
                 }
                 "Shadow-drop it" -> shadowDrop(kind.team, stage)
                 else -> addLog("You kept ${p.title} out of $stage.", LogTone.NEUTRAL, Lane.GAMES)
@@ -391,8 +417,9 @@ internal fun GameState.resolveShows(kind: EventKind, choice: Int) {
                 "World premiere" -> {
                     spend(kind.fee + trailerCost(p), Lane.GAMES)
                     stats.premieres += 1
-                    val hype = reveal(p, kind.show, 22.0, appealOf(kind.team))
-                    addLog("${p.title} premiered at ${kind.show}. Hype +${hype.toInt()}.", LogTone.GOOD, Lane.GAMES)
+                    onStage(p, kind.show, appealOf(kind.team), 6_000_000.0, listOf("${p.title} had a world premiere.")) {
+                        reveal(p, kind.show, 22.0, appealOf(kind.team))
+                    }
                 }
                 "Shadow-drop it" -> {
                     spend(kind.fee, Lane.GAMES)
@@ -414,13 +441,31 @@ internal fun GameState.resolveShows(kind: EventKind, choice: Int) {
                 for (t in teams) g.projectOf(t)?.let { reveal(it, stage, 15.0, appealOf(t), extra = 0.5) }
                 addLog("$stage left viewers wanting more. Not much to show this time.", LogTone.BAD, Lane.GAMES)
             } else {
-                for (t in teams) g.projectOf(t)?.let { reveal(it, stage, 30.0, appealOf(t)) }
-                g.fans += g.fans * 0.05 * (0.5 + appeal)
+                val best = teams.maxByOrNull { appealOf(it) }!!
+                for (t in teams) g.projectOf(t)?.let { p ->
+                    if (t == best) {
+                        onStage(p, stage, appeal, g.fans * 4, listOf("Your own stream: ${teams.size} game${if (teams.size == 1) "" else "s"} on show.")) {
+                            reveal(p, stage, 30.0, appealOf(t)).also { g.fans += g.fans * 0.05 * (0.5 + appeal) }
+                        }
+                    } else {
+                        reveal(p, stage, 30.0, appealOf(t))
+                    }
+                }
                 addLog("$stage went down well. Hype is up and new fans signed up.", LogTone.GOOD, Lane.GAMES)
             }
         }
         else -> Unit
     }
+}
+
+/** Runs a trailer on [stage] and reports back with what it did. */
+private fun GameState.onStage(p: GameProject, stage: String, appeal: Double, audience: Double, notes: List<String> = emptyList(), show: () -> Double) {
+    val g = games ?: return
+    val lists = p.wishlists
+    val fans = g.fans
+    val hype = show()
+    addLog("${p.title} was in $stage. Hype +${hype.toInt()}.", LogTone.GOOD, Lane.GAMES)
+    stageReport(stage, p, appeal, hype, p.wishlists - lists, g.fans - fans, audience, notes)
 }
 
 // The calendar

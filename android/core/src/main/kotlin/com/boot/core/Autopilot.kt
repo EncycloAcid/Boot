@@ -164,6 +164,10 @@ class Autopilot(
             is ReleaseSlip -> 0
             // Take the kind option: pair them, credit them, send them home, make it official, give the lead or the break.
             is StoryBeat -> 0
+            is AwardNight -> 0
+            is StreamerPreview -> if ((s.games?.projectOf(k.team)?.bugs ?: 0.0) < 5) 0 else 1
+            is FanCampaign -> if (s.cash > s.fanCampaignCost() * 20) 0 else 1
+            is PresenterInvite -> 0
             OwnShowcase -> if (s.cash > s.ownShowcaseCost() * 5 && s.appealOf(1) >= 0.5) 0 else 1
         }
         attempt { s.choose(choice) }

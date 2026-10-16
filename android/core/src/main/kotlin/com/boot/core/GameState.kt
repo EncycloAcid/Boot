@@ -203,6 +203,17 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var followUps: List<FollowUp> = emptyList()
         internal set
 
+    /** Dice for words alone (quotes, comments, rumours), so writing never changes what happens. */
+    internal fun flavour(salt: String): SeededRNG = SeededRNG.fromSeed(seed * 31 + week * 1_000_003L + salt.hashCode() + news.size * 7_919L)
+
+    /** The show whose public vote you've rallied fans for, if any. */
+    var voteDrive: String? = null
+        internal set
+
+    /** Categories already decided at the year-end show, waiting for Game of the Year to be read out. */
+    var pendingCategories: List<Category> = emptyList()
+        internal set
+
     /** The staff stories under way, and the last few that ended. */
     var stories: List<StaffStory> = emptyList()
         internal set

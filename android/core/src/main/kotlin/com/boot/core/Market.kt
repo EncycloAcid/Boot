@@ -137,7 +137,7 @@ internal fun GameState.marketWeek() {
                     NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
                     "${r.title} tops the charts",
                     "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} is the week's best-seller.",
-                    LogTone.GOOD, Lane.GAMES, lead = true,
+                    LogTone.GOOD, Lane.GAMES, lead = true, tag = NewsTag.CHARTS, cover = r.newsCover(),
                 )
             }
         }
@@ -186,7 +186,17 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
                 else -> "$studio's $title is a costly misfire"
             },
             "${Format.a(size.lower).replaceFirstChar { it.uppercase() }} ${topic.title.lowercase()} ${genre.lower} game by $studio. $sc/10.",
-            lane = Lane.GAMES, lead = game.mega,
+            lane = Lane.GAMES, lead = game.mega, tag = NewsTag.REVIEW, cover = game.newsCover(),
+            quote = flavour(title).pick(
+                when {
+                    score >= 9 -> listOf("An instant classic.", "Unmissable.", "One for the ages.")
+                    score >= 8 -> listOf("Brilliant.", "A triumph.", "Easy to recommend.")
+                    score >= 7 -> listOf("Well worth your time.", "Solid and confident.", "Flawed, but fun.")
+                    score >= 5.5 -> listOf("A mixed bag.", "Uneven.", "So close.")
+                    else -> listOf("A mess.", "Avoid.", "Hard to love.")
+                },
+            ),
+            quoteBy = techOutlet(Lane.GAMES, flavour("$title by")),
         )
     }
     if (score >= 8 || size >= GameSize.LARGE || g.owns(studio)) {
@@ -234,19 +244,26 @@ fun GameState.awardNominees(): List<ChartEntry> {
     return (rivals + mine).sortedByDescending { it.score }.take(4)
 }
 
-private fun GameState.holdAwards(g: GamesStudio) {
-    awardPrize(YEAR_END_INDIE, yearEndShow(calendarYear))
+internal fun GameState.holdAwards(g: GamesStudio) {
+    val show = yearEndShow(calendarYear)
+    val indie = listOfNotNull(awardPrize(YEAR_END_INDIE, show))
     val nominees = awardNominees()
-    if (nominees.isEmpty()) return
+    if (nominees.isEmpty()) {
+        watchCeremony(show, indie)
+        return
+    }
     if (nominees.any { it.mine }) {
+        // Game of the Year is read out after you decide whether to go.
+        pendingCategories = indie
         enqueue(EventKind.GameAwards)
     } else {
-        announceWinner(g, nominees, attended = false)
+        val goty = announceWinner(g, nominees, attended = false)
+        watchCeremony(show, indie + goty)
     }
 }
 
 /** Better games are likelier to win; showing up helps a little. */
-internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>, attended: Boolean) {
+internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>, attended: Boolean): Category {
     val weights = nominees.map { exp((it.score - 8) * 3) * (if (it.mine && attended) 1.25 else 1.0) }
     var roll = rng.range(0.0, weights.sum())
     var winner = nominees.first()
@@ -269,9 +286,23 @@ internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>
         g.release(winner.releaseId ?: -1)?.let { r -> r.weeklySales = max(r.weeklySales * 1.6, r.lifetimeSales / r.netShare * 0.05) }
         g.project?.let { it.hype = minOf(100.0, it.hype + 15) }
         addLog("${winner.title} wins Game of the Year at $show! Fans flock to you and sales jump.", LogTone.MILESTONE, Lane.GAMES)
-        publish(NewsDesk.YOU, "IGN", "${winner.title} is Game of the Year", "$companyName takes the industry's biggest prize for $yearName at $show.", LogTone.GOOD, Lane.GAMES, lead = true)
+        publish(
+            NewsDesk.YOU, "IGN", "${winner.title} is Game of the Year", "$companyName takes the industry's biggest prize for $yearName at $show, ahead of ${nominees.filter { it !== winner }.joinToString(", ") { it.title }}.",
+            LogTone.GOOD, Lane.GAMES, lead = true, tag = NewsTag.AWARDS,
+            quote = flavour("goty").pick(listOf("I don't know what to say. Thank you to everyone who played it.", "To the team: we did it.", "Not long ago this was a dream in a cramped apartment.")),
+            quoteBy = founder.name, cover = NewsCover(winner.title, winner.topic, winner.genre),
+        )
     } else {
         addLog("Game of the Year for $yearName goes to ${winner.title} by ${winner.studio}, at $show.", LogTone.NEUTRAL, Lane.GAMES)
-        publish(NewsDesk.GAMES, "IGN", "${winner.title} is Game of the Year", "${winner.studio} takes the prize for $yearName at $show.", lane = Lane.GAMES, lead = true)
+        publish(
+            NewsDesk.GAMES, "IGN", "${winner.title} is Game of the Year", "${winner.studio} takes the prize for $yearName at $show.", lane = Lane.GAMES, lead = true,
+            tag = NewsTag.AWARDS, cover = NewsCover(winner.title, winner.topic, winner.genre),
+        )
     }
+    val size = { e: ChartEntry -> g.release(e.releaseId ?: -1)?.concept?.size ?: g.market.games.firstOrNull { it.title == e.title }?.size ?: GameSize.LARGE }
+    return Category(
+        "Game of the Year",
+        nominees.map { Nominee(it.title, it.studio, it.score, it.mine, it.topic, it.genre, size(it)) },
+        nominees.indexOf(winner),
+    )
 }

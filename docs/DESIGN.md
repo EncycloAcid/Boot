@@ -402,6 +402,33 @@ About 3% of weeks (from week 12, with at most two stories under way, and one per
 
 Random burnout skips people already in a story. The autopilot takes the first choice of each chapter.
 
+## Show night
+
+**Award nights.** Each prize at an award show is decided as before (five nominees, a jury weighted towards its taste), and now returns its category: the nominees, with covers, and the winner. If any category has a game of yours in it, those categories become an award night (`AwardNight`), shown as a ceremony that opens one envelope every 1.6 seconds (or all at once with Skip). With a win, the speech is a choice: thank the team (+0.08 morale and 5 XP each), tease what's next (+8 hype, ×Showrunner/Pitch, with its wishlists, or the game's announcement if it hasn't had one) or thank the fans (+3% fans, +0.02 fan trust). At the year-end show the indie prize is held until Game of the Year is read out, after the fly-out decision.
+
+**Stage reports.** Every trailer on someone else's stage or your own stream ends in a `ShowResults` report with the audience (2M for a console maker's show, 2.5M with its marketing deal, 6M for a world premiere, four times your fans for your own showcase, a twelfth of that before 2005), hype, wishlists and fans gained, the crowd's reaction (appeal ÷ 1.3, between 0.05 and 1: cold, warm, hot, on fire), two press quotes and four chat lines. The trade show's report has all of these too.
+
+**Show moments.**
+- A streamer preview: for an announced game at least half done with 15+ hype, about one week in 125. Sending a build adds 8 hype and 15% more wishlists. With 5 or more bugs it can crash live instead: a chance of bugs ÷ 20, at most 70%. That costs 5 hype and a point of reputation.
+- A fan-vote campaign: the week before a show with a public vote (GDC's Audience Award and the Golden Joysticks), when one of your games is among the top eight. It costs $40k in today's money and adds 0.6 to your game's rating in that vote.
+- An invitation to present at the year-end show: from 60 reputation, half the time. It gives +2 reputation, +1% fans and +4 hype for an announced game.
+
+**Event art.** A decision about people (poaching, raises, burnout, clashes, equity, side projects, staff stories) shows their portraits; one about a show draws the stage with its name.
+
+## Reviews and the press
+
+Each review has a pull quote and, at the top, the outlet's own seal:
+- Editor's Choice from IGN, GameSpot and PC Gamer, and Game Informer's Editors' Choice, at 9 or more;
+- Eurogamer's Essential at 9 or more and Recommended at 8 or more;
+- a Zzap!64 Sizzler at 9 and a Gold Medal at 9.5;
+- Edge's 10 at 9.5;
+- EGM's Gold Award at 9;
+- Game of the Month from the others at 9.5.
+
+Comments sometimes name the game and add a second point. Three player reviews follow the players' score (three thumbs up from 8.5, two from 7, one from 5). All this wording, along with news quotes, comments and rumours, draws on its own dice, seeded from the game and the week. Writing never changes what happens.
+
+News stories carry a tag, an optional quote and speaker, a game cover, and from 1997 a comment count (more for your own stories as your fanbase grows) with a top comment. Launch stories carry the critics' roundup and the most quotable review. Awards, announcements, delays, shadow drops, chart-toppers and rival releases carry quotes and covers. A charts story runs every four weeks, and a rumour runs the week before each show on your calendar.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

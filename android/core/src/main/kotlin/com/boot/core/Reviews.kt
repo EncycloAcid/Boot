@@ -80,6 +80,10 @@ data class Review(
     val comment: String,
     /** The outlet's score before rounding into its own format. */
     val exact: Double = score.toDouble(),
+    /** The few words on the cover: the pull quote. */
+    val headline: String = "",
+    /** The outlet's own seal for its best-reviewed games, if this earned it. */
+    val badge: String? = null,
 ) {
     val formatted: String get() = outlet.format(exact)
 }
@@ -158,7 +162,12 @@ internal data class ReviewResult(
     val aspects: Map<ReviewAspect, Double>,
     val pros: List<String>,
     val cons: List<String>,
+    val players: List<PlayerQuote> = emptyList(),
 )
+
+/** A player's review: thumbs up or down, how long they played, and what they said. */
+@Serializable
+data class PlayerQuote(val recommended: Boolean, val hours: Int, val text: String)
 
 private data class Point(val weight: Double, val line: String, val clauses: List<String>) {
     constructor(weight: Double, line: String, clause: String) : this(weight, line, listOf(clause))
@@ -257,9 +266,14 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     // Each outlet's verdict.
     val outlets = Outlet.entries.filter { i.year in it.years && (it != Outlet.PC_GAMER || Platform.PC in c.platforms) }
         .ifEmpty { listOf(Outlet.CREATIVE_COMPUTING) }
+    // Words alone (pull quotes, players' lines) come from their own dice, so they never change how a game does.
+    val words = SeededRNG.fromSeed(i.title.hashCode().toLong() * 31 + (i.score * 1_000).toLong() + i.year)
     val reviews = outlets.mapIndexed { n, outlet ->
         val exact = (i.score + bias(outlet, i, aspects) + rng.normal(sd = 0.4)).coerceIn(1.0, 10.0)
-        Review(outlet, exact.roundToInt().coerceIn(1, 10), comment(outlet, n, exact, sortedPros, sortedCons, rng), exact)
+        Review(
+            outlet, exact.roundToInt().coerceIn(1, 10), comment(outlet, n, exact, sortedPros, sortedCons, rng, i.title, words), exact,
+            headline = pullQuote(outlet, exact, words), badge = badge(outlet, exact),
+        )
     }
     val average = reviews.map { it.exact }.average()
 
@@ -277,7 +291,103 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     return ReviewResult(
         reviews, average, userScore, aspects,
         sortedPros.take(3).map { it.line }, sortedCons.take(3).map { it.line },
+        playerQuotes(i, userScore, aspects, words),
     )
+}
+
+/** The few words an outlet puts on the cover, in its own voice. */
+private fun pullQuote(outlet: Outlet, score: Double, rng: SeededRNG): String {
+    // Edge keeps it to a word.
+    if (outlet == Outlet.EDGE) return when {
+        score >= 9 -> "Exceptional"
+        score >= 8 -> "Accomplished"
+        score >= 6.5 -> "Competent"
+        score >= 5 -> "Flawed"
+        else -> "Misjudged"
+    }
+    // Zzap!64 shouted.
+    if (outlet == Outlet.ZZAP_64) return when {
+        score >= 9 -> "Absolutely brilliant!"
+        score >= 7.5 -> "Great stuff!"
+        score >= 5 -> "Worth a look"
+        else -> "Rubbish!"
+    }
+    return rng.pick(
+        when {
+            score >= 9.5 -> listOf("A masterpiece", "An instant classic", "Unmissable", "One for the ages")
+            score >= 8.5 -> listOf("Brilliant", "A triumph", "Superb", "Essential playing")
+            score >= 7.5 -> listOf("Great fun", "Easy to recommend", "Well worth your time", "A confident step")
+            score >= 6.5 -> listOf("Good, not great", "Solid", "Worth a look", "Flawed but fun")
+            score >= 5 -> listOf("A mixed bag", "Uneven", "So close", "Middling")
+            score >= 3.5 -> listOf("Disappointing", "A letdown", "Hard to love")
+            else -> listOf("Avoid", "A mess", "Not worth your time")
+        },
+    )
+}
+
+/** The outlet's own seal for the games it rates highest. */
+private fun badge(outlet: Outlet, score: Double): String? = when (outlet) {
+    Outlet.IGN, Outlet.GAMESPOT, Outlet.PC_GAMER -> if (score >= 9) "Editor's Choice" else null
+    Outlet.EUROGAMER -> when {
+        score >= 9 -> "Essential"
+        score >= 8 -> "Recommended"
+        else -> null
+    }
+    Outlet.ZZAP_64 -> when {
+        score >= 9.5 -> "Gold Medal"
+        score >= 9 -> "Sizzler"
+        else -> null
+    }
+    Outlet.GAME_INFORMER -> if (score >= 9) "Editors' Choice" else null
+    Outlet.EDGE -> if (score >= 9.5) "Edge 10" else null
+    Outlet.EGM -> if (score >= 9) "Gold Award" else null
+    else -> if (score >= 9.5) "Game of the Month" else null
+}
+
+/** Three players' reviews, from the people who loved it to the people who didn't. */
+private fun playerQuotes(i: ReviewInputs, user: Double, aspects: Map<ReviewAspect, Double>, rng: SeededRNG): List<PlayerQuote> {
+    val title = i.title
+    val buggy = i.bugPenalty < 0.92
+    val ups = mutableListOf<String>()
+    val downs = mutableListOf<String>()
+    if (aspects.getValue(ReviewAspect.GAMEPLAY) >= 7.5) ups += listOf("Lost my whole weekend to this.", "\"One more go\" at 3am. Again.", "The controls just feel right.")
+    if (aspects.getValue(ReviewAspect.STORY) >= 7.5) ups += listOf("Didn't expect to cry at a ${i.concept.genre.lower} game.", "I need to talk to someone about that ending.")
+    if (aspects.getValue(ReviewAspect.VISUALS) >= 7.5) ups += "My screenshot folder is 4GB now."
+    if (aspects.getValue(ReviewAspect.SOUND) >= 7.5) ups += "Soundtrack is on repeat while I work."
+    if (i.price == PriceTier.BUDGET) ups += "At this price? Just buy it."
+    if (i.worthySequel) ups += "Better than the first one in every way."
+    ups += listOf("Exactly what I wanted from $title.", "Solid. Would play again.", "Fun with friends.")
+    if (buggy) downs += listOf("Crashed three times in the first hour.", "Wait for the patch.", "Fell through the floor. Twice.")
+    if (aspects.getValue(ReviewAspect.GAMEPLAY) < 6) downs += listOf("Got bored after an hour.", "It's a chore to play.")
+    if (aspects.getValue(ReviewAspect.STORY) < 5.5) downs += "Skipped every cutscene. Nothing lost."
+    if (i.hype > 60 && user < 7) downs += "The trailers lied."
+    if (i.price == PriceTier.PREMIUM && user < 7.5) downs += "Not worth full price. Wait for a sale."
+    if (i.repeated) downs += "Haven't I played this already?"
+    downs += listOf("Not for me.", "Refunded.", "Wanted to like it more.")
+    // How many of the three like it follows the players' score.
+    val positive = when {
+        user >= 8.5 -> 3
+        user >= 7 -> 2
+        user >= 5 -> 1
+        else -> 0
+    }
+    val good = ups.distinct().shuffledWith(rng)
+    val bad = downs.distinct().shuffledWith(rng)
+    return (0 until 3).map { n ->
+        val up = n < positive
+        PlayerQuote(up, if (up) rng.int(12, 140) else rng.int(1, 9), if (up) good[n % good.size] else bad[(n - positive) % bad.size])
+    }
+}
+
+private fun <T> List<T>.shuffledWith(rng: SeededRNG): List<T> {
+    val out = toMutableList()
+    for (k in out.indices.reversed()) {
+        val j = rng.int(0, k)
+        val t = out[k]
+        out[k] = out[j]
+        out[j] = t
+    }
+    return out
 }
 
 /** Each outlet's taste. */
@@ -363,15 +473,41 @@ private fun outletEncore(outlet: Outlet, score: Double, rng: SeededRNG): String?
     }
 }
 
-private fun comment(outlet: Outlet, n: Int, score: Double, pros: List<Point>, cons: List<Point>, rng: SeededRNG): String {
+private fun comment(
+    outlet: Outlet, n: Int, score: Double, pros: List<Point>, cons: List<Point>, rng: SeededRNG, title: String = "",
+    words: SeededRNG = SeededRNG(0),
+): String {
     // Outlets fan out over the top points so they don't all say the same thing.
     fun pick(points: List<Point>): String? {
         val top = points.take(3)
         if (top.isEmpty()) return null
         return rng.pick(top[(n + rng.int(0, 1)) % top.size].clauses)
     }
+    fun second(points: List<Point>): String? = points.take(3).getOrNull((n + 1) % 3)?.let { words.pick(it.clauses) }
     val pro = pick(pros)
     val con = pick(cons)
+    val pro2 = second(pros)?.takeIf { it != pro }
+    val con2 = second(cons)?.takeIf { it != con }
+    // Now and then a critic names the game, and backs a point up with a second.
+    if (title.isNotEmpty() && words.chance(0.35)) {
+        val named = when {
+            score >= 8 && pro != null -> words.pick(
+                listOfNotNull(
+                    "$title nails it: $pro",
+                    pro2?.let { "$pro, and $it. $title is the real thing" },
+                    "We kept coming back to $title, because $pro",
+                ),
+            )
+            score >= 6.5 && pro != null && con != null -> "$title gets a lot right ($pro), but $con"
+            score < 5 && con != null -> words.pick(listOfNotNull("$title stumbles early: $con", con2?.let { "$con, and $it" }))
+            else -> null
+        }
+        if (named != null) {
+            val encore = outletEncore(outlet, score, words)
+            val core = named.replaceFirstChar { it.uppercase() } + "."
+            return if (encore != null) "$core $encore" else core
+        }
+    }
     val body = when {
         score >= 8 -> pro ?: rng.pick(listOf("it's a joy from start to finish", "it's easy to lose whole evenings to it", "it's the real deal"))
         score >= 6.5 -> when {
@@ -400,38 +536,11 @@ private fun comment(outlet: Outlet, n: Int, score: Double, pros: List<Point>, co
             else -> rng.pick(listOf("it never comes together", "there's little here to recommend", "it's hard to see who this is for"))
         }
     }
-    val shape = rng.int(0, 2)
-    val lead = when (outlet) {
-        Outlet.EDGE -> {
-            val core = body.replaceFirstChar { it.uppercase() } + "."
-            val encore = outletEncore(outlet, score, rng)
-            return if (encore != null && (score >= 8 || score <= 4)) "$core $encore" else core
-        }
-        Outlet.EUROGAMER -> when (Outlet.stars(score)) {
-            5 -> "Essential."
-            4 -> "Recommended."
-            1, 2 -> "Avoid."
-            else -> ""
-        }
-        else -> when {
-            // Vary sentence shapes — not always "Lead: clause."
-            shape == 1 && score >= 8 -> ""
-            shape == 2 && score <= 4 -> ""
-            score >= 9.5 -> "A masterpiece:"
-            score >= 8.5 -> "Brilliant:"
-            score >= 7.5 -> "Great fun:"
-            score >= 6.5 -> "Good, not great:"
-            score >= 5 -> "A mixed bag:"
-            score >= 3.5 -> "Disappointing:"
-            else -> "Avoid:"
-        }
-    }
-    val sentence = body.replaceFirstChar { it.uppercase() } + "."
+    // Drawn and unused: it once picked a sentence shape, and taking the draw keeps every game's dice where they were.
+    rng.int(0, 2)
+    val core = body.replaceFirstChar { it.uppercase() } + "."
     val encore = outletEncore(outlet, score, rng)
-    val main = when {
-        lead.isEmpty() -> sentence
-        lead.endsWith(":") -> "$lead $body."
-        else -> "$lead $sentence"
-    }
-    return if (encore != null) "$main $encore" else main
+    // The pull quote and the outlet's seal give the verdict, so the comment gets straight to the point.
+    if (outlet == Outlet.EDGE) return if (encore != null && (score >= 8 || score <= 4)) "$core $encore" else core
+    return if (encore != null) "$core $encore" else core
 }

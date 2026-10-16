@@ -73,6 +73,9 @@ class Stats {
     /** Booths taken at the year's big games show, and Best in Show awards won there. */
     var tradeShows = 0
     var bestInShow = 0
+    var ceremonies = 0
+    var previews = 0
+    var presented = 0
 
     /** The rest of the show season: prizes besides Game of the Year, and what you put on stage. */
     var honours = 0

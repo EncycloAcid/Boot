@@ -186,6 +186,8 @@ data class GameRelease(
     var league: League? = null,
     /** Wishlists on launch day. */
     val wishlists: Double = 0.0,
+    /** What players said in their reviews. */
+    val playerQuotes: List<PlayerQuote> = emptyList(),
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -885,7 +887,7 @@ class GamesStudio {
             netShare = netShare, design = p.design, tech = p.tech, bugs = p.bugs, hype = p.hype, devCost = p.spent,
             report = lines, publisher = p.deal?.publisher,
             userScore = verdict.userScore, userScoreSettled = false,
-            aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons,
+            aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons, playerQuotes = verdict.players,
             live = if (c.live) LiveService(livePlayers(gross / c.unitPrice), week) else null,
             breakdown = listOf(ScorePart("Baseline", SCORE_BASELINE, "Where every game starts.")) + parts,
             wishlists = p.wishlists,

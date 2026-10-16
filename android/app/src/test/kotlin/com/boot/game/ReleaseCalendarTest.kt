@@ -75,6 +75,8 @@ class ReleaseCalendarTest {
         // The trailer is the announcement, and the first wishlists.
         compose.onNodeWithText("Show a trailer").performClick()
         compose.waitForIdle()
+        compose.onNodeWithText("Back to work").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
         val p = store.state!!.games!!.project!!
         assertTrue(p.wishlists > 0)
         compose.runOnIdle { store.todayOpen = false }

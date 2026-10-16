@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.boot.core.AwardNight
 import com.boot.core.Combo
 import com.boot.core.EndingKind
 import com.boot.core.EventChoice
@@ -98,6 +99,11 @@ private val fullScreen = DialogProperties(dismissOnBackPress = false, dismissOnC
 @Composable
 fun EventSheet(store: GameStore, state: GameState) {
     val e = state.events.first()
+    // An award night gets the whole stage.
+    if (e.kind is AwardNight) {
+        key(e.id) { AwardNightSheet(store, state, e) }
+        return
+    }
     // A fresh sheet per event, so each one rises on its own.
     key(e.id) {
         val sheet = rememberBottomSheetState(
@@ -123,16 +129,19 @@ fun EventSheet(store: GameStore, state: GameState) {
                         .navigationBarsPadding(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    e.lane?.let { lane ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            LaneBadge(lane, 32.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Hint(lane.businessName)
+                    // The people it's about, or the stage it's on; otherwise which business it's for.
+                    if (!EventArt(state, e.kind)) {
+                        e.lane?.let { lane ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                LaneBadge(lane, 32.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Hint(lane.businessName)
+                            }
                         }
                     }
                     Text(e.title, style = if (compact) MaterialTheme.typography.headlineSmallEmphasized else MaterialTheme.typography.headlineMediumEmphasized)
                     Text(e.body, style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge)
-                    (e.kind as? ShowResults)?.report?.let { ShowFigures(it) }
+                    (e.kind as? ShowResults)?.report?.let { StageFigures(it) }
                     Spacer(Modifier.size(4.dp))
                     if (compact) {
                         // Sideways, the choices sit side by side as cards so they can be weighed at a
@@ -158,25 +167,9 @@ fun EventSheet(store: GameStore, state: GameState) {
     }
 }
 
-/** The trade show in numbers. */
-@Composable
-private fun ShowFigures(r: ShowReport) {
-    val colors = gameColors
-    GroupedSection(null) {
-        Row(
-            Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            StatTile("Visitors", Format.count(r.visitors.toDouble()), Modifier.weight(1f), r.booth.title.lowercase())
-            if (r.game != null) StatTile("Hype", "+${r.hype.roundToInt()}", Modifier.weight(1f), r.game, colors.milestone)
-            StatTile("New fans", Format.count(r.fans), Modifier.weight(1f), if (r.bestInShow) "Best in Show" else null, colors.good)
-        }
-    }
-}
-
 /** A choice as a card: the label over what it means, with room to read both. */
 @Composable
-private fun ChoiceCard(choice: EventChoice, primary: Boolean, modifier: Modifier, onClick: () -> Unit) {
+internal fun ChoiceCard(choice: EventChoice, primary: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val colors = gameColors
     val sound = LocalSound.current

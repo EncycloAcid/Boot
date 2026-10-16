@@ -1391,7 +1391,7 @@ class RatingTest {
         val next = ship(0, t2, g2, 80.0, 60.0, s = s)
         // The old system scored anything under your best like a flop; now a decent game is a decent score.
         assertTrue(next.score >= 5.5, "hit ${hit.score} next ${next.score}")
-        assertTrue(next.score > hit.score - 2.5)
+        assertTrue(next.score > hit.score - 2.5, "hit ${hit.score} next ${next.score}")
     }
 }
 

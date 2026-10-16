@@ -111,7 +111,12 @@ fun GameState.setReleaseDate(team: Int, at: Int?) {
         addLog("${p.title} has no release date for now.", LogTone.NEUTRAL, Lane.GAMES)
     } else {
         addLog("${p.title} launches ${GameClock.label(at)}.", LogTone.NEUTRAL, Lane.GAMES)
-        if (announced) publish(NewsDesk.YOU, "IGN", "${p.title} launches ${GameClock.label(at)}", "Wishlist it now.", LogTone.GOOD, Lane.GAMES)
+        if (announced) {
+            publish(
+                NewsDesk.YOU, "IGN", "${p.title} launches ${GameClock.label(at)}", "Wishlist it now. ${Format.count(p.wishlists)} people already have.", LogTone.GOOD, Lane.GAMES,
+                tag = NewsTag.SHOWS, quote = "We can't wait for everyone to play it.", quoteBy = founder.name, cover = p.newsCover(),
+            )
+        }
     }
 }
 
@@ -142,11 +147,17 @@ internal fun GameState.resolveSlip(k: ReleaseSlip, choice: Int) {
         p.releaseWeek = week + 4
         g.fanTrust = max(0.5, g.fanTrust - 0.02)
         p.wishlists *= 0.92
-        publish(NewsDesk.YOU, "IGN", "${p.title} delayed to ${GameClock.label(week + 4)}", "$companyName needs a few more weeks.", LogTone.BAD, Lane.GAMES)
+        publish(
+            NewsDesk.YOU, "IGN", "${p.title} delayed to ${GameClock.label(week + 4)}", "$companyName needs a few more weeks.", LogTone.BAD, Lane.GAMES,
+            tag = NewsTag.DELAY, quote = "We'd rather it was right than on time. Thank you for your patience.", quoteBy = founder.name, cover = p.newsCover(),
+        )
     } else {
         p.releaseWeek = null
         g.fanTrust = max(0.5, g.fanTrust - 0.03)
         p.wishlists *= 0.88
-        publish(NewsDesk.YOU, "IGN", "${p.title} delayed indefinitely", "$companyName says it will be out when it's ready.", LogTone.BAD, Lane.GAMES)
+        publish(
+            NewsDesk.YOU, "IGN", "${p.title} delayed indefinitely", "$companyName says it will be out when it's ready.", LogTone.BAD, Lane.GAMES,
+            tag = NewsTag.DELAY, quote = "It'll be out when it's ready, and not a day before.", quoteBy = founder.name, cover = p.newsCover(),
+        )
     }
 }

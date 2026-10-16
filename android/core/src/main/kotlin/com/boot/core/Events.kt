@@ -387,6 +387,8 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is PlatformInvite, is PremiereSlot, OwnShowcase -> describeShows(kind)
     is ReleaseSlip -> describeSlip(kind)
     is StoryBeat -> describeStory(kind)
+    is AwardNight -> describeAwardNight(kind)
+    is StreamerPreview, is FanCampaign, is PresenterInvite -> describeShowMoment(kind)
     is ShowResults -> describeShowResults(kind.report)
     EventKind.EcosystemAntitrust -> Description(
         "Antitrust regulators circle your ecosystem",
@@ -732,13 +734,17 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
                 spend(awardsTrip, Lane.GAMES)
                 for (e in staff) e.morale = min(1.0, e.morale + 0.1)
             }
-            announceWinner(g, awardNominees(), attended)
+            val goty = announceWinner(g, awardNominees(), attended)
+            watchCeremony(yearEndShow(calendarYear), pendingCategories + goty)
+            pendingCategories = emptyList()
         }
 
         EventKind.Convention -> holdShow(boothsOpen().getOrNull(choice))
         is PlatformInvite, is PremiereSlot, OwnShowcase -> resolveShows(kind, choice)
         is ReleaseSlip -> resolveSlip(kind, choice)
         is StoryBeat -> resolveStory(kind, choice)
+        is AwardNight -> resolveAwardNight(kind, choice)
+        is StreamerPreview, is FanCampaign, is PresenterInvite -> resolveShowMoment(kind, choice)
 
         // Just a report to read.
         is ShowResults -> Unit

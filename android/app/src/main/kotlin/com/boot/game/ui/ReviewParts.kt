@@ -1,5 +1,7 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.text.font.FontFamily
+import com.boot.core.PlayerQuote
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -145,12 +147,41 @@ fun ReviewRow(review: Review, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         CompanyLogo(review.outlet.title, size = 32.dp)
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(review.outlet.title, style = MaterialTheme.typography.titleSmall)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(review.outlet.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                review.badge?.let { Pill(it, gameColors.milestone) }
+            }
+            // The pull quote, then the verdict.
+            if (review.headline.isNotEmpty()) {
+                Text(review.headline, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold)
+            }
             Text("“${review.comment}”", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(12.dp))
         OutletScore(review)
+    }
+}
+
+/** What players said: a thumb, the hours they put in, and a line. */
+@Composable
+fun PlayerReviews(quotes: List<PlayerQuote>) {
+    if (quotes.isEmpty()) return
+    val colors = gameColors
+    GroupedSection("Players") {
+        quotes.forEachIndexed { i, q ->
+            if (i > 0) RowDivider()
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (q.recommended) "Recommended" else "Not recommended", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                        color = if (q.recommended) colors.good else colors.bad,
+                    )
+                    Text(" · ${q.hours} hrs on record", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text("“${q.text}”", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }
 

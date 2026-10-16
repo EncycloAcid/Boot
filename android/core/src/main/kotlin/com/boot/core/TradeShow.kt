@@ -60,15 +60,25 @@ fun GameState.nextShow(): UpcomingShow? {
 @Serializable
 data class ShowReport(
     val show: String,
-    val booth: Booth,
+    /** Your booth at the trade show; null for a trailer on someone's stage or your own stream. */
+    val booth: Booth?,
     /** The game on the booth, or null for the back catalogue. */
     val game: String?,
     val visitors: Int,
     val hype: Double,
     val fans: Double,
     val bestInShow: Boolean,
-    /** What the press said, a line or two. */
+    /** What happened, a line or two. */
     val press: List<String>,
+    val wishlists: Double = 0.0,
+    /** How the crowd took it, 0 to 1. */
+    val reaction: Double = 0.5,
+    /** What the outlets said. */
+    val quotes: List<PressQuote> = emptyList(),
+    /** What the chat said. */
+    val chat: List<String> = emptyList(),
+    /** Watched on a stream rather than visited in a hall. */
+    val stream: Boolean = false,
 )
 
 @Serializable @SerialName("showResults")
@@ -159,10 +169,12 @@ internal fun GameState.holdShow(booth: Booth?) {
     if (booth == Booth.KEYNOTE) stats.keynotes += 1
     // A trip to the show is good for the team.
     if (booth != Booth.SMALL) for (e in staff) e.morale = min(1.0, e.morale + 0.05)
+    val listsBefore = p?.wishlists ?: 0.0
     p?.let {
         it.hype = min(100.0, it.hype + hype)
         revealed(it, name, hype)
     }
+    val reaction = if (crashed) 0.1 else reactionFor(appeal)
     g.fans += fans
     stats.tradeShows += 1
     addLog(
@@ -171,7 +183,15 @@ internal fun GameState.holdShow(booth: Booth?) {
             " ${Format.count(fans)} new fans.",
         if (crashed) LogTone.BAD else LogTone.GOOD, Lane.GAMES,
     )
-    enqueue(ShowResults(ShowReport(name, booth, p?.title, visitors, hype, fans, best, press)))
+    enqueue(
+        ShowResults(
+            ShowReport(
+                name, booth, p?.title, visitors, hype, fans, best, press,
+                wishlists = (p?.wishlists ?: 0.0) - listsBefore, reaction = reaction,
+                quotes = p?.let { quotesFor(it.title, reaction) }.orEmpty(), chat = if (p != null) chatFor(reaction) else emptyList(),
+            ),
+        ),
+    )
 }
 
 internal fun GameState.describeShow(): Description {
@@ -198,7 +218,16 @@ internal fun GameState.describeShow(): Description {
 /** The report after the show. The numbers themselves are shown as figures beside it. */
 internal fun describeShowResults(r: ShowReport): Description {
     return Description(
-        if (r.bestInShow) "Best in Show at ${r.show}!" else "${r.show}: ${Format.count(r.visitors.toDouble())} visitors",
+        when {
+            r.bestInShow -> "Best in Show at ${r.show}!"
+            r.booth == null && r.game != null -> when {
+                r.reaction >= 0.8 -> "${r.game} stole the show at ${r.show}"
+                r.reaction >= 0.55 -> "${r.game} went down a storm at ${r.show}"
+                r.reaction >= 0.3 -> "A warm welcome for ${r.game} at ${r.show}"
+                else -> "A cold reception for ${r.game} at ${r.show}"
+            }
+            else -> "${r.show}: ${Format.count(r.visitors.toDouble())} visitors"
+        },
         r.press.joinToString(" "),
         listOf(choice("Back to work", if (r.game != null) "Hype fades a little each week, so ship while it's hot." else "Next year, bring something new.")),
         Lane.GAMES,

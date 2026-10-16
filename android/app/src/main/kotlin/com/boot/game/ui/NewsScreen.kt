@@ -1,5 +1,14 @@
 package com.boot.game.ui
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.ui.text.font.FontStyle
+import com.boot.core.Platform
+import com.boot.core.GameConcept
+import com.boot.core.NewsCover
+import com.boot.core.NewsTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -161,10 +170,16 @@ private fun Masthead(state: GameState) {
 @Composable
 private fun LeadStory(state: GameState, s: NewsStory) {
     GroupedSection(null) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Byline(state, s)
-            Text(s.headline, style = MaterialTheme.typography.headlineSmall, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold)
-            if (s.body.isNotEmpty()) Text(s.body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Kicker(s)
+                Byline(state, s)
+                Text(s.headline, style = MaterialTheme.typography.headlineSmall, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold)
+                if (s.body.isNotEmpty()) Text(s.body, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                QuoteBlock(s)
+                Comments(s)
+            }
+            s.cover?.let { StoryCover(it, 104.dp) }
         }
     }
 }
@@ -174,14 +189,78 @@ private fun StoryList(title: String, state: GameState, stories: List<NewsStory>,
     GroupedSection(title, footer = footer) {
         stories.forEachIndexed { i, s ->
             if (i > 0) RowDivider(16.dp)
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Byline(state, s)
-                Text(s.headline, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Serif, fontWeight = FontWeight.SemiBold)
-                // A run of stories with the same standfirst (the era's, say) only needs it once.
-                if (s.body.isNotEmpty() && s.body != stories.getOrNull(i - 1)?.body) Text(s.body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Kicker(s)
+                    Byline(state, s)
+                    Text(s.headline, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Serif, fontWeight = FontWeight.SemiBold)
+                    // A run of stories with the same standfirst (the era's, say) only needs it once.
+                    if (s.body.isNotEmpty() && s.body != stories.getOrNull(i - 1)?.body) Text(s.body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    QuoteBlock(s, small = true)
+                    Comments(s)
+                }
+                s.cover?.let { StoryCover(it, 52.dp) }
             }
         }
     }
+}
+
+/** What kind of story it is, above the byline: a review, the awards, a rumour. Plain news has none. */
+@Composable
+private fun Kicker(s: NewsStory) {
+    if (s.tag == NewsTag.NEWS) return
+    val colors = gameColors
+    val tint = when (s.tag) {
+        NewsTag.REVIEW -> MaterialTheme.colorScheme.primary
+        NewsTag.AWARDS -> colors.milestone
+        NewsTag.SHOWS -> colors.warn
+        NewsTag.CHARTS, NewsTag.MONEY -> colors.good
+        NewsTag.DELAY -> colors.bad
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Text(
+        s.tag.title.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = tint,
+        fontStyle = if (s.tag == NewsTag.RUMOUR) FontStyle.Italic else FontStyle.Normal,
+    )
+}
+
+/** Someone's words, set off with a rule. */
+@Composable
+private fun QuoteBlock(s: NewsStory, small: Boolean = false) {
+    val quote = s.quote ?: return
+    Row(Modifier.padding(top = 4.dp).height(IntrinsicSize.Min)) {
+        Box(Modifier.width(3.dp).fillMaxHeight().background(gameColors.milestone, RoundedCornerShape(2.dp)))
+        Column(Modifier.padding(start = 10.dp)) {
+            Text(
+                "“$quote”", style = if (small) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium,
+                fontFamily = FontFamily.Serif, fontStyle = FontStyle.Italic,
+            )
+            s.quoteBy?.let { Text("— $it", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+    }
+}
+
+/** How many readers had something to say, and the comment with the most likes. */
+@Composable
+private fun Comments(s: NewsStory) {
+    if (s.comments <= 0) return
+    Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "${Format.count(s.comments.toDouble())} comments", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        s.topComment?.let {
+            Text(
+                " · “$it”", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StoryCover(c: NewsCover, width: Dp) {
+    GameCover(GameConcept(c.title, c.topic, c.genre, platforms = listOf(Platform.PC), size = c.size), width)
 }
 
 /** Outlet and when, coloured by the desk. The date only shows once it's more than a year ago. */

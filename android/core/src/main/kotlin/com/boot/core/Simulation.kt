@@ -253,6 +253,8 @@ private fun GameState.studioWeek() {
     showSeasonWeek()
     wishlistWeek(g)
     releaseDayWeek(g)
+    showMomentsWeek(g)
+    chartsStory()
     marketWeek()
     subsidiaryWeek()
     publishingWeek()
