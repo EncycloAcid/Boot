@@ -161,7 +161,7 @@ internal fun GameState.holdShow(booth: Booth?) {
     if (booth != Booth.SMALL) for (e in staff) e.morale = min(1.0, e.morale + 0.05)
     p?.let {
         it.hype = min(100.0, it.hype + hype)
-        revealed(it, name)
+        revealed(it, name, hype)
     }
     g.fans += fans
     stats.tradeShows += 1

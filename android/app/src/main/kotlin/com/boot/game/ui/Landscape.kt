@@ -451,7 +451,9 @@ private fun ProjectStrip(store: GameStore, state: GameState, project: com.boot.c
     val stage = if (project.isReady) "Polish" else listOf("Foundations", "Content", "Presentation")[project.stage]
     val forecast = state.gameForecast(team)
     val eta = forecast?.weeksToReady
+    val due = project.releaseWeek?.let { it - state.week }
     val etaLabel = when {
+        due != null -> "out in ${Format.weeks(due)}"
         project.isReady -> forecast?.let { String.format(Locale.US, "ships ~%.1f", it.expectedScore) } ?: "ready"
         eta == null || eta <= 0 -> "ready soon"
         else -> "~${Format.weeks(eta)} left"
@@ -474,10 +476,18 @@ private fun ProjectStrip(store: GameStore, state: GameState, project: com.boot.c
             modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape).padding(horizontal = 8.dp, vertical = 2.dp),
         )
         Column(Modifier.weight(1f)) {
-            Text(
-                (if (team == 2) "Team 2 · " else "") + project.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    (if (team == 2) "Team 2 · " else "") + project.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                )
+                if (project.reveals > 0) {
+                    Text(
+                        "${Format.count(project.wishlists)} wishlists", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary, maxLines = 1,
+                    )
+                }
+            }
             Box(Modifier.fillMaxWidth().padding(top = 4.dp).height(4.dp).clip(CircleShape).background(colors.fill)) {
                 Box(Modifier.fillMaxWidth(project.completion.toFloat().coerceIn(0f, 1f)).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
             }

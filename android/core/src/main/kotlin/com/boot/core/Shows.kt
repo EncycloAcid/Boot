@@ -162,12 +162,13 @@ internal fun GameState.reveal(p: GameProject, stage: String, base: Double, appea
     val hype = base * (0.4 + appeal) * p.revealBoost * extra * if (founderIs(FounderTrait.SHOWRUNNER)) 1.3 else 1.0
     p.hype = min(100.0, p.hype + hype)
     g.fans += max(200.0, g.fans * 0.015 * (0.5 + appeal) * p.revealBoost)
-    revealed(p, stage)
+    revealed(p, stage, hype)
     return hype
 }
 
-/** Counts a trailer, and makes the first one the game's announcement in the news. */
-internal fun GameState.revealed(p: GameProject, stage: String) {
+/** Counts a trailer, with the wishlists it brings, and makes the first one the game's announcement in the news. */
+internal fun GameState.revealed(p: GameProject, stage: String, hype: Double) {
+    p.wishlists += wishlistsFrom(hype)
     if (p.reveals == 0) {
         stats.announcements += 1
         publish(NewsDesk.YOU, "IGN", "$companyName announces ${p.title}", "The first trailer premiered at $stage.", LogTone.GOOD, Lane.GAMES)

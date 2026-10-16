@@ -7,7 +7,7 @@ import kotlin.math.pow
 // Everything a game studio can do: design and start games, steer development, market, ship,
 // take side work, and build engines.
 
-private fun GameState.studio(): GamesStudio {
+internal fun GameState.studio(): GamesStudio {
     if (ending != null) throw gameOver()
     return games ?: throw notAvailable("You don't run a game studio.")
 }

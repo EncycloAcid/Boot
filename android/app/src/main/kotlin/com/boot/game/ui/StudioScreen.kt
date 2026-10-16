@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.boot.core.GameClock
 import com.boot.core.Campaign
 import com.boot.core.calendarYear
 import com.boot.core.timelineWeek
@@ -287,8 +288,15 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                 }
                 warning?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.warn) }
             }
+            Hint(
+                (if (p.reveals > 0) "${Format.count(p.wishlists)} people have it wishlisted" else "Not announced yet: a trailer at a show starts the wishlists") + ". " +
+                    (p.releaseWeek?.let { "It launches ${GameClock.label(it)}, in ${Format.weeks(it - state.week)}, by itself if it's finished." } ?: "No release date set.") +
+                    (if (p.delays > 0) " Delayed ${if (p.delays == 1) "once" else "${p.delays} times"}." else ""),
+                if (p.releaseWeek != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 PrimaryButton("Release ${p.title}", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady)
+                TonalButton("Calendar", { store.openCalendar(team) })
                 if (p.deal == null) {
                     var confirming by remember { mutableStateOf(false) }
                     PlainButton("Cancel", { confirming = true }, color = colors.bad)

@@ -148,6 +148,7 @@ class Autopilot(
                 }
                 labels.indexOf(pick).takeIf { it >= 0 } ?: labels.lastIndex
             }
+            is ReleaseSlip -> 0
             OwnShowcase -> if (s.cash > s.ownShowcaseCost() * 5 && s.appealOf(1) >= 0.5) 0 else 1
         }
         attempt { s.choose(choice) }

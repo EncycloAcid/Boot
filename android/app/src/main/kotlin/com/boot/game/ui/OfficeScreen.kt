@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.boot.core.GameClock
 import com.boot.core.Campaign
 import com.boot.core.Format
 import com.boot.core.GameProject
@@ -446,8 +447,14 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
             if (lift >= 1.0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Hint("Direction · ${p.creativeFocus.title}. ${p.creativeFocus.blurb}")
+        Hint(
+            (if (p.reveals > 0) "${Format.count(p.wishlists)} wishlists" else "Not announced yet") + " · " +
+                (p.releaseWeek?.let { "launches ${GameClock.label(it)}, in ${Format.weeks(it - state.week)}" } ?: "no release date"),
+            if (p.releaseWeek != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             PrimaryButton("Release", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady)
+            TonalButton("Calendar", { store.openCalendar(team) })
             if (Research.MARKETING in state.researched) {
                 val open = Campaign.entries.filter { it !in p.campaigns }
                 MenuButton("Market", open, { "${it.title} · ${Format.money(it.cost)}" }, enabled = open.isNotEmpty()) { camp ->

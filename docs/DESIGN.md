@@ -371,6 +371,14 @@ The founder takes one special trait, or none:
 | Bootstrapper | Starting cash × 1.6 (not in a sandbox) |
 | Media darling | Reputation gains × 1.3, losses ÷ 1.3 |
 
+## Wishlists and the release calendar
+
+Each game in development keeps a wishlist count, its release week (if one is set) and how many times it has slipped. Nothing is wishlisted until the game is announced. Every trailer (a show booth, a console maker's show, a premiere, your own showcase) adds `hype gained × (150 + fans × 0.03)`; after that, each week adds `hype × (8 + fans × 0.0008)`, a quarter more with a release date set, and 0.4% of the list fades.
+
+At launch, `wishlists × conversion × price × price-tier factor` (in that era's money) comes in once, on top of the usual launch week, where conversion is `(score − 4) / 30` between 2% and 20%. It isn't part of the weekly sales that tail off, and it's listed in the game report. Two windows now stack on the seasons for every genre: the **holiday rush** (weeks 46–51, ×1.2) and the **January slump** (weeks 1–4, ×0.9).
+
+**The calendar** shows the next 26 weeks for the game in development, each with its expected launch lift: season × window × clash, where the clash uses the same rules as launch day applied to the announced rival releases (a must-play release up to three weeks before costs 20%; a big game in your genre up to six weeks before, 15%). Shows and must-play releases are marked, and weeks before the expected finish are dimmed with a warning. Setting a date on an announced game makes the news. On the date, a finished game launches by itself (the clock doesn't stop for "ready to ship" when there's a date). An unfinished one raises a decision: delay four weeks (fan trust −0.02, wishlists −8%) or until it's done (no date; −0.03, −12%), each reported in the news. The autopilot doesn't set dates and takes the four-week delay.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

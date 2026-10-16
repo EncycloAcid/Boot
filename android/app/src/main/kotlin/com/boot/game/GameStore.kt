@@ -1,5 +1,6 @@
 package com.boot.game
 
+import com.boot.core.Format
 import com.boot.core.with
 import com.boot.core.runRecord
 import com.boot.core.encodeHall
@@ -234,7 +235,16 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
 
     /** A full-screen page that holds the clock while it's open. */
-    val holdsClock: Boolean get() = designing || designingDevice || openRelease != null || guideOpen || openStock != null || campaignLane != null
+    val holdsClock: Boolean get() = designing || designingDevice || openRelease != null || guideOpen || openStock != null || campaignLane != null ||
+        calendarTeam != null
+
+    /** The team whose game's release calendar is open. */
+    var calendarTeam by mutableStateOf<Int?>(null)
+
+    fun openCalendar(team: Int = 1) {
+        pause()
+        calendarTeam = team
+    }
 
     fun newGame(
         company: String,
@@ -339,8 +349,15 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         val project = now.games?.project
         val reason = when {
             !canAdvance -> ""
-            !wasReady && project?.isReady == true -> "${project.title} is ready to ship. Release it, or keep polishing."
-            !wasReady2 && now.games?.project2?.isReady == true -> "Team 2's ${now.games?.project2?.title} is ready to ship."
+            // A game with a date launches by itself, so the clock can keep running.
+            !wasReady && project?.isReady == true -> project.releaseWeek?.let { due ->
+                notice = "${project.title} is finished. It launches in ${Format.weeks(due - now.week)}, polishing until then."
+                null
+            } ?: "${project.title} is ready to ship. Release it, or keep polishing."
+            !wasReady2 && now.games?.project2?.isReady == true -> now.games?.project2?.releaseWeek?.let { due ->
+                notice = "Team 2's ${now.games?.project2?.title} is finished. It launches in ${Format.weeks(due - now.week)}."
+                null
+            } ?: "Team 2's ${now.games?.project2?.title} is ready to ship."
             wasSolvent && now.cash < 0 -> "You're overdrawn. ${now.difficulty.redWeeks} weeks in the red and it's over. A bank loan can buy time."
             else -> null
         }

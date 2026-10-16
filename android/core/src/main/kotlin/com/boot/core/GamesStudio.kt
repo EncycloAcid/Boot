@@ -96,6 +96,12 @@ data class GameProject(
     var reveals: Int = 0,
     /** The console maker whose marketing deal this game took, if any. */
     var exclusiveWith: String? = null,
+    /** People waiting to buy it. */
+    var wishlists: Double = 0.0,
+    /** The week it launches, if a date's been set. */
+    var releaseWeek: Int? = null,
+    /** Times it's slipped. */
+    var delays: Int = 0,
 ) {
     val title: String get() = concept.title
     val work: Double get() = concept.work
@@ -178,6 +184,8 @@ data class GameRelease(
     val developer: String? = null,
     /** Its pro league, if it has one. */
     var league: League? = null,
+    /** Wishlists on launch day. */
+    val wishlists: Double = 0.0,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -760,7 +768,10 @@ class GamesStudio {
         val remastered = c.remasterOf?.let { release(it) }
         val nostalgia = remastered?.let { remasterLift(it.score) } ?: 1.0
         val season = GameSeason.forWeek(week)
-        val seasonalLift = season.launchMultiplier(c.genre)
+        val window = LaunchWindow.at(week)
+        val seasonalLift = season.launchMultiplier(c.genre) * (window?.lift ?: 1.0)
+        // Wishlists turn into sales on the day, more of them the better the reviews.
+        val wishlistGross = p.wishlists * wishlistConversion(avg) * c.size.price * c.price.revenueFactor(avg) * pastScale(ctx.year.toDouble())
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
             (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia * seasonalLift
@@ -775,7 +786,11 @@ class GamesStudio {
         learn("TG:${c.topic.name}:${c.genre.name}", c.topic.fit(c.genre))
         lines += "${c.topic.title} + ${c.genre.title}: ${c.topic.fit(c.genre).title.lowercase()} combination."
         val seasonPct = ((seasonalLift - 1) * 100).roundToInt()
-        lines += "${season.title} launch timing: ${season.marketTip} Your ${c.genre.lower} game received ${if (seasonPct >= 0) "+" else ""}$seasonPct% seasonal demand."
+        lines += "${season.title} launch timing: ${season.marketTip} Your ${c.genre.lower} game received ${if (seasonPct >= 0) "+" else ""}$seasonPct% seasonal demand." +
+            (window?.let { " ${it.title}: ${it.note.replaceFirstChar { ch -> ch.lowercase() }}" } ?: "")
+        if (p.wishlists >= 100) {
+            lines += "${Format.count(p.wishlists)} wishlists turned into ${Format.money(wishlistGross)} of launch-week sales."
+        }
         c.genre2?.let {
             learn("TG:${c.topic.name}:${it.name}", c.topic.fit(it))
             lines += "${c.topic.title} + ${it.title}: ${c.topic.fit(it).title.lowercase()} combination."
@@ -873,7 +888,10 @@ class GamesStudio {
             aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons,
             live = if (c.live) LiveService(livePlayers(gross / c.unitPrice), week) else null,
             breakdown = listOf(ScorePart("Baseline", SCORE_BASELINE, "Where every game starts.")) + parts,
+            wishlists = p.wishlists,
         )
+        // The wishlist buyers come once, on the day; the weekly sales that tail off come from everyone else.
+        report.revenue += wishlistGross * netShare
         if (c.live) {
             lines += "It launched as a live game with ${Format.count(release.live!!.players)} players. Keep them with a new season every few months."
         }
@@ -884,7 +902,7 @@ class GamesStudio {
         topScore = max(topScore, avg)
         report.add(Incident.Stat(StatKey.RELEASE))
 
-        val buyers = gross / c.unitPrice
+        val buyers = (gross + wishlistGross) / c.unitPrice
         val scoreText = String.format(java.util.Locale.US, "%.1f", avg)
         when {
             avg >= 8 -> {
@@ -893,11 +911,11 @@ class GamesStudio {
                 fans += buyers * 0.35
                 report.add(Incident.Stat(StatKey.HIT))
                 report.add(Incident.Reputation(4.0))
-                report.log("${p.title} reviews at $scoreText/10. Launch week: ${money(gross)}. It's a hit.", LogTone.MILESTONE)
+                report.log("${p.title} reviews at $scoreText/10. Launch week: ${money(gross + wishlistGross)}. It's a hit.", LogTone.MILESTONE)
             }
             avg >= 5 -> {
                 fans += buyers * 0.15
-                report.log("${p.title} reviews at $scoreText/10. Launch week: ${money(gross)}.", LogTone.GOOD)
+                report.log("${p.title} reviews at $scoreText/10. Launch week: ${money(gross + wishlistGross)}.", LogTone.GOOD)
             }
             else -> {
                 flops += 1

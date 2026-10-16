@@ -304,6 +304,7 @@ internal fun GameOverlays(store: GameStore, state: GameState) {
         store.openStock != null -> StockSheet(store, state, store.openStock!!)
         store.campaignLane != null -> CampaignSheet(store, state, store.campaignLane!!)
         store.soundOpen -> SoundDialog(store)
+        store.calendarTeam != null -> ReleaseCalendar(store, state, store.calendarTeam!!)
     }
 }
 

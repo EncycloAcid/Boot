@@ -244,6 +244,8 @@ private fun GameState.studioWeek() {
     }
     if (GameClock.weekOfYear(week) == SHOW_WEEK) enqueue(EventKind.Convention)
     showSeasonWeek()
+    wishlistWeek(g)
+    releaseDayWeek(g)
     marketWeek()
     subsidiaryWeek()
     publishingWeek()
