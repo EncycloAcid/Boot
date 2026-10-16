@@ -136,5 +136,33 @@ class LayoutModesTest {
         assertEquals(ScreenLayout.SIDEWAYS, store.layout)
     }
 
+    @Test
+    @Config(qualifiers = "w852dp-h393dp-land-xxhdpi")
+    fun soundSettingsFromTheMenu() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Garage Labs", "You", Lane.GAMES, seed = 3)
+            store.todayOpen = false
+        }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Menu", substring = true).performClick()
+        compose.onNodeWithText("Sound and music").performClick()
+        compose.waitForIdle()
+        save("99c-sideways-sound", top = true)
+        compose.onNodeWithContentDescription("Music volume").performSemanticsAction(SemanticsActions.SetProgress) { it(0f) }
+        compose.onNodeWithContentDescription("Effects volume").performSemanticsAction(SemanticsActions.SetProgress) { it(0.5f) }
+        compose.waitForIdle()
+        assertEquals(0f, store.sound.musicVolume)
+        assertEquals(0.5f, store.sound.effectsVolume, 0.01f)
+        compose.onNodeWithText("Off").assertExistsCompat()
+        compose.onNodeWithText("Done").performClick()
+        compose.waitForIdle()
+        assertTrue(!store.soundOpen)
+        // Remembered for next time.
+        val again = GameStore(RuntimeEnvironment.getApplication())
+        assertEquals(0f, again.sound.musicVolume)
+        assertEquals(0.5f, again.sound.effectsVolume, 0.01f)
+    }
+
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertExistsCompat() = fetchSemanticsNode()
 }

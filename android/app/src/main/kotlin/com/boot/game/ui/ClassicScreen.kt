@@ -99,6 +99,7 @@ import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.game.GameStore
+import com.boot.game.audio.Sfx
 import com.boot.game.ScreenLayout
 import com.boot.game.StudioPage
 import com.boot.game.Speed
@@ -281,6 +282,10 @@ private fun ClassicHud(store: GameStore, state: GameState, onAbandon: () -> Unit
                             menuOpen = false
                             store.guideOpen = true
                         })
+                        DropdownMenuItem(text = { Text("Sound and music") }, onClick = {
+                            menuOpen = false
+                            store.soundOpen = true
+                        })
                         DropdownMenuItem(text = { Text("Play sideways") }, onClick = {
                             menuOpen = false
                             store.chooseLayout(ScreenLayout.SIDEWAYS)
@@ -453,13 +458,14 @@ private fun ClassicTabBar(store: GameStore, modifier: Modifier, snackbar: Snackb
 @Composable
 private fun ClassicTab(t: ClassicTabSpec, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val sound = LocalSound.current
     val motion = MaterialTheme.motionScheme
     val indicator by animateColorAsState(if (selected) scheme.primaryContainer else Color.Transparent, motion.defaultEffectsSpec(), label = "tab")
     val width by animateDpAsState(if (selected) 56.dp else 32.dp, motion.defaultSpatialSpec(), label = "tabWidth")
     Column(
         modifier
             .clip(RoundedCornerShape(24.dp))
-            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .selectable(selected = selected, onClick = { sound.play(Sfx.CLICK); onClick() }, role = Role.Tab)
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),

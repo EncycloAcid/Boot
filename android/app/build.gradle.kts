@@ -11,8 +11,8 @@ android {
         applicationId = "com.boot.game"
         minSdk = 26
         targetSdk = 36
-        versionCode = 37
-        versionName = "3.5.0"
+        versionCode = 38
+        versionName = "3.6.0"
     }
 
     buildTypes {
@@ -45,6 +45,8 @@ android {
 tasks.withType<Test>().configureEach {
     providers.gradleProperty("fontScale").orNull?.let { systemProperty("boot.fontScale", it) }
     if (providers.gradleProperty("night").isPresent) systemProperty("boot.night", "true")
+    // -Paudio=dir writes every tune and sound effect there as a WAV file to listen to (see AudioTest).
+    providers.gradleProperty("audio").orNull?.let { systemProperty("boot.audio", it) }
 }
 
 dependencies {

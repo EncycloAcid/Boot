@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
+import com.boot.game.audio.Sfx
+import com.boot.game.audio.verdictFor
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.Format
 import com.boot.core.GameRelease
@@ -97,7 +99,8 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
                 GroupedSection("Critics") {
                     r.reviews.forEachIndexed { i, review ->
                         if (i > 0) RowDivider()
-                        RevealedReview(review, i)
+                        // The last critic's ding is followed by a cheer or a groan for the whole game.
+                        RevealedReview(review, i, verdict = if (i == r.reviews.lastIndex) verdictFor(r.score) else null)
                     }
                 }
                 ProsCons(r.pros, r.cons)
@@ -115,12 +118,19 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
 
 /** One outlet's score, springing in a beat after the one before. */
 @Composable
-private fun RevealedReview(review: Review, index: Int) {
+private fun RevealedReview(review: Review, index: Int, verdict: Sfx? = null) {
     val reveal = remember { Animatable(0f) }
     val spec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+    val sound = LocalSound.current
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(250L * index)
+        // A beat longer than the animation alone, so each score gets its own ding.
+        kotlinx.coroutines.delay(380L * index)
+        sound.review(review.score)
         reveal.animateTo(1f, spec)
+        if (verdict != null) {
+            kotlinx.coroutines.delay(250)
+            sound.play(verdict)
+        }
     }
     ReviewRow(
         review,

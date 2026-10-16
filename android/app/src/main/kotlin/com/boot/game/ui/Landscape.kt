@@ -81,6 +81,7 @@ import com.boot.core.Lane
 import com.boot.core.gameForecast
 import com.boot.core.researchPerWeek
 import com.boot.game.GameStore
+import com.boot.game.audio.Sfx
 import com.boot.game.ScreenLayout
 import com.boot.game.Speed
 import com.boot.game.StudioPage
@@ -152,40 +153,9 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
             // The office, edge to edge, under everything.
             OfficeScene(state, store.playing, Modifier.fillMaxSize().clickable { store.tab = Tab.TEAM }, insetTop = 48.dp)
 
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout))
-                    .padding(8.dp),
-            ) {
-                // One row along the top: who and when on the left, the game in development (or
-                // what's waiting in Today) in the middle, research and money on the right.
-                Row(Modifier.fillMaxWidth().align(Alignment.TopStart), verticalAlignment = Alignment.Top) {
-                    Identity(store, state, Modifier.onSizeChanged { cornerHeight = maxOf(cornerHeight, it.height) }, onAbandon = { confirmAbandon = true })
-                    Box(Modifier.weight(1f).padding(horizontal = 8.dp), contentAlignment = Alignment.TopCenter) {
-                        if (project != null) {
-                            Column(
-                                Modifier.widthIn(max = 400.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                ProjectStrip(store, state, project, team)
-                                // The points the team is making, under the game, the way Game Dev Tycoon shows them.
-                                Floating {
-                                    Row(Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
-                                        BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
-                                        BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
-                                    }
-                                }
-                            }
-                        } else if (!windowOpen) {
-                            Box(Modifier.widthIn(max = 400.dp)) { TodayPrompt(store, state) }
-                        }
-                    }
-                    Readouts(store, state, Modifier.onSizeChanged { cornerHeight = maxOf(cornerHeight, it.height) })
-                }
-                // Bottom left, above the dock: the desks.
+            val safe = WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout)
+            // Bottom left, above the dock: the desks.
+            Box(Modifier.fillMaxSize().windowInsetsPadding(safe).padding(8.dp)) {
                 DeskChip(state, Modifier.align(Alignment.BottomStart).padding(bottom = DockClearance)) { store.tab = Tab.TEAM }
             }
 
@@ -204,10 +174,43 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
                 exit = fadeOut() + scaleOut(targetScale = 0.97f),
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout))
+                    .windowInsetsPadding(safe)
                     .padding(top = windowTop, bottom = DockClearance),
             ) {
                 CenterWindow(store, state, Modifier.width(windowWidth).fillMaxHeight())
+            }
+
+            // One row along the top, above any window so it stays in reach: who and when on the
+            // left, the game in development (or what's waiting in Today) in the middle, research
+            // and money on the right.
+            val measure = Modifier.onSizeChanged { cornerHeight = maxOf(cornerHeight, it.height) }
+            Row(Modifier.fillMaxWidth().windowInsetsPadding(safe).padding(8.dp), verticalAlignment = Alignment.Top) {
+                Identity(store, state, measure, onAbandon = { confirmAbandon = true })
+                Box(Modifier.weight(1f).padding(horizontal = 8.dp), contentAlignment = Alignment.TopCenter) {
+                    if (project != null) {
+                        Column(
+                            Modifier.widthIn(max = 400.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Box(measure) { ProjectStrip(store, state, project, team) }
+                            // The points the team is making, under the game, the way Game Dev Tycoon
+                            // shows them. A window would cover them, so they step aside for one.
+                            if (!windowOpen) {
+                                Floating {
+                                    Row(Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
+                                        BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
+                                        BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
+                                    }
+                                }
+                            }
+                        }
+                    } else if (!windowOpen) {
+                        Box(Modifier.widthIn(max = 400.dp)) { TodayPrompt(store, state) }
+                    }
+                }
+                Readouts(store, state, measure)
             }
 
             // The dock: tabs and the clock, always on top.
@@ -275,6 +278,10 @@ private fun Identity(store: GameStore, state: GameState, modifier: Modifier, onA
                     DropdownMenuItem(text = { Text("How to play") }, onClick = {
                         menuOpen = false
                         store.guideOpen = true
+                    })
+                    DropdownMenuItem(text = { Text("Sound and music") }, onClick = {
+                        menuOpen = false
+                        store.soundOpen = true
                     })
                     DropdownMenuItem(text = { Text("Play upright (classic)") }, onClick = {
                         menuOpen = false
@@ -389,13 +396,14 @@ private fun Dock(store: GameStore, state: GameState) {
 @Composable
 private fun DockItem(label: String, selected: Boolean, icon: @Composable (Color) -> Unit, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
+    val sound = LocalSound.current
     val tint = if (selected) scheme.primary else scheme.onSurfaceVariant
     Column(
         Modifier
             .widthIn(min = 60.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) scheme.primaryContainer else Color.Transparent)
-            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .selectable(selected = selected, onClick = { sound.play(Sfx.CLICK); onClick() }, role = Role.Tab)
             .padding(horizontal = 6.dp, vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(1.dp),

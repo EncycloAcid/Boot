@@ -304,11 +304,32 @@ Decisions now come in two kinds. Crises, people and rivals' moves stop the clock
 
 The ending screen tells the story of your run: where you started, what forced the Pivot Point and what you chose, the lanes you added, the crossovers you built, your record of hits, flops, recalls and scandals, the scars people still remember, how much you raised and kept, and the eras you lived through.
 
+## Sound and music
+
+There are no audio files. A small synthesiser in the Android app (`audio/Synth.kt`) draws everything from oscillators: anti-aliased square and saw waves, triangle, sine, two-operator FM and noise, with envelopes, a one-pole filter, synthesised drums, and echoes that wrap round so a loop has no seam.
+
+**Music.** Each era maps to one of six styles, and its tune is composed from a seed of its own, so the same era always plays the same tune and two eras in one style still differ. A track is two sections of 8 or 16 bars over two chord progressions picked for the mode (major, natural minor or dorian), with a bass line, a chord part and a melody built from two-bar motifs that land on chord tones on the strong beats, answer themselves over the next chords, and come home to the root.
+
+| Style | Eras | Sound |
+|---|---|---|
+| Chiptune | Home computers, video game crash, retro revival | Pulse-wave lead, 16th-note arpeggios, triangle bass, 138 bpm |
+| 16-bit | Console wars, multimedia | FM lead and brass stabs, slap FM bass, dorian, 116 bpm |
+| House | Dot-com boom, Web 2.0, AI gold rush | Four on the floor, off-beat bass and chord stabs, minor, 122 bpm |
+| Downbeat | Dot-com bust, crypto winter, privacy panic, chip shortage | Soft pads and electric piano, half-time drums, minor, 86 bpm |
+| Lo-fi | Bootstrap years, remote work, creator economy, smartphones, free-to-play | Swung electric piano with sevenths, tape wobble, crackle, 80 bpm |
+| Synthwave | VR hype, metaverse hangover, cloud gaming, super apps | Detuned saw pads and lead, echoing arpeggios, big snare, minor, 100 bpm |
+
+The calmer styles leave the first section to the band and bring the tune in for the second. A track renders in about half a second on a background thread and loops as a stream; switching eras fades one out and the next in.
+
+**Effects** come from comparing the game before and after each change (`audio/Cues.kt`), one sound at most, most important first: an ending sting, the launch fanfare, a new era, a bigger office, an achievement or goal, a decision waiting, the account going red, a game ready to ship, research done, a hire, and a coin for money moved by the player's own hand (never for the weekly ins and outs). Reviews ding one by one as they appear, pitched up a major scale with the score, then a cheer for an 8 or better or a sad trombone under 5. Buttons and tabs click quietly; a failed action buzzes.
+
+**Settings.** Music and effects volumes (music 55% and effects 80% to start) are on the new game screen and under "Sound and music" in the menu, and are remembered. Sliders follow a squared curve so each step sounds even. Music pauses in the background and stays off if another app was already playing music when it would start.
+
 ## Not built yet
 
 - Multiple concurrent products per lane (a second app, two games in parallel).
 - Rival companies as full simulations, plus acquisitions you make yourself.
-- Sound, and hand-drawn art. (Everything is drawn in code: the isometric office with each office tier, its perks and its people, the staff portraits, and box art painted for every game in layers: a scene of its own for each of the 37 topics, a rim-lit hero for the genre, atmosphere, a title logo with the sequel number picked out, the platform band, the rating and the studio.)
+- Hand-drawn art. (Everything is drawn in code: the isometric office with each office tier, its perks and its people, the staff portraits, and box art painted for every game in layers: a scene of its own for each of the 37 topics, a rim-lit hero for the genre, atmosphere, a title logo with the sequel number picked out, the platform band, the rating and the studio.)
 - The studio update, the running clock, the removal of energy and the 0.5 gameplay update in the Swift (macOS and terminal) version.
 - Steam-style achievements per ending variant.
 - Proper tuning passes with real playtesters; the current numbers come from autopilot runs.

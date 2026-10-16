@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.boot.game.audio.MusicTrack
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -85,6 +86,7 @@ import com.boot.core.Lane
 import com.boot.core.gameForecast
 import com.boot.core.researchPerWeek
 import com.boot.game.GameStore
+import com.boot.game.audio.Sfx
 import com.boot.game.ScreenLayout
 import com.boot.game.Speed
 import com.boot.game.StudioPage
@@ -102,10 +104,14 @@ fun BootApp(store: GameStore) {
         val sideways = isLandscape(maxWidth, maxHeight)
         val density = LocalDensity.current
         val scaled = if (sideways) Density(density.density * CompactScale, density.fontScale) else null
+        // Each era has its own tune; the title screen has one too.
+        val era = store.state?.world?.era
+        LaunchedEffect(era) { store.sound.music(MusicTrack.forEra(era)) }
         CompositionLocalProvider(
             LocalCompact provides sideways,
             LocalSidewaysDensity provides scaled,
             LocalDensity provides (scaled ?: density),
+            LocalSound provides store.sound,
         ) {
             val state = store.state
             when {
@@ -297,6 +303,7 @@ internal fun GameOverlays(store: GameStore, state: GameState) {
         store.guideOpen -> GuideSheet(store, state)
         store.openStock != null -> StockSheet(store, state, store.openStock!!)
         store.campaignLane != null -> CampaignSheet(store, state, store.campaignLane!!)
+        store.soundOpen -> SoundDialog(store)
     }
 }
 
@@ -530,6 +537,10 @@ private fun FloatingHud(
                 DropdownMenuItem(text = { Text("How to play") }, onClick = {
                     menuOpen = false
                     store.guideOpen = true
+                })
+                DropdownMenuItem(text = { Text("Sound and music") }, onClick = {
+                    menuOpen = false
+                    store.soundOpen = true
                 })
                 DropdownMenuItem(text = { Text("Play upright (classic)") }, onClick = {
                     menuOpen = false
@@ -1161,6 +1172,7 @@ private fun FloatingDockTab(
 ) {
     val scheme = MaterialTheme.colorScheme
     val motion = MaterialTheme.motionScheme
+    val sound = LocalSound.current
     val tint by animateColorAsState(
         if (selected) scheme.primary else scheme.onSurfaceVariant,
         motion.defaultEffectsSpec(),
@@ -1175,7 +1187,7 @@ private fun FloatingDockTab(
         modifier
             .clip(RoundedCornerShape(14.dp))
             .background(bg)
-            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .selectable(selected = selected, onClick = { sound.play(Sfx.CLICK); onClick() }, role = Role.Tab)
             .padding(vertical = if (compact) 5.dp else 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),

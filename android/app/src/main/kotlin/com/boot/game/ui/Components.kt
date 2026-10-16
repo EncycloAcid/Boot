@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +89,9 @@ import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.Lane
 import com.boot.core.LogEntry
+import com.boot.game.audio.Sfx
+import com.boot.game.audio.Silent
+import com.boot.game.audio.SoundOut
 
 // Sections: a heading, a white card, and a footnote
 
@@ -112,6 +116,9 @@ fun Scaled(content: @Composable () -> Unit) {
     val density = LocalSidewaysDensity.current
     if (density == null) content() else CompositionLocalProvider(LocalDensity provides density, content = content)
 }
+
+/** The game's sound effects, for buttons and moments the UI times itself. */
+val LocalSound = staticCompositionLocalOf<SoundOut> { Silent }
 
 /** A dialog drawn at the same scale as the rest of the game. */
 @Composable
@@ -438,9 +445,11 @@ fun LogRow(entry: LogEntry) {
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val haptics = LocalHapticFeedback.current
+    val sound = LocalSound.current
     Button(
         onClick = {
             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+            sound.play(Sfx.CLICK)
             onClick()
         },
         shapes = ButtonDefaults.shapes(),
@@ -453,7 +462,8 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TonalButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    FilledTonalButton(onClick = onClick, shapes = ButtonDefaults.shapes(), modifier = modifier, enabled = enabled) {
+    val sound = LocalSound.current
+    FilledTonalButton(onClick = { sound.play(Sfx.CLICK); onClick() }, shapes = ButtonDefaults.shapes(), modifier = modifier, enabled = enabled) {
         Text(text, maxLines = 1)
     }
 }

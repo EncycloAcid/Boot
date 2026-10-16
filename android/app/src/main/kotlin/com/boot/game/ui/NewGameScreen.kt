@@ -197,6 +197,11 @@ fun NewGameScreen(store: GameStore) {
                 }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
+                GroupedSection("Sound") {
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { SoundSliders(store) }
+                }
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 GroupedSection("Your company") {
                     FormRow("Company", company, "Garage Labs", ImeAction.Next) { company = it }
                     RowDivider()

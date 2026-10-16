@@ -21,6 +21,9 @@ import com.boot.core.GameConcept
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.advance
+import com.boot.game.audio.Sfx
+import com.boot.game.audio.SoundBoard
+import com.boot.game.audio.cueFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -50,6 +53,12 @@ enum class ScreenLayout(val title: String, val blurb: String) {
 class GameStore(app: Application) : AndroidViewModel(app) {
     private val saveFile = File(app.filesDir, "autosave.json")
     private val settings = app.getSharedPreferences("boot", android.content.Context.MODE_PRIVATE)
+
+    /** Music and sound effects, with their volume settings. */
+    val sound = SoundBoard(app, settings).also { it.prepare() }
+
+    /** The sound and music settings are open. */
+    var soundOpen by mutableStateOf(false)
 
     /** Sideways or upright. Remembered between runs. */
     var layout by mutableStateOf(
@@ -183,23 +192,32 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     }
 
     /** Run an action against a copy of the game. On failure the game is left untouched and the reason is shown. */
-    fun perform(action: GameState.() -> Unit) {
+    fun perform(action: GameState.() -> Unit) = perform(ticking = false, action)
+
+    /** [ticking] is true when this is the clock moving rather than the player acting, for the sound it makes. */
+    private fun perform(ticking: Boolean, action: GameState.() -> Unit) {
         val current = state ?: return
         val next = GameState.decode(json ?: current.encode())
         try {
             next.action()
         } catch (e: GameException) {
             error = e.message
+            sound.play(Sfx.WARNING)
             return
         }
         state = next
         save(next)
+        cueFor(current, next, ticking)?.let(sound::play)
+    }
+
+    override fun onCleared() {
+        sound.release()
     }
 
     fun advance(weeks: Int) {
         val done = state?.goalsDone?.size ?: 0
         val had = state?.achievements?.keys.orEmpty()
-        perform { this.advance(weeks) }
+        perform(ticking = true) { this.advance(weeks) }
         // Goals and achievements don't stop the clock; they just get a moment in the spotlight.
         state?.goalsDone?.drop(done)?.lastOrNull()?.let { notice = "Goal reached: ${it.title}. ${it.reward.label}" }
         state?.achievements?.keys?.firstOrNull { it !in had }?.let { notice = "Achievement unlocked: ${it.title}" }
