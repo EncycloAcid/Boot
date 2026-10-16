@@ -4,39 +4,39 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
-import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -44,6 +44,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -54,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,7 +63,10 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -91,7 +96,7 @@ import java.util.Locale
  */
 
 /** Height of the bottom dock plus its margin, for windows to clear. */
-private val DockClearance = 68.dp
+private val DockClearance = 58.dp
 
 /** Everything in the game, held sideways. */
 @Composable
@@ -140,7 +145,10 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
 
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         BoxWithConstraints(Modifier.fillMaxSize().background(colors.grouped)) {
-            val windowWidth = (maxWidth * 0.72f).coerceIn(420.dp, 680.dp)
+            val windowWidth = (maxWidth * 0.8f).coerceIn(440.dp, 800.dp)
+            // Windows start just under the corner readouts, however tall big text makes them.
+            var cornerHeight by remember { mutableIntStateOf(0) }
+            val windowTop = with(LocalDensity.current) { cornerHeight.toDp() } + 16.dp
             // The office, edge to edge, under everything.
             OfficeScene(state, store.playing, Modifier.fillMaxSize().clickable { store.tab = Tab.TEAM }, insetTop = 48.dp)
 
@@ -150,27 +158,32 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
                     .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout))
                     .padding(8.dp),
             ) {
-                // Top left: the menu, who and when.
-                Identity(store, state, Modifier.align(Alignment.TopStart), onAbandon = { confirmAbandon = true })
-                // Top right: research, money, standing.
-                Readouts(store, state, Modifier.align(Alignment.TopEnd))
-                // Top middle: the game in development, or what's waiting in Today.
-                Box(Modifier.align(Alignment.TopCenter).padding(top = 52.dp).widthIn(max = 380.dp)) {
-                    if (project != null) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ProjectStrip(store, state, project, team)
-                            // The points the team is making, under the game, the way Game Dev Tycoon shows them.
-                            Floating {
-                                Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
-                                    BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
-                                    BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
+                // One row along the top: who and when on the left, the game in development (or
+                // what's waiting in Today) in the middle, research and money on the right.
+                Row(Modifier.fillMaxWidth().align(Alignment.TopStart), verticalAlignment = Alignment.Top) {
+                    Identity(store, state, Modifier.onSizeChanged { cornerHeight = maxOf(cornerHeight, it.height) }, onAbandon = { confirmAbandon = true })
+                    Box(Modifier.weight(1f).padding(horizontal = 8.dp), contentAlignment = Alignment.TopCenter) {
+                        if (project != null) {
+                            Column(
+                                Modifier.widthIn(max = 400.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                ProjectStrip(store, state, project, team)
+                                // The points the team is making, under the game, the way Game Dev Tycoon shows them.
+                                Floating {
+                                    Row(Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
+                                        BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
+                                        BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
+                                    }
                                 }
                             }
+                        } else if (!windowOpen) {
+                            Box(Modifier.widthIn(max = 400.dp)) { TodayPrompt(store, state) }
                         }
-                    } else if (!windowOpen) {
-                        TodayPrompt(store, state)
                     }
+                    Readouts(store, state, Modifier.onSizeChanged { cornerHeight = maxOf(cornerHeight, it.height) })
                 }
                 // Bottom left, above the dock: the desks.
                 DeskChip(state, Modifier.align(Alignment.BottomStart).padding(bottom = DockClearance)) { store.tab = Tab.TEAM }
@@ -192,7 +205,7 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout))
-                    .padding(top = 64.dp, bottom = DockClearance + 6.dp),
+                    .padding(top = windowTop, bottom = DockClearance),
             ) {
                 CenterWindow(store, state, Modifier.width(windowWidth).fillMaxHeight())
             }
@@ -245,13 +258,13 @@ private fun Identity(store: GameStore, state: GameState, modifier: Modifier, onA
     var menuOpen by remember { mutableStateOf(false) }
     val unread = state.news.count { it.id > store.newsSeen }
     val attention = unread + state.inbox.size + if (state.tutorial != null) 1 else 0
-    Floating(modifier.widthIn(max = 300.dp)) {
-        Row(Modifier.padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Floating(modifier.widthIn(max = 260.dp)) {
+        Row(Modifier.padding(start = 2.dp, end = 12.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             Box {
                 BadgedBox(badge = { if (attention > 0) Badge() }) {
                     Box(
                         Modifier
-                            .size(40.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .clickable { menuOpen = true }
                             .semantics { contentDescription = if (attention > 0) "Menu, $attention waiting" else "Menu" },
@@ -295,7 +308,7 @@ private fun Readouts(store: GameStore, state: GameState, modifier: Modifier) {
     val colors = gameColors
     val weekly = state.trailingProfit(weeks = 4) / 4
     Floating(modifier) {
-        Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             BarStat(
                 HudGlyph.RESEARCH, colors.milestone, "${state.researchPoints.toInt()}",
                 "Research points, +${String.format(Locale.US, "%.1f", state.researchPerWeek)} a week",
@@ -335,7 +348,7 @@ private fun Dock(store: GameStore, state: GameState) {
     Floating {
         Column(Modifier.width(IntrinsicSize.Max)) {
             WeekProgress(store, state)
-            Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 4.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 for (t in dockTabs) {
                     val selected = if (t.tab == Tab.OFFICE) store.tab == Tab.OFFICE && store.todayOpen else store.tab == t.tab
                     DockItem(if (t.tab == Tab.OFFICE) "Today" else t.label, selected, { HudIcon(t.glyph, it, 18.dp) }) {
@@ -355,7 +368,7 @@ private fun Dock(store: GameStore, state: GameState) {
                     store.todayOpen = false
                     store.tab = if (store.tab == Tab.NEWS) Tab.OFFICE else Tab.NEWS
                 }
-                Box(Modifier.padding(horizontal = 8.dp).width(1.dp).height(32.dp).background(colors.separator))
+                Box(Modifier.padding(horizontal = 6.dp).width(1.dp).height(28.dp).background(colors.separator))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     TinyChip(store.speed.label, description = "Speed ${store.speed.label}") {
                         store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
@@ -379,13 +392,13 @@ private fun DockItem(label: String, selected: Boolean, icon: @Composable (Color)
     val tint = if (selected) scheme.primary else scheme.onSurfaceVariant
     Column(
         Modifier
-            .widthIn(min = 64.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .widthIn(min = 60.dp)
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) scheme.primaryContainer else Color.Transparent)
             .selectable(selected = selected, onClick = onClick, role = Role.Tab)
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .padding(horizontal = 6.dp, vertical = 3.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
     ) {
         icon(tint)
         Text(
@@ -507,13 +520,13 @@ private fun CenterWindow(store: GameStore, state: GameState, modifier: Modifier)
             .border(1.dp, colors.separator, shape),
     ) {
         Row(
-            Modifier.fillMaxWidth().background(colors.bar).padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().background(colors.bar).padding(start = 14.dp, end = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            PlainButton("Close", {
-                if (today) store.todayOpen = false else store.tab = Tab.OFFICE
-            })
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            IconButton(onClick = { if (today) store.todayOpen = false else store.tab = Tab.OFFICE }, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Filled.Close, contentDescription = "Close", modifier = Modifier.size(20.dp))
+            }
         }
         HorizontalDivider(color = colors.separator)
         Box(Modifier.weight(1f)) {

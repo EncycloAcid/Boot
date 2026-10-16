@@ -26,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.GameState
 import com.boot.core.Lane
@@ -182,7 +181,7 @@ fun GuideSheet(store: GameStore, state: GameState) {
     val colors = gameColors
     val close = { store.guideOpen = false }
     BackHandler(topic != null) { open = null }
-    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    GameDialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {

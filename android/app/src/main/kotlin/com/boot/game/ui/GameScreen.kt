@@ -72,6 +72,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -94,16 +96,31 @@ val LocalInFloatingPanel = compositionLocalOf { false }
 
 @Composable
 fun BootApp(store: GameStore) {
-    val state = store.state
-    when {
-        state == null -> NewGameScreen(store)
-        store.layout == ScreenLayout.VERTICAL -> ClassicGameScreen(store, state)
-        // Sideways on a phone gets its own layout; tablets and unlocked screens keep the floating one.
-        else -> BoxWithConstraints(Modifier.fillMaxSize()) {
-            if (isLandscape(maxWidth, maxHeight)) LandscapeGameScreen(store, state) else GameScreen(store, state)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Sideways on a phone, everything is drawn a little smaller and packed tighter, the way PC
+        // tycoons fit a lot on one screen. Big system text still scales on top of this.
+        val sideways = isLandscape(maxWidth, maxHeight)
+        val density = LocalDensity.current
+        val scaled = if (sideways) Density(density.density * CompactScale, density.fontScale) else null
+        CompositionLocalProvider(
+            LocalCompact provides sideways,
+            LocalSidewaysDensity provides scaled,
+            LocalDensity provides (scaled ?: density),
+        ) {
+            val state = store.state
+            when {
+                state == null -> NewGameScreen(store)
+                store.layout == ScreenLayout.VERTICAL -> ClassicGameScreen(store, state)
+                // Sideways on a phone gets its own layout; tablets and unlocked screens keep the floating one.
+                sideways -> LandscapeGameScreen(store, state)
+                else -> GameScreen(store, state)
+            }
         }
     }
 }
+
+/** How much smaller the UI is drawn on a phone held sideways. */
+private const val CompactScale = 0.88f
 
 internal data class TabSpec(val tab: Tab, val label: String, val glyph: HudGlyph)
 
@@ -1209,15 +1226,22 @@ fun ScreenColumn(content: LazyListScope.() -> Unit) {
     } else {
         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + FloatingBarClearance + 32.dp
     }
+    val compact = LocalCompact.current
+    val side = when {
+        compact -> 10.dp
+        inPanel -> 12.dp
+        else -> 16.dp
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().then(if (inPanel) Modifier.background(gameColors.grouped.copy(alpha = 0.55f)) else Modifier),
-        contentPadding = PaddingValues(
-            start = if (inPanel) 12.dp else 16.dp,
-            end = if (inPanel) 12.dp else 16.dp,
-            top = if (inPanel) 12.dp else 16.dp,
-            bottom = bottom,
+        contentPadding = PaddingValues(start = side, end = side, top = side, bottom = if (compact && inPanel) 12.dp else bottom),
+        verticalArrangement = Arrangement.spacedBy(
+            when {
+                compact -> 12.dp
+                inPanel -> 20.dp
+                else -> 28.dp
+            },
         ),
-        verticalArrangement = Arrangement.spacedBy(if (inPanel) 20.dp else 28.dp),
         content = content,
     )
 }

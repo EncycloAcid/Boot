@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -182,63 +183,73 @@ private fun VitalsGlance(store: GameStore, state: GameState) {
     val fans = state.games?.fans
     val avgMorale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
     GroupedSection("At a glance") {
-        CardBlock {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                GlanceTile("Cash", Format.money(state.cash), Format.signedMoney(weekly) + "/wk", if (state.cash < 0) colors.bad else colors.good, Modifier.weight(1f)) {
-                    store.companyPage = 1
-                    store.tab = Tab.COMPANY
+        val money: @Composable RowScope.() -> Unit = {
+            GlanceTile("Cash", Format.money(state.cash), Format.signedMoney(weekly) + "/wk", if (state.cash < 0) colors.bad else colors.good, Modifier.weight(1f)) {
+                store.companyPage = 1
+                store.tab = Tab.COMPANY
+            }
+            GlanceTile(
+                "Research",
+                "${state.researchPoints.toInt()} RP",
+                "+${String.format(Locale.US, "%.1f", state.researchPerWeek)}/wk",
+                colors.milestone,
+                Modifier.weight(1f),
+            ) { store.tab = Tab.RESEARCH }
+            if (fans != null && Lane.GAMES in state.lanes) {
+                GlanceTile("Fans", Format.count(fans), "buy launches", Color(0xFFC44D8A), Modifier.weight(1f)) {
+                    store.openStudio(StudioPage.GAMES)
                 }
+            }
+            GlanceTile("Rep", "${state.reputation.score.toInt()}", "out of 100", colors.warn, Modifier.weight(1f)) {
+                store.companyPage = 0
+                store.tab = Tab.COMPANY
+            }
+        }
+        val company: @Composable RowScope.() -> Unit = {
+            GlanceTile(
+                "Team",
+                "${state.staff.size + 1}",
+                avgMorale?.let { "morale ${String.format(Locale.US, "%.0f", it * 100)}%" } ?: "just you",
+                MaterialTheme.colorScheme.primary,
+                Modifier.weight(1f),
+            ) { store.tab = Tab.TEAM }
+            GlanceTile(
+                "Desks",
+                "${state.staff.size}/${state.office.desks}",
+                if (state.staff.size > state.office.desks) "crowded" else state.office.title,
+                if (state.staff.size > state.office.desks) colors.bad else colors.other,
+                Modifier.weight(1f),
+            ) { store.tab = Tab.TEAM }
+            state.listing?.let { listing ->
                 GlanceTile(
-                    "Research",
-                    "${state.researchPoints.toInt()} RP",
-                    "+${String.format(Locale.US, "%.1f", state.researchPerWeek)}/wk",
-                    colors.milestone,
+                    listing.ticker,
+                    "$${String.format(Locale.US, "%.0f", listing.price)}",
+                    Format.money(listing.marketCap) + " cap",
+                    MaterialTheme.colorScheme.primary,
                     Modifier.weight(1f),
-                ) { store.tab = Tab.RESEARCH }
-                if (fans != null && Lane.GAMES in state.lanes) {
-                    GlanceTile("Fans", Format.count(fans), "buy launches", Color(0xFFC44D8A), Modifier.weight(1f)) {
-                        store.openStudio(StudioPage.GAMES)
-                    }
-                }
-                GlanceTile("Rep", "${state.reputation.score.toInt()}", "out of 100", colors.warn, Modifier.weight(1f)) {
+                ) {
                     store.companyPage = 0
                     store.tab = Tab.COMPANY
                 }
-            }
-            Spacer(Modifier.size(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                GlanceTile(
-                    "Team",
-                    "${state.staff.size + 1}",
-                    avgMorale?.let { "morale ${String.format(Locale.US, "%.0f", it * 100)}%" } ?: "just you",
-                    MaterialTheme.colorScheme.primary,
-                    Modifier.weight(1f),
-                ) { store.tab = Tab.TEAM }
-                GlanceTile(
-                    "Desks",
-                    "${state.staff.size}/${state.office.desks}",
-                    if (state.staff.size > state.office.desks) "crowded" else state.office.title,
-                    if (state.staff.size > state.office.desks) colors.bad else colors.other,
-                    Modifier.weight(1f),
-                ) { store.tab = Tab.TEAM }
-                state.listing?.let { listing ->
-                    GlanceTile(
-                        listing.ticker,
-                        "$${String.format(Locale.US, "%.0f", listing.price)}",
-                        Format.money(listing.marketCap) + " cap",
-                        MaterialTheme.colorScheme.primary,
-                        Modifier.weight(1f),
-                    ) {
-                        store.companyPage = 0
-                        store.tab = Tab.COMPANY
-                    }
-                } ?: GlanceTile(
-                    "Date",
-                    state.dateLabel,
-                    state.world.era.title.removePrefix("The "),
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                    Modifier.weight(1f),
-                ) { /* calendar glance only */ }
+            } ?: GlanceTile(
+                "Date",
+                state.dateLabel,
+                state.world.era.title.removePrefix("The "),
+                MaterialTheme.colorScheme.onSurfaceVariant,
+                Modifier.weight(1f),
+            ) { /* calendar glance only */ }
+        }
+        CardBlock {
+            if (LocalCompact.current) {
+                // Sideways there's room for every tile on one row.
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    money()
+                    company()
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), content = money)
+                Spacer(Modifier.size(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), content = company)
             }
         }
     }
@@ -258,7 +269,7 @@ private fun GlanceTile(
             .clip(RoundedCornerShape(14.dp))
             .background(color.copy(alpha = 0.12f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
+            .padding(horizontal = 8.dp, vertical = if (LocalCompact.current) 6.dp else 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {

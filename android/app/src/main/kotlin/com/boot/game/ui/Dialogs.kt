@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,7 +60,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.Combo
 import com.boot.core.EndingKind
@@ -101,24 +103,36 @@ fun EventSheet(store: GameStore, state: GameState) {
             containerColor = gameColors.grouped,
             properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false, shouldDismissOnClickOutside = false),
         ) {
-            Column(
-                Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                e.lane?.let { lane ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        LaneBadge(lane, 32.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Hint(lane.businessName)
+            Scaled {
+                val compact = LocalCompact.current
+                Column(
+                    Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
+                        .navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
+                ) {
+                    e.lane?.let { lane ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LaneBadge(lane, 32.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Hint(lane.businessName)
+                        }
+                    }
+                    Text(e.title, style = if (compact) MaterialTheme.typography.headlineSmallEmphasized else MaterialTheme.typography.headlineMediumEmphasized)
+                    Text(e.body, style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge)
+                    Spacer(Modifier.size(4.dp))
+                    if (compact) {
+                        // Sideways, every choice fits side by side, so they can be weighed at a glance.
+                        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            e.choices.forEachIndexed { i, choice ->
+                                ChoiceButton(choice, primary = i == 0, Modifier.weight(1f).fillMaxHeight()) { store.perform { choose(i) } }
+                            }
+                        }
+                    } else {
+                        e.choices.forEachIndexed { i, choice -> ChoiceButton(choice, primary = i == 0) { store.perform { choose(i) } } }
                     }
                 }
-                Text(e.title, style = MaterialTheme.typography.headlineMediumEmphasized)
-                Text(e.body, style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.size(4.dp))
-                e.choices.forEachIndexed { i, choice -> ChoiceButton(choice, primary = i == 0) { store.perform { choose(i) } } }
             }
         }
     }
@@ -126,18 +140,18 @@ fun EventSheet(store: GameStore, state: GameState) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ChoiceButton(choice: EventChoice, primary: Boolean, onClick: () -> Unit) {
+private fun ChoiceButton(choice: EventChoice, primary: Boolean, modifier: Modifier = Modifier.fillMaxWidth(), onClick: () -> Unit) {
     val content: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(choice.label, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
             Text(choice.detail, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
         }
     }
-    val modifier = Modifier.fillMaxWidth().heightIn(min = 60.dp)
+    val sized = modifier.heightIn(min = 60.dp)
     if (primary) {
-        Button(onClick = onClick, shapes = ButtonDefaults.shapes(), modifier = modifier) { content() }
+        Button(onClick = onClick, shapes = ButtonDefaults.shapes(), modifier = sized) { content() }
     } else {
-        FilledTonalButton(onClick = onClick, shapes = ButtonDefaults.shapes(), modifier = modifier) { content() }
+        FilledTonalButton(onClick = onClick, shapes = ButtonDefaults.shapes(), modifier = sized) { content() }
     }
 }
 
@@ -151,7 +165,7 @@ fun PivotDialog(store: GameStore, state: GameState) {
     var useVenture by rememberSaveable(offer.week) { mutableStateOf(false) }
     var confirmSale by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = {}, properties = fullScreen) {
+    GameDialog(onDismissRequest = {}, properties = fullScreen) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Column(
@@ -252,7 +266,7 @@ fun EndingDialog(store: GameStore, state: GameState) {
     val angle by spin.animateFloat(0f, 360f, infiniteRepeatable(tween(24_000, easing = LinearEasing), RepeatMode.Restart), label = "angle")
     val good = e.kind == EndingKind.IPO || e.kind == EndingKind.ACQUIRED || e.kind == EndingKind.INDIE
     val accent = if (good) MaterialTheme.colorScheme.primary else colors.bad
-    Dialog(onDismissRequest = {}, properties = fullScreen) {
+    GameDialog(onDismissRequest = {}, properties = fullScreen) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Column(

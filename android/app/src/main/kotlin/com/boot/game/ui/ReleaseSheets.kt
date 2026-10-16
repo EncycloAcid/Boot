@@ -35,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.Format
 import com.boot.core.GameRelease
@@ -69,44 +68,46 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
         sheetState = sheet,
         containerColor = gameColors.grouped,
     ) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Hint("The reviews are in")
-                Spacer(Modifier.size(10.dp))
-                GameCover(r.concept, 132.dp, studio = r.developer ?: r.publisher ?: state.companyName)
-                Spacer(Modifier.size(12.dp))
-                Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
-                Spacer(Modifier.size(12.dp))
-                ScoreSummary(r)
-                Spacer(Modifier.size(10.dp))
-                Text(
-                    "${r.verdict} · launch week ${Format.money(r.salesHistory.firstOrNull() ?: r.weeklySales)}" +
-                        if (r.chartRank > 0) " · #${r.chartRank} on the charts" else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            // Why, before what each critic said.
-            if (r.breakdown.isNotEmpty()) ScoreBreakdown(r, top = 4)
-            GroupedSection("Critics") {
-                r.reviews.forEachIndexed { i, review ->
-                    if (i > 0) RowDivider()
-                    RevealedReview(review, i)
+        Scaled {
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Hint("The reviews are in")
+                    Spacer(Modifier.size(10.dp))
+                    GameCover(r.concept, 132.dp, studio = r.developer ?: r.publisher ?: state.companyName)
+                    Spacer(Modifier.size(12.dp))
+                    Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
+                    Spacer(Modifier.size(12.dp))
+                    ScoreSummary(r)
+                    Spacer(Modifier.size(10.dp))
+                    Text(
+                        "${r.verdict} · launch week ${Format.money(r.salesHistory.firstOrNull() ?: r.weeklySales)}" +
+                            if (r.chartRank > 0) " · #${r.chartRank} on the charts" else "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-            }
-            ProsCons(r.pros, r.cons)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TonalButton("Game report", {
-                    store.openRelease = r.id
-                    store.perform { acknowledgeReview() }
-                }, Modifier.weight(1f))
-                PrimaryButton("Continue", { store.perform { acknowledgeReview() } }, Modifier.weight(1f))
+                // Why, before what each critic said.
+                if (r.breakdown.isNotEmpty()) ScoreBreakdown(r, top = 4)
+                GroupedSection("Critics") {
+                    r.reviews.forEachIndexed { i, review ->
+                        if (i > 0) RowDivider()
+                        RevealedReview(review, i)
+                    }
+                }
+                ProsCons(r.pros, r.cons)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TonalButton("Game report", {
+                        store.openRelease = r.id
+                        store.perform { acknowledgeReview() }
+                    }, Modifier.weight(1f))
+                    PrimaryButton("Continue", { store.perform { acknowledgeReview() } }, Modifier.weight(1f))
+                }
             }
         }
     }
@@ -136,7 +137,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
     val r: GameRelease = g.release(releaseId) ?: return
     val colors = gameColors
     val canSequel = Research.SEQUELS in state.researched && !g.busy && r.developer == null && r.publisher == null
-    Dialog(onDismissRequest = { store.openRelease = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    GameDialog(onDismissRequest = { store.openRelease = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -1,19 +1,17 @@
 package com.boot.game.ui
 
-import androidx.compose.material3.PlainTooltip
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,8 +20,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
 import androidx.compose.material3.Surface
@@ -48,6 +49,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,26 +60,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.toPath
 import com.boot.core.Format
@@ -87,6 +92,32 @@ import com.boot.core.LogEntry
 // Sections: a heading, a white card, and a footnote
 
 private val CardShape = RoundedCornerShape(24.dp)
+private val CompactCardShape = RoundedCornerShape(16.dp)
+
+/**
+ * True on a phone held sideways: the screen is short, so sections, cards, rows and tiles use
+ * tighter spacing to show more at once.
+ */
+val LocalCompact = compositionLocalOf { false }
+
+/**
+ * The smaller sideways scale, when it applies. Dialogs and sheets open in windows of their own,
+ * which start back at the system scale; [Scaled] puts them on the same one as the game.
+ */
+val LocalSidewaysDensity = compositionLocalOf<Density?> { null }
+
+/** Draws [content] at the sideways scale, if there is one. Safe to nest. */
+@Composable
+fun Scaled(content: @Composable () -> Unit) {
+    val density = LocalSidewaysDensity.current
+    if (density == null) content() else CompositionLocalProvider(LocalDensity provides density, content = content)
+}
+
+/** A dialog drawn at the same scale as the rest of the game. */
+@Composable
+fun GameDialog(onDismissRequest: () -> Unit, properties: DialogProperties = DialogProperties(), content: @Composable () -> Unit) {
+    Dialog(onDismissRequest = onDismissRequest, properties = properties) { Scaled(content) }
+}
 
 /**
  * A section of a screen: a sentence-case heading, a rounded card of rows or content, and an
@@ -100,22 +131,23 @@ fun GroupedSection(
     action: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val compact = LocalCompact.current
     Column(modifier.fillMaxWidth()) {
         if (header != null || action != null) {
             Row(
-                Modifier.heightIn(min = 32.dp).padding(start = 4.dp, end = 0.dp, bottom = 8.dp),
+                Modifier.heightIn(min = if (compact) 24.dp else 32.dp).padding(start = 4.dp, end = 0.dp, bottom = if (compact) 4.dp else 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     header ?: "",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                 )
                 action?.invoke()
             }
         }
-        Surface(shape = CardShape, color = gameColors.card, modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = if (compact) CompactCardShape else CardShape, color = gameColors.card, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()), content = content)
         }
         if (footer != null) {
@@ -123,7 +155,7 @@ fun GroupedSection(
                 footer,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = if (compact) 4.dp else 8.dp),
             )
         }
     }
@@ -132,13 +164,19 @@ fun GroupedSection(
 /** Free-form content inside a grouped card, with the card's padding. */
 @Composable
 fun CardBlock(spacing: Dp = 14.dp, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(spacing), content = content)
+    val compact = LocalCompact.current
+    Column(
+        Modifier.fillMaxWidth().padding(if (compact) 12.dp else 20.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) spacing * 0.6f else spacing),
+        content = content,
+    )
 }
 
 /** The hairline between rows, inset to the text. */
 @Composable
 fun RowDivider(inset: Dp = 20.dp) {
-    HorizontalDivider(Modifier.padding(start = inset.coerceAtLeast(20.dp), end = 20.dp), thickness = 1.dp, color = gameColors.separator)
+    val edge = if (LocalCompact.current) 12.dp else 20.dp
+    HorizontalDivider(Modifier.padding(start = inset.coerceAtLeast(edge), end = edge), thickness = 1.dp, color = gameColors.separator)
 }
 
 /** One iOS table cell: optional leading badge, title and subtitle, a value on the right, a chevron if it navigates. */
@@ -155,12 +193,13 @@ fun ListRow(
     onClick: (() -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
+    val compact = LocalCompact.current
     Row(
         Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .heightIn(min = 56.dp)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .heightIn(min = if (compact) 44.dp else 56.dp)
+            .padding(horizontal = if (compact) 12.dp else 20.dp, vertical = if (compact) 6.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
@@ -250,7 +289,27 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
 /** Tiles side by side. Phones are narrow; pairs and triples read better than a long row. */
 @Composable
 fun TileRow(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp), content = content)
+    Row(
+        Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(if (LocalCompact.current) 12.dp else 20.dp),
+        content = content,
+    )
+}
+
+/** Two pairs of tiles: stacked on a phone held upright, all four on one row sideways. */
+@Composable
+fun TileGrid(first: @Composable RowScope.() -> Unit, second: @Composable RowScope.() -> Unit) {
+    if (LocalCompact.current) {
+        TileRow {
+            first()
+            second()
+        }
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TileRow(first)
+            TileRow(second)
+        }
+    }
 }
 
 /**
@@ -416,6 +475,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
     val haptics = LocalHapticFeedback.current
     val colors = gameColors
     val motion = MaterialTheme.motionScheme
+    val compact = LocalCompact.current
     Row(
         Modifier
             .fillMaxWidth()
@@ -434,7 +494,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                 shadowElevation = if (on) 1.dp else 0.dp,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 40.dp)
+                    .heightIn(min = if (compact) 34.dp else 40.dp)
                     .selectable(selected = on, role = Role.RadioButton) {
                         if (!on) {
                             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -442,7 +502,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                         }
                     },
             ) {
-                Box(Modifier.padding(horizontal = 8.dp, vertical = 9.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.padding(horizontal = 8.dp, vertical = if (compact) 5.dp else 9.dp), contentAlignment = Alignment.Center) {
                     FitText(
                         label(option), MaterialTheme.typography.labelLarge,
                         color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,

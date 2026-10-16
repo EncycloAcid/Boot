@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.AdBudget
 import com.boot.core.CampaignLengths
@@ -102,7 +101,7 @@ fun CampaignSheet(store: GameStore, state: GameState, lane: Lane) {
     var budget by rememberSaveable { mutableStateOf(AdBudget.SMALL) }
     var weeks by rememberSaveable { mutableIntStateOf(8) }
     val close = { store.campaignLane = null }
-    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    GameDialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {

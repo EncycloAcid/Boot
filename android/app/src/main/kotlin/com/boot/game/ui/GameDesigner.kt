@@ -55,7 +55,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.Audience
 import com.boot.core.FocusArea
@@ -149,7 +148,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
             }, enabled = blocker == null)
         }
     }
-    Dialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
+    GameDialog(onDismissRequest = { close() }, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -263,7 +262,7 @@ private fun ConceptStep(
     val g = state.games!!
     val colors = gameColors
     GroupedSection("Name") {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = if (LocalCompact.current) 12.dp else 16.dp, vertical = if (LocalCompact.current) 2.dp else 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Title", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(72.dp))
             BasicTextField(
                 value = title,

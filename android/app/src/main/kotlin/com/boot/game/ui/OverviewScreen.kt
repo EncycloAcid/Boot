@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -75,13 +76,18 @@ private fun Hero(state: GameState) {
     val colors = gameColors
     val weeklyProfit = state.trailingProfit(weeks = 4) / 4
     val listing = state.listing
-    GroupedSection(null) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    val compact = LocalCompact.current
+    val headline: @Composable (Modifier) -> Unit = { modifier ->
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 listing?.let { "${it.ticker} · \$" + String.format(java.util.Locale.US, "%.2f", it.price) + " a share" } ?: "Valuation",
                 style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            FitText(Format.money(listing?.marketCap ?: state.valuation), MaterialTheme.typography.displaySmallEmphasized, min = 20.sp)
+            FitText(
+                Format.money(listing?.marketCap ?: state.valuation),
+                if (compact) MaterialTheme.typography.headlineMediumEmphasized else MaterialTheme.typography.displaySmallEmphasized,
+                min = 20.sp,
+            )
             Text(
                 buildString {
                     append("${Format.signedMoney(weeklyProfit)} a week")
@@ -91,29 +97,46 @@ private fun Hero(state: GameState) {
                 color = if (weeklyProfit >= 0) colors.good else colors.bad,
             )
         }
-        RowDivider()
-        Row(
-            Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            StatTile(
-                "Reputation", "${state.reputation.score.toInt()}", Modifier.weight(1f),
-                if (state.reputation.scars.isEmpty()) "Clean" else "${state.reputation.scars.size} scar(s)",
+    }
+    val stats: @Composable RowScope.() -> Unit = {
+        StatTile(
+            "Reputation", "${state.reputation.score.toInt()}", Modifier.weight(1f),
+            if (state.reputation.scars.isEmpty()) "Clean" else "${state.reputation.scars.size} scar(s)",
+        )
+        val runway = state.runwayWeeks
+        StatTile(
+            "Runway",
+            when {
+                !runway.isFinite() -> "∞"
+                runway > 260 -> "5+ yrs"
+                runway >= 52 -> String.format(java.util.Locale.US, "%.1f yrs", runway / 52)
+                else -> "${runway.toInt()} wks"
+            },
+            Modifier.weight(1f),
+            if (!runway.isFinite()) "Profitable" else "at this burn",
+            if (runway < 8) colors.bad else Color.Unspecified,
+        )
+        StatTile("Team", "${state.staff.size + 1}", Modifier.weight(1f), state.headquarters.name)
+    }
+    GroupedSection(null) {
+        if (compact) {
+            // Sideways: the big number and the three to watch, side by side.
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                headline(Modifier.weight(1.6f))
+                stats()
+            }
+        } else {
+            headline(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp))
+            RowDivider()
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                content = stats,
             )
-            val runway = state.runwayWeeks
-            StatTile(
-                "Runway",
-                when {
-                    !runway.isFinite() -> "∞"
-                    runway > 260 -> "5+ yrs"
-                    runway >= 52 -> String.format(java.util.Locale.US, "%.1f yrs", runway / 52)
-                    else -> "${runway.toInt()} wks"
-                },
-                Modifier.weight(1f),
-                if (!runway.isFinite()) "Profitable" else "at this burn",
-                if (runway < 8) colors.bad else Color.Unspecified,
-            )
-            StatTile("Team", "${state.staff.size + 1}", Modifier.weight(1f), state.headquarters.name)
         }
     }
 }

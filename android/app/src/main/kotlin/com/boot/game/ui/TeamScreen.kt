@@ -174,11 +174,12 @@ private fun HiringSection(store: GameStore, state: GameState) {
         footer = (if (state.freeDesks <= 0) "No free desks. Move to a bigger office to hire. " else "") +
             "Rivals compete for the same people. Contested candidates vanish fast. Recruiting costs two weeks' salary.",
     ) {
+        val joiner = if (LocalCompact.current) " · " else "\n"
         state.candidates.forEachIndexed { i, c ->
             if (i > 0) RowDivider(68.dp)
             ListRow(
                 c.name,
-                subtitle = "${c.role.title} · skill ${c.skill} · ${c.askingSalary.perWeek()}\nDesign ${c.design} · Tech ${c.tech} · Research ${c.research}" +
+                subtitle = "${c.role.title} · skill ${c.skill} · ${c.askingSalary.perWeek()}${joiner}Design ${c.design} · Tech ${c.tech} · Research ${c.research}" +
                     (c.trait?.let { "\n${it.title}: ${it.detail.replaceFirstChar { ch -> ch.lowercase() }}" } ?: "") +
                     (c.contestedBy?.let { "\n$it is circling" } ?: ""),
                 leading = { CandidatePortrait(c.id, 44.dp, ring = if (c.contestedBy != null) gameColors.warn else null) },
@@ -204,7 +205,7 @@ private fun TeamSection(store: GameStore, state: GameState) {
     ) {
         if (state.staff.isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
         state.staff.forEachIndexed { i, e ->
-            if (i > 0) RowDivider(78.dp)
+            if (i > 0) RowDivider(if (LocalCompact.current) 58.dp else 78.dp)
             EmployeeRow(
                 e, state.lanes,
                 onAssign = { lane -> store.perform { assign(e.id, lane) } },
@@ -240,29 +241,38 @@ private fun TeamSection(store: GameStore, state: GameState) {
 private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Unit, onFire: () -> Unit, onTrain: (() -> Unit)?) {
     val colors = gameColors
     var menu by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        StaffPortrait(e, 44.dp)
-        Column(Modifier.weight(1f).padding(start = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    val compact = LocalCompact.current
+    val role = "${e.role.title} · skill\u00A0${e.skill} · ${e.salary.perWeek()}" +
+        // Only worth saying which lane when there's more than one, or none.
+        (if (lanes.size > 1 || e.lane == null) " · ${e.lane?.short ?: "Unassigned"}" else "")
+    val skills = "Design\u00A0${e.design} · Tech\u00A0${e.tech} · Research\u00A0${e.research}"
+    val bars: @Composable () -> Unit = {
+        MiniBar("Morale", e.morale, if (e.morale < 0.35) colors.bad else colors.good)
+        MiniBar(if (e.maxLevel) "Max level" else "XP", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone)
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(start = if (compact) 12.dp else 20.dp, end = if (compact) 4.dp else 8.dp, top = if (compact) 6.dp else 14.dp, bottom = if (compact) 6.dp else 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        StaffPortrait(e, if (compact) 36.dp else 44.dp)
+        Column(Modifier.weight(1f).padding(start = if (compact) 10.dp else 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(e.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 Text("Lv ${e.level}", style = MaterialTheme.typography.labelMedium, color = colors.milestone)
                 // The trait by name; long-press for what it does.
                 e.trait?.let { t -> Tip("${t.title}: ${t.detail}") { Pill(t.title, colors.milestone) } }
             }
-            Text(
-                "${e.role.title} · skill\u00A0${e.skill} · ${e.salary.perWeek()}" +
-                    // Only worth saying which lane when there's more than one, or none.
-                    (if (lanes.size > 1 || e.lane == null) " · ${e.lane?.short ?: "Unassigned"}" else ""),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "Design\u00A0${e.design} · Tech\u00A0${e.tech} · Research\u00A0${e.research}",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                MiniBar("Morale", e.morale, if (e.morale < 0.35) colors.bad else colors.good)
-                MiniBar(if (e.maxLevel) "Max level" else "XP", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone)
+            if (compact) {
+                // Sideways: one line of details, the bars to the right.
+                Text("$role · $skills", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Text(role, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(skills, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) { bars() }
             }
+        }
+        if (compact) {
+            Column(Modifier.padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp), horizontalAlignment = Alignment.End) { bars() }
         }
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Manage ${e.name}", tint = MaterialTheme.colorScheme.onSurfaceVariant) }

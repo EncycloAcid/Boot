@@ -102,31 +102,34 @@ private fun LaneHero(state: GameState, lane: Lane) {
     val colors = gameColors
     val profit = state.trailingProfit(lane, 4) / 4
     GroupedSection(null) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            LaneBadge(lane, 64.dp)
+        val compact = LocalCompact.current
+        Row(Modifier.padding(if (compact) 12.dp else 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            LaneBadge(lane, if (compact) 44.dp else 64.dp)
             Spacer(Modifier.width(14.dp))
             Column {
-                Text(lane.businessName, style = MaterialTheme.typography.headlineSmall)
+                Text(lane.businessName, style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall)
                 Text(
                     lane.pitch, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TileRow {
-                StatTile("Revenue", (state.trailingRevenue(lane, 4) / 4).perWeek(), Modifier.weight(1f), "4-week average")
-                StatTile("Profit", profit.signedPerWeek(), Modifier.weight(1f), "after this lane's payroll", if (profit >= 0) colors.good else colors.bad)
-            }
-            TileRow {
-                StatTile(
-                    "Team", "${state.staff(lane).size}", Modifier.weight(1f),
-                    "plus ${Format.percent(state.founder.attentionShare(lane, state.lanes))} of you",
-                )
-                StatTile(
-                    "Market", Format.percent(state.world.era.demand(lane) * state.world.competition(lane)), Modifier.weight(1f),
-                    state.world.rival(lane)?.let { "vs ${it.name}" },
-                )
-            }
+        Column(Modifier.padding(start = if (compact) 12.dp else 20.dp, end = if (compact) 12.dp else 20.dp, bottom = if (compact) 12.dp else 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TileGrid(
+                first = {
+                    StatTile("Revenue", (state.trailingRevenue(lane, 4) / 4).perWeek(), Modifier.weight(1f), "4-week average")
+                    StatTile("Profit", profit.signedPerWeek(), Modifier.weight(1f), "after this lane's payroll", if (profit >= 0) colors.good else colors.bad)
+                },
+                second = {
+                    StatTile(
+                        "Team", "${state.staff(lane).size}", Modifier.weight(1f),
+                        "plus ${Format.percent(state.founder.attentionShare(lane, state.lanes))} of you",
+                    )
+                    StatTile(
+                        "Market", Format.percent(state.world.era.demand(lane) * state.world.competition(lane)), Modifier.weight(1f),
+                        state.world.rival(lane)?.let { "vs ${it.name}" },
+                    )
+                },
+            )
         }
     }
 }
@@ -215,17 +218,19 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                 }
             } else {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    TileRow {
-                        StatTile("Users", Format.count(a.users), Modifier.weight(1f))
-                        StatTile("Store rank", a.rankLabel, Modifier.weight(1f))
-                    }
-                    TileRow {
-                        StatTile(
-                            "Churn", Format.percent(a.lastChurn, 1), Modifier.weight(1f), "per week",
-                            if (a.lastChurn > 0.08) gameColors.bad else Color.Unspecified,
-                        )
-                        StatTile("Installs", Format.count(a.lastInstalls), Modifier.weight(1f), "this week")
-                    }
+                    TileGrid(
+                        first = {
+                            StatTile("Users", Format.count(a.users), Modifier.weight(1f))
+                            StatTile("Store rank", a.rankLabel, Modifier.weight(1f))
+                        },
+                        second = {
+                            StatTile(
+                                "Churn", Format.percent(a.lastChurn, 1), Modifier.weight(1f), "per week",
+                                if (a.lastChurn > 0.08) gameColors.bad else Color.Unspecified,
+                            )
+                            StatTile("Installs", Format.count(a.lastInstalls), Modifier.weight(1f), "this week")
+                        },
+                    )
                 }
                 CardBlock {
                     Meter("Store score", a.quality / 100, gameColors.milestone, "${a.quality.toInt()}")
