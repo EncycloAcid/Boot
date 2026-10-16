@@ -93,9 +93,10 @@ class LayoutModesTest {
                 startGame(com.boot.core.GameConcept("Moss Knight", com.boot.core.Topic.FANTASY, com.boot.core.Genre.RPG, platforms = listOf(com.boot.core.Platform.PC), size = com.boot.core.GameSize.SMALL))
                 repeat(3) { advance() }
             }
-            store.todayOpen = false
             store.tab = Tab.OFFICE
         }
+        compose.waitForIdle()
+        compose.runOnIdle { store.todayOpen = false }
         save("97-sideways-developing")
         compose.runOnIdle { store.tab = Tab.TEAM }
         save("98-sideways-team")

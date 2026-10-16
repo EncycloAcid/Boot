@@ -4,6 +4,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
@@ -13,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,11 +83,15 @@ import com.boot.game.Tab
 import java.util.Locale
 
 /*
- * Sideways on a phone. The screen is wide and short, so nothing floats over anything else: a top
- * bar with who and when, the resources, the money and the clock; a rail of tabs down the left; the
- * office in the middle; and, when a tab is open, a full-height window on the right. Opening a
- * window shrinks the office rather than covering it, so the room and its people stay in view.
+ * Sideways on a phone, laid out the way Game Dev Tycoon uses a wide screen: the office fills it,
+ * small readouts sit in the corners (who and when top left, the money top right), the game in
+ * development runs across the top, and one dock along the bottom holds the tabs and the clock.
+ * Tabs open as windows in the middle with the office dimmed behind; the dock stays put, so time
+ * can run with a window open.
  */
+
+/** Height of the bottom dock plus its margin, for windows to clear. */
+private val DockClearance = 68.dp
 
 /** Everything in the game, held sideways. */
 @Composable
@@ -93,8 +102,9 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
     val needsToday = state.tutorial != null || state.inbox.isNotEmpty() ||
         nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true
 
-    // Lessons, inbox items and urgent tips open Today by themselves, once a week at most.
-    LaunchedEffect(state.week, needsToday) {
+    // A new lesson, inbox item or urgent tip opens Today by itself; quiet weeks leave the office in view.
+    val todayKey = listOf(state.tutorial?.toString(), state.inbox.size, nextStep(state)?.key)
+    LaunchedEffect(todayKey, needsToday) {
         if (needsToday && store.tab == Tab.OFFICE) store.todayOpen = true
     }
     LaunchedEffect(store.error) {
@@ -123,40 +133,80 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { store.pause() }
 
     val windowOpen = store.tab != Tab.OFFICE || store.todayOpen
-    BackHandler(enabled = windowOpen) {
-        if (store.tab != Tab.OFFICE) store.tab = Tab.OFFICE else store.todayOpen = false
-    }
+    val closeWindow = { if (store.tab != Tab.OFFICE) store.tab = Tab.OFFICE else store.todayOpen = false }
+    BackHandler(enabled = windowOpen) { closeWindow() }
+    val project = state.games?.project ?: state.games?.project2
+    val team = if (state.games?.project != null) 1 else 2
 
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-        BoxWithConstraints(
-            Modifier
-                .fillMaxSize()
-                .background(colors.grouped)
-                .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout)),
-        ) {
-            val windowWidth = (maxWidth * 0.46f).coerceIn(340.dp, 560.dp)
-            Column(Modifier.fillMaxSize()) {
-                TopBar(store, state, onAbandon = { confirmAbandon = true })
-                WeekProgress(store, state)
-                Row(Modifier.fillMaxWidth().weight(1f)) {
-                    Rail(store, state)
-                    VerticalDivider(color = colors.separator)
-                    // The office takes whatever's left, and recentres when a window opens.
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
-                        Stage(store, state)
-                        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp))
-                    }
-                    AnimatedVisibility(
-                        visible = windowOpen,
-                        enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
-                        exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
-                    ) {
-                        Row(Modifier.fillMaxHeight()) {
-                            VerticalDivider(color = colors.separator)
-                            SideWindow(store, state, Modifier.width(windowWidth).fillMaxHeight())
+        BoxWithConstraints(Modifier.fillMaxSize().background(colors.grouped)) {
+            val windowWidth = (maxWidth * 0.72f).coerceIn(420.dp, 680.dp)
+            // The office, edge to edge, under everything.
+            OfficeScene(state, store.playing, Modifier.fillMaxSize().clickable { store.tab = Tab.TEAM }, insetTop = 48.dp)
+
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout))
+                    .padding(8.dp),
+            ) {
+                // Top left: the menu, who and when.
+                Identity(store, state, Modifier.align(Alignment.TopStart), onAbandon = { confirmAbandon = true })
+                // Top right: research, money, standing.
+                Readouts(store, state, Modifier.align(Alignment.TopEnd))
+                // Top middle: the game in development, or what's waiting in Today.
+                Box(Modifier.align(Alignment.TopCenter).padding(top = 52.dp).widthIn(max = 380.dp)) {
+                    if (project != null) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            ProjectStrip(store, state, project, team)
+                            // The points the team is making, under the game, the way Game Dev Tycoon shows them.
+                            Floating {
+                                Row(Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
+                                    BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
+                                    BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
+                                }
+                            }
                         }
+                    } else if (!windowOpen) {
+                        TodayPrompt(store, state)
                     }
                 }
+                // Bottom left, above the dock: the desks.
+                DeskChip(state, Modifier.align(Alignment.BottomStart).padding(bottom = DockClearance)) { store.tab = Tab.TEAM }
+            }
+
+            // A window in the middle, with the office dimmed behind it. Tap outside to close.
+            AnimatedVisibility(visible = windowOpen, enter = fadeIn(), exit = fadeOut()) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.22f))
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { closeWindow() },
+                )
+            }
+            AnimatedVisibility(
+                visible = windowOpen,
+                enter = fadeIn() + scaleIn(initialScale = 0.97f),
+                exit = fadeOut() + scaleOut(targetScale = 0.97f),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout))
+                    .padding(top = 64.dp, bottom = DockClearance + 6.dp),
+            ) {
+                CenterWindow(store, state, Modifier.width(windowWidth).fillMaxHeight())
+            }
+
+            // The dock: tabs and the clock, always on top.
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout))
+                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                SnackbarHost(snackbar)
+                Dock(store, state)
             }
         }
     }
@@ -175,126 +225,174 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
     }
 }
 
-/**
- * One line across the top: the menu, who and when, the resources (design, tech and bugs while a
- * game is in development, research points always), the money, and the clock.
- */
+/** A soft card that floats over the office. */
 @Composable
-private fun TopBar(store: GameStore, state: GameState, onAbandon: () -> Unit) {
+private fun Floating(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val colors = gameColors
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier
+            .shadow(6.dp, shape, clip = false)
+            .clip(shape)
+            .background(colors.bar.copy(alpha = 0.95f))
+            .border(1.dp, colors.separator, shape),
+    ) { content() }
+}
+
+/** Top left: the menu, the company, and the date, season and era. */
+@Composable
+private fun Identity(store: GameStore, state: GameState, modifier: Modifier, onAbandon: () -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
-    val project = state.games?.project ?: state.games?.project2
-    val weekly = state.trailingProfit(weeks = 4) / 4
     val unread = state.news.count { it.id > store.newsSeen }
     val attention = unread + state.inbox.size + if (state.tutorial != null) 1 else 0
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(colors.bar)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box {
-            BadgedBox(badge = { if (attention > 0) Badge() }) {
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .clickable { menuOpen = true }
-                        .semantics { contentDescription = if (attention > 0) "Menu, $attention waiting" else "Menu" },
-                    contentAlignment = Alignment.Center,
-                ) { HudIcon(HudGlyph.MENU, MaterialTheme.colorScheme.onSurface, 18.dp) }
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text(if (state.inbox.isNotEmpty()) "Today · ${state.inbox.size} inbox" else "Today") },
-                    onClick = {
+    Floating(modifier.widthIn(max = 300.dp)) {
+        Row(Modifier.padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box {
+                BadgedBox(badge = { if (attention > 0) Badge() }) {
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable { menuOpen = true }
+                            .semantics { contentDescription = if (attention > 0) "Menu, $attention waiting" else "Menu" },
+                        contentAlignment = Alignment.Center,
+                    ) { HudIcon(HudGlyph.MENU, MaterialTheme.colorScheme.onSurface, 18.dp) }
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(text = { Text("How to play") }, onClick = {
                         menuOpen = false
-                        store.tab = Tab.OFFICE
-                        store.todayOpen = true
-                    },
+                        store.guideOpen = true
+                    })
+                    DropdownMenuItem(text = { Text("Play upright (classic)") }, onClick = {
+                        menuOpen = false
+                        store.chooseLayout(ScreenLayout.VERTICAL)
+                    })
+                    DropdownMenuItem(text = { Text("Abandon run and start over") }, onClick = {
+                        menuOpen = false
+                        store.pause()
+                        onAbandon()
+                    })
+                }
+            }
+            Column(Modifier.clickable { store.companyPage = 0; store.tab = Tab.COMPANY }) {
+                Text(
+                    state.companyName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
-                DropdownMenuItem(text = { Text(if (unread > 0) "News · $unread new" else "News") }, onClick = {
-                    menuOpen = false
-                    store.tab = Tab.NEWS
-                })
-                DropdownMenuItem(text = { Text("How to play") }, onClick = {
-                    menuOpen = false
-                    store.guideOpen = true
-                })
-                DropdownMenuItem(text = { Text("Play upright (classic)") }, onClick = {
-                    menuOpen = false
-                    store.chooseLayout(ScreenLayout.VERTICAL)
-                })
-                DropdownMenuItem(text = { Text("Abandon run and start over") }, onClick = {
-                    menuOpen = false
-                    store.pause()
-                    onAbandon()
-                })
+                Text(
+                    "${state.dateLabel} · ${seasonTitle(state.week)} · ${state.world.era.title.removePrefix("The ")}",
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
         }
-        // Who and when.
-        Column(Modifier.weight(1f).clickable { store.companyPage = 0; store.tab = Tab.COMPANY }) {
-            Text(
-                state.companyName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                "${state.dateLabel} · ${seasonTitle(state.week)} · ${state.world.era.title.removePrefix("The ")}",
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-        // Resources.
-        if (project != null) {
-            BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
-            BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
-            BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
-        }
-        BarStat(
-            HudGlyph.RESEARCH, colors.milestone, "${state.researchPoints.toInt()}",
-            "Research points, +${String.format(Locale.US, "%.1f", state.researchPerWeek)} a week",
-        ) { store.tab = Tab.RESEARCH }
-        BarDivider()
-        // Money and standing.
-        Column(
-            Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .clickable { store.companyPage = 1; store.tab = Tab.COMPANY }
-                .semantics { contentDescription = "Cash ${Format.money(state.cash)}" }
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            Text(
-                Format.money(state.cash), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-                color = if (state.cash < 0) colors.bad else colors.good, maxLines = 1,
-            )
-            Text(
-                "${Format.signedMoney(weekly)}/wk", style = MaterialTheme.typography.labelSmall,
-                color = if (weekly >= 0) colors.good else colors.bad, maxLines = 1,
-            )
-        }
-        val fans = state.games?.fans
-        if (fans != null && Lane.GAMES in state.lanes) {
-            BarStat(HudGlyph.FANS, Color(0xFFC44D8A), Format.count(fans), "Fans") { store.openStudio(StudioPage.GAMES) }
-        } else {
-            BarStat(HudGlyph.FANS, colors.warn, "${state.reputation.score.toInt()}", "Reputation") { store.companyPage = 0; store.tab = Tab.COMPANY }
-        }
-        BarDivider()
-        // The clock.
-        TinyChip(store.speed.label, description = "Speed ${store.speed.label}") {
-            store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
-        }
-        TinyChip("Week", enabled = store.canAdvance && !store.playing && !store.holdsClock, description = "Next week") { store.advance(1) }
-        TinyChip(
-            if (store.playing) "Pause" else "Play",
-            filled = true,
-            enabled = store.canAdvance || store.playing,
-            description = if (store.playing) "Pause" else "Play",
-        ) { store.togglePlay() }
     }
-    HorizontalDivider(color = colors.separator)
+}
+
+/** Top right: research points, cash and the week's profit, and fans or reputation. */
+@Composable
+private fun Readouts(store: GameStore, state: GameState, modifier: Modifier) {
+    val colors = gameColors
+    val weekly = state.trailingProfit(weeks = 4) / 4
+    Floating(modifier) {
+        Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            BarStat(
+                HudGlyph.RESEARCH, colors.milestone, "${state.researchPoints.toInt()}",
+                "Research points, +${String.format(Locale.US, "%.1f", state.researchPerWeek)} a week",
+            ) { store.tab = Tab.RESEARCH }
+            val fans = state.games?.fans
+            if (fans != null && Lane.GAMES in state.lanes) {
+                BarStat(HudGlyph.FANS, Color(0xFFC44D8A), Format.count(fans), "Fans") { store.openStudio(StudioPage.GAMES) }
+            } else {
+                BarStat(HudGlyph.FANS, colors.warn, "${state.reputation.score.toInt()}", "Reputation") { store.companyPage = 0; store.tab = Tab.COMPANY }
+            }
+            Column(
+                Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { store.companyPage = 1; store.tab = Tab.COMPANY }
+                    .semantics { contentDescription = "Cash ${Format.money(state.cash)}" }
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                Text(
+                    Format.money(state.cash), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    color = if (state.cash < 0) colors.bad else colors.good, maxLines = 1,
+                )
+                Text(
+                    "${Format.signedMoney(weekly)}/wk", style = MaterialTheme.typography.labelSmall,
+                    color = if (weekly >= 0) colors.good else colors.bad, maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/** The bottom dock: the tabs, then the clock. */
+@Composable
+private fun Dock(store: GameStore, state: GameState) {
+    val colors = gameColors
+    val unread = state.news.count { it.id > store.newsSeen }
+    Floating {
+        Column(Modifier.width(IntrinsicSize.Max)) {
+            WeekProgress(store, state)
+            Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                for (t in dockTabs) {
+                    val selected = if (t.tab == Tab.OFFICE) store.tab == Tab.OFFICE && store.todayOpen else store.tab == t.tab
+                    DockItem(if (t.tab == Tab.OFFICE) "Today" else t.label, selected, { HudIcon(t.glyph, it, 18.dp) }) {
+                        if (t.tab == Tab.OFFICE) {
+                            // The office is always on screen; this opens the Today briefing over it.
+                            store.todayOpen = !(store.tab == Tab.OFFICE && store.todayOpen)
+                            store.tab = Tab.OFFICE
+                        } else {
+                            store.todayOpen = false
+                            store.tab = if (store.tab == t.tab) Tab.OFFICE else t.tab
+                        }
+                    }
+                }
+                DockItem("News", store.tab == Tab.NEWS, { tint ->
+                    BadgedBox(badge = { if (unread > 0) Badge() }) { Icon(Icons.Filled.Newspaper, null, tint = tint, modifier = Modifier.size(18.dp)) }
+                }) {
+                    store.todayOpen = false
+                    store.tab = if (store.tab == Tab.NEWS) Tab.OFFICE else Tab.NEWS
+                }
+                Box(Modifier.padding(horizontal = 8.dp).width(1.dp).height(32.dp).background(colors.separator))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TinyChip(store.speed.label, description = "Speed ${store.speed.label}") {
+                        store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
+                    }
+                    TinyChip("Week", enabled = store.canAdvance && !store.playing && !store.holdsClock, description = "Next week") { store.advance(1) }
+                    TinyChip(
+                        if (store.playing) "Pause" else "Play",
+                        filled = true,
+                        enabled = store.canAdvance || store.playing,
+                        description = if (store.playing) "Pause" else "Play",
+                    ) { store.togglePlay() }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DockItem(label: String, selected: Boolean, icon: @Composable (Color) -> Unit, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val tint = if (selected) scheme.primary else scheme.onSurfaceVariant
+    Column(
+        Modifier
+            .widthIn(min = 64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) scheme.primaryContainer else Color.Transparent)
+            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        icon(tint)
+        Text(
+            label, style = MaterialTheme.typography.labelSmall, color = tint, maxLines = 1,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+        )
+    }
 }
 
 /** A number with its icon, compact enough for the top bar. */
@@ -315,84 +413,7 @@ private fun BarStat(glyph: HudGlyph, tint: Color, value: String, description: St
     }
 }
 
-@Composable
-private fun BarDivider() {
-    Box(Modifier.width(1.dp).height(28.dp).background(gameColors.separator))
-}
-
-/** The tabs, down the left edge. News has its own place here; there's room for it sideways. */
-@Composable
-private fun Rail(store: GameStore, state: GameState) {
-    val colors = gameColors
-    val unread = state.news.count { it.id > store.newsSeen }
-    Column(
-        Modifier
-            .width(76.dp)
-            .fillMaxHeight()
-            .background(colors.bar)
-            .padding(vertical = 4.dp, horizontal = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-    ) {
-        for (t in dockTabs) {
-            val selected = if (t.tab == Tab.OFFICE) store.tab == Tab.OFFICE && store.todayOpen else store.tab == t.tab
-            RailItem(t.label, selected, { HudIcon(t.glyph, it, 20.dp) }) {
-                if (t.tab == Tab.OFFICE) {
-                    // Office toggles the Today briefing; the office itself is always on screen.
-                    store.todayOpen = !(store.tab == Tab.OFFICE && store.todayOpen)
-                    store.tab = Tab.OFFICE
-                } else {
-                    store.todayOpen = false
-                    store.tab = if (store.tab == t.tab) Tab.OFFICE else t.tab
-                }
-            }
-        }
-        RailItem("News", store.tab == Tab.NEWS, { tint ->
-            BadgedBox(badge = { if (unread > 0) Badge() }) { Icon(Icons.Filled.Newspaper, null, tint = tint, modifier = Modifier.size(20.dp)) }
-        }) {
-            store.todayOpen = false
-            store.tab = if (store.tab == Tab.NEWS) Tab.OFFICE else Tab.NEWS
-        }
-    }
-}
-
-@Composable
-private fun RailItem(label: String, selected: Boolean, icon: @Composable (Color) -> Unit, onClick: () -> Unit) {
-    val scheme = MaterialTheme.colorScheme
-    val tint = if (selected) scheme.primary else scheme.onSurfaceVariant
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) scheme.primaryContainer else Color.Transparent)
-            .selectable(selected = selected, onClick = onClick, role = Role.Tab)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        icon(tint)
-        FitText(label, MaterialTheme.typography.labelMedium, color = tint, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
-    }
-}
-
-/** The office, with the game in development and the desk count over its lower corners. */
-@Composable
-private fun Stage(store: GameStore, state: GameState) {
-    val project = state.games?.project ?: state.games?.project2
-    val team = if (state.games?.project != null) 1 else 2
-    Box(Modifier.fillMaxSize()) {
-        OfficeScene(state, store.playing, Modifier.fillMaxSize().clickable { store.tab = Tab.TEAM }, insetTop = 8.dp)
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp)) {
-            if (project != null) {
-                ProjectStrip(store, state, project, team)
-            } else if (!store.todayOpen && store.tab == Tab.OFFICE) {
-                TodayPrompt(store, state)
-            }
-        }
-        DeskChip(state, Modifier.align(Alignment.TopEnd).padding(10.dp)) { store.tab = Tab.TEAM }
-    }
-}
-
-/** The game in development, on one line along the bottom of the office: stage, title, progress, time left. */
+/** The game in development across the top of the office: stage, title, progress, time left. */
 @Composable
 private fun ProjectStrip(store: GameStore, state: GameState, project: com.boot.core.GameProject, team: Int) {
     val colors = gameColors
@@ -464,9 +485,9 @@ private fun TodayPrompt(store: GameStore, state: GameState) {
     }
 }
 
-/** The open tab, full height on the right, with its title and a close button. */
+/** The open tab as a window in the middle of the screen, with its title and a close button. */
 @Composable
-private fun SideWindow(store: GameStore, state: GameState, modifier: Modifier) {
+private fun CenterWindow(store: GameStore, state: GameState, modifier: Modifier) {
     val colors = gameColors
     val today = store.tab == Tab.OFFICE
     val title = when (store.tab) {
@@ -477,7 +498,14 @@ private fun SideWindow(store: GameStore, state: GameState, modifier: Modifier) {
         Tab.COMPANY -> "Company"
         Tab.NEWS -> "News"
     }
-    Column(modifier.background(colors.grouped)) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier
+            .shadow(16.dp, shape, clip = false)
+            .clip(shape)
+            .background(colors.grouped)
+            .border(1.dp, colors.separator, shape),
+    ) {
         Row(
             Modifier.fillMaxWidth().background(colors.bar).padding(start = 16.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
