@@ -147,7 +147,7 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
             val windowWidth = (maxWidth * 0.82f).coerceIn(460.dp, 820.dp)
             // The office, edge to edge, under everything. Tap someone to see their card; taps
             // anywhere else do nothing, so a stray touch never yanks you into another screen.
-            OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 48.dp, people = true, onManage = { store.tab = Tab.TEAM })
+            OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 48.dp, people = true, onManage = { store.tab = Tab.TEAM }, onFounder = { store.founderOpen = true })
 
             val safe = WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout)
             // Bottom left, above the dock: the desks.

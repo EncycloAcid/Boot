@@ -138,6 +138,16 @@ class Founder(val name: String) {
     /** Your special trait. */
     var trait: FounderTrait? = null
 
+    /** A second trait, picked at level 5. */
+    var trait2: FounderTrait? = null
+
+    /** Experience toward the next level, from running the company. */
+    var xp: Double = 0.0
+    var level: Int = 1
+
+    /** The skills you've learned with your skill points. */
+    var skills: Set<FounderSkill> = emptySet()
+
     /** Weeks of hands-on experience per lane. This is the "skills" you keep when you pivot. */
     val experience: MutableMap<Lane, Double> = mutableMapOf()
 

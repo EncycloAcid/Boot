@@ -147,7 +147,7 @@ internal fun GameState.rollDecisions() {
     val people = staff.filter { it.leaveUntil <= week }
     // People.
     if (crunch || people.any { it.morale < 0.45 }) {
-        val tired = people.filter { it.morale < 0.5 && it.skill >= 4 }
+        val tired = people.filter { it.morale < 0.5 && it.skill >= 4 && storyOf(it.id) == null }
         if (tired.isNotEmpty() && rng.chance(if (crunch) 0.03 else 0.008)) enqueue(Burnout(rng.pick(tired).id))
     }
     if (people.size >= 5 && rng.chance(0.004)) {
@@ -642,4 +642,6 @@ object Sandbox {
     fun setCash(s: GameState, cash: Double) {
         s.cash = cash
     }
+    fun founderXp(s: GameState, xp: Double) = s.founderXp(xp)
+    fun startStory(s: GameState, kind: StoryKind, people: List<Int>) = s.startStory(kind, people)
 }

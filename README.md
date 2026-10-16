@@ -6,6 +6,25 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.12 (Android):** the founder grows, and your team has stories.
+
+*You level up.* Running the company earns experience: a little every week, more for every launch, most for a hit. Each level, up to 10, brings a skill point for a small skill tree in three branches, learned in order:
+
+- **Craft:** Hands-on (your own work counts 20% more), Eye for design, Craftsmanship (everything you make is a notch better).
+- **People:** Mentor (your people learn 20% faster), Steady hand (morale settles higher), Inspiring (people quit half as often, and stories end better).
+- **Business:** Pitch (15% more hype on stage), Networker (the press is kinder), Dealmaker (4% more demand for everything).
+
+At level 5 you pick a second trait to go with the one you started with. Your level is under You on the Team tab, and on your card in the office: tap "Level and skills".
+
+*Staff stories.* Now and then someone on the team has a story, told in two or three decisions over a few months, alongside the poaching and raise requests:
+
+- **Dream team:** two people who are brilliant together. Pair them up (15% more from each), and later they may want to lead together.
+- **Name on the box:** a star on the game team wants credit. Give it, and the next game decides it: a hit makes them famous (make them creative director, or someone will try to poach them), a flop puts their name on it.
+- **Running on empty:** someone staying later every night. Send them home on time, or let them run hot until they need a real break, or push through and risk losing them.
+- **Under their wing:** a veteran takes a newcomer on, who learns twice as fast while the veteran does a bit less.
+
+Stories under way, and the ones that changed things for good, are listed on the Team tab and on people's cards.
+
 **New in 3.11 (Android):** wishlists and a release calendar. Once you announce a game, with a trailer at a show, a showcase or a premiere, fans start wishlisting it: every trailer brings a burst, and hype keeps more coming each week, faster once there's a date to count down to. On launch day they turn into sales, from 2% of them for a dud to 20% for a masterpiece. "Calendar" on your game opens the next six months as launch weeks, each marked with what it would do to your launch: the season for your genre, the holiday rush (late November to Christmas, +20%), the January slump (−10%), the shows, and the big rival releases you'd be launching into. Pick a week and set it as your release date. On the day, a finished game launches by itself (the clock keeps running while it polishes); if it isn't finished, you have to delay it, by four weeks or until it's done, and fans grumble and some wishlists drop off.
 
 **New in 3.10 (Android):** make yourself. The new game screen has a founder customizer with a live portrait: skin tone, hair colour, eight hairstyles, five kinds of clothes in fifteen colours, glasses and a beard, and a shuffle button. You look the way you made yourself in the office, on the Team tab and on your card. Pick a special trait to go with it:

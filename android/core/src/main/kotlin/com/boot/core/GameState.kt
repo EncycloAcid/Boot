@@ -203,6 +203,10 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var followUps: List<FollowUp> = emptyList()
         internal set
 
+    /** The staff stories under way, and the last few that ended. */
+    var stories: List<StaffStory> = emptyList()
+        internal set
+
     /** The team works from home some days: happier, a little slower. */
     var hybrid = false
         internal set
@@ -323,8 +327,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             if (e.leaveUntil > week) continue
             // Night owls come alive in crunch.
             val owl = if (crunch && e.trait == Trait.NIGHT_OWL) 1.3 else 1.0
-            s.output += e.output(lane) * owl
-            s.teamOutput += e.output(lane) * owl
+            val story = storyOutput(e)
+            s.output += e.output(lane) * owl * story
+            s.teamOutput += e.output(lane) * owl * story
             when (e.trait) {
                 Trait.PERFECTIONIST -> s.traitQuality += 1.5
                 Trait.RAINMAKER -> s.traitDemand = minOf(1.08, s.traitDemand + 0.03)
@@ -347,12 +352,12 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             val share = founder.attentionShare(lane, lanes)
             val bonus = founder.skillBonus(lane)
             val freelance = if (founder.freelancing) 0.35 else 1.0
-            val coder = if (founder.trait == FounderTrait.CODER) 1.4 else 1.0
+            val coder = (if (founderIs(FounderTrait.CODER)) 1.4 else 1.0) * (if (founderHas(FounderSkill.HANDS_ON)) 1.2 else 1.0)
             s.output += (4 + bonus) * share * freelance * coder
             s.marketing += 1 * share
             if (lane == Lane.AI) s.research += (3 + bonus) * share
             skillSum += (5 + bonus) * share
-            designSum += (5 + bonus + if (founder.trait == FounderTrait.VISIONARY) 2.0 else 0.0) * share
+            designSum += (5 + bonus + (if (founderIs(FounderTrait.VISIONARY)) 2.0 else 0.0) + (if (founderHas(FounderSkill.DESIGN_EYE)) 1.0 else 0.0)) * share
             techSum += (5 + bonus * 0.8) * share
             weight += share
         }
@@ -368,11 +373,13 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         applyRoadmap(lane, mods)
         applyPressures(lane, mods)
         val people = staffing(lane)
-        mods.quality += minOf(6.0, people.traitQuality)
+        mods.quality += minOf(6.0, people.traitQuality) + storyQuality(lane)
         mods.demand *= people.traitDemand
         mods.demand *= brandLift(lane)
         if (lane == Lane.HARDWARE) mods.cost *= world.hardwareCost
         mods.demand *= difficulty.sales
+        if (founderHas(FounderSkill.DEALMAKER)) mods.demand *= 1.04
+        if (founderHas(FounderSkill.CRAFTSMANSHIP)) mods.quality += 1.0
         mods.cost *= difficulty.costs
         if (isEcosystem) {
             mods.demand *= if (stats.ecosystemOpened) 1.08 else 1.15

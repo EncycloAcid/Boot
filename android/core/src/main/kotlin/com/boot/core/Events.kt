@@ -386,6 +386,7 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     EventKind.Convention -> describeShow()
     is PlatformInvite, is PremiereSlot, OwnShowcase -> describeShows(kind)
     is ReleaseSlip -> describeSlip(kind)
+    is StoryBeat -> describeStory(kind)
     is ShowResults -> describeShowResults(kind.report)
     EventKind.EcosystemAntitrust -> Description(
         "Antitrust regulators circle your ecosystem",
@@ -737,6 +738,7 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         EventKind.Convention -> holdShow(boothsOpen().getOrNull(choice))
         is PlatformInvite, is PremiereSlot, OwnShowcase -> resolveShows(kind, choice)
         is ReleaseSlip -> resolveSlip(kind, choice)
+        is StoryBeat -> resolveStory(kind, choice)
 
         // Just a report to read.
         is ShowResults -> Unit

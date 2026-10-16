@@ -116,13 +116,20 @@ internal fun GameState.handle(incidents: List<Incident>, lane: Lane?) {
             is Incident.Inbox -> offer(incident.kind, incident.weeks)
             is Incident.Research -> researchPoints += incident.points
             is Incident.Stat -> when (incident.key) {
-                StatKey.HIT -> stats.hits += 1
-                StatKey.FLOP -> stats.flops += 1
+                StatKey.HIT -> {
+                    stats.hits += 1
+                    founderXp(15.0)
+                }
+                StatKey.FLOP -> {
+                    stats.flops += 1
+                    founderXp(4.0)
+                }
                 StatKey.RECALL -> stats.recalls += 1
                 StatKey.SCANDAL -> stats.scandals += 1
                 StatKey.RELEASE -> {
                     stats.releases += 1
                     stats.releasesThisQuarter += 1
+                    founderXp(10.0)
                 }
                 StatKey.SOLD_OUT -> stats.soldOuts += 1
                 StatKey.OVERSTOCK -> stats.overstocks += 1
@@ -283,6 +290,7 @@ private fun GameState.rollWorldEvents() {
     }
     rollSmallEvents()
     rollDecisions()
+    storyWeek()
     if (pivot != null && valuation >= 2_000_000 && rng.chance(0.005)) {
         val bidder = if (rng.chance(0.5)) {
             rng.pick(world.rivals).name
@@ -384,6 +392,7 @@ private fun GameState.updateCrossovers(fx: ComboEffects) {
 
 private fun GameState.updateFounder() {
     if (crunch) stats.crunchWeeks += 1
+    founderXp(1.0)
     for (lane in lanes) {
         founder.experience[lane] = (founder.experience[lane] ?: 0.0) + founder.attentionShare(lane, lanes)
     }
@@ -395,7 +404,7 @@ private fun GameState.updateStaff(fx: ComboEffects) {
         var m = e.morale
         // Team players lift everyone they work with.
         val lift = minOf(0.08, 0.04 * staff.count { it.lane == e.lane && it.id != e.id && it.trait == Trait.TEAM_PLAYER })
-        val boss = if (founderIs(FounderTrait.PEOPLE_PERSON)) 0.08 else 0.0
+        val boss = (if (founderIs(FounderTrait.PEOPLE_PERSON)) 0.08 else 0.0) + (if (founderHas(FounderSkill.STEADY_HAND)) 0.04 else 0.0)
         val settle = minOf(0.97, 0.7 + perks.sumOf { it.morale } + (e.trait?.settle ?: 0.0) + lift + boss)
         m += (settle - m) * 0.05
         if (crunch && e.trait != Trait.NIGHT_OWL) m -= if (has(Perk.NAP_PODS)) 0.0125 else 0.025
@@ -403,7 +412,8 @@ private fun GameState.updateStaff(fx: ComboEffects) {
         if (e.lane == Lane.WEBSITES) m -= fx.moraleDrain
         if (staff.size > office.desks) m -= 0.02
         e.morale = m.clamped(0.0, 1.0)
-        val quitChance = (if (has(Perk.DAYCARE)) 0.02 else 0.04) * (if (e.trait == Trait.DIVA) 2.0 else 1.0)
+        val quitChance = (if (has(Perk.DAYCARE)) 0.02 else 0.04) * (if (e.trait == Trait.DIVA) 2.0 else 1.0) *
+            (if (founderHas(FounderSkill.INSPIRING)) 0.5 else 1.0)
         if (e.morale < 0.3 && e.trait != Trait.LOYAL && rng.chance(quitChance)) quitters += e
     }
     gainExperience()
@@ -442,6 +452,8 @@ private fun GameState.gainExperience() {
         if (has(Perk.GYM)) gain *= 1.1
         if (e.trait == Trait.FAST_LEARNER) gain *= 2
         if (staff.any { it.lane == lane && it.id != e.id && it.trait == Trait.MENTOR }) gain *= 1.25
+        if (founderHas(FounderSkill.MENTOR)) gain *= 1.2
+        gain *= storyXp(e)
         e.xp += gain
         if (e.xp < e.xpToNext) continue
         e.xp -= e.xpToNext

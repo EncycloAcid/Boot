@@ -379,6 +379,29 @@ At launch, `wishlists × conversion × price × price-tier factor` (in that era'
 
 **The calendar** shows the next 26 weeks for the game in development, each with its expected launch lift: season × window × clash, where the clash uses the same rules as launch day applied to the announced rival releases (a must-play release up to three weeks before costs 20%; a big game in your genre up to six weeks before, 15%). Shows and must-play releases are marked, and weeks before the expected finish are dimmed with a warning. Setting a date on an announced game makes the news. On the date, a finished game launches by itself (the clock doesn't stop for "ready to ship" when there's a date). An unfinished one raises a decision: delay four weeks (fan trust −0.02, wishlists −8%) or until it's done (no date; −0.03, −12%), each reported in the news. The autopilot doesn't set dates and takes the four-week delay.
 
+## Founder levels and skills
+
+The founder earns experience: 1 a week, 10 per release (any lane), 15 more for a hit and 4 for a flop (you learn from it). Level n needs `40 + 20n` to reach the next, up to level 10. Every level brings a skill point; at level 5 you pick a second trait (any but your first, and not Bootstrapper, which only counts on day one). Both traits apply.
+
+| Branch | Tier 1 | Tier 2 | Tier 3 |
+|---|---|---|---|
+| Craft | Hands-on: your output × 1.2 | Eye for design: +1 to your design | Craftsmanship: +1 quality in every lane |
+| People | Mentor: staff XP × 1.2 | Steady hand: morale settles 4 points higher | Inspiring: quit chance halved; kinder story outcomes |
+| Business | Pitch: hype × 1.15 | Networker: reputation gains × 1.15, losses ÷ 1.15 | Dealmaker: demand × 1.04 in every lane |
+
+Each branch is learned in order. The autopilot spends points tier by tier and takes People person, Showrunner or Coder as its second trait.
+
+## Staff stories
+
+About 3% of weeks (from week 12, with at most two stories under way, and one per person) start a story for people who fit it. Each chapter is a decision that stops the clock.
+
+- **Dream team** (two people on the same team in different roles, both content): paired, each gives 15% more while they share a team; 16–26 weeks later they ask to lead together (10% raise each; 25% more from each and +1 quality in their lane, for as long as both stay) or are refused (morale −0.15).
+- **Name on the box** (a skill 7+ designer or engineer on the game team, after your first release, while a game is in development): credited, the next release decides it. At 7 or better: creative director (25% raise, +1.5 game quality, fans +3%, in the news) or keep them where they are (a rival tries to poach them). Below 7: stand by them (+morale) or take the name off (−morale).
+- **Running on empty** (skill 4+, morale under 0.65 or in crunch): home on time (−10% for six weeks, then +morale) or let them work (+15%, morale −0.01 a week); after 5–9 weeks, four weeks off (back with morale 0.85 and half a level's XP) or push through (half quit within weeks, a quarter with Inspiring; Loyal people stay).
+- **Under their wing** (a level 5+ veteran and a level 1–2 newcomer on the same team): official, the newcomer learns twice as fast and the veteran gives 10% less until the newcomer is two levels up (or 40 weeks pass).
+
+Random burnout skips people already in a story. The autopilot takes the first choice of each chapter.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

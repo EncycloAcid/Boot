@@ -35,8 +35,21 @@ class Autopilot(
             }
         }
         if (s.isOver) return
+        grow(s)
         manage(s)
         attempt { s.advance() }
+    }
+
+    /** Spends skill points across the tree, a branch at a time, and takes a second trait when it comes. */
+    private fun grow(s: GameState) {
+        if (s.founder.level >= SECOND_TRAIT_LEVEL && s.founder.trait2 == null) {
+            val pick = listOf(FounderTrait.PEOPLE_PERSON, FounderTrait.SHOWRUNNER, FounderTrait.CODER).firstOrNull { it in s.secondTraitChoices }
+            pick?.let { attempt { s.pickSecondTrait(it) } }
+        }
+        while (s.founder.skillPoints > 0) {
+            val next = FounderSkill.entries.sortedBy { it.tier }.firstOrNull { s.skillBlocker(it) == null } ?: break
+            s.learnSkill(next)
+        }
     }
 
     /** Play until the game ends. Returns the ending. */
@@ -149,6 +162,8 @@ class Autopilot(
                 labels.indexOf(pick).takeIf { it >= 0 } ?: labels.lastIndex
             }
             is ReleaseSlip -> 0
+            // Take the kind option: pair them, credit them, send them home, make it official, give the lead or the break.
+            is StoryBeat -> 0
             OwnShowcase -> if (s.cash > s.ownShowcaseCost() * 5 && s.appealOf(1) >= 0.5) 0 else 1
         }
         attempt { s.choose(choice) }

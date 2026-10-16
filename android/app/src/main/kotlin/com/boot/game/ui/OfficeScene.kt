@@ -194,6 +194,7 @@ fun OfficeScene(
     people: Boolean = false,
     onManage: (() -> Unit)? = null,
     onTap: (() -> Unit)? = null,
+    onFounder: (() -> Unit)? = null,
 ) {
     val colors = gameColors
     val model = state.sceneModel()
@@ -268,7 +269,7 @@ fun OfficeScene(
                 Scaled {
                     PersonCard(
                         state, worker.key,
-                        onManage = onManage?.let { manage -> { picked = null; manage() } },
+                        onManage = (if (worker.key == -1) onFounder ?: onManage else onManage)?.let { manage -> { picked = null; manage() } },
                         onClose = { picked = null },
                     )
                 }

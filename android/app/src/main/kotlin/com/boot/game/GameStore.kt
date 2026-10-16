@@ -236,7 +236,10 @@ class GameStore(app: Application) : AndroidViewModel(app) {
 
     /** A full-screen page that holds the clock while it's open. */
     val holdsClock: Boolean get() = designing || designingDevice || openRelease != null || guideOpen || openStock != null || campaignLane != null ||
-        calendarTeam != null
+        calendarTeam != null || founderOpen
+
+    /** Your level, skills and traits. */
+    var founderOpen by mutableStateOf(false)
 
     /** The team whose game's release calendar is open. */
     var calendarTeam by mutableStateOf<Int?>(null)
@@ -344,6 +347,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         val wasReady = before.games?.project?.isReady == true
         val wasReady2 = before.games?.project2?.isReady == true
         val wasSolvent = before.cash >= 0
+        val wasLevel = before.founder.level
         advance(1)
         val now = state ?: return
         val project = now.games?.project
@@ -358,6 +362,10 @@ class GameStore(app: Application) : AndroidViewModel(app) {
                 notice = "Team 2's ${now.games?.project2?.title} is finished. It launches in ${Format.weeks(due - now.week)}."
                 null
             } ?: "Team 2's ${now.games?.project2?.title} is ready to ship."
+            now.founder.level > wasLevel -> {
+                notice = "You reached level ${now.founder.level}. Spend your skill point under You on the Team tab."
+                null
+            }
             wasSolvent && now.cash < 0 -> "You're overdrawn. ${now.difficulty.redWeeks} weeks in the red and it's over. A bank loan can buy time."
             else -> null
         }

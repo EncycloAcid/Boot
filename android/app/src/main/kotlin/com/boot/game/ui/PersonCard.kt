@@ -76,7 +76,7 @@ internal fun PersonCard(state: GameState, key: Int, onManage: (() -> Unit)?, onC
         Column(Modifier.padding(end = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (e != null) EmployeeDetails(state, e) else FounderDetails(state)
             if (onManage != null) {
-                TonalButton(if (e != null) "Manage in Team" else "Open Team", onManage, Modifier.fillMaxWidth())
+                TonalButton(if (e != null) "Manage in Team" else "Level and skills", onManage, Modifier.fillMaxWidth())
             }
         }
     }
@@ -92,6 +92,12 @@ private fun EmployeeDetails(state: GameState, e: Employee) {
         }
     }
     Text(doing(state, e), style = MaterialTheme.typography.bodyMedium)
+    storyLine(state, e.id)?.let { (kind, line) ->
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill(kind.title, MaterialTheme.colorScheme.primary)
+            Text(line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Figure("Design", "${e.design}", colors.design, Modifier.weight(1f))
         Figure("Tech", "${e.tech}", colors.tech, Modifier.weight(1f))
@@ -109,7 +115,7 @@ private fun EmployeeDetails(state: GameState, e: Employee) {
 @Composable
 private fun FounderDetails(state: GameState) {
     val colors = gameColors
-    state.founder.trait?.let { t ->
+    listOfNotNull(state.founder.trait, state.founder.trait2).forEach { t ->
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(t.title, colors.milestone)
             Text(t.detail.substringAfter(": ").replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -119,6 +125,7 @@ private fun FounderDetails(state: GameState) {
         if (state.founder.freelancing) "Freelancing on the side to pay the rent." else "Running ${state.companyName}.",
         style = MaterialTheme.typography.bodyMedium,
     )
+    FounderLevel(state)
     for (lane in state.lanes) {
         val share = state.founder.attentionShare(lane, state.lanes)
         Bar(lane.businessName, share, colors.lane(lane), Format.percent(share) + " of you")

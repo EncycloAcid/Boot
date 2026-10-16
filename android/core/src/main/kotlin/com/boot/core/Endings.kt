@@ -58,6 +58,8 @@ class Stats {
     var ecosystemPressure = 0.0
     var ecosystemOpened = false
     var crunchWeeks = 0
+    var founderLevels = 0
+    var stories = 0
     var chartToppers = 0
     var awards = 0
     var loans = 0

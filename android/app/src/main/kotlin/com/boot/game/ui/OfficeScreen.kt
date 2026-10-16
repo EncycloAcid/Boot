@@ -145,7 +145,7 @@ private fun OfficeCard(store: GameStore, state: GameState) {
                 // Tap someone for their card; tap the room itself for the Team tab.
                 OfficeScene(
                     state, store.playing, Modifier.fillMaxSize(), insetTop = 40.dp,
-                    people = true, onManage = { store.tab = Tab.TEAM }, onTap = { store.tab = Tab.TEAM },
+                    people = true, onManage = { store.tab = Tab.TEAM }, onTap = { store.tab = Tab.TEAM }, onFounder = { store.founderOpen = true },
                 )
                 Row(
                     Modifier.fillMaxWidth().padding(12.dp),

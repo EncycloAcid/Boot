@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.boot.core.skillPoints
 import com.boot.core.Employee
 import com.boot.core.Format
 import com.boot.core.GameState
@@ -74,6 +75,7 @@ fun TeamScreen(store: GameStore, state: GameState) {
             )
         }
         item { TeamSection(store, state) }
+        if (state.stories.isNotEmpty()) item { StoriesSection(state) }
         item { HiringSection(store, state) }
         item { OfficeSection(store, state) }
         item { PerksSection(store, state) }
@@ -91,6 +93,15 @@ private fun FounderSection(store: GameStore, state: GameState) {
             subtitle = "Founder and CEO · ${Format.percent(state.venture.founderEquity)} of ${state.companyName}",
             leading = { FounderPortrait(state, 48.dp) },
         )
+        RowDivider()
+        ListRow(
+            "Level and skills",
+            subtitle = growthLine(state),
+            chevron = true,
+            onClick = { store.founderOpen = true },
+            trailing = if (state.founder.skillPoints > 0) ({ Pill("${state.founder.skillPoints}", gameColors.milestone) }) else null,
+        )
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)) { FounderLevel(state) }
         RowDivider()
         state.lanes.forEachIndexed { i, lane ->
             if (i > 0) RowDivider()

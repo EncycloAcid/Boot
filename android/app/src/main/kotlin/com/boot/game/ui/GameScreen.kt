@@ -219,6 +219,7 @@ private fun GameScreen(store: GameStore, state: GameState) {
                 insetTop = insetTop,
                 people = true,
                 onManage = { store.tab = Tab.TEAM },
+                onFounder = { store.founderOpen = true },
             )
             DeskChip(
                 state = state,
@@ -305,6 +306,7 @@ internal fun GameOverlays(store: GameStore, state: GameState) {
         store.campaignLane != null -> CampaignSheet(store, state, store.campaignLane!!)
         store.soundOpen -> SoundDialog(store)
         store.calendarTeam != null -> ReleaseCalendar(store, state, store.calendarTeam!!)
+        store.founderOpen -> FounderSheet(store, state)
     }
 }
 
