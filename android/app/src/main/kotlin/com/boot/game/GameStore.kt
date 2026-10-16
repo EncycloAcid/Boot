@@ -51,7 +51,20 @@ enum class ScreenLayout(val title: String, val blurb: String) {
 }
 
 class GameStore(app: Application) : AndroidViewModel(app) {
-    private val saveFile = File(app.filesDir, "autosave.json")
+    private val files = app.filesDir
+
+    /** The save slot being played, or the one a new game will go into. Remembered between launches. */
+    var slot by mutableIntStateOf(app.getSharedPreferences("boot", android.content.Context.MODE_PRIVATE).getInt("slot", 1).coerceIn(1, SLOT_COUNT))
+        private set
+
+    /** Slot 1 keeps the original autosave's name, so games from before slots carry on in it. */
+    private fun saveFileFor(n: Int) = File(files, if (n == 1) "autosave.json" else "autosave-$n.json")
+
+    private val saveFile: File get() = saveFileFor(slot)
+
+    /** What's in each slot, for the title screen. */
+    var slots by mutableStateOf<List<SlotInfo?>>(emptyList())
+        private set
     private val settings = app.getSharedPreferences("boot", android.content.Context.MODE_PRIVATE)
 
     /** Music and sound effects, with their volume settings. */
@@ -138,14 +151,79 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var speed by mutableStateOf(Speed.NORMAL)
 
     /** Latest JSON to write; an empty string means delete the save. Writes happen off the main thread, in order. */
-    private val pendingSave = MutableStateFlow<String?>(null)
+    private val pendingSave = MutableStateFlow<Pair<Int, String>?>(null)
 
     init {
         state = runCatching { GameState.decode(saveFile.readText()) }.getOrNull()?.takeUnless { it.isOver }
+        json = state?.encode()
         newsSeen = state?.news?.lastOrNull()?.id ?: 0
+        slots = (1..SLOT_COUNT).map { readSlot(it) }
         viewModelScope.launch(Dispatchers.IO) {
-            pendingSave.filterNotNull().collect { write(it) }
+            pendingSave.filterNotNull().collect { (n, text) -> write(n, text) }
         }
+    }
+
+    // Save slots
+
+    /** A slot's summary: from what was stored with its last save, or read from the save itself. */
+    private fun readSlot(n: Int): SlotInfo? {
+        val file = saveFileFor(n)
+        if (!file.exists()) return null
+        settings.getString("slot.$n", null)?.let { SlotInfo.decode(n, it) }?.let { return it }
+        // A save from before slots: read it once to describe it.
+        return runCatching { SlotInfo.of(n, GameState.decode(file.readText()), file.lastModified()) }.getOrNull()
+    }
+
+    /** Writes the game in hand to its slot now, before moving to another. */
+    private fun flush() {
+        val text = json ?: return
+        if (state != null) write(slot, text)
+    }
+
+    /** Picks the slot a new game will go into, without loading anything. */
+    fun chooseSlot(n: Int) {
+        if (state != null) return
+        slot = n.coerceIn(1, SLOT_COUNT)
+        settings.edit().putInt("slot", slot).apply()
+    }
+
+    /** Carries on with the game in slot [n]. */
+    fun loadSlot(n: Int) {
+        flush()
+        val loaded = runCatching { GameState.decode(saveFileFor(n).readText()) }.getOrNull()
+        if (loaded == null) {
+            error = "That save couldn't be read."
+            return
+        }
+        slot = n
+        settings.edit().putInt("slot", slot).apply()
+        playing = false
+        state = loaded
+        json = loaded.encode()
+        newsSeen = loaded.news.lastOrNull()?.id ?: 0
+        tab = Tab.OFFICE
+        todayOpen = false
+        lane = loaded.startingLane
+    }
+
+    /** Saves and goes back to the title screen, leaving the run in its slot to come back to. */
+    fun leaveToTitle() {
+        flush()
+        playing = false
+        state = null
+        json = null
+        slots = (1..SLOT_COUNT).map { readSlot(it) }
+    }
+
+    /** Deletes the save in slot [n] for good. */
+    fun deleteSlot(n: Int) {
+        runCatching { saveFileFor(n).delete() }
+        settings.edit().remove("slot.$n").apply()
+        if (n == slot && state != null) {
+            state = null
+            json = null
+        }
+        slots = slots.mapIndexed { i, info -> if (i + 1 == n) null else info }
     }
 
     /** Nothing is waiting on the player: no decision, no unread reviews, no ending. */
@@ -188,7 +266,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         playing = false
         state = null
         json = null
-        pendingSave.value = ""
+        pendingSave.value = slot to ""
+        settings.edit().remove("slot.$slot").apply()
+        slots = slots.mapIndexed { i, info -> if (i + 1 == slot) null else info }
     }
 
     /** Run an action against a copy of the game. On failure the game is left untouched and the reason is shown. */
@@ -298,18 +378,24 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         }
         val encoded = s.encode()
         json = encoded
-        pendingSave.value = encoded
+        pendingSave.value = slot to encoded
+        // The slot's summary for the title screen, kept beside the save.
+        val info = SlotInfo.of(slot, s, System.currentTimeMillis())
+        settings.edit().putString("slot.$slot", info.encode()).apply()
+        if (slots.getOrNull(slot - 1) != info) slots = (1..SLOT_COUNT).map { if (it == slot) info else slots.getOrNull(it - 1) }
     }
 
-    private fun write(json: String) {
+    @Synchronized
+    private fun write(n: Int, json: String) {
         // Autosave is best effort; the game keeps running.
+        val file = saveFileFor(n)
         runCatching {
             if (json.isEmpty()) {
-                saveFile.delete()
+                file.delete()
             } else {
-                val tmp = File(saveFile.parentFile, "autosave.json.tmp")
+                val tmp = File(file.parentFile, file.name + ".tmp")
                 tmp.writeText(json)
-                tmp.renameTo(saveFile)
+                tmp.renameTo(file)
             }
         }
     }

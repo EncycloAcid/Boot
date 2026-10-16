@@ -49,6 +49,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -106,6 +107,26 @@ fun NewGameScreen(store: GameStore) {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val landscape = configuration.screenWidthDp > configuration.screenHeightDp && configuration.screenHeightDp < 600
     val founderName = founder.trim().ifEmpty { "You" }
+    // A new game goes into an empty slot if there is one, rather than over the last game played.
+    LaunchedEffect(store.slots) {
+        if (store.slots.getOrNull(store.slot - 1) != null) {
+            store.slots.indexOfFirst { it == null }.takeIf { it >= 0 }?.let { store.chooseSlot(it + 1) }
+        }
+    }
+    // Starting over a slot that already has a game asks first.
+    var replacing by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val begin: (() -> Unit) -> Unit = { action -> if (store.slots.getOrNull(store.slot - 1) != null) replacing = action else action() }
+    replacing?.let { action ->
+        val info = store.slots.getOrNull(store.slot - 1)
+        ConfirmDialog(
+            title = "Replace ${info?.company ?: "this game"}?",
+            text = "Slot ${store.slot} already has a game in it. Starting here replaces it for good; pick an empty slot to keep it.",
+            confirm = "Replace",
+            destructive = true,
+            onConfirm = action,
+            onDismiss = { replacing = null },
+        )
+    }
 
     // Start the run: a warning for the capital-intensive businesses, then the button.
     val startPanel: @Composable () -> Unit = {
@@ -122,23 +143,29 @@ fun NewGameScreen(store: GameStore) {
                     colors.warn,
                 )
             }
+            Hint(
+                "Saves to slot ${store.slot}" +
+                    (store.slots.getOrNull(store.slot - 1)?.let { ", replacing ${it.company}." } ?: "."),
+            )
             when (mode) {
                 GameMode.SCENARIOS -> PrimaryButton(
-                    "Play ${scenario.title}", { store.newScenario(scenario, companyName, founderName) }, Modifier.fillMaxWidth(),
+                    "Play ${scenario.title}", { begin { store.newScenario(scenario, companyName, founderName) } }, Modifier.fillMaxWidth(),
                 )
                 GameMode.SANDBOX -> PrimaryButton(
                     "Start your sandbox ${lane.businessName.lowercase()}",
                     {
-                        store.newGame(
-                            companyName, founderName, lane,
-                            difficulty = difficulty, start = start, sandbox = true, tutorial = tutorial,
-                        )
+                        begin {
+                            store.newGame(
+                                companyName, founderName, lane,
+                                difficulty = difficulty, start = start, sandbox = true, tutorial = tutorial,
+                            )
+                        }
                     },
                     Modifier.fillMaxWidth(),
                 )
                 GameMode.CAREER -> PrimaryButton(
                     "Start your ${lane.businessName.lowercase()}",
-                    { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start, tutorial = tutorial) },
+                    { begin { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start, tutorial = tutorial) } },
                     Modifier.fillMaxWidth(),
                 )
             }
@@ -184,6 +211,7 @@ fun NewGameScreen(store: GameStore) {
                     )
                 }
             }
+            item(span = { GridItemSpan(maxLineSpan) }) { SaveSlots(store) }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 GroupedSection("How to play", footer = mode.blurb) {
                     Column(Modifier.padding(8.dp)) { Segmented(GameMode.entries, mode, { it.title }) { mode = it } }

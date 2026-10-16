@@ -282,6 +282,10 @@ private fun Identity(store: GameStore, state: GameState, modifier: Modifier, onA
                         menuOpen = false
                         store.soundOpen = true
                     })
+                    DropdownMenuItem(text = { Text("Save slots") }, onClick = {
+                        menuOpen = false
+                        store.leaveToTitle()
+                    })
                     DropdownMenuItem(text = { Text("Play upright (classic)") }, onClick = {
                         menuOpen = false
                         store.chooseLayout(ScreenLayout.VERTICAL)

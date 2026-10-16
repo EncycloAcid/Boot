@@ -286,6 +286,10 @@ private fun ClassicHud(store: GameStore, state: GameState, onAbandon: () -> Unit
                             menuOpen = false
                             store.soundOpen = true
                         })
+                        DropdownMenuItem(text = { Text("Save slots") }, onClick = {
+                            menuOpen = false
+                            store.leaveToTitle()
+                        })
                         DropdownMenuItem(text = { Text("Play sideways") }, onClick = {
                             menuOpen = false
                             store.chooseLayout(ScreenLayout.SIDEWAYS)

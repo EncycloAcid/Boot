@@ -355,6 +355,12 @@ The year-end show is the Arkie Awards before 1983, the Golden Joystick Awards un
 
 The autopilot shadow-drops what's finished, takes marketing deals when cash is under $1M, shows trailers when it has ten times the cost, premieres games with appeal 0.6 or more when it has five times the cost, and streams its own showcase when it can afford five times the cost. Over a 15-year career it wins four to nine prizes.
 
+## Save slots
+
+The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.
+
+The title screen lists the slots with Continue and Delete (with a confirmation), and an empty slot can be tapped to take the next new game; when the slot last played is full, the next empty one is picked for you, and starting over a full slot asks before replacing it. "Save slots" in the in-game menu saves and returns to the title screen without ending the run, and the app reopens the slot last played. Abandoning a run clears its slot. The Hall of Fame and legacy perks are shared across slots.
+
 ## Sound and music
 
 There are no audio files. A small synthesiser in the Android app (`audio/Synth.kt`) draws everything from oscillators: anti-aliased square and saw waves, triangle, sine, two-operator FM and noise, with envelopes, a one-pole filter, synthesised drums, and echoes that wrap round so a loop has no seam.

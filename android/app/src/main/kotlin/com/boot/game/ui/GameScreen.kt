@@ -542,6 +542,10 @@ private fun FloatingHud(
                     menuOpen = false
                     store.soundOpen = true
                 })
+                DropdownMenuItem(text = { Text("Save slots") }, onClick = {
+                    menuOpen = false
+                    store.leaveToTitle()
+                })
                 DropdownMenuItem(text = { Text("Play upright (classic)") }, onClick = {
                     menuOpen = false
                     store.chooseLayout(ScreenLayout.VERTICAL)
