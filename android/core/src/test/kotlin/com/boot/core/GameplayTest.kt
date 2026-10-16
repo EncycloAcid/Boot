@@ -120,7 +120,8 @@ class MarketTest {
                 s.choose(if (awards) 0 else s.events[0].choices.size - 1)
             }
         }
-        val awards = s.games!!.market.awards
+        // Game of the Year, alongside the year-end show's other prizes.
+        val awards = s.games!!.market.awards.filter { it.prize.isEmpty() }
         assertEquals(1, awards.size)
         assertEquals(1, awards[0].year)
     }

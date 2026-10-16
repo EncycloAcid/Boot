@@ -243,6 +243,7 @@ private fun GameState.studioWeek() {
         g.trend = next
     }
     if (GameClock.weekOfYear(week) == SHOW_WEEK) enqueue(EventKind.Convention)
+    showSeasonWeek()
     marketWeek()
     subsidiaryWeek()
     publishingWeek()

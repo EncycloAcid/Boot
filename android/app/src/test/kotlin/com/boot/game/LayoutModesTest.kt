@@ -194,5 +194,31 @@ class LayoutModesTest {
         assertTrue(!store.state!!.needsDecision)
     }
 
+    @Test
+    @Config(qualifiers = "w852dp-h393dp-land-xxhdpi")
+    fun theShowSeason() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Pixel Forge", "You", Lane.GAMES, seed = 9)
+            store.perform {
+                com.boot.core.Sandbox.setCash(this, 400_000.0)
+                startGame(com.boot.core.GameConcept("Moss Knight", com.boot.core.Topic.FANTASY, com.boot.core.Genre.RPG, platforms = listOf(com.boot.core.Platform.SWITCHEROO_2), size = com.boot.core.GameSize.SMALL))
+                repeat(6) { advance() }
+                com.boot.core.Sandbox.enqueue(this, com.boot.core.PlatformInvite("Nintendo", "a Nintendo Direct", 1))
+            }
+            store.todayOpen = false
+        }
+        save("99f-sideways-nintendo-direct", top = true)
+        compose.onNodeWithText("Show a trailer").performClick()
+        compose.waitForIdle()
+        assertEquals(1, store.state!!.games!!.project!!.reveals)
+        assertTrue(store.state!!.news.any { it.headline == "Pixel Forge announces Moss Knight" })
+        compose.runOnIdle { store.perform { com.boot.core.Sandbox.enqueue(this, com.boot.core.PremiereSlot("The Game Awards", 250_000.0, 1)) } }
+        save("99g-sideways-premiere", top = true)
+        compose.onNodeWithText("Skip it").performClick()
+        compose.waitForIdle()
+        assertTrue(!store.state!!.needsDecision)
+    }
+
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertExistsCompat() = fetchSemanticsNode()
 }

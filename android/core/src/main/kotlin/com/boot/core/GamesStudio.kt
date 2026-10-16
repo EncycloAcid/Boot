@@ -92,6 +92,10 @@ data class GameProject(
      * Weekly creative direction. Older saves omit this field; kotlinx defaults it to [GameFocus.BALANCED].
      */
     var creativeFocus: GameFocus = GameFocus.BALANCED,
+    /** Trailers shown so far. The first one is the announcement. */
+    var reveals: Int = 0,
+    /** The console maker whose marketing deal this game took, if any. */
+    var exclusiveWith: String? = null,
 ) {
     val title: String get() = concept.title
     val work: Double get() = concept.work

@@ -38,7 +38,7 @@ class TradeShowTest {
         assertEquals(90_000.0, s.boothCost(Booth.MEDIUM))
         // The main hall needs a following.
         s.games!!.fans = MAIN_HALL_FANS
-        assertEquals(Booth.entries, s.boothsOpen())
+        assertEquals(listOf(Booth.SMALL, Booth.MEDIUM, Booth.LARGE), s.boothsOpen())
         assertEquals(400_000.0, s.boothCost(Booth.LARGE))
         // In the eighties a stand cost a fraction of that.
         val start = StartPoint.entries.first { (it.year ?: 9999) < 1990 }

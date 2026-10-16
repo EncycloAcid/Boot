@@ -21,6 +21,8 @@ fun cueFor(before: GameState, after: GameState, ticking: Boolean): Sfx? {
     // The crowd goes wild for Best in Show.
     val show = after.events.firstNotNullOfOrNull { (it.kind as? ShowResults)?.report }
     if (show?.bestInShow == true && before.events.none { it.kind is ShowResults }) return Sfx.HIT
+    // So does any prize at an award show.
+    if (after.stats.honours > before.stats.honours) return Sfx.HIT
     if (after.office.ordinal > before.office.ordinal) return Sfx.LEVEL_UP
     if (after.achievements.size > before.achievements.size || after.goalsDone.size > before.goalsDone.size) return Sfx.ACHIEVEMENT
     if (after.needsDecision && !before.needsDecision) return Sfx.ALERT

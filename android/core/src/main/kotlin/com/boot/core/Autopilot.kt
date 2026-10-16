@@ -118,6 +118,7 @@ class Autopilot(
                 val open = s.boothsOpen()
                 val promising = s.games?.project != null && s.showcase().appeal >= 0.7
                 val pick = when {
+                    promising && Booth.KEYNOTE in open && s.cash > s.boothCost(Booth.KEYNOTE) * 4 -> Booth.KEYNOTE
                     promising && Booth.LARGE in open && s.cash > s.boothCost(Booth.LARGE) * 4 -> Booth.LARGE
                     s.games?.project != null && s.cash > s.boothCost(Booth.MEDIUM) * 3 -> Booth.MEDIUM
                     s.cash > s.boothCost(Booth.SMALL) * 4 -> Booth.SMALL
@@ -126,6 +127,28 @@ class Autopilot(
                 pick?.let { open.indexOf(it) } ?: e.choices.lastIndex
             }
             is ShowResults -> 0
+            is PlatformInvite -> {
+                val labels = e.choices.map { it.label }
+                val p = s.games?.projectOf(k.team)
+                val pick = when {
+                    "Shadow-drop it" in labels -> "Shadow-drop it"
+                    "Take their marketing deal" in labels && s.cash < 1_000_000 -> "Take their marketing deal"
+                    p != null && s.cash > s.trailerCost(p) * 10 -> "Show a trailer"
+                    else -> "Not this time"
+                }
+                labels.indexOf(pick).takeIf { it >= 0 } ?: labels.lastIndex
+            }
+            is PremiereSlot -> {
+                val labels = e.choices.map { it.label }
+                val p = s.games?.projectOf(k.team)
+                val pick = when {
+                    "Shadow-drop it" in labels && s.cash > k.fee * 5 -> "Shadow-drop it"
+                    p != null && s.appealOf(k.team) >= 0.6 && s.cash > (k.fee + s.trailerCost(p)) * 5 -> "World premiere"
+                    else -> "Skip it"
+                }
+                labels.indexOf(pick).takeIf { it >= 0 } ?: labels.lastIndex
+            }
+            OwnShowcase -> if (s.cash > s.ownShowcaseCost() * 5 && s.appealOf(1) >= 0.5) 0 else 1
         }
         attempt { s.choose(choice) }
     }

@@ -26,13 +26,24 @@ enum class Booth(val title: String, val blurb: String, internal val base: Double
     SMALL("Small booth", "A corner of the hall. Some hype, a few new fans.", 15_000.0, 1.0, 8.0, 0.02),
     MEDIUM("Medium booth", "A proper stand. Real hype and a crowd.", 90_000.0, 3.0, 18.0, 0.045),
     LARGE("Large booth", "The main hall. Everyone's watching, for better or worse.", 400_000.0, 8.0, 32.0, 0.08),
+    KEYNOTE("Keynote stage", "Your own hour on the main stage. The whole industry tunes in.", 1_200_000.0, 15.0, 45.0, 0.12),
 }
+
+/** Fans needed before the organisers offer you a keynote. */
+const val KEYNOTE_FANS = 250_000.0
 
 /** What a booth costs this year. Shows were cheaper in the past, like everything else. */
 fun GameState.boothCost(b: Booth): Double = max(1_000.0, (b.base * pastScale(calendarYear.toDouble()) / 1_000).roundToLong() * 1_000.0)
 
 /** The booths on offer. The main hall is kept for studios with a following. */
-fun GameState.boothsOpen(): List<Booth> = Booth.entries.filter { it != Booth.LARGE || (games?.fans ?: 0.0) >= MAIN_HALL_FANS }
+fun GameState.boothsOpen(): List<Booth> = Booth.entries.filter {
+    val fans = games?.fans ?: 0.0
+    when (it) {
+        Booth.LARGE -> fans >= MAIN_HALL_FANS
+        Booth.KEYNOTE -> fans >= KEYNOTE_FANS
+        else -> true
+    }
+}
 
 /** The next show: what it's called and how many weeks until it opens (0 for this week). */
 data class UpcomingShow(val name: String, val weeks: Int)
@@ -105,11 +116,11 @@ internal fun GameState.holdShow(booth: Booth?) {
     val look = showcase()
     val press = mutableListOf<String>()
     var appeal = look.appeal
-    var hype = if (p != null) booth.hype * (0.4 + appeal) else 0.0
+    var hype = if (p != null) booth.hype * (0.4 + appeal) * p.revealBoost else 0.0
     var crashed = false
     if (p != null) {
         when {
-            look.buggy && booth == Booth.LARGE && rng.chance(0.4) -> {
+            look.buggy && booth >= Booth.LARGE && rng.chance(0.4) -> {
                 crashed = true
                 hype *= 0.3
                 appeal *= 0.6
@@ -130,7 +141,13 @@ internal fun GameState.holdShow(booth: Booth?) {
     val visitors = (booth.crowd * 6_000 * (0.4 + appeal) * rng.normal(1.0, 0.08).clamped(0.8, 1.2)).roundToInt()
     var fans = max(400.0 * booth.crowd, g.fans * booth.fanShare * (0.5 + appeal)) * (if (p == null) 0.6 else 1.0)
     val best = p != null && !crashed && booth != Booth.SMALL && look.expected >= 8.0 && appeal >= 0.85 &&
-        rng.chance(if (booth == Booth.LARGE) 0.6 else 0.25)
+        rng.chance(
+            when (booth) {
+                Booth.KEYNOTE -> 0.7
+                Booth.LARGE -> 0.6
+                else -> 0.25
+            },
+        )
     if (best) {
         hype += 15.0
         fans *= 1.25
@@ -138,10 +155,14 @@ internal fun GameState.holdShow(booth: Booth?) {
         stats.bestInShow += 1
         press += "${p!!.title} won Best in Show."
     }
-    if (booth == Booth.LARGE && !crashed) reputation.adjust(1.0)
+    if (booth >= Booth.LARGE && !crashed) reputation.adjust(if (booth == Booth.KEYNOTE) 2.0 else 1.0)
+    if (booth == Booth.KEYNOTE) stats.keynotes += 1
     // A trip to the show is good for the team.
     if (booth != Booth.SMALL) for (e in staff) e.morale = min(1.0, e.morale + 0.05)
-    p?.let { it.hype = min(100.0, it.hype + hype) }
+    p?.let {
+        it.hype = min(100.0, it.hype + hype)
+        revealed(it, name)
+    }
     g.fans += fans
     stats.tradeShows += 1
     addLog(
@@ -161,7 +182,11 @@ internal fun GameState.describeShow(): Description {
         p.completion < 0.25 -> "${p.title} is only ${Format.percent(p.completion)} done. A demo this early could fall flat on a big stage."
         else -> "Show off ${p.title} and build hype before launch. The crowd judges what it sees."
     }
-    val hall = if (Booth.LARGE in boothsOpen()) "" else " The main hall is kept for studios with ${Format.count(MAIN_HALL_FANS)} fans."
+    val hall = when {
+        Booth.KEYNOTE in boothsOpen() -> " As one of the biggest studios around, you're offered a keynote."
+        Booth.LARGE in boothsOpen() -> ""
+        else -> " The main hall is kept for studios with ${Format.count(MAIN_HALL_FANS)} fans."
+    }
     return Description(
         "$name opens this week",
         "The biggest games show of the year. $about$hall",

@@ -372,7 +372,7 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     EventKind.GameAwards -> {
         val nominees = awardNominees()
         Description(
-            "Game of the Year nominations",
+            "Game of the Year nominations at ${yearEndShow(calendarYear)}",
             "You're nominated! The shortlist: " + nominees.joinToString("; ") {
                 "${it.title} (${if (it.mine) "you" else it.studio}, ${String.format(java.util.Locale.US, "%.1f", it.score)})"
             } + ".",
@@ -384,6 +384,7 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
         )
     }
     EventKind.Convention -> describeShow()
+    is PlatformInvite, is PremiereSlot, OwnShowcase -> describeShows(kind)
     is ShowResults -> describeShowResults(kind.report)
     EventKind.EcosystemAntitrust -> Description(
         "Antitrust regulators circle your ecosystem",
@@ -733,6 +734,7 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         }
 
         EventKind.Convention -> holdShow(boothsOpen().getOrNull(choice))
+        is PlatformInvite, is PremiereSlot, OwnShowcase -> resolveShows(kind, choice)
 
         // Just a report to read.
         is ShowResults -> Unit

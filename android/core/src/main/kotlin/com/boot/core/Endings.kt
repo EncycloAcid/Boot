@@ -72,6 +72,15 @@ class Stats {
     var tradeShows = 0
     var bestInShow = 0
 
+    /** The rest of the show season: prizes besides Game of the Year, and what you put on stage. */
+    var honours = 0
+    var announcements = 0
+    var premieres = 0
+    var shadowDrops = 0
+    var platformDeals = 0
+    var ownShowcases = 0
+    var keynotes = 0
+
     /** Companies taken over on the stock market. */
     var takeovers = 0
     var counterMoves = 0

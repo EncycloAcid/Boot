@@ -324,6 +324,37 @@ Costs follow the same past-price scaling as everything else, so an 1985 medium b
 
 A report follows straight away with the visitors, hype and new fans, and Today's Game studio card counts the show down from eight weeks out. Hype decays 1% a week, so a show is worth most a few months before launch. The autopilot books a large booth with a promising game and four times its cost in the bank, a medium one with any game and three times the cost, and a small one otherwise when it can afford four.
 
+## The show season
+
+Around the trade show the games lane has a calendar of stages (`Shows.kt`). Week numbers are weeks of the year.
+
+| Week | Show | From | What happens |
+|---|---|---|---|
+| 7 | D.I.C.E. Awards | 1998 | Game design; best indie game |
+| 11 | Game Developers Choice Awards | 2001 | Best technology; audience award |
+| 15 | BAFTA Games Awards | 2004 | Artistic achievement; best game |
+| 22 / 24 / 25 | State of Play (2019+), Xbox Games Showcase (2020+), E3 press conferences (Sony 1995–2018, Microsoft 2001–2019, Sega 1995–2000) | | Console makers invite promising games |
+| 26 | The trade show | | Booths and keynotes (see above) |
+| 34 | Gamescom (2009+), Opening Night Live (2019+); Nintendo Space World (1989–2001) | | World premieres; Nintendo invites |
+| 36 | Your own showcase | 200k fans | Stream your games |
+| 37 | Nintendo Direct | 2011 | Nintendo invites |
+| 46 | Golden Joystick Awards | 2003 | Fan-voted game of the year; best indie game |
+| 49–50 | The year-end show | | World premieres (2003+); Game of the Year and best independent game |
+
+The year-end show is the Arkie Awards before 1983, the Golden Joystick Awards until 2003, the Spike Video Game Awards until 2014 and The Game Awards after.
+
+**Prizes.** Every prize considers games released in the last 52 weeks that scored 7 or more, yours and rivals'. Its jury rates each game by score, leaning its own way: design takes the score as it is, technology adds 0.6 for AAA and 0.3 for large games, art adds 0.5 for small and 0.3 for medium ones, and the fan vote mixes the score with the log of lifetime sales. Indie prizes only consider small and medium games. The top five are nominated, and the winner is drawn with weight e^(3 × (rating − best rating)), so the favourite usually but not always wins. A win: fans +8% (at least 1,000), reputation +2, the game's weekly sales +25%. Award shows never stop the clock; nominations and results come as news.
+
+**Reveals.** A trailer's hype is its stage's base × (0.4 + appeal) × a reveal boost of 1.5 for the first trailer (the announcement, which makes the news), 1.0 for the second, 0.75 for the third and 0.55 after; it also finds fans. Appeal is the trade show's measure. Trailers cost by game size ($10k small to $200k AAA, scaled for the year). Bases: 14 at a console showcase, 22 at a world premiere, 30 at your own showcase. The trade show booth counts as a reveal too.
+
+- **Console showcases.** A maker invites the first of your games in development that's on one of its consoles, if its appeal is at least 0.45; otherwise it passes, and says so. Options: show a trailer; take the marketing deal (the maker pays $60k to $1.2M by size, the trailer gets 35% more hype, fan trust drops 0.03, once per game); shadow-drop it if it's finished; or not this time.
+- **World premieres.** Gamescom ($150k slot) and the year-end show ($250k slot) offer one to your game in development.
+- **Shadow drops.** A finished game can be released live at any of these stages: +20 hype, then it launches.
+- **Your own showcase** costs $300k. If your best game's appeal is under 0.45, viewers leave disappointed: half the hype and fan trust −0.02. Otherwise every game in development gets a trailer and fans grow by 5% × (0.5 + appeal).
+- **Keynote stage** at the trade show: $1.2M with 250k fans, a crowd of 15, 45 hype, 12% fans, Best in Show 70% of the time when it qualifies, +2 reputation.
+
+The autopilot shadow-drops what's finished, takes marketing deals when cash is under $1M, shows trailers when it has ten times the cost, premieres games with appeal 0.6 or more when it has five times the cost, and streams its own showcase when it can afford five times the cost. Over a 15-year career it wins four to nine prizes.
+
 ## Sound and music
 
 There are no audio files. A small synthesiser in the Android app (`audio/Synth.kt`) draws everything from oscillators: anti-aliased square and saw waves, triangle, sine, two-operator FM and noise, with envelopes, a one-pole filter, synthesised drums, and echoes that wrap round so a loop has no seam.

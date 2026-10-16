@@ -53,7 +53,17 @@ data class ChartEntry(
 }
 
 @Serializable
-data class Award(val year: Int, val title: String, val studio: String, val score: Double, val mine: Boolean)
+data class Award(
+    val year: Int,
+    val title: String,
+    val studio: String,
+    val score: Double,
+    val mine: Boolean,
+    /** The prize, or empty for Game of the Year. */
+    val prize: String = "",
+    /** The show that gave it. */
+    val show: String = "",
+)
 
 @Serializable
 class GameMarket {
@@ -69,7 +79,8 @@ class GameMarket {
     val awards = mutableListOf<Award>()
     internal var nextId = 1
 
-    val wins: Int get() = awards.count { it.mine }
+    /** Game of the Year wins. */
+    val wins: Int get() = awards.count { it.mine && it.prize.isEmpty() }
 }
 
 
@@ -224,6 +235,7 @@ fun GameState.awardNominees(): List<ChartEntry> {
 }
 
 private fun GameState.holdAwards(g: GamesStudio) {
+    awardPrize(YEAR_END_INDIE, yearEndShow(calendarYear))
     val nominees = awardNominees()
     if (nominees.isEmpty()) return
     if (nominees.any { it.mine }) {
@@ -247,7 +259,8 @@ internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>
     }
     val year = GameClock.year(week)
     val yearName = if (isDecades) "$calendarYear" else "year $year"
-    g.market.awards += Award(year, winner.title, winner.studio, winner.score, winner.mine)
+    val show = yearEndShow(calendarYear)
+    g.market.awards += Award(year, winner.title, winner.studio, winner.score, winner.mine, show = show)
     if (winner.mine) {
         stats.awards += 1
         g.fans += max(2_000.0, g.fans * 0.25)
@@ -255,10 +268,10 @@ internal fun GameState.announceWinner(g: GamesStudio, nominees: List<ChartEntry>
         reputation.adjust(5.0)
         g.release(winner.releaseId ?: -1)?.let { r -> r.weeklySales = max(r.weeklySales * 1.6, r.lifetimeSales / r.netShare * 0.05) }
         g.project?.let { it.hype = minOf(100.0, it.hype + 15) }
-        addLog("${winner.title} wins Game of the Year! Fans flock to you and sales jump.", LogTone.MILESTONE, Lane.GAMES)
-        publish(NewsDesk.YOU, "IGN", "${winner.title} is Game of the Year", "$companyName takes the industry's biggest prize for $yearName.", LogTone.GOOD, Lane.GAMES, lead = true)
+        addLog("${winner.title} wins Game of the Year at $show! Fans flock to you and sales jump.", LogTone.MILESTONE, Lane.GAMES)
+        publish(NewsDesk.YOU, "IGN", "${winner.title} is Game of the Year", "$companyName takes the industry's biggest prize for $yearName at $show.", LogTone.GOOD, Lane.GAMES, lead = true)
     } else {
-        addLog("Game of the Year for $yearName goes to ${winner.title} by ${winner.studio}.", LogTone.NEUTRAL, Lane.GAMES)
-        publish(NewsDesk.GAMES, "IGN", "${winner.title} is Game of the Year", "${winner.studio} takes the prize for $yearName.", lane = Lane.GAMES, lead = true)
+        addLog("Game of the Year for $yearName goes to ${winner.title} by ${winner.studio}, at $show.", LogTone.NEUTRAL, Lane.GAMES)
+        publish(NewsDesk.GAMES, "IGN", "${winner.title} is Game of the Year", "${winner.studio} takes the prize for $yearName at $show.", lane = Lane.GAMES, lead = true)
     }
 }

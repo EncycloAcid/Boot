@@ -246,12 +246,18 @@ fun AwardsCard(state: GameState) {
     val awards = g.market.awards
     if (awards.isEmpty()) return
     val colors = gameColors
-    GroupedSection("Game of the Year", footer = "Held every December. Ship something great that year to get nominated.") {
-        awards.asReversed().forEachIndexed { i, a ->
+    // Your trophies first, then the latest of everyone else's.
+    val shown = (awards.filter { it.mine }.asReversed() + awards.filter { !it.mine }.asReversed()).take(12)
+    GroupedSection(
+        "Awards · ${awards.count { it.mine }} won",
+        footer = "Game of the Year is decided every December; other shows hand out their prizes through the year. Ship something great to get nominated.",
+    ) {
+        shown.forEachIndexed { i, a ->
             if (i > 0) RowDivider(52.dp)
             ListRow(
                 a.title,
-                subtitle = (state.startYear?.let { "${it + a.year - 1}" } ?: "Year ${a.year}") + " · ${if (a.mine) "You" else a.studio} · ${String.format(Locale.US, "%.1f", a.score)}/10",
+                subtitle = a.prize.ifEmpty { "Game of the Year" } + (a.show.takeIf { it.isNotEmpty() }?.let { " at ${it.removePrefix("the ")}" } ?: "") + "\n" +
+                    (state.startYear?.let { "${it + a.year - 1}" } ?: "Year ${a.year}") + " · ${if (a.mine) "You" else a.studio} · ${String.format(Locale.US, "%.1f", a.score)}/10",
                 leading = {
                     Icon(Icons.Filled.EmojiEvents, null, tint = if (a.mine) colors.milestone else MaterialTheme.colorScheme.outline, modifier = Modifier.size(24.dp))
                 },
