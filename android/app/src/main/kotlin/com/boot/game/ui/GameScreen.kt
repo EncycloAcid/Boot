@@ -172,6 +172,9 @@ private fun GameScreen(store: GameStore, state: GameState) {
         }
     }
 
+    // The floating pieces sit on their own backgrounds, not in a Surface: give their text the
+    // theme's colour so it reads at night.
+    CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.grouped)) {
         val phone = maxWidth < 600.dp
         val landscape = isLandscape(maxWidth, maxHeight)
@@ -239,6 +242,8 @@ private fun GameScreen(store: GameStore, state: GameState) {
                 .statusBarsPadding()
                 .padding(top = 2.dp),
         )
+    }
+
     }
 
     GameOverlays(store, state)
@@ -310,7 +315,8 @@ private fun FloatingPanels(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(start = RailWidth, top = 6.dp, bottom = 6.dp)
+                // Below the Menu chip, so the menu stays reachable with a window open.
+                .padding(start = RailWidth, top = 52.dp, bottom = 6.dp)
         } else if (phone) {
             Modifier
                 .fillMaxSize()
@@ -406,6 +412,7 @@ fun FloatingWindow(
             Text(
                 title,
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -476,7 +483,7 @@ private fun FloatingHud(
                     description = if (attention > 0) "Menu, $attention waiting" else "Menu",
                 ) {
                     HudIcon(HudGlyph.MENU, colors.other, 14.dp)
-                    Text("Menu", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text("Menu", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
