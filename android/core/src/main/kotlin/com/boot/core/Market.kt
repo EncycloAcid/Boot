@@ -40,8 +40,16 @@ data class ChartEntry(
     val releaseId: Int? = null,
     /** Made by a studio you own. */
     val owned: Boolean = false,
+    /** Cover cues — defaults keep old saves / award lists decoding. */
+    val topic: Topic = Topic.CITY,
+    val genre: Genre = Genre.ACTION,
+    val platform: Platform = Platform.PC,
 ) {
     val mine: Boolean get() = releaseId != null
+
+    /** Enough of a concept to paint box art in chart rows. */
+    fun coverConcept(): GameConcept =
+        GameConcept(title, topic, genre, platforms = listOf(platform), size = GameSize.MEDIUM)
 }
 
 @Serializable
@@ -88,9 +96,21 @@ internal fun GameState.marketWeek() {
     m.games.removeAll { it.weeklySales <= 0 && week - it.week > 104 }
     while (m.games.size > 60) m.games.removeAt(0)
 
-    val entries = m.games.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, it.studio, it.weeklySales, it.score, owned = g.owns(it.studio)) } +
-        g.releases.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, companyName, it.weeklySales, it.score, it.id) } +
-        g.published.filter { it.weeklySales > 0 }.map { ChartEntry(it.title, "${it.developer} · $companyName", it.weeklySales, it.score, it.id) }
+    val entries = m.games.filter { it.weeklySales > 0 }.map {
+        ChartEntry(it.title, it.studio, it.weeklySales, it.score, owned = g.owns(it.studio), topic = it.topic, genre = it.genre)
+    } + g.releases.filter { it.weeklySales > 0 }.map {
+        ChartEntry(
+            it.title, companyName, it.weeklySales, it.score, it.id,
+            topic = it.concept.topic, genre = it.concept.genre,
+            platform = it.concept.platforms.firstOrNull() ?: Platform.PC,
+        )
+    } + g.published.filter { it.weeklySales > 0 }.map {
+        ChartEntry(
+            it.title, "${it.developer} · $companyName", it.weeklySales, it.score, it.id,
+            topic = it.concept.topic, genre = it.concept.genre,
+            platform = it.concept.platforms.firstOrNull() ?: Platform.PC,
+        )
+    }
     val sorted = entries.sortedByDescending { it.weeklySales }
     m.chart = sorted.take(10)
     for (r in g.releases + g.published) {
@@ -102,6 +122,12 @@ internal fun GameState.marketWeek() {
             if (rank == 1 && !wasTop) {
                 stats.chartToppers += 1
                 addLog("${r.title} is the best-selling game in the world this week.", LogTone.MILESTONE, Lane.GAMES)
+                publish(
+                    NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
+                    "${r.title} tops the charts",
+                    "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} is the week's best-seller.",
+                    LogTone.GOOD, Lane.GAMES, lead = true,
+                )
             }
         }
     }
@@ -133,14 +159,19 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     val title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), m.games.map { it.title }.toSet())
     val game = RivalGame(m.nextId++, title, studio, topic, genre, size, score, week, sales)
     m.games += game
-    if (score >= 8.5 || game.mega || (size == GameSize.AAA && score < 5.5)) {
+    // Mid-score and chart-weight releases make the Games desk, not only mega-hits and AAA flops.
+    if (score >= 7.0 || game.mega || (size >= GameSize.LARGE && score < 5.5) || (size == GameSize.AAA && score < 6.5) ||
+        (size >= GameSize.MEDIUM && score in 5.5..6.9 && rng.chance(0.35))
+    ) {
         val sc = String.format(java.util.Locale.US, "%.1f", score)
         publish(
             NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
             when {
                 game.mega -> "$title is here, and everyone's playing it"
                 score >= 9 -> "$title review: an instant classic"
-                score >= 8.5 -> "$title review: $studio does it again"
+                score >= 8 -> "$title review: $studio does it again"
+                score >= 7 -> "$title review: critics warm to $studio's latest"
+                score >= 5.5 -> "$title review: mixed notices for $studio"
                 else -> "$studio's $title is a costly misfire"
             },
             "${Format.a(size.lower).replaceFirstChar { it.uppercase() }} ${topic.title.lowercase()} ${genre.lower} game by $studio. $sc/10.",
@@ -178,9 +209,17 @@ fun GamesStudio.clashFor(concept: GameConcept, week: Int): Clash? {
 fun GameState.awardNominees(): List<ChartEntry> {
     val g = games ?: return emptyList()
     val year = GameClock.year(week)
-    val rivals = g.market.games.filter { GameClock.year(it.week) == year }.map { ChartEntry(it.title, it.studio, it.weeklySales, it.score) }
+    val rivals = g.market.games.filter { GameClock.year(it.week) == year }.map {
+        ChartEntry(it.title, it.studio, it.weeklySales, it.score, topic = it.topic, genre = it.genre)
+    }
     val mine = g.releases.filter { GameClock.year(it.week) == year && it.publisher == null }
-        .map { ChartEntry(it.title, companyName, it.weeklySales, it.score, it.id) }
+        .map {
+            ChartEntry(
+                it.title, companyName, it.weeklySales, it.score, it.id,
+                topic = it.concept.topic, genre = it.concept.genre,
+                platform = it.concept.platforms.firstOrNull() ?: Platform.PC,
+            )
+        }
     return (rivals + mine).sortedByDescending { it.score }.take(4)
 }
 

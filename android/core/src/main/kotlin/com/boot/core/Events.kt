@@ -576,6 +576,7 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
                 Lane.WEBSITES -> web?.let { it.standing = it.standing.nudged(0.1) }
                 Lane.HARDWARE -> hardware?.onMarket?.let { it.hype += 0.6 }
                 Lane.AI -> ai?.let { it.subscribers *= 1.3 }
+                Lane.OS -> os?.let { it.oemTrust = (it.oemTrust + 0.1).coerceAtMost(1.0); it.ecosystem = (it.ecosystem + 0.08).coerceAtMost(1.0) }
             }
             addLog("You rode the viral wave in ${kind.lane.title}.", LogTone.GOOD)
         }
@@ -891,6 +892,32 @@ private fun GameState.rideOut(combo: Combo) {
         Combo.SOCIAL_HARDWARE -> {
             stats.scandals += 1
             addLog("Venues are banning your glasses.", LogTone.BAD)
+        }
+        Combo.GAMES_OS -> {
+            os?.let { it.oemTrust = (it.oemTrust - 0.12).coerceAtLeast(0.05) }
+            addLog("OEMs are furious about exclusive titles on your store.", LogTone.BAD)
+        }
+        Combo.WEBSITES_OS -> {
+            web?.let { it.standing = it.standing.nudged(-0.08) }
+            addLog("Portal clients are drowning the OS roadmap in feature requests.", LogTone.BAD)
+        }
+        Combo.APPS_OS -> {
+            val fine = max(200_000.0, trailingRevenue(weeks = 52) * 0.02)
+            spend(fine, null)
+            stats.hearings += 1
+            addLog("Preload probe: a ${money(fine)} fine.", LogTone.BAD)
+        }
+        Combo.SOCIAL_OS -> {
+            social?.let { it.toxicity = it.toxicity.nudged(0.15) }
+            addLog("Moderation fights spilled into the whole desktop.", LogTone.BAD)
+        }
+        Combo.HARDWARE_OS -> {
+            os?.let { it.oemTrust = (it.oemTrust - 0.15).coerceAtLeast(0.05) }
+            addLog("A device recall became an OS scandal overnight.", LogTone.BAD)
+        }
+        Combo.AI_OS -> {
+            stats.scandals += 1
+            addLog("An on-device model said something unforgivable in system UI.", LogTone.BAD)
         }
     }
 }

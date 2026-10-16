@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,10 +34,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boot.core.AIProduct
+import com.boot.core.AppCategory
 import com.boot.core.AppMonetization
-import com.boot.core.DeviceCategory
-import com.boot.core.DeviceSpec
-import com.boot.core.DeviceTier
+import com.boot.core.DeviceAspect
+import com.boot.core.DeviceFocus
 import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.GameState
@@ -47,6 +46,7 @@ import com.boot.core.Lane
 import com.boot.core.AgencyRate
 import com.boot.core.ScopePolicy
 import com.boot.core.TrainingSize
+import com.boot.core.UpdateFocus
 import com.boot.core.UpdateStyle
 import com.boot.core.acceptContract
 import com.boot.core.buyGPUs
@@ -56,14 +56,22 @@ import com.boot.core.launchDevice
 import com.boot.core.orderUnits
 import com.boot.core.setAIFocus
 import com.boot.core.setAdLoad
+import com.boot.core.setAppCategory
 import com.boot.core.setModeration
 import com.boot.core.setMonetization
 import com.boot.core.setAgencyRate
 import com.boot.core.setScopePolicy
+import com.boot.core.setUpdateFocus
 import com.boot.core.setUpdateStyle
-import com.boot.core.startDevice
+import com.boot.core.OsTarget
+import com.boot.core.cancelOsBeta
+import com.boot.core.osTargetOpen
+import com.boot.core.shipOs
+import com.boot.core.startOsBeta
+import com.boot.core.startOsVersion
 import com.boot.core.startTraining
 import com.boot.game.GameStore
+import java.util.Locale
 
 @Composable
 fun LanesScreen(store: GameStore, state: GameState) {
@@ -80,6 +88,7 @@ fun LanesScreen(store: GameStore, state: GameState) {
             Lane.SOCIAL -> socialItems(store, state)
             Lane.HARDWARE -> hardwareItems(store, state)
             Lane.AI -> aiItems(store, state)
+            Lane.OS -> osItems(store, state)
         }
         depthItems(store, state, lane)
         item { MarketingSection(store, state, lane) }
@@ -199,8 +208,10 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
         GroupedSection(a.name) {
             if (!a.isLive) {
                 CardBlock {
-                    Hint("Building version 1.0")
+                    Hint("Building ${a.category.title.lowercase()} v1.0 — design and tech accumulate toward store score.")
                     Meter("Progress", (a.buildProgress / a.buildWork).coerceAtMost(1.0), wavy = true)
+                    Meter("Design", (a.design / 80).coerceAtMost(1.0), gameColors.design, Format.count(a.design))
+                    Meter("Tech", (a.tech / 80).coerceAtMost(1.0), gameColors.tech, Format.count(a.tech))
                 }
             } else {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -217,18 +228,38 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                     }
                 }
                 CardBlock {
-                    Meter("Quality", a.quality / 100, gameColors.milestone, "${a.quality.toInt()}")
+                    Meter("Store score", a.quality / 100, gameColors.milestone, "${a.quality.toInt()}")
+                    Meter(
+                        "Design", (a.design / 100).coerceAtMost(1.0), gameColors.design,
+                        "${Format.count(a.design)} · ${Format.percent(a.designShare())}",
+                    )
+                    Meter("Tech", (a.tech / 100).coerceAtMost(1.0), gameColors.tech, Format.count(a.tech))
                     Meter(
                         "Next update", (a.updateProgress / a.updateStyle.work).coerceAtMost(1.0),
-                        caption = "${a.weeksSinceUpdate} weeks since the last one", wavy = true,
+                        caption = "${a.weeksSinceUpdate} weeks since · ${a.updateFocus.title.lowercase()} focus", wavy = true,
                     )
                 }
             }
         }
     }
     item {
-        GroupedSection("Strategy", footer = "Stale apps churn. Ship often to stay fresh, or ship big to raise quality.") {
+        GroupedSection(
+            "Product brief",
+            footer = if (a.isLive) {
+                "Category is locked after launch. Monetization can still change (some users leave). Platform research stacks into the product."
+            } else {
+                "Pick a category before v1.0 — it leans the craft balance. Feature research (SDK, offline, sync, collab) stacks like a light engine."
+            },
+        ) {
             CardBlock(spacing = 8.dp) {
+                if (!a.isLive) {
+                    Text("Category", style = MaterialTheme.typography.bodyMedium)
+                    Segmented(AppCategory.entries, a.category, { it.title }) { c -> store.perform { setAppCategory(c) } }
+                    Spacer(Modifier.size(4.dp))
+                } else {
+                    ValueRow("Category", a.category.title)
+                    RowDivider()
+                }
                 Text("Monetization", style = MaterialTheme.typography.bodyMedium)
                 Segmented(AppMonetization.entries, a.monetization, {
                     when (it) {
@@ -238,10 +269,30 @@ private fun LazyListScope.appsItems(store: GameStore, state: GameState) {
                     }
                 }) { m -> store.perform { setMonetization(m) } }
                 Spacer(Modifier.size(4.dp))
-                Text("Updates", style = MaterialTheme.typography.bodyMedium)
+                if (a.features.isNotEmpty()) {
+                    Hint("Feature stack: " + a.features.joinToString { it.title })
+                } else {
+                    Hint("No platform features yet — research Native SDK kit on the Research tab.")
+                }
+            }
+        }
+    }
+    item {
+        GroupedSection(
+            "Update roadmap",
+            footer = "Cadence sets how often you ship. Focus sets what each drop improves: stability cuts churn, features grow installs, polish lifts reviews.",
+        ) {
+            CardBlock(spacing = 8.dp) {
+                Text("Cadence", style = MaterialTheme.typography.bodyMedium)
                 Segmented(UpdateStyle.entries, a.updateStyle, { if (it == UpdateStyle.SMALL) "Small & often" else "Big & rare" }) { u ->
                     store.perform { setUpdateStyle(u) }
                 }
+                Spacer(Modifier.size(4.dp))
+                Text("Next update focus", style = MaterialTheme.typography.bodyMedium)
+                Segmented(UpdateFocus.entries, a.updateFocus, { it.title }) { f ->
+                    store.perform { setUpdateFocus(f) }
+                }
+                Hint(a.updateFocus.detail)
             }
         }
     }
@@ -313,7 +364,10 @@ private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
         GroupedSection("On the market") {
             val m = h.onMarket
             if (m != null) {
-                ListRow(m.name, subtitle = "${Format.money(m.spec.price)} · reviewed ${m.quality.toInt()}")
+                ListRow(
+                    m.name,
+                    subtitle = "${m.formFactor.title} · ${Format.money(m.spec.price)} · reviewed ${m.quality.toInt()}",
+                )
                 Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 18.dp)) {
                     TileRow {
                         StatTile("Demand", "${Format.count(h.lastDemand)}/wk", Modifier.weight(1f))
@@ -324,6 +378,21 @@ private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
                         StatTile("Sold", Format.count(m.unitsSold.toDouble()), Modifier.weight(1f))
                     }
                 }
+                if (m.aspects.isNotEmpty()) {
+                    RowDivider()
+                    DeviceAspectBars(m.aspects)
+                }
+                if (m.pros.isNotEmpty() || m.cons.isNotEmpty()) {
+                    RowDivider()
+                    CardBlock(spacing = 6.dp) {
+                        m.pros.forEach { Hint("+ $it", gameColors.good) }
+                        m.cons.forEach { Hint("− $it", gameColors.bad) }
+                    }
+                }
+                RowDivider()
+                ValueRow("BOM / unit", Format.money(m.bomCost))
+                RowDivider()
+                ValueRow("List price", Format.money(m.spec.price))
             } else {
                 CardBlock { Hint("Nothing on sale yet.") }
             }
@@ -338,32 +407,84 @@ private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
 @Composable
 private fun DesignSection(store: GameStore, state: GameState) {
     val h = state.hardware ?: return
-    var category by rememberSaveable { mutableStateOf(DeviceCategory.HEADPHONES) }
-    var tier by rememberSaveable { mutableStateOf(DeviceTier.BUDGET) }
     val d = h.design
     if (d != null) {
+        val forecast = h.forecast(d)
+        val weeksCover = if (h.lastDemand > 0) d.preorderedStock / h.lastDemand else d.preorderedStock / 100.0
+        val stockRisk = when {
+            d.isReady && d.preorderedStock == 0 -> "No stock booked — day-one sell-out risk."
+            weeksCover < 4 -> "Thin preorder cover. Scalpers may win."
+            weeksCover > 20 -> "Heavy stock. Overstock risk if reviews miss."
+            else -> null
+        }
         GroupedSection(
             "Design",
-            footer = if (d.isReady && d.preorderedStock == 0) "No stock has arrived yet. Launch now and you'll sell out on day one." else null,
+            footer = stockRisk ?: if (d.isReady) "Design locked. Launch when stock arrives." else null,
         ) {
             CardBlock {
                 Text(d.name, style = MaterialTheme.typography.titleLargeEmphasized)
-                Hint("${Format.money(d.spec.price)} retail · ${Format.money(d.spec.unitCost)} to build · ${d.spec.tier.weeklyRnD.perWeek()} R&D")
+                Hint(
+                    "${d.formFactor.title} · ${Format.money(d.spec.price)} retail · " +
+                        "${Format.money(d.effectiveUnitCost)} BOM · ${d.spec.tier.weeklyRnD.perWeek()} R&D",
+                )
                 Meter("Design", d.completion, wavy = !d.isReady)
             }
             RowDivider()
+            DeviceFocusBars(d.spec.category, d.normalizedFocus)
+            RowDivider()
+            ValueRow("Craft", "design ${d.design.toInt()} · tech ${d.tech.toInt()}")
+            RowDivider()
+            ValueRow("Preorder forecast", "~${forecast.preorderUnits} units · score ~${forecast.expectedScore}")
+            RowDivider()
             ValueRow("Stock booked for launch", "${d.preorderedStock} units")
+            if (d.bundleOs || d.appPack) {
+                RowDivider()
+                Hint(
+                    buildList {
+                        if (d.bundleOs) add("Bundled OS")
+                        if (d.appPack) add("App pack")
+                    }.joinToString(" · "),
+                    MaterialTheme.colorScheme.primary,
+                )
+            }
             CardBlock { PrimaryButton("Launch the ${d.name}", { store.perform { launchDevice() } }, Modifier.fillMaxWidth(), enabled = d.isReady) }
         }
     } else {
-        GroupedSection("New device", footer = "Budget sells more units; flagship earns more per unit.") {
+        GroupedSection("New device", footer = "Open the Device Designer: category, form factor, and component mix.") {
             CardBlock {
-                Segmented(DeviceCategory.entries, category, { it.title }) { category = it }
-                Segmented(DeviceTier.entries, tier, { it.title }) { tier = it }
-                val spec = DeviceSpec(category, tier)
-                Hint("${Format.money(spec.price)} retail, ${Format.money(spec.unitCost)} per unit, ${tier.weeklyRnD.perWeek()} R&D")
-                PrimaryButton("Start design", { store.perform { startDevice(category, tier) } }, Modifier.fillMaxWidth())
+                PrimaryButton("Design a device", { store.designDevice() }, Modifier.fillMaxWidth())
             }
+        }
+    }
+}
+
+@Composable
+internal fun DeviceFocusBars(category: com.boot.core.DeviceCategory, weights: List<Double>) {
+    CardBlock(spacing = 8.dp) {
+        Text("Component mix", style = MaterialTheme.typography.bodyMedium)
+        DeviceFocus.ALL.forEachIndexed { i, area ->
+            val v = weights.getOrElse(i) { 0.0 }
+            Meter(area.title(category), v.coerceIn(0.0, 1.0), MaterialTheme.colorScheme.secondary)
+        }
+    }
+}
+
+@Composable
+internal fun DeviceAspectBars(aspects: Map<DeviceAspect, Double>) {
+    CardBlock(spacing = 8.dp) {
+        Text("Review aspects", style = MaterialTheme.typography.bodyMedium)
+        for ((aspect, score) in aspects.entries.sortedByDescending { it.value }) {
+            val tint = when {
+                score >= 75 -> Color(0xFF00CE7A)
+                score >= 50 -> Color(0xFFFFBD3F)
+                else -> Color(0xFFFF6874)
+            }
+            Meter(
+                aspect.title,
+                (score / 100).coerceIn(0.03, 1.0),
+                tint,
+                caption = String.format(Locale.US, "%.0f", score),
+            )
         }
     }
 }
@@ -372,7 +493,7 @@ private fun DesignSection(store: GameStore, state: GameState) {
 private fun FactorySection(store: GameStore, state: GameState) {
     val h = state.hardware ?: return
     var units by rememberSaveable { mutableIntStateOf(5_000) }
-    val spec = h.design?.spec ?: h.onMarket?.spec
+    val unitCost = h.design?.effectiveUnitCost ?: h.onMarket?.bomCost
     GroupedSection(
         "Factory",
         footer = "Lead time ${HardwareLab.LEAD_TIME_WEEKS} weeks. Guess low and scalpers profit; guess high and you're stuck with last year's model.",
@@ -393,8 +514,11 @@ private fun FactorySection(store: GameStore, state: GameState) {
                 }
                 TonalButton("+1k", { units += 1_000 })
             }
-            Hint(if (spec != null) "$units units cost ${Format.money(units * spec.unitCost)} up front" else "Start a design before you book the factory.")
-            PrimaryButton("Book factory capacity", { store.perform { orderUnits(units) } }, Modifier.fillMaxWidth(), enabled = spec != null)
+            Hint(
+                if (unitCost != null) "$units units cost ${Format.money(units * unitCost)} up front (BOM)"
+                else "Start a design before you book the factory.",
+            )
+            PrimaryButton("Book factory capacity", { store.perform { orderUnits(units) } }, Modifier.fillMaxWidth(), enabled = unitCost != null)
         }
         h.orders.forEach { o ->
             RowDivider()
@@ -472,6 +596,110 @@ private fun LazyListScope.aiItems(store: GameStore, state: GameState) {
             }
             RowDivider()
             CardBlock { Meter("Regulatory heat", lab.regulatoryHeat, gameColors.bad) }
+        }
+    }
+}
+
+// Platform Lab / OS
+
+private fun LazyListScope.osItems(store: GameStore, state: GameState) {
+    val lab = state.os ?: return
+    val hardwareLive = state.hardware?.onMarket != null && Lane.HARDWARE in state.lanes
+    val appsLive = state.apps?.isLive == true && Lane.APPS in state.lanes
+    item {
+        GroupedSection(
+            "Platform Lab",
+            footer = when {
+                hardwareLive && appsLive -> "Shipping with your own hardware and live apps boosts score and ecosystem."
+                hardwareLive -> "A device on the market sweetens the next OS launch."
+                appsLive -> "First-party apps lift ecosystem when you ship."
+                else -> "Open Hardware or Apps for optional launch synergies."
+            },
+        ) {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                TileRow {
+                    StatTile("OEM trust", Format.percent(lab.oemTrust), Modifier.weight(1f))
+                    StatTile("Ecosystem", Format.percent(lab.ecosystem), Modifier.weight(1f))
+                    StatTile("Versions", "${lab.versionsShipped}", Modifier.weight(1f))
+                }
+                if (lab.lastLicense > 0) {
+                    StatTile("License revenue", lab.lastLicense.perWeek(), Modifier.fillMaxWidth(), "this week")
+                }
+            }
+        }
+    }
+    val p = lab.project
+    if (p != null) {
+        val bugHeavy = p.bugs > p.work * 0.25
+        item {
+            GroupedSection(
+                p.codename,
+                footer = "Feature-complete versions can beta (safer for OEMs) or ship raw (faster, riskier). Waiting after ready still burns a light weekly cost.",
+            ) {
+                CardBlock {
+                    Hint("v${p.version} · ${p.target.title} · ${Format.weeks(p.weeksInDev)} in")
+                    Meter("Progress", p.completion, wavy = !p.isReady)
+                    Meter(
+                        "Design", (p.design / p.work).coerceAtMost(1.0), gameColors.design,
+                        Format.count(p.design),
+                    )
+                    Meter(
+                        "Tech", (p.tech / p.work).coerceAtMost(1.0), gameColors.tech,
+                        Format.count(p.tech),
+                    )
+                    Meter("Bugs", (p.bugs / (p.work * 0.5)).coerceAtMost(1.0), gameColors.bad, Format.count(p.bugs))
+                    if (p.inBeta) {
+                        if (p.betaWeeksLeft > 0) {
+                            Hint("Beta: ${Format.weeks(p.betaWeeksLeft)} left — bugs fall each week.")
+                        } else {
+                            Hint("Beta wrapped. Ship when you're ready — OEMs already saw the polish.", gameColors.good)
+                        }
+                        PlainButton("Cancel beta", { store.perform { cancelOsBeta() } })
+                    }
+                    if (p.isReady && !p.inBeta) {
+                        if (bugHeavy) {
+                            Hint("Bug load is high — shipping raw risks a rollback that freezes OEM orders.", gameColors.bad)
+                        }
+                        PrimaryButton("Start 6-week beta", { store.perform { startOsBeta(6) } }, Modifier.fillMaxWidth())
+                        PrimaryButton("Ship raw", { store.perform { shipOs() } }, Modifier.fillMaxWidth())
+                    } else if (p.isReady && p.inBeta && p.betaWeeksLeft <= 0) {
+                        PrimaryButton("Ship ${p.codename}", { store.perform { shipOs() } }, Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        }
+    } else {
+        item {
+            GroupedSection("New version", footer = "Phone targets unlock in 2007; PC & phone dual targets in 2012. Kernel research raises release quality.") {
+                OsTarget.entries.forEachIndexed { i, t ->
+                    if (i > 0) RowDivider()
+                    val open = state.osTargetOpen(t)
+                    ActionRow(
+                        t.title,
+                        if (open) "${t.work.toInt()} work · ${Format.money(t.weeklyBurn)}/wk burn" else "Unlocks in ${t.arrives}",
+                        "Start",
+                        enabled = open,
+                    ) { store.perform { startOsVersion(t) } }
+                }
+            }
+        }
+    }
+    if (lab.releases.isNotEmpty()) {
+        item {
+            GroupedSection("Shipped platforms") {
+                lab.releases.take(8).forEachIndexed { i, r ->
+                    if (i > 0) RowDivider()
+                    ListRow(
+                        "${r.codename} v${r.version}",
+                        subtitle = "${r.target.title} · ${String.format(java.util.Locale.US, "%.1f", r.score)}/10" +
+                            (if (r.beta) " · beta" else " · raw") +
+                            (if (r.rolledBack) " · rolled back" else "") +
+                            " · ${r.oemPartners} OEMs",
+                        value = Format.count(r.installedBase),
+                        valueDetail = "devices",
+                    )
+                }
+            }
         }
     }
 }

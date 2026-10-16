@@ -32,6 +32,7 @@ fun GameState.advance() {
             Lane.SOCIAL -> social!!.tick(ctx, rng)
             Lane.HARDWARE -> hardware!!.tick(ctx, rng)
             Lane.AI -> ai!!.tick(ctx, rng)
+            Lane.OS -> os!!.tick(ctx, rng)
         }
         applyReport(report, lane)
         val lanePayroll = staff(lane).sumOf { it.salary }
@@ -42,6 +43,7 @@ fun GameState.advance() {
     studioWeek()
     roadmapWeek()
     marketingWeek()
+    strategyWeek()
     newsWeek()
     researchPoints += weeklyResearch(games?.lastWork ?: 0.0)
 
@@ -249,6 +251,12 @@ private fun GameState.studioWeek() {
     if (week % 13 == 0 && g.liveGames.any { it.live!!.monetization == Monetization.AGGRESSIVE && it.live!!.players > 10_000 }) {
         reputation.scar(ScarKind.PREDATORY_MONETIZATION, 0.03, week, "Pay-to-win store")
     }
+    // Early player scores settle after three weeks of word of mouth (or sooner via patch).
+    for (r in g.releases) {
+        if (!r.userScoreSettled && r.userScore > 0 && week - r.week >= 3) {
+            finalizeUserScore(r)
+        }
+    }
     // Merchandise for the hits, fading over a couple of years.
     if (Research.MERCHANDISE in researched) {
         val merch = g.releases.filter { it.score >= 8 && it.publisher == null }
@@ -260,7 +268,10 @@ private fun GameState.studioWeek() {
         }
     }
     val output = staffing(Lane.GAMES).output
-    g.refreshOffers(week, output, rng, unlockedSizes, Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE })
+    g.refreshOffers(
+        week, calendarYear, output, rng, unlockedSizes,
+        Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE },
+    )
 }
 
 private fun GameState.rollWorldEvents() {
@@ -284,7 +295,7 @@ private fun GameState.rollSmallEvents() {
     if (staff.size >= 6 && rng.chance(0.003)) enqueue(EventKind.Offsite)
     if (web != null && staff(Lane.WEBSITES).isNotEmpty() && rng.chance(0.006)) {
         val pay = max(15_000.0, trailingRevenue(Lane.WEBSITES, 4) / 4 * 3)
-        enqueue(EventKind.RushJob(rng.pick(Names.brands + Names.clients), Math.round(pay / 1_000.0) * 1_000.0))
+        enqueue(EventKind.RushJob(rng.pick(brandsIn(calendarYear) + Names.clients), Math.round(pay / 1_000.0) * 1_000.0))
     }
     if (apps?.isLive == true && rng.chance(0.004)) enqueue(EventKind.AppFeatured)
     if (social?.isLive == true && social?.caughtOn == true && rng.chance(0.004)) {
@@ -335,6 +346,7 @@ private fun GameState.hasLiveProduct(lane: Lane): Boolean = when (lane) {
     Lane.SOCIAL -> social?.isLive == true
     Lane.HARDWARE -> hardware?.onMarket != null
     Lane.AI -> (ai?.capability ?: 0.0) > 0
+    Lane.OS -> os?.releases?.isNotEmpty() == true
 }
 
 // Combos
@@ -495,5 +507,6 @@ private fun GameState.rivalMove(who: String, lane: Lane): String = rng.pick(
         Lane.SOCIAL -> listOf("$who copies a rival's best feature", "$who's new app passes 100 million users", "$who pays creators to move over")
         Lane.HARDWARE -> listOf("$who unveils a new flagship", "$who's new device sells out in minutes", "$who undercuts everyone on price")
         Lane.AI -> listOf("$who releases a new frontier model", "$who's model tops every benchmark", "$who raises billions for a new data centre")
+        Lane.OS -> listOf("$who ships a new platform version", "$who locks in three more OEM partners", "$who's developer conference steals the week")
     },
 )

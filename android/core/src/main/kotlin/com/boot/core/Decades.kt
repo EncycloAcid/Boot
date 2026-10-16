@@ -41,6 +41,7 @@ val Lane.arrives: Int
     get() = when (this) {
         Lane.GAMES -> 1970
         Lane.HARDWARE -> 1975
+        Lane.OS -> 1981
         Lane.WEBSITES -> 1994
         Lane.SOCIAL -> 2004
         Lane.APPS -> 2008
@@ -52,6 +53,7 @@ val Lane.arrival: String
     get() = when (this) {
         Lane.GAMES -> "Arcades and the first consoles, 1970."
         Lane.HARDWARE -> "The first home computer kits, 1975."
+        Lane.OS -> "Personal computers need platforms, 1981."
         Lane.WEBSITES -> "The web goes public in 1994."
         Lane.SOCIAL -> "Social networks take off in 2004."
         Lane.APPS -> "The App Store opens in 2008."
@@ -67,6 +69,7 @@ internal val Lane.industry: String
         Lane.SOCIAL -> "social media"
         Lane.HARDWARE -> "computers"
         Lane.AI -> "AI"
+        Lane.OS -> "operating systems"
     }
 
 /** Research only this era offers. */
@@ -239,10 +242,11 @@ internal val RivalsThroughTime = mapOf(
     Lane.SOCIAL to listOf(2003 to "MySpace", 2009 to "Facebook", 2021 to "Meta"),
     Lane.HARDWARE to listOf(1975 to "Commodore", 1986 to "IBM", 1996 to "Dell", 2007 to "Apple"),
     Lane.AI to listOf(2012 to "Google DeepMind", 2020 to "OpenAI"),
+    Lane.OS to listOf(1981 to "Digital Research", 1985 to "Microsoft", 2007 to "Apple"),
 )
 
 /** [lane]'s main rival in [year]. */
-internal fun rivalIn(lane: Lane, year: Int): String =
+fun rivalIn(lane: Lane, year: Int): String =
     RivalsThroughTime.getValue(lane).lastOrNull { it.first <= year }?.second ?: RivalsThroughTime.getValue(lane).first().second
 
 /** When the big names in each lane were founded, for the news. */
@@ -253,6 +257,7 @@ internal val PeerYears = mapOf(
     "Meta" to 2004, "TikTok" to 2016, "X" to 2006, "Snap" to 2011, "Reddit" to 2005, "Discord" to 2015,
     "Apple" to 1976, "Samsung" to 1969, "Sony" to 1946, "Nothing" to 2020, "Microsoft" to 1975,
     "OpenAI" to 2015, "Google DeepMind" to 2010, "Anthropic" to 2021, "Meta AI" to 2013, "xAI" to 2023, "Mistral AI" to 2023,
+    "Canonical" to 2004, "Red Hat" to 1993, "Valve" to 1996, "Digital Research" to 1976,
 )
 
 /** The big names in [lane] that existed in [year]: today's, plus the giants of the past. */
@@ -265,6 +270,7 @@ internal fun peersIn(lane: Lane, year: Int): List<String> {
         Lane.SOCIAL -> listOf(Triple("MySpace", 2003, 2010), Triple("Friendster", 2002, 2008), Triple("Facebook", 2004, 2021))
         Lane.HARDWARE -> listOf(Triple("Commodore", 1977, 1994), Triple("IBM", 1977, 2005), Triple("Compaq", 1982, 2002), Triple("Dell", 1984, 2015), Triple("Palm", 1996, 2010), Triple("Nokia", 1992, 2013))
         Lane.AI -> listOf(Triple("IBM Watson", 2011, 2020))
+        Lane.OS -> listOf(Triple("Digital Research", 1976, 1991), Triple("BeOS", 1991, 2001), Triple("Palm OS", 1996, 2010), Triple("Symbian", 1998, 2012))
     }
     val today = World.peers(lane).filter { (PeerYears[it] ?: 0) <= year && (lane != Lane.SOCIAL || it != "Meta" || year >= 2021) }
     return (today + past.filter { year in it.second until it.third }.map { it.first }).ifEmpty { listOf(rivalIn(lane, year)) }

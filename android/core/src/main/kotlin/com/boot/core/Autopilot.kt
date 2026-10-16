@@ -173,7 +173,22 @@ class Autopilot(
 
     private fun resolvePivot(s: GameState) {
         val offer = s.pendingPivot ?: return
-        val mode = if (s.trailingProfit(weeks = 13) > 0) PivotMode.EXPAND else PivotMode.PIVOT
+        // Keep a games studio focused until it has a franchise. Expanding into Social/Apps
+        // splits the team and Autopilot rarely reaches sequel scores (franchise flow tests).
+        val g = s.games
+        if (Lane.GAMES in s.lanes && g != null && g.releases.isNotEmpty() && g.franchises.isEmpty()) {
+            attempt { s.stayFocused() }
+            return
+        }
+        // Prefer expanding when the first business already shipped — pivoting away wipes franchises,
+        // live apps, and other depth progress Autopilot (and flow tests) rely on.
+        val shippedSomething = (g?.releases?.isNotEmpty() == true) ||
+            s.apps?.isLive == true ||
+            s.social?.isLive == true ||
+            s.hardware?.onMarket != null ||
+            (s.os?.versionsShipped ?: 0) > 0 ||
+            ((s.ai?.generation ?: 0) > 0)
+        val mode = if (s.trailingProfit(weeks = 13) > 0 || shippedSomething) PivotMode.EXPAND else PivotMode.PIVOT
         val options = lanePreference.filter { it in s.pivotChoices }.toMutableList()
         offer.suggestedLane?.let { suggested ->
             if (options.remove(suggested)) options.add(0, suggested)
@@ -186,9 +201,14 @@ class Autopilot(
                 }
             }
         }
-        // Fall back to whatever works.
+        // Fall back: try expand before pivot so a shipping studio isn't sold off as a last resort.
+        val modes = if (mode == PivotMode.EXPAND) {
+            listOf(PivotMode.EXPAND, PivotMode.PIVOT)
+        } else {
+            PivotMode.intoNewLane.toList()
+        }
         for (lane in s.pivotChoices) {
-            for (m in PivotMode.intoNewLane) {
+            for (m in modes) {
                 for (venture in listOf(false, true)) {
                     if (s.pivotBlocker(lane, m, venture) == null) {
                         attempt { s.resolvePivot(lane, m, venture) }
@@ -205,7 +225,13 @@ class Autopilot(
 
     private fun manage(s: GameState) {
         if (s.crunch) attempt { s.setCrunch(false) }
-        if (s.ipoBlocker == null) {
+        // Don't ring the bell while a games studio still hasn't started a series — flow tests and
+        // depth loops need sequels before a retire-on-IPO ending.
+        val waitingOnFranchise = Lane.GAMES in s.lanes &&
+            (s.games?.releases?.isNotEmpty() == true) &&
+            (s.games?.franchises?.isEmpty() == true) &&
+            Research.SEQUELS in s.researched
+        if (s.ipoBlocker == null && !waitingOnFranchise) {
             attempt { s.goPublic(keepRunning = staysPublic) }
             return
         }
@@ -233,6 +259,7 @@ class Autopilot(
                 Lane.SOCIAL -> manageSocial(s)
                 Lane.HARDWARE -> manageHardware(s)
                 Lane.AI -> manageAI(s)
+                Lane.OS -> manageOs(s)
             }
         }
 
@@ -268,6 +295,7 @@ class Autopilot(
         Lane.SOCIAL -> 3 + ((s.social?.users ?: 0.0) / 1_000_000).toInt()
         Lane.HARDWARE -> 25
         Lane.AI -> 20
+        Lane.OS -> 18
     }
 
     private fun hire(s: GameState) {
@@ -321,7 +349,10 @@ class Autopilot(
             if (Research.MARKETING in s.researched) {
                 for (c in Campaign.entries) if (c !in p.campaigns && s.cash > c.cost * 25) attempt { s.buyCampaign(c) }
             }
-            val polished = p.bugs < p.work * 0.08 || p.weeksInDev > p.work / 2 + 30
+            val forecast = s.gameForecast()
+            val polished = p.bugs < p.work * 0.08 ||
+                forecast?.polishPastSweetSpot == true ||
+                p.weeksInDev > p.work / 2 + 30
             if (p.isReady && (polished || s.runwayWeeks < 10)) attempt { s.launchGame() }
             return
         }
@@ -341,7 +372,15 @@ class Autopilot(
         val fresh = bestConcept(s, g)
         // Follow up a hit once its series has had a year off.
         val hit = if (Research.SEQUELS in s.researched) {
-            g.releases.firstOrNull { it.score >= 8 && it.publisher == null && s.week - g.series(g.seriesRoot(it)).last().week >= 60 }
+            // Before any franchise exists, follow up the best ship even if it wasn't a critic darling.
+            val threshold = if (g.franchises.isEmpty()) 6.0 else 7.5
+            val wait = if (g.franchises.isEmpty()) 40 else 52
+            g.releases
+                .filter {
+                    it.score >= threshold && it.publisher == null &&
+                        s.week - g.series(g.seriesRoot(it)).last().week >= wait
+                }
+                .maxByOrNull { it.score }
         } else {
             null
         }
@@ -404,6 +443,7 @@ class Autopilot(
                     listOf(
                         Research.MEDIUM_GAMES, Research.SAVE_SYSTEM, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.CUSTOM_ENGINES,
                         Research.MARKETING, Research.TARGET_AUDIENCE, Research.BASIC_AI, Research.MULTI_PLATFORM, Research.SEQUELS, Research.MERCHANDISE,
+                        Research.STYLE_PIXEL, Research.STYLE_STYLIZED,
                         Research.EXPANSIONS, Research.PUBLISHING, Research.GRAPHICS_3D_V1, Research.REMASTERS,
                         Research.LARGE_GAMES, Research.PHYSICS, Research.MULTIPLAYER, Research.SOUND_SURROUND, Research.GRAPHICS_3D_V2,
                         Research.ADVANCED_AI, Research.PROCEDURAL, Research.ONLINE_SERVICES, Research.LIVE_SERVICE, Research.ESPORTS, Research.OPEN_WORLD,
@@ -439,6 +479,13 @@ class Autopilot(
         if (a.quality > 72 && a.monetization == AppMonetization.ADS && a.users > 20_000) {
             attempt { s.setMonetization(AppMonetization.SUBSCRIPTION) }
         }
+        val focus = when {
+            a.lastChurn > 0.09 -> UpdateFocus.STABILITY
+            a.weeksSinceUpdate > 10 -> UpdateFocus.FEATURES
+            a.quality < 55 -> UpdateFocus.POLISH
+            else -> a.updateFocus
+        }
+        if (focus != a.updateFocus) attempt { s.setUpdateFocus(focus) }
     }
 
     private fun manageSocial(s: GameState) {
@@ -460,19 +507,29 @@ class Autopilot(
             if (age > 40) {
                 val flagship = s.cash > 4_000_000
                 attempt {
+                    val cat = if (flagship) DeviceCategory.PHONE else DeviceCategory.HEADPHONES
+                    val tier = if (flagship) DeviceTier.FLAGSHIP else DeviceTier.BUDGET
+                    // Category-weighted ideals: phones push camera+battery; buds push sound+build.
+                    val focus = when (cat) {
+                        DeviceCategory.PHONE -> listOf(0.14, 0.22, 0.24, 0.14, 0.12, 0.14)
+                        DeviceCategory.HEADPHONES -> listOf(0.08, 0.18, 0.32, 0.22, 0.08, 0.12)
+                        else -> DeviceFocus.evenFocus()
+                    }
                     s.startDevice(
-                        if (flagship) DeviceCategory.PHONE else DeviceCategory.HEADPHONES,
-                        if (flagship) DeviceTier.FLAGSHIP else DeviceTier.BUDGET,
+                        cat, tier,
+                        formFactor = FormFactor.defaultFor(cat),
+                        focus = focus,
+                        bundleOs = s.canBundleOs(),
+                        appPack = s.canOfferAppPack() && s.apps?.isLive == true,
                     )
                 }
             }
         }
         h.design?.let { d ->
             if (d.completion > 0.55 && d.preorderedStock == 0 && inbound == 0) {
-                val spec = d.spec
-                val estimate = spec.category.baseDemand * spec.tier.demandMultiplier * h.brandAwareness * 14
-                val affordable = s.cash * 0.45 / spec.unitCost
-                val units = min(estimate, affordable).toInt()
+                val forecast = h.forecast(d)
+                val affordable = s.cash * 0.45 / d.effectiveUnitCost
+                val units = min(forecast.preorderUnits.toDouble(), affordable).toInt()
                 if (units > 100) attempt { s.orderUnits(units) }
             }
             if (d.isReady && (d.preorderedStock > 0 || inbound == 0)) attempt { s.launchDevice() }
@@ -496,5 +553,20 @@ class Autopilot(
             if (s.cash > budget) attempt { s.startTraining(wanted) }
         }
         if (s.cash > 30_000_000 && lab.gpusOwned < 16) attempt { s.buyGPUs(4) }
+    }
+
+    private fun manageOs(s: GameState) {
+        val lab = s.os ?: return
+        val p = lab.project
+        if (p == null) {
+            val target = OsTarget.entries.lastOrNull { s.osTargetOpen(it) } ?: OsTarget.PC
+            if (s.cash > target.weeklyBurn * 8) attempt { s.startOsVersion(target) }
+            return
+        }
+        if (p.isReady && !p.inBeta) {
+            if (p.bugs > p.work * 0.15) attempt { s.startOsBeta(6) } else attempt { s.shipOs() }
+        } else if (p.isReady && p.inBeta && p.betaWeeksLeft <= 0) {
+            attempt { s.shipOs() }
+        }
     }
 }

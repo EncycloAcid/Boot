@@ -188,7 +188,7 @@ internal fun GameState.rollDecisions() {
         val lane = rng.pick(earning)
         val weeks = rng.int(6, 12)
         val pay = (stake(lane) * weeks * rng.range(0.35, 0.6)).roundedMoney()
-        offer(Partnership(lane, rng.pick(Names.brands), pay, weeks), 5)
+        offer(Partnership(lane, rng.pick(brandsIn(calendarYear)), pay, weeks), 5)
     }
     if (week > 52 && rng.chance(0.003)) {
         val lane = lanes.maxByOrNull { trailingRevenue(it, 13) } ?: lanes.first()
@@ -215,6 +215,7 @@ private fun GameState.hasCustomers(lane: Lane): Boolean = when (lane) {
     Lane.SOCIAL -> social?.isLive == true && (social?.users ?: 0.0) > 10_000
     Lane.HARDWARE -> hardware?.onMarket != null
     Lane.AI -> (ai?.capability ?: 0.0) > 0
+    Lane.OS -> os?.releases?.isNotEmpty() == true
 }
 
 private fun <T> List<T>.shuffledWith(rng: SeededRNG): List<T> {
@@ -396,6 +397,7 @@ internal fun GameState.productName(lane: Lane): String = when (lane) {
     Lane.SOCIAL -> social?.name ?: "your platform"
     Lane.HARDWARE -> hardware?.onMarket?.name?.let { "the $it" } ?: "your device"
     Lane.AI -> ai?.modelName ?: "your model"
+    Lane.OS -> os?.releases?.firstOrNull()?.codename ?: "your platform"
 }
 
 // Resolving

@@ -12,11 +12,12 @@ private enum class Theme { FANTASY, SCIFI, GRIM, LIGHT }
 
 private val Topic.theme: Theme
     get() = when (this) {
-        Topic.FANTASY, Topic.MEDIEVAL, Topic.MYTHOLOGY, Topic.VAMPIRES, Topic.PIRATES -> Theme.FANTASY
+        Topic.FANTASY, Topic.MEDIEVAL, Topic.MYTHOLOGY, Topic.VAMPIRES, Topic.PIRATES, Topic.FOLKLORE,
+        Topic.STEAMPUNK -> Theme.FANTASY
         Topic.SCI_FI, Topic.SPACE, Topic.ALIENS, Topic.MARS, Topic.ROBOTS, Topic.ARTIFICIAL_INTELLIGENCE,
         Topic.CYBERPUNK, Topic.TIME_TRAVEL, Topic.HACKING -> Theme.SCIFI
         Topic.MILITARY, Topic.SPY, Topic.WILD_WEST, Topic.POST_APOCALYPTIC, Topic.ZOMBIES, Topic.HORROR,
-        Topic.DETECTIVE, Topic.MYSTERY, Topic.NINJA -> Theme.GRIM
+        Topic.DETECTIVE, Topic.MYSTERY, Topic.NINJA, Topic.HEIST, Topic.SURVIVAL -> Theme.GRIM
         else -> Theme.LIGHT
     }
 
@@ -75,6 +76,12 @@ private val Topic.nouns: List<String>
         Topic.FASHION -> listOf("Runway", "Couture", "Style", "Glam", "Catwalk", "Vogue")
         Topic.HOSPITAL -> listOf("Ward", "Code Blue", "Surgeon", "Clinic", "ER", "Pulse")
         Topic.ARTIFICIAL_INTELLIGENCE -> listOf("Singularity", "Sentience", "Neural", "Mind", "Algorithm", "Turing")
+        Topic.HEIST -> listOf("Score", "Vault", "Crew", "Getaway", "Safehouse", "Take")
+        Topic.STEAMPUNK -> listOf("Cog", "Aether", "Brass", "Airship", "Gears", "Clockwork")
+        Topic.SURVIVAL -> listOf("Shelter", "Scavenge", "Frost", "Camp", "Rations", "Wilderness")
+        Topic.BALLET -> listOf("Stage", "Pointe", "Curtain", "Arabesque", "Encore", "Spotlight")
+        Topic.FOLKLORE -> listOf("Tale", "Hearth", "Spirit", "Village", "Legend", "Folk")
+        Topic.ESPORTS_SCENE -> listOf("Ladder", "Circuit", "Franchise", "Meta", "Finals", "Draft")
     }
 
 private val subtitles = listOf(

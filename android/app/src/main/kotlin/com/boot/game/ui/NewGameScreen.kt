@@ -62,6 +62,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.boot.core.Difficulty
+import com.boot.core.MODERN_YEAR
 import com.boot.core.StartPoint
 import com.boot.core.Scenario
 import com.boot.core.Medal
@@ -70,6 +71,10 @@ import com.boot.core.era
 import com.boot.core.laneOpen
 import com.boot.core.years
 import com.boot.core.arrives
+import com.boot.core.arrival
+import com.boot.core.platformHoldersIn
+import com.boot.core.publishersIn
+import com.boot.core.rivalIn
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.ui.draw.alpha
 import com.boot.core.Format
@@ -89,6 +94,7 @@ fun NewGameScreen(store: GameStore) {
     var mode by rememberSaveable { mutableStateOf(GameMode.CAREER) }
     var tutorial by rememberSaveable { mutableStateOf(store.hall.isEmpty()) }
     var scenario by rememberSaveable { mutableStateOf(Scenario.GARAGE_TO_GLORY) }
+    var whenReason by rememberSaveable { mutableStateOf<String?>(null) }
     val colors = gameColors
     val companyName = company.trim().ifEmpty { "Garage Labs" }
     val founderName = founder.trim().ifEmpty { "You" }
@@ -118,7 +124,12 @@ fun NewGameScreen(store: GameStore) {
                             )
                             GameMode.SANDBOX -> PrimaryButton(
                                 "Start your sandbox ${lane.businessName.lowercase()}",
-                                { store.newGame(companyName, founderName, lane, start = start, sandbox = true) },
+                                {
+                                    store.newGame(
+                                        companyName, founderName, lane,
+                                        difficulty = difficulty, start = start, sandbox = true, tutorial = tutorial,
+                                    )
+                                },
                                 Modifier.fillMaxWidth(),
                             )
                             GameMode.CAREER -> PrimaryButton(
@@ -187,14 +198,14 @@ fun NewGameScreen(store: GameStore) {
             if (mode == GameMode.SCENARIOS) {
                 item(span = { GridItemSpan(maxLineSpan) }) { ScenarioList(scenario, store.hall.bestMedals()) { scenario = it } }
             }
-            if (mode == GameMode.CAREER) item(span = { GridItemSpan(maxLineSpan) }) {
+            if (mode == GameMode.CAREER || mode == GameMode.SANDBOX) item(span = { GridItemSpan(maxLineSpan) }) {
                 GroupedSection("Difficulty", footer = difficulty.blurb) {
                     Column(Modifier.padding(8.dp)) {
                         Segmented(Difficulty.entries, difficulty, { it.title }) { difficulty = it }
                     }
                 }
             }
-            if (mode == GameMode.CAREER) item(span = { GridItemSpan(maxLineSpan) }) {
+            if (mode == GameMode.CAREER || mode == GameMode.SANDBOX) item(span = { GridItemSpan(maxLineSpan) }) {
                 GroupedSection(null) {
                     ToggleRow(
                         "Show me the ropes", tutorial,
@@ -203,10 +214,16 @@ fun NewGameScreen(store: GameStore) {
                 }
             }
             if (mode != GameMode.SCENARIOS) item(span = { GridItemSpan(maxLineSpan) }) {
-                StartSection(start) { picked ->
+                StartSection(start, whenReason) { picked ->
                     start = picked
-                    // A business that hasn't been invented yet can't be started.
-                    if (!picked.laneOpen(lane)) lane = Lane.GAMES
+                    // Snap to the best open lane for that year; explain with Lane.arrival.
+                    if (!picked.laneOpen(lane)) {
+                        val closed = lane
+                        lane = if (picked.laneOpen(Lane.GAMES)) Lane.GAMES else Lane.entries.first { picked.laneOpen(it) }
+                        whenReason = "${closed.title} isn't a business yet. ${closed.arrival}"
+                    } else {
+                        whenReason = null
+                    }
                 }
             }
             if (mode != GameMode.SCENARIOS) item(span = { GridItemSpan(maxLineSpan) }) {
@@ -291,7 +308,7 @@ private fun LaneTile(lane: Lane, selected: Boolean, arrives: Int? = null, onClic
             Spacer(Modifier.height(12.dp))
             Text(lane.title, style = MaterialTheme.typography.titleMedium)
             Text(
-                lane.businessName,
+                if (arrives != null) "From $arrives · ${lane.arrival}" else lane.businessName,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -343,8 +360,14 @@ fun medalColor(m: Medal, colors: GameColors): androidx.compose.ui.graphics.Color
 
 /** When the run starts: today, or at one of tech's revolutions, playing through to the present. */
 @Composable
-private fun StartSection(start: StartPoint, onPick: (StartPoint) -> Unit) {
-    GroupedSection("When", footer = start.blurb) {
+private fun StartSection(start: StartPoint, reason: String?, onPick: (StartPoint) -> Unit) {
+    val year = start.year ?: MODERN_YEAR
+    val faces = buildList {
+        add(rivalIn(Lane.GAMES, year))
+        addAll(publishersIn(year).take(5))
+        addAll(platformHoldersIn(year).take(3))
+    }.distinct().take(8)
+    GroupedSection("When", footer = listOfNotNull(start.blurb, reason).joinToString("\n")) {
         StartPoint.entries.forEachIndexed { i, p ->
             if (i > 0) RowDivider(56.dp)
             val selected = p == start
@@ -361,6 +384,16 @@ private fun StartSection(start: StartPoint, onPick: (StartPoint) -> Unit) {
                     )
                 },
             )
+        }
+        if (faces.isNotEmpty()) {
+            RowDivider()
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Firms of $year", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    faces.forEach { CompanyLogo(it, size = 32.dp) }
+                }
+                Hint(faces.joinToString(" · "))
+            }
         }
     }
 }

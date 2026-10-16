@@ -1,5 +1,6 @@
 package com.boot.core
 
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -143,16 +144,109 @@ class AfterLaunchTest {
         val s = game(Lane.GAMES, 8)
         s.cash = 100_000.0
         val r = s.fakeRelease(7.0, bugs = 20.0)
+        r.userScore = 5.5
         assertNull(s.patchBlocker(r.id))
         val cash = s.cash
         val sales = r.weeklySales
+        val beforeUser = r.userScore
         s.patchGame(r.id)
         assertEquals(0.0, r.bugs)
         assertTrue(r.patched)
         assertTrue(r.weeklySales > sales)
+        assertTrue(r.userScore > beforeUser, "players raise their score when bugs are fixed")
         assertTrue(s.cash < cash)
         assertNotNull(s.patchBlocker(r.id))
         assertFailsWith<GameException> { s.patchGame(r.id) }
+    }
+
+    @Test
+    fun patchingBringsLivePlayersBack() {
+        val s = game(Lane.GAMES, 81)
+        s.cash = 100_000.0
+        val r = s.fakeRelease(6.5, bugs = 40.0, units = 10_000.0)
+        r.live = LiveService(players = 8_000.0, lastSeasonWeek = s.week)
+        val before = r.live!!.players
+        s.patchGame(r.id)
+        assertTrue(r.live!!.players > before)
+    }
+
+    @Test
+    fun gameForecastTracksBugsAndPolish() {
+        val s = game(Lane.GAMES, 82)
+        s.cash = 500_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        val concept = GameConcept("Forecast Quest", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PC), size = GameSize.SMALL)
+        s.startGame(concept)
+        val early = assertNotNull(s.gameForecast())
+        assertNotNull(early.weeksToReady)
+        assertTrue(early.weeksToReady!! > 0)
+        while (s.games!!.project?.isReady != true) s.play(1)
+        val ready = assertNotNull(s.gameForecast())
+        assertNull(ready.weeksToReady)
+        val buggy = ready.expectedScore
+        // Clear bugs / polish a bit and the forecast should climb.
+        val p = s.games!!.project!!
+        p.bugs = 0.0
+        p.polish = p.work * 0.4
+        val clean = assertNotNull(s.gameForecast())
+        assertTrue(clean.expectedScore > buggy, "clean ${clean.expectedScore} vs buggy $buggy")
+        assertTrue(clean.high >= clean.low)
+        assertTrue(clean.polishPastSweetSpot)
+    }
+
+    @Test
+    fun engineCombosPenalizeClashingStylesAndRewardSynergies() {
+        val clash = engineCombo(listOf(Research.STYLE_PIXEL, Research.STYLE_REALISTIC, Research.GRAPHICS_2D_V2))
+        assertTrue(clash.level < clash.rawLevel)
+        assertTrue(clash.bugRisk > 0)
+        assertTrue(clash.notes.isNotEmpty())
+        val synergy = engineCombo(listOf(Research.PHYSICS, Research.OPEN_WORLD))
+        assertTrue(synergy.level > synergy.rawLevel)
+    }
+
+    @Test
+    fun midDevFocusChangesMoveForecastAndStageInsightsUnlock() {
+        val s = game(Lane.GAMES, 83)
+        s.cash = 500_000.0
+        s.hireDirect(s.makeCandidate(Role.DESIGNER), Lane.GAMES)
+        s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.GAMES)
+        val concept = GameConcept("Slider Quest", Topic.FANTASY, Genre.ADVENTURE, platforms = listOf(Platform.PC), size = GameSize.MEDIUM)
+        s.researched = s.researched + Research.MEDIUM_GAMES
+        s.startGame(concept, focus = listOf(
+            mutableListOf(1.0, 0.0, 0.0),
+            mutableListOf(0.5, 0.5, 0.5),
+            mutableListOf(0.5, 0.5, 0.5),
+        ))
+        val p = assertNotNull(s.games!!.project)
+        assertEquals(0, p.stage)
+        s.setStageFocus(0, listOf(1.0, 0.0, 0.0))
+        val techHeavy = assertNotNull(s.gameForecast()).expectedScore
+        // Adventure wants design: push gameplay/story hard and the forecast should lift.
+        s.setStageFocus(0, listOf(0.0, 1.0, 1.0))
+        val designHeavy = assertNotNull(s.gameForecast()).expectedScore
+        assertTrue(designHeavy > techHeavy, "design-lean $designHeavy vs tech-lean $techHeavy")
+        assertTrue(p.projectedDesignShare() > 0.5)
+        // Finish foundations → stage insight.
+        while ((s.games!!.project?.stage ?: 0) == 0 && s.games!!.project?.isReady != true) s.play(1)
+        assertTrue(s.games!!.insights.isNotEmpty(), "stage complete should teach a focus lesson")
+    }
+
+    @Test
+    fun finishedEngineRevealsFeatureLevels() {
+        val s = game(Lane.GAMES, 84)
+        s.cash = 1_000_000.0
+        s.researched = setOf(Research.CUSTOM_ENGINES, Research.GRAPHICS_2D_V2, Research.SOUND_STEREO, Research.STYLE_PIXEL)
+        assertTrue(!s.games!!.knowsEngineLevel(Research.GRAPHICS_2D_V2))
+        s.buildEngine()
+        var weeks = 0
+        while (s.games!!.engineBuild != null && weeks < 40) {
+            s.play(1)
+            weeks++
+        }
+        assertNull(s.games!!.engineBuild)
+        assertTrue(s.games!!.knowsEngineLevel(Research.GRAPHICS_2D_V2))
+        assertTrue(s.games!!.engines.any { it.level > 0 })
     }
 
     @Test

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,12 +25,10 @@ import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -48,23 +45,38 @@ import com.boot.core.Research
 import com.boot.core.buyCampaign
 import com.boot.core.expansionBlocker
 import com.boot.core.freeDesks
+import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.researchBlocker
+import com.boot.core.researchPerWeek
 import com.boot.game.GameStore
 import com.boot.game.StudioPage
 import com.boot.game.Tab
+import java.util.Locale
 
 /**
- * The home screen: your office with everyone at their desks, what each business is doing right
- * now, shortcuts to what's waiting for you, and the latest news. Everything important is one tap
- * from here.
+ * Today briefing: everything that used to sit under the office card. The isometric office is now
+ * the full-bleed stage behind floating windows — this panel keeps every home-screen feature.
  */
 @Composable
 fun OfficeScreen(store: GameStore, state: GameState) {
     ScreenColumn {
+        item { VitalsGlance(store, state) }
+        item {
+            GroupedSection("Office") {
+                CardBlock {
+                    val crowded = state.staff.size > state.office.desks
+                    Text(state.office.title, style = MaterialTheme.typography.titleLargeEmphasized)
+                    Hint(
+                        "${state.staff.size}/${state.office.desks} desks" +
+                            if (crowded) " · crowded — hire after you expand" else " · tap the room behind this window for Team",
+                    )
+                    Ticker(store, state)
+                }
+            }
+        }
         // The tutorial leads, so its button is on screen without scrolling.
         if (state.tutorial != null) item { LessonCard(store, state) }
-        item { OfficeCard(store, state) }
         if (state.scenario != null) item { ScenarioCard(state) }
         // While the tutorial runs, the next step only speaks up about money.
         if (nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true) {
@@ -76,14 +88,14 @@ fun OfficeScreen(store: GameStore, state: GameState) {
         if (others.isNotEmpty()) item { LanesNow(store, state, others) }
         item {
             GoalsCard(state) {
-                store.companyPage = 4
+                store.companyPage = 5
                 store.tab = Tab.COMPANY
             }
         }
         if (state.achievements.isNotEmpty()) {
             item {
                 RecentAchievements(state) {
-                    store.companyPage = 4
+                    store.companyPage = 5
                     store.tab = Tab.COMPANY
                 }
             }
@@ -105,51 +117,104 @@ fun OfficeScreen(store: GameStore, state: GameState) {
     }
 }
 
+/** Scannable vitals that used to live only on the top HUD — labeled so nothing is cryptic. */
 @Composable
-private fun OfficeCard(store: GameStore, state: GameState) {
+private fun VitalsGlance(store: GameStore, state: GameState) {
     val colors = gameColors
-    Surface(shape = RoundedCornerShape(28.dp), color = colors.card, modifier = Modifier.fillMaxWidth()) {
-        Column {
-            val crowded = state.staff.size > state.office.desks
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(290.dp)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .clickable { store.tab = Tab.TEAM },
-            ) {
-                OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 40.dp)
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SceneChip(state.office.title)
-                    SceneChip(
-                        "${state.staff.size}/${state.office.desks} desks" + if (crowded) " · crowded" else "",
-                        icon = Icons.Filled.Groups,
-                        tint = if (crowded) colors.bad else MaterialTheme.colorScheme.onSurface,
-                    )
+    val weekly = state.trailingProfit(weeks = 4) / 4
+    val fans = state.games?.fans
+    val avgMorale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
+    GroupedSection("At a glance") {
+        CardBlock {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GlanceTile("Cash", Format.money(state.cash), Format.signedMoney(weekly) + "/wk", if (state.cash < 0) colors.bad else colors.good, Modifier.weight(1f)) {
+                    store.companyPage = 1
+                    store.tab = Tab.COMPANY
+                }
+                GlanceTile(
+                    "Research",
+                    "${state.researchPoints.toInt()} RP",
+                    "+${String.format(Locale.US, "%.1f", state.researchPerWeek)}/wk",
+                    colors.milestone,
+                    Modifier.weight(1f),
+                ) { store.tab = Tab.RESEARCH }
+                if (fans != null && Lane.GAMES in state.lanes) {
+                    GlanceTile("Fans", Format.count(fans), "buy launches", Color(0xFFC44D8A), Modifier.weight(1f)) {
+                        store.openStudio(StudioPage.GAMES)
+                    }
+                }
+                GlanceTile("Rep", "${state.reputation.score.toInt()}", "out of 100", colors.warn, Modifier.weight(1f)) {
+                    store.companyPage = 0
+                    store.tab = Tab.COMPANY
                 }
             }
-            Ticker(store, state)
+            Spacer(Modifier.size(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GlanceTile(
+                    "Team",
+                    "${state.staff.size + 1}",
+                    avgMorale?.let { "morale ${String.format(Locale.US, "%.0f", it * 100)}%" } ?: "just you",
+                    MaterialTheme.colorScheme.primary,
+                    Modifier.weight(1f),
+                ) { store.tab = Tab.TEAM }
+                GlanceTile(
+                    "Desks",
+                    "${state.staff.size}/${state.office.desks}",
+                    if (state.staff.size > state.office.desks) "crowded" else state.office.title,
+                    if (state.staff.size > state.office.desks) colors.bad else colors.other,
+                    Modifier.weight(1f),
+                ) { store.tab = Tab.TEAM }
+                state.listing?.let { listing ->
+                    GlanceTile(
+                        listing.ticker,
+                        "$${String.format(Locale.US, "%.0f", listing.price)}",
+                        Format.money(listing.marketCap) + " cap",
+                        MaterialTheme.colorScheme.primary,
+                        Modifier.weight(1f),
+                    ) {
+                        store.companyPage = 0
+                        store.tab = Tab.COMPANY
+                    }
+                } ?: GlanceTile(
+                    "Date",
+                    state.dateLabel,
+                    state.world.era.title.removePrefix("The "),
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    Modifier.weight(1f),
+                ) { /* calendar glance only */ }
+            }
         }
     }
 }
 
-/** A frosted label floating over the office. */
 @Composable
-private fun SceneChip(text: String, icon: ImageVector? = null, tint: Color = MaterialTheme.colorScheme.onSurface) {
-    Row(
-        Modifier
-            .clip(CircleShape)
-            .background(gameColors.card.copy(alpha = 0.86f))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+private fun GlanceTile(
+    label: String,
+    value: String,
+    caption: String,
+    color: Color,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(color.copy(alpha = 0.12f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        if (icon != null) Icon(icon, null, tint = tint, modifier = Modifier.size(16.dp))
-        FitText(text, MaterialTheme.typography.labelLarge, color = tint)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleMedium, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            caption,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -159,12 +224,13 @@ private fun Ticker(store: GameStore, state: GameState) {
     val colors = gameColors
     val motion = MaterialTheme.motionScheme
     val latest = state.log.lastOrNull()
-    val hint = if (state.week < 2 && !store.playing) "Tap ▶ to let time run. It stops by itself when you're needed." else null
+    val hint = if (state.week < 2 && !store.playing) "Tap Play to let time run. It stops by itself when you're needed." else null
     Row(
         Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable { store.tab = Tab.NEWS }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AnimatedContent(
@@ -263,9 +329,27 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
         }
         if (p.isReady) {
             Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
-            Hint("Content complete. Bugs get fixed while you polish.")
+            val forecast = state.gameForecast(team)
+            if (forecast != null) {
+                Hint(
+                    String.format(
+                        java.util.Locale.US,
+                        "Content complete. Expected ~%.1f/10 if you ship now%s.",
+                        forecast.expectedScore,
+                        if (forecast.bugs >= 2) " — ${forecast.bugs.toInt()} bugs still open" else "",
+                    ),
+                )
+            } else {
+                Hint("Content complete. Bugs get fixed while you polish.")
+            }
         } else {
-            Meter("Development", p.completion, wavy = store.playing, caption = Format.weeks(p.weeksInDev) + " in")
+            val eta = state.gameForecast(team)?.weeksToReady
+            val caption = when {
+                eta == null -> Format.weeks(p.weeksInDev) + " in"
+                eta <= 0 -> "ready this week"
+                else -> "~${Format.weeks(eta)} left · ${Format.weeks(p.weeksInDev)} in"
+            }
+            Meter("Development", p.completion, wavy = store.playing, caption = caption)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             MiniStat("Design", Format.count(p.design), colors.design, Modifier.weight(1f))
@@ -308,6 +392,7 @@ private fun GameState.inProgress(lane: Lane): Pair<String, Double>? = when (lane
     Lane.SOCIAL -> social?.takeIf { !it.isLive }?.let { "Building ${it.name}" to it.buildProgress / it.buildWork }
     Lane.HARDWARE -> hardware?.design?.let { "Designing ${it.name}" to it.completion }
     Lane.AI -> ai?.training?.let { "Training ${it.codename}" to it.completion }
+    Lane.OS -> os?.project?.let { "Building ${it.codename}" to it.completion }
 }
 
 @Composable

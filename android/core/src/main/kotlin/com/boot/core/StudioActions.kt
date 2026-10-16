@@ -54,7 +54,13 @@ fun GameState.setTeamSplit(share: Double) {
 fun evenFocus(): List<MutableList<Double>> = List(3) { mutableListOf(0.5, 0.5, 0.5) }
 
 /** Why a concept can't be started, or null if it can. */
-fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: Int = 1): String? {
+fun GameState.conceptBlocker(
+    c: GameConcept,
+    deal: PublisherDeal? = null,
+    team: Int = 1,
+    /** Publisher deals cover platform licence fees; still check real platforms and burn cash. */
+    publisherPaysFees: Boolean = false,
+): String? {
     val g = games ?: return "You don't run a game studio."
     if (team == 2) {
         if (Research.SECOND_TEAM !in researched) return "Research a second team first."
@@ -98,8 +104,15 @@ fun GameState.conceptBlocker(c: GameConcept, deal: PublisherDeal? = null, team: 
         if (Research.LIVE_SERVICE !in researched) return "Research live service games first."
         if (c.size == GameSize.SMALL) return "Live games need to be medium or bigger."
     }
-    val upfront = c.platforms.sumOf { it.fee } + c.size.weeklyBudget * 4
-    if (cash < upfront) return "You need ${money(upfront)} for licence fees and the first month."
+    val fees = if (publisherPaysFees) 0.0 else c.platforms.sumOf { it.fee }
+    val upfront = fees + c.size.weeklyBudget * 4
+    if (cash < upfront) {
+        return if (publisherPaysFees) {
+            "You need ${money(upfront)} for the first month of development."
+        } else {
+            "You need ${money(upfront)} for licence fees and the first month."
+        }
+    }
     return null
 }
 
@@ -162,6 +175,14 @@ fun GameState.buyCampaign(c: Campaign, team: Int = 1) {
     addLog("${c.title} for ${p.title}. Hype is building.", LogTone.NEUTRAL, Lane.GAMES)
 }
 
+/** Expected critic score if you shipped [team]'s project today. */
+fun GameState.gameForecast(team: Int = 1): LaunchForecast? {
+    val g = games ?: return null
+    val p = g.projectOf(team) ?: return null
+    val suited = p.concept.platforms.any { it.suits(p.concept.audience) }
+    return g.forecast(context(Lane.GAMES), suited, context(Lane.GAMES).workOutput, team)
+}
+
 fun GameState.launchGame(team: Int = 1) {
     val g = studio()
     val p = g.projectOf(team) ?: throw invalid("No game in development.")
@@ -169,18 +190,18 @@ fun GameState.launchGame(team: Int = 1) {
     val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team)
     g.releases.firstOrNull()?.let { r ->
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)
-        publish(
-            NewsDesk.YOU, rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon")),
-            when {
-                r.score >= 9 -> "${r.title} review: a masterpiece"
-                r.score >= 8 -> "${r.title} review: $companyName has a hit"
-                r.score >= 6.5 -> "${r.title} review: solid, if not spectacular"
-                r.score >= 5 -> "${r.title} review: a mixed bag"
-                else -> "${r.title} review: avoid"
-            },
-            "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game. $sc/10.",
-            if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL, Lane.GAMES, lead = r.score >= 9,
-        )
+        val outlet = rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon"))
+        val headline = when {
+            r.score >= 9 -> "${r.title} review: a masterpiece"
+            r.score >= 8 -> "${r.title} review: $companyName has a hit"
+            r.score >= 6.5 -> "${r.title} review: solid, if not spectacular"
+            r.score >= 5 -> "${r.title} review: a mixed bag"
+            else -> "${r.title} review: avoid"
+        }
+        val body = "$companyName's ${r.concept.size.lower} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} game. $sc/10."
+        val tone = if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL
+        publish(NewsDesk.GAMES, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9)
+        publish(NewsDesk.YOU, outlet, headline, body, tone, Lane.GAMES, lead = r.score >= 9)
     }
     cash += report.revenue - report.expenses
     recordRevenue(report.revenue, Lane.GAMES)
@@ -211,8 +232,8 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
     )
     val wasKnown = d.topic in g.topics
     if (!wasKnown) g.topics += d.topic
-    // The publisher pays the licence, so check everything but money.
-    val blocker = conceptBlocker(concept.copy(platforms = listOf(Platform.PC)), d)
+    // Check the deal's real platform; the publisher covers licence fees.
+    val blocker = conceptBlocker(concept, d, publisherPaysFees = true)
     if (blocker != null) {
         if (!wasKnown) g.topics -= d.topic
         throw notAvailable(blocker)
@@ -228,27 +249,50 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
     )
 }
 
-/** What a new engine with everything you've researched would cost. */
-fun GameState.engineQuote(): Triple<List<Research>, Double, Int> {
-    val features = researched.filter { it.kind == Research.Kind.ENGINE }.sortedBy { it.ordinal }
-    val level = features.sumOf { it.engineLevel }
-    val cost = 20_000 + 9_000 * level.toDouble().pow(1.35)
-    return Triple(features, cost, 3 + level / 3)
+/**
+ * What a new engine with [selected] features (or everything researched) would cost.
+ * Cost uses raw feature levels; the finished engine's [Engine.level] applies combo rules.
+ */
+fun GameState.engineQuote(selected: List<Research>? = null): Triple<List<Research>, Double, Int> {
+    val raw = (selected ?: researched.filter { it.kind == Research.Kind.ENGINE }).sortedBy { it.ordinal }
+    // Autopilot / one-click build: skip style clashes. Explicit picks keep the soft penalty.
+    val features = if (selected == null) pruneEngineStyleClashes(raw) else raw
+    val combo = engineCombo(features)
+    val cost = 20_000 + 9_000 * combo.rawLevel.toDouble().pow(1.35)
+    // Build time tracks raw feature load; clashes still cut the finished effective level.
+    return Triple(features, cost, 3 + combo.rawLevel / 3)
 }
 
-fun GameState.buildEngine() {
+/** Expected engine standard reviewers use this week (shown in the builder without spoiling feature levels). */
+fun GameState.expectedEngineStandard(): Double = engineStandard(week)
+
+fun GameState.buildEngine(selected: List<Research>? = null) {
     val g = studio()
     if (Research.CUSTOM_ENGINES !in researched) throw notAvailable("Research custom engines first.")
     if (g.engineBuild != null) throw busy("An engine is already being built.")
-    val (features, cost, weeks) = engineQuote()
+    val (features, cost, weeks) = engineQuote(selected)
     if (features.isEmpty()) throw notAvailable("Research some engine features first.")
-    val best = g.engines.maxOf { it.level }
-    if (features.sumOf { it.engineLevel } <= best) throw notAvailable("You've no new features to build in.")
-    if (cash < cost) throw insufficientFunds("A level ${features.sumOf { it.engineLevel }} engine costs ${money(cost)}.")
+    val best = g.engines.maxOfOrNull { it.level } ?: 0
+    val bestRaw = g.engines.maxOfOrNull { it.rawLevel } ?: 0
+    val combo = engineCombo(features)
+    if (combo.level <= best && combo.rawLevel <= bestRaw) {
+        if (combo.notes.isNotEmpty()) {
+            throw notAvailable("Style clashes keep this pack at level ${combo.level}. Drop a conflicting style, or research more tech.")
+        }
+        throw notAvailable("You've no new features to build in.")
+    }
+    if (cash < cost) throw insufficientFunds("A level ${combo.level} engine costs ${money(cost)}.")
     spend(cost, Lane.GAMES)
     val name = "Engine Mk ${g.engines.size}"
     g.engineBuild = EngineBuild(name, features, weeks)
-    addLog("Building $name with ${features.size} features. Ready in $weeks weeks.", LogTone.NEUTRAL, Lane.GAMES)
+    val note = combo.notes.takeIf { it.isNotEmpty() }?.joinToString(" ")?.let { " $it" } ?: ""
+    val risk = if (combo.bugRisk >= 0.04) " Games on it may ship a little buggier." else ""
+    addLog(
+        "Building $name with ${features.size} features (effective level ${combo.level}" +
+            (if (combo.level != combo.rawLevel) ", raw ${combo.rawLevel}" else "") +
+            "). Ready in $weeks weeks.$note$risk",
+        LogTone.NEUTRAL, Lane.GAMES,
+    )
 }
 
 /** A sequel's concept, ready to tweak: same topic and genre, a numbered title. */
@@ -328,7 +372,10 @@ fun GameState.patchBlocker(id: Int): String? {
     return null
 }
 
-/** Fix the bugs that shipped. Players notice, and sales hold up a little longer. */
+/**
+ * Fix the bugs that shipped. Players raise their score, sales get a bump that scales with how
+ * broken it was, and a live game's community comes back a little.
+ */
 fun GameState.patchGame(id: Int) {
     requireLive()
     patchBlocker(id)?.let { throw notAvailable(it) }
@@ -337,12 +384,42 @@ fun GameState.patchGame(id: Int) {
     val cost = r.patchCost()
     spend(cost, Lane.GAMES)
     val fixed = r.bugs
+    val severity = (fixed / max(1.0, r.concept.size.work * 0.6)).coerceIn(0.0, 1.0)
     r.bugs = 0.0
     r.patched = true
-    if (r.weeklySales > 0) r.weeklySales *= 1.15
-    g.fanTrust = minOf(1.2, g.fanTrust + 0.03)
+    val beforeUser = r.userScore
+    if (r.userScore > 0) {
+        // Recover the bug hit on word of mouth: ~0.8 when bugPenalty was under 0.9, plus severity.
+        r.userScore = minOf(10.0, r.userScore + (0.4 + severity * 1.2).coerceIn(0.3, 1.6))
+        // First patch settles the early player score into the public number.
+        r.userScoreSettled = true
+    }
+    if (r.weeklySales > 0) r.weeklySales *= (1.1 + severity * 0.35).coerceIn(1.1, 1.5)
+    r.live?.takeIf { !it.closed }?.let { live ->
+        live.players *= 1 + 0.06 + severity * 0.12
+        live.peakPlayers = maxOf(live.peakPlayers, live.players)
+    }
+    g.fanTrust = minOf(1.2, g.fanTrust + 0.03 + severity * 0.04)
     reputation.adjust(1.0)
-    addLog("Patched ${r.title}: ${fixed.toInt()} bugs fixed for ${money(cost)}. Players notice.", LogTone.GOOD, Lane.GAMES)
+    val scoreNote = if (beforeUser > 0 && r.userScore > beforeUser + 0.05) {
+        " Player score " + String.format(java.util.Locale.US, "%.1f → %.1f.", beforeUser, r.userScore)
+    } else {
+        " Players notice."
+    }
+    addLog("Patched ${r.title}: ${fixed.toInt()} bugs fixed for ${money(cost)}.$scoreNote", LogTone.GOOD, Lane.GAMES)
+}
+
+/** Lock in the public player score after the early window (bugs / patches can still move it). */
+internal fun GameState.finalizeUserScore(r: GameRelease) {
+    if (r.userScoreSettled || r.userScore <= 0) return
+    var score = r.userScore
+    val work = r.concept.size.work
+    if (r.bugs > work * 0.08) score -= 0.35
+    else if (r.bugs < work * 0.02) score += 0.15
+    if (r.patched) score += 0.25
+    score += rng.normal(sd = 0.2)
+    r.userScore = kotlin.math.round(score.coerceIn(1.0, 10.0) * 10) / 10.0
+    r.userScoreSettled = true
 }
 
 fun GameState.expansionBlocker(id: Int): String? {

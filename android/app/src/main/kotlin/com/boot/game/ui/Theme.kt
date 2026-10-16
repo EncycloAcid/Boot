@@ -129,6 +129,7 @@ private val LightGame = GameColors(
         Lane.SOCIAL to Color(0xFFE8920C),
         Lane.HARDWARE to Color(0xFF9B59E0),
         Lane.AI to Color(0xFF1F9BC9),
+        Lane.OS to Color(0xFF5856D6),
     ),
     other = Color(0xFF9A9BA1),
     grouped = Color(0xFFF6F6F3),
@@ -152,6 +153,7 @@ private val DarkGame = GameColors(
         Lane.SOCIAL to Color(0xFFF5B13D),
         Lane.HARDWARE to Color(0xFFBF8CFF),
         Lane.AI to Color(0xFF5BC5F0),
+        Lane.OS to Color(0xFF7D7AFF),
     ),
     other = Color(0xFF7D7E85),
     grouped = Color(0xFF111113),
@@ -228,6 +230,7 @@ val Lane.emoji: String
         Lane.SOCIAL -> "💬"
         Lane.HARDWARE -> "💻"
         Lane.AI -> "🤖"
+        Lane.OS -> "🖥️"
     }
 
 /** Each lane has its own Material expressive shape; badges morph into it when the lane is picked. */
@@ -240,11 +243,13 @@ val Lane.polygon: RoundedPolygon
         Lane.SOCIAL -> MaterialShapes.Puffy
         Lane.HARDWARE -> MaterialShapes.Cookie6Sided
         Lane.AI -> MaterialShapes.SoftBurst
+        Lane.OS -> MaterialShapes.Cookie9Sided
     }
 
 /** The short tab label for a lane. */
 val Lane.short: String
     get() = when (this) {
         Lane.SOCIAL -> "Social"
+        Lane.OS -> "OS"
         else -> title
     }

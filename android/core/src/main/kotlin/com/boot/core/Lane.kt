@@ -2,10 +2,10 @@ package com.boot.core
 
 import kotlinx.serialization.Serializable
 
-/** The six kinds of business you can run. Each one plays like a different management game. */
+/** The kinds of business you can run. Each one plays like a different management game. */
 @Serializable
 enum class Lane {
-    GAMES, WEBSITES, APPS, SOCIAL, HARDWARE, AI;
+    GAMES, WEBSITES, APPS, SOCIAL, HARDWARE, AI, OS;
 
     val title: String
         get() = when (this) {
@@ -15,6 +15,7 @@ enum class Lane {
             SOCIAL -> "Social Media"
             HARDWARE -> "Hardware"
             AI -> "AI"
+            OS -> "Platform Lab"
         }
 
     val businessName: String
@@ -25,6 +26,7 @@ enum class Lane {
             SOCIAL -> "Social Platform"
             HARDWARE -> "Device Lab"
             AI -> "AI Lab"
+            OS -> "OS Division"
         }
 
     val pitch: String
@@ -35,16 +37,18 @@ enum class Lane {
             SOCIAL -> "A slow start that turns exponential if it catches on. Server costs outrun revenue early; success brings bots, moderation fires, and press scandals."
             HARDWARE -> "Phones, laptops and headphones. Book factory capacity months ahead and guess how many units to make. Huge margins if you nail it."
             AI -> "Compute and burn rate. Training runs cost a fortune and you don't know how good the model is until it finishes. Highest ceiling, fastest way to go broke."
+            OS -> "Long kernel and shell projects, OEM licensing, and an app ecosystem. Slow burn, high ceiling — especially if you also ship hardware or apps."
         }
 
-    /** Hardware and AI need big money up front. Starting in them means taking venture capital. */
-    val isCapitalIntensive: Boolean get() = this == HARDWARE || this == AI
+    /** Hardware, AI and OS need big money up front. Starting in them means taking venture capital. */
+    val isCapitalIntensive: Boolean get() = this == HARDWARE || this == AI || this == OS
 
     /** Cash you need on hand to open this lane without raising a round. */
     val selfFundThreshold: Double
         get() = when (this) {
             GAMES, WEBSITES, APPS -> 15_000.0
             SOCIAL -> 40_000.0
+            OS -> 2_000_000.0
             HARDWARE -> 1_500_000.0
             AI -> 3_000_000.0
         }
@@ -56,6 +60,7 @@ enum class Lane {
             WEBSITES -> 3_000.0
             APPS -> 8_000.0
             SOCIAL -> 25_000.0
+            OS -> 900_000.0
             HARDWARE -> 600_000.0
             AI -> 1_200_000.0
         }
@@ -69,6 +74,7 @@ enum class Lane {
             SOCIAL -> 6.0
             HARDWARE -> 3.0
             AI -> 12.0
+            OS -> 8.0
         }
 
     /** How much each role contributes to this lane's output. */
@@ -90,6 +96,9 @@ enum class Lane {
         }
         AI -> when (role) {
             Role.ENGINEER -> 0.7; Role.DESIGNER -> 0.3; Role.RESEARCHER -> 1.5; Role.MARKETER -> 0.4; Role.OPERATOR -> 0.4
+        }
+        OS -> when (role) {
+            Role.ENGINEER -> 1.2; Role.DESIGNER -> 0.8; Role.RESEARCHER -> 1.1; Role.MARKETER -> 0.4; Role.OPERATOR -> 0.5
         }
     }
 }

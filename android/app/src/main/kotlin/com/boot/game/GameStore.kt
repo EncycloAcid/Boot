@@ -49,6 +49,12 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var hall by mutableStateOf(runCatching { decodeHall(hallFile.readText()) }.getOrDefault(emptyList()))
         private set
 
+    /** Drop Hall of Fame history (tests use this so legacy perks don't leak between cases). */
+    fun clearHall() {
+        hall = emptyList()
+        runCatching { hallFile.delete() }
+    }
+
     /** Replaced with a fresh copy after every action, so Compose always sees the change. */
     var state by mutableStateOf<GameState?>(null)
         private set
@@ -64,7 +70,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var tab by mutableStateOf(Tab.OFFICE)
     var lane by mutableStateOf<Lane?>(null)
 
-    /** Company tab page: 0 overview, 1 money and board, 2 combos. */
+    /** Company tab page: 0 overview, 1 money, 2 markets, 3 strategy, 4 combos, 5 goals. */
     var companyPage by mutableIntStateOf(0)
     var studioPage by mutableStateOf(StudioPage.MAKE)
 
@@ -77,6 +83,9 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     /** The game designer is open, optionally seeded (a sequel). */
     var designing by mutableStateOf(false)
     var draft by mutableStateOf<GameConcept?>(null)
+
+    /** The hardware Device Designer is open. */
+    var designingDevice by mutableStateOf(false)
 
     /** A company on the stock market whose page is open. */
     var openStock by mutableStateOf<String?>(null)
@@ -111,7 +120,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
 
     /** A full-screen page that holds the clock while it's open. */
-    val holdsClock: Boolean get() = designing || openRelease != null || guideOpen || openStock != null || campaignLane != null
+    val holdsClock: Boolean get() = designing || designingDevice || openRelease != null || guideOpen || openStock != null || campaignLane != null
 
     fun newGame(
         company: String,
@@ -218,6 +227,11 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         draft = seed
         designTeam = team
         designing = true
+    }
+
+    fun designDevice() {
+        pause()
+        designingDevice = true
     }
 
     fun openLane(lane: Lane) {

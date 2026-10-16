@@ -99,7 +99,7 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
         PivotTrigger.VIRAL_ACCIDENT -> {
             val suggestion = when (lane) {
                 Lane.GAMES, Lane.APPS, Lane.AI -> Lane.SOCIAL
-                Lane.WEBSITES, Lane.HARDWARE, Lane.SOCIAL -> Lane.APPS
+                Lane.WEBSITES, Lane.HARDWARE, Lane.SOCIAL, Lane.OS -> Lane.APPS
             }.takeIf { laneOpen(it) } ?: pivotChoices.first()
             val story = when (lane) {
                 Lane.GAMES -> "A clip from your game exploded online and the fans need somewhere to gather."
@@ -108,6 +108,7 @@ private fun GameState.makePivotOffer(t: PivotTrigger): PivotOffer {
                 Lane.SOCIAL -> "A mini-app someone built inside your platform is suddenly everywhere."
                 Lane.HARDWARE -> "Someone's DIY companion app for your device went viral."
                 Lane.AI -> "Screenshots of your chatbot's best answers are all over the internet."
+                Lane.OS -> "A developer built a breakout app on your unfinished platform overnight."
             }
             PivotOffer(
                 t, week,
@@ -144,6 +145,7 @@ fun GameState.pivotBlocker(lane: Lane, mode: PivotMode, fundWithVenture: Boolean
 fun GameState.ventureForLane(lane: Lane): Result<RoundOffer> = roundOffer().map { offer ->
     val floor = when (lane) {
         Lane.AI -> 5_000_000.0
+        Lane.OS -> 4_000_000.0
         Lane.HARDWARE -> 3_000_000.0
         else -> 500_000.0
     }
@@ -225,6 +227,7 @@ private fun GameState.applyViralHeadStart(lane: Lane) {
         Lane.WEBSITES -> web?.let { it.standing += 0.2 }
         Lane.HARDWARE -> {}
         Lane.AI -> ai?.let { it.capability += 5 }
+        Lane.OS -> os?.let { it.oemTrust = (it.oemTrust + 0.15).coerceAtMost(1.0); it.ecosystem = (it.ecosystem + 0.1).coerceAtMost(1.0) }
     }
     addLog("The viral moment gives ${lane.title} a head start.", LogTone.GOOD)
 }

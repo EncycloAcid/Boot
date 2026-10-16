@@ -94,10 +94,18 @@ fun ScoreSummary(r: GameRelease) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             PlayerScoreBadge(r.userScore)
             Spacer(Modifier.size(6.dp))
-            Text("Players", style = MaterialTheme.typography.labelMedium)
+            Text(
+                when {
+                    r.userScore <= 0 -> "Players"
+                    r.userScoreSettled -> "Players"
+                    else -> "Early player score"
+                },
+                style = MaterialTheme.typography.labelMedium,
+            )
             Text(
                 when {
                     r.userScore <= 0 -> "no data"
+                    !r.userScoreSettled -> "settles in a few weeks"
                     r.userScore >= r.score + 0.7 -> "love it more"
                     r.userScore <= r.score - 0.7 -> "less impressed"
                     else -> "agree"
@@ -135,6 +143,8 @@ fun OutletScore(review: Review) {
 @Composable
 fun ReviewRow(review: Review, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        CompanyLogo(review.outlet.title, size = 32.dp)
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(review.outlet.title, style = MaterialTheme.typography.titleSmall)
             Text("“${review.comment}”", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -65,7 +65,14 @@ import java.util.Locale
 @Composable
 fun TeamScreen(store: GameStore, state: GameState) {
     ScreenColumn {
-        item { ScreenHeader("Team", "${state.staff.size + 1} people · ${state.payroll.perWeek()} payroll") }
+        item {
+            val morale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
+            val moraleBit = morale?.let { " · morale ${String.format(java.util.Locale.US, "%.0f", it * 100)}%" }.orEmpty()
+            ScreenHeader(
+                "Team",
+                "${state.staff.size + 1} people · ${state.payroll.perWeek()} payroll$moraleBit",
+            )
+        }
         item { TeamSection(store, state) }
         item { HiringSection(store, state) }
         item { OfficeSection(store, state) }

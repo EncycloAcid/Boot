@@ -77,6 +77,7 @@ private fun laneScale(lane: Lane): Double = when (lane) {
     Lane.SOCIAL -> 150_000.0
     Lane.HARDWARE -> 600_000.0
     Lane.AI -> 400_000.0
+    Lane.OS -> 500_000.0
 }
 
 /** Weeks between a rival's moves, at least. */
@@ -140,6 +141,7 @@ private fun GameState.hasProduct(lane: Lane): Boolean = when (lane) {
     Lane.SOCIAL -> social?.isLive == true
     Lane.HARDWARE -> hardware?.onMarket != null
     Lane.AI -> (ai?.capability ?: 0.0) > 0
+    Lane.OS -> os?.releases?.isNotEmpty() == true
 }
 
 private fun GameState.raidTargets(lane: Lane): List<Int> =
@@ -164,6 +166,7 @@ private fun GameState.pickMove(r: Rival): RivalMoveKind {
         Lane.SOCIAL -> { w[RivalMoveKind.COPYCAT] = 3.0; w[RivalMoveKind.SMEAR] = 2.0; w[RivalMoveKind.PRICE_WAR] = 0.5 }
         Lane.HARDWARE -> { w[RivalMoveKind.LAWSUIT] = 2.5; w[RivalMoveKind.PRICE_WAR] = 2.5 }
         Lane.AI -> { w[RivalMoveKind.LAWSUIT] = 2.0; w[RivalMoveKind.TALENT_RAID] = (w[RivalMoveKind.TALENT_RAID] ?: 0.0) * 2 }
+        Lane.OS -> { w[RivalMoveKind.EXCLUSIVE_DEAL] = 2.5; w[RivalMoveKind.LAWSUIT] = 2.0; w[RivalMoveKind.COPYCAT] = 1.5 }
     }
     var roll = rng.unit() * w.values.sum()
     for ((k, v) in w) {
@@ -248,12 +251,16 @@ internal fun GameState.describeRival(k: RivalEvent): Description? = when (k) {
             RivalMoveKind.EXCLUSIVE_DEAL -> Description(
                 "$r locked up an exclusive deal",
                 when (k.lane) {
-                    Lane.GAMES -> "$r signed an exclusive with a platform holder. Its players will be nudged toward their games for months."
+                    Lane.GAMES -> {
+                        val holders = platformHoldersIn(calendarYear).ifEmpty { listOf("a platform holder") }
+                        "$r signed an exclusive with ${rng.pick(holders)}. Its players will be nudged toward their games for months."
+                    }
                     Lane.WEBSITES -> "$r signed an exclusive with a big agency network. Fewer briefs will reach you."
                     Lane.APPS -> "$r has a featuring deal with the app stores. Their app is front and centre; yours isn't."
                     Lane.SOCIAL -> "$r signed the biggest creators to exclusive deals."
                     Lane.HARDWARE -> "$r locked up the big retailers' best shelf space."
                     Lane.AI -> "$r signed an exclusive cloud deal: the best GPUs and the biggest enterprise customers."
+                    Lane.OS -> "$r locked three OEMs into exclusive licensing. Your partners are getting cold feet."
                 },
                 listOf(
                     choice("Outbid them", "${money(s * 4)}. You keep your place."),

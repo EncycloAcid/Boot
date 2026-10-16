@@ -48,6 +48,12 @@ enum class Feature(
     DATA_DEALS(Lane.AI, "Data deals", "License archives and forums. Training runs gain 5% more, and regulators take an interest.", 500_000.0, 8, { gain *= 1.05; risk *= 1.1 }),
     RED_TEAM(Lane.AI, "Red team", "People paid to break your models first. 15% less trouble with regulators.", 150_000.0, 6, { risk *= 0.85 }),
     ENTERPRISE_API(Lane.AI, "Enterprise API", "Contracts, SLAs and a sales team. 4% more demand.", 300_000.0, 8, { demand *= 1.04 }),
+
+    // Platform Lab / OS
+    DRIVER_CERT(Lane.OS, "Driver certification", "OEMs trust your board support: 5% more demand, fewer recalls.", 120_000.0, 6, { demand *= 1.05; risk *= 0.9 }),
+    UPDATE_PIPELINE(Lane.OS, "Update pipeline", "Seamless OTA keeps devices current: better quality, 4% less risk.", 180_000.0, 7, { quality += 3; risk *= 0.96 }),
+    APP_STORE_KIT(Lane.OS, "App store kit", "Hosted storefront for third-party apps: 6% more demand.", 250_000.0, 8, { demand *= 1.06 }),
+    ENTERPRISE_MDM(Lane.OS, "Enterprise MDM", "Manage fleets for companies: 5% more demand, a little more to run.", 200_000.0, 6, { demand *= 1.05; cost *= 1.03 }),
     ;
 
     companion object {

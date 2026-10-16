@@ -150,14 +150,15 @@ internal fun GameState.founderLook(): Look = lookFor(founder.name.hashCode() xor
 private fun fit(room: Room, w: Float, fullHeight: Float, top: Float = 0f): Iso {
     val h = fullHeight - top
     // Bounds of the whole diorama at t = 1 with the origin at the back corner.
-    val minX = -room.d - 0.2f
-    val maxX = room.w + 0.2f
-    val minY = -0.15f - room.h * 1.15f - 0.1f
+    val minX = -room.d - 0.15f
+    val maxX = room.w + 0.15f
+    val minY = -0.1f - room.h * 1.15f - 0.05f
     // The empty front corner of the floor can run off the bottom: people matter more than floor.
-    val maxY = (room.w + room.d) / 2f - 0.55f
-    val t = min(w * 0.98f / (maxX - minX), h * 0.97f / (maxY - minY))
+    val maxY = (room.w + room.d) / 2f - 0.4f
+    // Pull in slightly so the office fills more of the viewport under the floating HUD.
+    val t = min(w * 1.08f / (maxX - minX), h * 1.05f / (maxY - minY))
     val ox = w / 2f - t * (minX + maxX) / 2f
-    val oy = top + h / 2f - t * (minY + maxY) / 2f
+    val oy = top + h * 0.52f - t * (minY + maxY) / 2f
     return Iso(ox, oy, t)
 }
 
@@ -1040,6 +1041,7 @@ private fun laneTint(lane: Lane?): Color = when (lane) {
     Lane.SOCIAL -> Color(0xFFFF9500)
     Lane.HARDWARE -> Color(0xFFAF52DE)
     Lane.AI -> Color(0xFF32ADE6)
+    Lane.OS -> Color(0xFF5856D6)
     null -> Color(0xFF8E8E93)
 }
 
@@ -1203,6 +1205,14 @@ private fun DrawScope.screen(iso: Iso, x0: Float, x1: Float, y: Float, z0: Float
                 if (k == 0) path.moveTo(pt.x, pt.y) else path.lineTo(pt.x, pt.y)
             }
             drawPath(path, tint, style = Stroke(iso.t * 0.025f, cap = StrokeCap.Round))
+        }
+        Lane.OS -> {
+            rect(x0, x1, z0, z1, Color(0xFF1A1F2E))
+            rect(x0 + w * 0.08f, x0 + w * 0.92f, z0 + h * 0.12f, z1 - h * 0.12f, Color(0xFF2A3144))
+            rect(x0 + w * 0.08f, x0 + w * 0.92f, z1 - h * 0.28f, z1 - h * 0.12f, tint.copy(alpha = 0.55f))
+            for (k in 0..3) {
+                rect(x0 + w * 0.14f, x0 + w * (0.35f + 0.1f * k), z0 + h * (0.55f - k * 0.1f), z0 + h * (0.62f - k * 0.1f), Color.White.copy(alpha = 0.25f))
+            }
         }
     }
     // Glare.

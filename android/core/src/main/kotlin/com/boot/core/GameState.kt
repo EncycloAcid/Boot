@@ -86,6 +86,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             s.refreshTalentPool()
             s.addLog("Day one. A laptop, a cramped apartment, and ${money(s.cash)} in savings.", LogTone.MILESTONE)
             s.applyLegacy(legacy)
+            // Soft start: enough RP for the cheapest studio unlocks without waiting weeks at ~0.5 RP/week.
+            s.researchPoints += 8.0
             s.ledger = listOf(WeekLedger(0, cash = s.cash))
             if (lane.isCapitalIntensive && !sandbox) {
                 s.ventureForLane(lane).getOrNull()?.let { round ->
@@ -101,6 +103,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         fun decode(text: String): GameState = json.decodeFromString(serializer(), text).apply {
             GameClock.startYear = startYear
             for (r in world.rivals) World.renamed[r.name]?.let { r.name = it }
+            migrateTycoonDepth()
         }
     }
 
@@ -127,6 +130,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     /** Brand awareness and ad campaigns, for every business. */
     var marketing = Marketing()
 
+    /** Regional offices, alliances, and Venture Arm holdings. */
+    var strategy = StrategyBook()
+
     /** Shares you hold, companies you took over, and raiders at the gate. */
     var portfolio = Portfolio()
 
@@ -151,6 +157,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var hardware: HardwareLab? = null
         internal set
     var ai: AILab? = null
+        internal set
+    var os: OsLab? = null
         internal set
 
     var staff: List<Employee> = emptyList()
@@ -291,6 +299,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             Lane.SOCIAL -> social?.assetValue
             Lane.HARDWARE -> hardware?.assetValue
             Lane.AI -> ai?.assetValue
+            Lane.OS -> os?.assetValue
         } ?: 0.0
         return max(0.0, annual * lane.revenueMultiple * world.investorAppetite) + assets
     }
@@ -387,6 +396,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         Lane.SOCIAL -> social?.statusLine
         Lane.HARDWARE -> hardware?.statusLine
         Lane.AI -> ai?.statusLine
+        Lane.OS -> os?.statusLine
     } ?: ""
 
     // Bookkeeping
@@ -437,10 +447,14 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         when (lane) {
             Lane.GAMES -> games = GamesStudio()
             Lane.WEBSITES -> web = WebAgency()
-            Lane.APPS -> apps = AppStudio(rng.pick(Names.apps), AppMonetization.ADS)
+            Lane.APPS -> {
+                apps = AppStudio(rng.pick(Names.apps), AppMonetization.ADS)
+                syncAppPlatformFeatures()
+            }
             Lane.SOCIAL -> social = SocialPlatform(rng.pick(Names.socials), rng.range(0.55, 1.35))
             Lane.HARDWARE -> hardware = HardwareLab()
             Lane.AI -> ai = AILab()
+            Lane.OS -> os = OsLab()
         }
         for (combo in Combo.available(lanes)) {
             if (crossover(combo) != null) continue
@@ -459,6 +473,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             Lane.SOCIAL -> social = null
             Lane.HARDWARE -> hardware = null
             Lane.AI -> ai = null
+            Lane.OS -> os = null
         }
         crossovers = crossovers.filterNot { it.combo.involves(lane) }
     }
@@ -526,4 +541,30 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     }
 
     internal fun bestLane(role: Role): Lane? = lanes.maxByOrNull { it.weight(role) }
+
+    /**
+     * Backfill Phase 1–3 fields after decode so older saves (and mid-upgrade engines)
+     * behave like a fresh run of the depth systems.
+     */
+    internal fun migrateTycoonDepth() {
+        games?.let { g ->
+            for (engine in g.engines) g.revealEngineTech(engine.features)
+            g.engineBuild?.let { g.revealEngineTech(it.features) }
+        }
+        syncAppPlatformFeatures()
+        apps?.migrateCraftFromQuality()
+        os?.capOemPartners()
+        hardware?.design?.let { d -> hardware!!.design = d.migrated() }
+        // Old saves lacked StrategyBook fields that kotlinx may leave at defaults — ensure lists exist.
+        if (strategy.nextAllianceId < 1) strategy.nextAllianceId = 1
+        if (strategy.nextHoldingId < 1) strategy.nextHoldingId = 1
+    }
+
+    /** Drop researched app-platform bits into the product stack (also when opening Apps late). */
+    internal fun syncAppPlatformFeatures() {
+        val a = apps ?: return
+        for (r in researched) {
+            if (r.lane == Lane.APPS && r.engineLevel > 0 && r !in a.features) a.features += r
+        }
+    }
 }

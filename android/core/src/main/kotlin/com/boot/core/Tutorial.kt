@@ -81,6 +81,11 @@ fun GameState.lesson(): Lesson? {
                 "Start a small training run. Compute is what costs, so watch your burn rate. A better model wins subscribers and API customers.",
                 "Start training", acknowledge = false,
             )
+            Lane.OS -> Lesson(
+                step, n, of, "Start your first OS version",
+                "Pick a target — PC first, phones later — and begin a codename. Research kernel and shell tech, run a beta if you can, then ship to OEMs.",
+                "Open Platform Lab", acknowledge = false,
+            )
         }
         TutorialStep.PLAY -> Lesson(
             step, n, of, "Let time run",
@@ -129,9 +134,9 @@ fun GameState.completeLesson(step: TutorialStep) {
     t.done = t.done + step
 }
 
-/** Start the lessons again, from the menu. Anything already done ticks itself off. */
+/** Start the lessons again, from the menu. Welcome shows again until acknowledged. */
 fun GameState.restartTutorial() {
-    tutorial = Tutorial(setOf(TutorialStep.WELCOME))
+    tutorial = Tutorial(emptySet())
 }
 
 /** No more lessons. */
@@ -155,6 +160,7 @@ private fun GameState.learned(step: TutorialStep): Boolean = when (step) {
         Lane.SOCIAL -> social?.isLive ?: false
         Lane.HARDWARE -> hardware?.let { it.design != null || it.modelsShipped > 0 } ?: false
         Lane.AI -> ai?.let { it.training != null || it.generation > 0 } ?: false
+        Lane.OS -> os?.let { it.project != null || it.versionsShipped > 0 } ?: false
     }
     TutorialStep.PLAY -> week >= 1
     TutorialStep.HIRE -> staff.isNotEmpty()

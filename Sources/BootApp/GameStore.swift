@@ -9,6 +9,7 @@ enum Screen: Hashable {
     case staff
     case combos
     case funding
+    case strategy
     case news
 }
 

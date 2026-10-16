@@ -51,9 +51,9 @@ val guideTopics: List<GuideTopic> = listOf(
         "Games", "A studio in the Game Dev Tycoon mould",
         listOf(
             "Design a game: a topic, one or two genres, an audience, the platforms and a size. Topics suit some genres better than others, and genres suit some platforms. Game reports after each launch tell you what worked, and the designer remembers.",
-            "Development runs in three stages with three focus areas each. Different genres want different splits: RPGs care about story and quests, action games about gameplay and level design.",
+            "Development runs in three stages with three focus areas each. Rebalance a stage any time — the genre-fit meter and expected score move with the sliders. Finishing a stage teaches one sharper genre lesson.",
+            "Custom engines pack researched features: graphic styles and tech tiers have hidden levels until a build finishes or a game ships. Mixing pixel with realistic soft-penalties the effective level.",
             "Scores compare a game against your own best, so you have to keep getting better. Hype, fans and the platforms' players drive sales. Avoid launching next to a giant release.",
-            "Research unlocks marketing, sequels, bigger games, custom engines, your own publishing label, remasters, live-service games and esports.",
         ),
         Lane.GAMES,
     ),
@@ -67,11 +67,11 @@ val guideTopics: List<GuideTopic> = listOf(
         Lane.WEBSITES,
     ),
     GuideTopic(
-        "Apps", "A retention game",
+        "Apps", "Shipping software products",
         listOf(
-            "Ship version 1.0, then live on the churn chart and the store rank. Rank brings installs, and installs lift rank.",
-            "Churn creeps up the longer you go without an update: choose small, frequent updates or big, rare ones. Monetization trades installs against revenue and churn.",
-            "A/B experiments and price levels let you tune it, but nobody knows how an experiment turns out until it's run.",
+            "Before v1.0, pick a category (productivity, utility, entertainment, creative) and monetization. Design and tech craft accumulate during the build and feed the store score.",
+            "After launch you live on churn and store rank. Update cadence (small & often vs big & rare) plus a focus (stability, features, polish) sets what each drop improves.",
+            "Platform research — SDK, offline, sync, collaboration — stacks into the product like a light engine. A/B experiments and price levels still let you tune installs, churn and ARPU.",
         ),
         Lane.APPS,
     ),
@@ -101,6 +101,15 @@ val guideTopics: List<GuideTopic> = listOf(
             "Like hardware, starting here means a seed round and a board. The highest ceiling in the game, and the fastest way to go broke.",
         ),
         Lane.AI,
+    ),
+    GuideTopic(
+        "Platform Lab", "Kernels, OEMs and ecosystem",
+        listOf(
+            "Ship OS versions with a codename and a target (PC, phone, or both as eras unlock). Engineers and researchers build design and tech; bugs pile up if you rush.",
+            "A beta delays ship, cuts bugs and raises OEM trust. Shipping raw can force a rollback that freezes partners.",
+            "Revenue comes from OEM licences and installed base. Hardware and Apps lanes give optional synergies when you ship.",
+        ),
+        Lane.OS,
     ),
     GuideTopic(
         "People", "Hiring, morale and offices",

@@ -56,7 +56,11 @@ import com.boot.core.setEngineLicensed
 import com.boot.core.buyCampaign
 import com.boot.core.cancelGame
 import com.boot.core.clashFor
+import com.boot.core.engineCombo
 import com.boot.core.engineQuote
+import com.boot.core.expectedEngineStandard
+import com.boot.core.LaunchForecast
+import com.boot.core.gameForecast
 import com.boot.core.launchGame
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
@@ -69,6 +73,7 @@ import com.boot.core.takeGameContract
 import com.boot.game.GameStore
 import com.boot.game.StudioPage
 import java.util.Locale
+import kotlin.math.abs
 
 /** The game studio, Game Dev Tycoon style. */
 fun LazyListScope.studioItems(store: GameStore, state: GameState) {
@@ -287,15 +292,64 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                     }
                 }
             }
-            Meter("Development", p.completion, wavy = !p.isReady)
+            Meter(
+                "Development",
+                p.completion,
+                wavy = !p.isReady,
+                caption = forecastCaption(state.gameForecast(team), p.isReady),
+            )
             TileRow {
                 PointTile("Design", p.design, p.lastDesign, colors.design, state.week, Modifier.weight(1f))
                 PointTile("Tech", p.tech, p.lastTech, colors.tech, state.week, Modifier.weight(1f))
                 PointTile("Bugs", p.bugs, p.lastBugs, colors.bad, state.week, Modifier.weight(1f))
             }
-            if (p.isReady) Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
+            if (!p.isReady) {
+                val lean = p.projectedDesignShare()
+                val delta = p.designLeanDelta()
+                val leanHint = when {
+                    abs(delta) < 0.06 -> "On a healthy design/tech lean for ${c.genreLower}."
+                    abs(delta) < 0.14 && delta < 0 -> "A bit tech-heavy for ${c.genreLower}."
+                    abs(delta) < 0.14 -> "A bit design-heavy for ${c.genreLower}."
+                    delta < 0 -> "Leaning tech-heavy vs what ${c.genreLower} usually wants."
+                    else -> "Leaning design-heavy vs what ${c.genreLower} usually wants."
+                }
+                // Fit meter (closeness to genre ideal), not raw design share — share is in the caption.
+                Meter(
+                    "Genre fit",
+                    p.designLeanFit(),
+                    if (p.designLeanFit() >= 0.7) colors.design else colors.warn,
+                    caption = "${Format.percent(lean)} design · $leanHint",
+                )
+                state.gameForecast(team)?.let { f ->
+                    ValueRow(
+                        "Expected score",
+                        String.format(java.util.Locale.US, "~%.1f (%s–%s)", f.expectedScore, f.low, f.high),
+                    )
+                    Hint("Rebalance this stage’s sliders — the forecast and fit update right away.")
+                }
+            }
+            if (p.isReady) {
+                Meter("Polish", p.polish / (p.work * 0.4), colors.milestone)
+                state.gameForecast(team)?.let { f ->
+                    ValueRow(
+                        "Expected score",
+                        String.format(java.util.Locale.US, "~%.1f (%s–%s)", f.expectedScore, f.low, f.high),
+                    )
+                    if (f.polishPastSweetSpot) {
+                        Hint("Polish is full — further weeks mostly clear leftover bugs.", colors.warn)
+                    } else if (f.bugs >= 2) {
+                        Hint("Ship when bugs are down, or keep polishing for a cleaner score.")
+                    }
+                }
+            }
         }
     }
+}
+
+private fun forecastCaption(forecast: LaunchForecast?, ready: Boolean): String? {
+    if (ready) return "Content complete"
+    val weeks = forecast?.weeksToReady ?: return null
+    return if (weeks <= 0) "Ready this week" else "~${Format.weeks(weeks)} to ready"
 }
 
 /** A running total with a bubble that floats up each week showing what was just added, like the points popping off a dev's desk. */
@@ -329,7 +383,7 @@ private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject, team:
     val alloc = p.focus[stage]
     GroupedSection(
         (if (team == 2) "Team 2 · " else "") + "Focus · ${FocusArea.STAGES[stage]}",
-        footer = "Split this stage's effort. Each genre cares about different things; game reports teach you which.",
+        footer = "Rebalance this stage any time. Finishing a stage teaches one sharper genre lesson; shipping still fills the notebook.",
     ) {
         CardBlock {
             areas.forEachIndexed { i, area ->
@@ -403,6 +457,7 @@ private fun DealOffers(store: GameStore, g: GamesStudio) {
                 "${d.publisher}: ${d.topic.title} ${d.genre.title}",
                 "${d.size.title} for ${d.platform.title} · ${Format.money(d.advance)} advance · needs ${d.minScore}/10",
                 "Sign",
+                leading = { CompanyLogo(d.publisher, size = 32.dp) },
             ) { store.perform { acceptDeal(d.id) } }
         }
     }
@@ -490,18 +545,34 @@ fun ScoreBadge(score: Double, size: Dp) {
 private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
     val canBuild = Research.CUSTOM_ENGINES in state.researched
     val (features, cost, weeks) = state.engineQuote()
-    val level = features.sumOf { it.engineLevel }
+    val combo = engineCombo(features)
     val best = g.engines.maxOf { it.level }
+    val standard = state.expectedEngineStandard().toInt()
     GroupedSection(
         "Engines",
         footer = when {
-            !canBuild -> "Research custom engines, then engine features, to build better tech. Games on dated engines look it."
-            else -> "Reviewers expect about level ${state.week / 20} by now."
+            !canBuild -> "Research custom engines, then graphic styles and tech features. Games on dated engines look it."
+            else -> "Reviewers expect about level $standard by now. Individual feature levels stay hidden until a build finishes or a game ships. Mixing pixel with realistic cuts effective level."
         },
     ) {
         g.engines.sortedByDescending { it.level }.forEachIndexed { i, e ->
             if (i > 0) RowDivider()
-            ListRow(e.name, subtitle = if (e.features.isEmpty()) "No features" else e.features.joinToString { it.title }, value = "level ${e.level}")
+            val featureLine = if (e.features.isEmpty()) {
+                "No features"
+            } else {
+                e.features.joinToString { f ->
+                    if (g.knowsEngineLevel(f)) "${f.title} (L${f.engineLevel})" else f.title
+                }
+            }
+            val levelLabel = if (e.rawLevel != e.level && e.features.isNotEmpty()) {
+                "L${e.level} (raw ${e.rawLevel})"
+            } else {
+                "level ${e.level}"
+            }
+            ListRow(e.name, subtitle = featureLine, value = levelLabel)
+            if (e.combo.notes.isNotEmpty()) {
+                Hint(e.combo.notes.joinToString(" "), gameColors.warn)
+            }
             if (e.level > 0) {
                 ToggleRow(
                     "License to other studios", e.licensed,
@@ -511,15 +582,31 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
         }
         g.engineBuild?.let { b ->
             RowDivider()
-            CardBlock { Meter("Building ${b.name}", 0.5, wavy = true, caption = "${Format.weeks(b.weeksLeft)} left") }
+            CardBlock {
+                Meter(
+                    "Building ${b.name}", 0.5, wavy = true,
+                    caption = "${Format.weeks(b.weeksLeft)} left · effective L${b.combo.level}" +
+                        if (b.combo.level != b.combo.rawLevel) " (raw ${b.combo.rawLevel})" else "",
+                )
+                if (b.combo.notes.isNotEmpty()) Hint(b.combo.notes.joinToString(" "), gameColors.warn)
+            }
         }
         if (canBuild && g.engineBuild == null) {
             RowDivider()
+            val canAfford = state.cash >= cost
+            val improves = combo.level > best || combo.rawLevel > g.engines.maxOf { it.rawLevel }
+            val detail = buildString {
+                append("${features.size} features · ${Format.money(cost)} · $weeks weeks")
+                if (combo.level != combo.rawLevel) append(" · effective L${combo.level} (raw ${combo.rawLevel})")
+                if (combo.bugRisk >= 0.04) append(" · higher bug risk")
+                if (combo.notes.isNotEmpty()) append(" · ${combo.notes.joinToString(" ")}")
+                append(" · market expects ~L$standard")
+            }
             ActionRow(
-                "New engine: level $level",
-                "${features.size} features · ${Format.money(cost)} · $weeks weeks",
+                "New engine: level ${combo.level}",
+                detail,
                 "Build",
-                enabled = level > best && state.cash >= cost,
+                enabled = improves && canAfford,
             ) { store.perform { buildEngine() } }
         }
     }

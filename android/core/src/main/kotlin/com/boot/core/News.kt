@@ -39,7 +39,14 @@ internal fun GameState.publish(
     // In a run set in the past, outlets that didn't exist yet are swapped for ones of the day.
     val byline = if (isDecades) outletIn(outlet, calendarYear) else outlet
     val story = NewsStory(nextId(), week, desk, byline, headline, body, tone, lane, lead)
-    news = (if (news.size >= 300) news.drop(news.size - 299) else news) + story
+    // Cap at 300: prefer dropping oldest MARKETS/INDUSTRY so GAMES and YOU stick around.
+    news = if (news.size >= 300) {
+        val dropAt = news.indexOfFirst { it.desk == NewsDesk.MARKETS || it.desk == NewsDesk.INDUSTRY }
+            .takeIf { it >= 0 } ?: 0
+        news.filterIndexed { i, _ -> i != dropAt } + story
+    } else {
+        news + story
+    }
 }
 
 /** Who'd cover a lane. */
@@ -50,6 +57,7 @@ internal fun techOutlet(lane: Lane?, rng: SeededRNG): String = when (lane) {
     Lane.SOCIAL -> rng.pick(listOf("The Verge", "Wired", "Platformer"))
     Lane.HARDWARE -> rng.pick(listOf("The Verge", "Engadget", "Ars Technica"))
     Lane.AI -> rng.pick(listOf("Wired", "MIT Technology Review", "The Information"))
+    Lane.OS -> rng.pick(listOf("Ars Technica", "The Verge", "Wired"))
     null -> rng.pick(listOf("TechCrunch", "The Verge", "Wired"))
 }
 
@@ -70,6 +78,16 @@ internal fun GameState.eraEffects(era: Era): String {
     return if (parts.isEmpty()) era.title else "${era.title}. " + parts.joinToString("; ") + "."
 }
 
+/** Rotating industry colour beyond the era headline pool. */
+private val industryLedes = listOf(
+    "Hiring war heats up for senior engineers" to
+        "Studios and labs are poaching each other with equity, remote perks and signing bonuses. Salaries keep climbing.",
+    "Platform install base hits a new high" to
+        "One more living-room device crosses a hundred million active users. Developers scramble to ship for it first.",
+    "Lawsuit rumor swirls around a major studio" to
+        "Anonymous filings and carefully worded denials. Lawyers are busy; nobody will go on the record yet.",
+)
+
 /** The world's news for the week: the era, the rumours, and the markets. */
 internal fun GameState.newsWeek() {
     val w = world
@@ -82,7 +100,29 @@ internal fun GameState.newsWeek() {
         }
         val recent = news.takeLast(30).map { it.headline }.toSet()
         pool.filter { it !in recent }.takeIf { it.isNotEmpty() }?.let {
-            publish(NewsDesk.INDUSTRY, rng.pick(listOf("The Economist", "Wired", "Bloomberg", "The Verge", "Financial Times")), rng.pick(it), eraEffects(w.era))
+            val headline = rng.pick(it)
+            val body = listOfNotNull(eraEffects(w.era).takeIf { b -> b.isNotBlank() }, w.era.blurb.takeIf { b -> b.isNotBlank() })
+                .distinct().joinToString(" ")
+                .ifBlank { "${w.era.title} is reshaping who gets funded and who gets ignored." }
+            publish(
+                NewsDesk.INDUSTRY,
+                rng.pick(listOf("The Economist", "Wired", "Bloomberg", "The Verge", "Financial Times")),
+                headline,
+                body,
+            )
+        }
+    }
+    // Occasional industry ledes: hiring wars, platform install bases, lawsuit rumors.
+    if (week > 0 && week % 5 == 0 && rng.chance(0.35)) {
+        val recent = news.takeLast(20).map { it.headline }.toSet()
+        industryLedes.filter { it.first !in recent }.takeIf { it.isNotEmpty() }?.let { pool ->
+            val (headline, body) = rng.pick(pool)
+            publish(
+                NewsDesk.INDUSTRY,
+                rng.pick(listOf("The Verge", "Bloomberg", "Wired", "Reuters")),
+                headline,
+                body,
+            )
         }
     }
     // Every quarter, the markets.
