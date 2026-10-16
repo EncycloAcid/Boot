@@ -132,6 +132,12 @@ data class Candidate(
 
 @Serializable
 class Founder(val name: String) {
+    /** How you look, if you chose; otherwise a look of your own from your name. */
+    var appearance: Appearance? = null
+
+    /** Your special trait. */
+    var trait: FounderTrait? = null
+
     /** Weeks of hands-on experience per lane. This is the "skills" you keep when you pivot. */
     val experience: MutableMap<Lane, Double> = mutableMapOf()
 

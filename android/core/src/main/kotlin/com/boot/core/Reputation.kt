@@ -69,6 +69,9 @@ class Reputation {
     var score = 50.0
         private set
     val scars = mutableListOf<Scar>()
+
+    /** How much good news counts, and how little bad news does: 1, or more for a media darling. */
+    var lift = 1.0
     private var nextScarId = 1
 
     /** 0.6...1.4 general demand multiplier. */
@@ -85,7 +88,7 @@ class Reputation {
     fun has(kind: ScarKind, atLeast: Double = 0.2): Boolean = scars.any { it.kind == kind && it.severity >= atLeast }
 
     internal fun adjust(delta: Double) {
-        score = (score + delta).clamped(0.0, 100.0)
+        score = (score + if (delta > 0) delta * lift else delta / lift).clamped(0.0, 100.0)
     }
 
     internal fun scar(kind: ScarKind, severity: Double, week: Int, note: String) {

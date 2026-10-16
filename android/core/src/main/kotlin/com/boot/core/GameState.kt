@@ -347,11 +347,12 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             val share = founder.attentionShare(lane, lanes)
             val bonus = founder.skillBonus(lane)
             val freelance = if (founder.freelancing) 0.35 else 1.0
-            s.output += (4 + bonus) * share * freelance
+            val coder = if (founder.trait == FounderTrait.CODER) 1.4 else 1.0
+            s.output += (4 + bonus) * share * freelance * coder
             s.marketing += 1 * share
             if (lane == Lane.AI) s.research += (3 + bonus) * share
             skillSum += (5 + bonus) * share
-            designSum += (5 + bonus) * share
+            designSum += (5 + bonus + if (founder.trait == FounderTrait.VISIONARY) 2.0 else 0.0) * share
             techSum += (5 + bonus * 0.8) * share
             weight += share
         }

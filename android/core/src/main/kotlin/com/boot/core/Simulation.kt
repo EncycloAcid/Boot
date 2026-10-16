@@ -393,7 +393,8 @@ private fun GameState.updateStaff(fx: ComboEffects) {
         var m = e.morale
         // Team players lift everyone they work with.
         val lift = minOf(0.08, 0.04 * staff.count { it.lane == e.lane && it.id != e.id && it.trait == Trait.TEAM_PLAYER })
-        val settle = minOf(0.95, 0.7 + perks.sumOf { it.morale } + (e.trait?.settle ?: 0.0) + lift)
+        val boss = if (founderIs(FounderTrait.PEOPLE_PERSON)) 0.08 else 0.0
+        val settle = minOf(0.97, 0.7 + perks.sumOf { it.morale } + (e.trait?.settle ?: 0.0) + lift + boss)
         m += (settle - m) * 0.05
         if (crunch && e.trait != Trait.NIGHT_OWL) m -= if (has(Perk.NAP_PODS)) 0.0125 else 0.025
         if (cash < 0) m -= 0.03

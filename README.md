@@ -6,6 +6,18 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.10 (Android):** make yourself. The new game screen has a founder customizer with a live portrait: skin tone, hair colour, eight hairstyles, five kinds of clothes in fifteen colours, glasses and a beard, and a shuffle button. You look the way you made yourself in the office, on the Team tab and on your card. Pick a special trait to go with it:
+
+- **Coder:** your own work counts 40% more.
+- **Visionary:** your design sense lifts the studio's design.
+- **People person:** everyone's morale settles 8 points higher.
+- **Showrunner:** trade shows, trailers and showcases build 30% more hype.
+- **Tinkerer:** research comes 25% faster.
+- **Bootstrapper:** 60% more cash on day one.
+- **Media darling:** reputation gains are 30% bigger and losses 30% smaller.
+
+Or none, and play it straight. Tap yourself in the office to see your trait.
+
 **New in 3.9 (Android):** save slots. Keep three games on the go: a career, a scenario and a sandbox, say. The title screen shows each slot's company, mode, date, cash and value and when you last played it, with Continue and Delete; tap an empty slot to start your next game there (it picks one for you), and starting over a filled slot asks first. "Save slots" in the game's menu saves and takes you back to the title screen, and the app reopens whichever game you played last. Your game from before 3.9 carries on in slot 1.
 
 **3.8.2:** tap anyone in the office to see their card beside them: level, role, trait, what they're working on, design, tech and research, morale and experience, pay, and a button to manage them in Team (tap yourself for how your attention is split). Sideways, the game now goes full screen, hiding the phone's status and navigation bars (swipe from an edge to see them), and an open window gets the full height of the screen: the corner cards step aside, and the window's title bar carries the date and your cash. The bottom bar now runs the full width of the screen, with the tabs spaced evenly and the clock at the right.

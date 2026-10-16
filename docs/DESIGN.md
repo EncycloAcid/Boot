@@ -355,6 +355,22 @@ The year-end show is the Arkie Awards before 1983, the Golden Joystick Awards un
 
 The autopilot shadow-drops what's finished, takes marketing deals when cash is under $1M, shows trailers when it has ten times the cost, premieres games with appeal 0.6 or more when it has five times the cost, and streams its own showcase when it can afford five times the cost. Over a 15-year career it wins four to nine prizes.
 
+## The founder
+
+On the new game screen you make the founder: skin tone, hair colour and style, clothes and their colour, glasses and a beard, with a live portrait and a shuffle button. The look is stored in the save as positions in the game's palettes (`Appearance`), so the office, the Team tab, portraits and the founder's card all show it; until you change something it follows the look your name and company would give you. Staff looks are still drawn from their ids.
+
+The founder takes one special trait, or none:
+
+| Trait | Effect |
+|---|---|
+| Coder | The founder's own output × 1.4 |
+| Visionary | +2 to the founder's design in the studio's average |
+| People person | Staff morale settles 0.08 higher |
+| Showrunner | Hype from the trade show, trailers and showcases × 1.3 |
+| Tinkerer | Research points × 1.25 |
+| Bootstrapper | Starting cash × 1.6 (not in a sandbox) |
+| Media darling | Reputation gains × 1.3, losses ÷ 1.3 |
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

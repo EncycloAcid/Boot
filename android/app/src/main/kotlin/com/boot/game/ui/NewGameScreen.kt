@@ -67,7 +67,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.boot.core.Appearance
 import com.boot.core.Difficulty
+import com.boot.core.FounderTrait
+import com.boot.core.introduceFounder
 import com.boot.core.MODERN_YEAR
 import com.boot.core.StartPoint
 import com.boot.core.Scenario
@@ -107,6 +110,10 @@ fun NewGameScreen(store: GameStore) {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val landscape = configuration.screenWidthDp > configuration.screenHeightDp && configuration.screenHeightDp < 600
     val founderName = founder.trim().ifEmpty { "You" }
+    // Your look follows your name until you change something, then it's yours.
+    var customLook by remember { mutableStateOf<Appearance?>(null) }
+    val look = customLook ?: appearanceFor(founderName.hashCode() xor companyName.hashCode())
+    var trait by remember { mutableStateOf<FounderTrait?>(null) }
     // A new game goes into an empty slot if there is one, rather than over the last game played.
     LaunchedEffect(store.slots) {
         if (store.slots.getOrNull(store.slot - 1) != null) {
@@ -149,7 +156,7 @@ fun NewGameScreen(store: GameStore) {
             )
             when (mode) {
                 GameMode.SCENARIOS -> PrimaryButton(
-                    "Play ${scenario.title}", { begin { store.newScenario(scenario, companyName, founderName) } }, Modifier.fillMaxWidth(),
+                    "Play ${scenario.title}", { begin { store.newScenario(scenario, companyName, founderName, trait = trait, look = look) } }, Modifier.fillMaxWidth(),
                 )
                 GameMode.SANDBOX -> PrimaryButton(
                     "Start your sandbox ${lane.businessName.lowercase()}",
@@ -157,7 +164,7 @@ fun NewGameScreen(store: GameStore) {
                         begin {
                             store.newGame(
                                 companyName, founderName, lane,
-                                difficulty = difficulty, start = start, sandbox = true, tutorial = tutorial,
+                                difficulty = difficulty, start = start, sandbox = true, tutorial = tutorial, trait = trait, look = look,
                             )
                         }
                     },
@@ -165,7 +172,7 @@ fun NewGameScreen(store: GameStore) {
                 )
                 GameMode.CAREER -> PrimaryButton(
                     "Start your ${lane.businessName.lowercase()}",
-                    { begin { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start, tutorial = tutorial) } },
+                    { begin { store.newGame(companyName, founderName, lane, difficulty = difficulty, start = start, tutorial = tutorial, trait = trait, look = look) } },
                     Modifier.fillMaxWidth(),
                 )
             }
@@ -187,7 +194,7 @@ fun NewGameScreen(store: GameStore) {
         ) {
             if (!landscape) item(span = { GridItemSpan(maxLineSpan) }) {
                 // Where it all starts: the apartment, with a poster of whatever you pick.
-                val preview = remember(lane) { GameState.create("Garage Labs", "You", lane, 1) }
+                val preview = remember(lane, look) { GameState.create("Garage Labs", "You", lane, 1).apply { introduceFounder(null, look) } }
                 OfficeScene(
                     preview, playing = false,
                     modifier = Modifier
@@ -236,6 +243,8 @@ fun NewGameScreen(store: GameStore) {
                     FormRow("Founder", founder, "You", ImeAction.Done) { founder = it }
                 }
             }
+            item(span = { GridItemSpan(maxLineSpan) }) { FounderLook(look) { customLook = it } }
+            item(span = { GridItemSpan(maxLineSpan) }) { FounderTraitPicker(trait) { trait = it } }
             if (mode == GameMode.SCENARIOS) {
                 item(span = { GridItemSpan(maxLineSpan) }) { ScenarioList(scenario, store.hall.bestMedals()) { scenario = it } }
             }
@@ -312,7 +321,7 @@ fun NewGameScreen(store: GameStore) {
                 Modifier.width(320.dp).fillMaxHeight().padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                val preview = remember(lane) { GameState.create("Garage Labs", "You", lane, 1) }
+                val preview = remember(lane, look) { GameState.create("Garage Labs", "You", lane, 1).apply { introduceFounder(null, look) } }
                 OfficeScene(preview, playing = false, modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(24.dp)))
                 BootTitle()
                 startPanel()

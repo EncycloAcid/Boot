@@ -666,6 +666,7 @@ internal fun GameState.weeklyResearch(gameWork: Double): Double {
     rp += gameWork * 0.07
     if (Research.RD_LAB in researched) rp *= 1.5
     if (has(Perk.LIBRARY)) rp *= 1.1
+    if (founderIs(FounderTrait.TINKERER)) rp *= 1.25
     return rp
 }
 

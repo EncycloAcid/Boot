@@ -159,7 +159,7 @@ internal fun GameState.scaled(today: Double): Double = max(1_000.0, (today * pas
 /** Puts a trailer out: the hype it builds, the fans it finds, and the news if it's the first. */
 internal fun GameState.reveal(p: GameProject, stage: String, base: Double, appeal: Double, extra: Double = 1.0): Double {
     val g = games ?: return 0.0
-    val hype = base * (0.4 + appeal) * p.revealBoost * extra
+    val hype = base * (0.4 + appeal) * p.revealBoost * extra * if (founderIs(FounderTrait.SHOWRUNNER)) 1.3 else 1.0
     p.hype = min(100.0, p.hype + hype)
     g.fans += max(200.0, g.fans * 0.015 * (0.5 + appeal) * p.revealBoost)
     revealed(p, stage)

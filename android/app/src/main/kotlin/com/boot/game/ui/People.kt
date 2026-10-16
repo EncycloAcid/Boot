@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.boot.core.Appearance
 import com.boot.core.Employee
 import com.boot.core.GameState
 import kotlin.math.cos
@@ -57,20 +58,39 @@ private val Clothes = listOf(
 private val Skins = listOf(0xFFF7D9C4, 0xFFEFC3A2, 0xFFD9A07A, 0xFFB97C55, 0xFF8F5A38, 0xFF63402A).map { Color(it) }
 private val Hairs = listOf(0xFF2A1E17, 0xFF2A1E17, 0xFF4B2F1D, 0xFF7A4A2A, 0xFFB8692F, 0xFFE2BE78, 0xFF1C1C28, 0xFF9A9AA3, 0xFFC0473B).map { Color(it) }
 
-internal fun lookFor(seed: Int): Look {
+internal fun lookFor(seed: Int): Look = lookOf(appearanceFor(seed))
+
+/** Someone's look as palette positions, drawn from [seed] the same way for the same person every time. */
+internal fun appearanceFor(seed: Int): Appearance {
     val r = java.util.Random(seed * 7_919L + 104_729L)
     val style = HairStyle.entries[r.nextInt(HairStyle.entries.size)]
     val longish = style == HairStyle.LONG || style == HairStyle.BUN || style == HairStyle.PONYTAIL || style == HairStyle.BOB
-    return Look(
-        skin = Skins[r.nextInt(Skins.size)],
-        hair = Hairs[r.nextInt(Hairs.size)],
-        style = style,
+    return Appearance(
+        skin = r.nextInt(Skins.size),
+        hair = r.nextInt(Hairs.size),
+        style = style.ordinal,
         glasses = r.nextInt(4) == 0,
         beard = !longish && style != HairStyle.BALD && r.nextInt(4) == 0 || style == HairStyle.BALD && r.nextInt(2) == 0,
-        outfit = if (r.nextInt(3) == 0) Outfit.HOODIE else listOf(Outfit.TEE, Outfit.COLLAR, Outfit.SWEATER, Outfit.BLAZER)[r.nextInt(4)],
-        top = Clothes[r.nextInt(Clothes.size)],
+        outfit = if (r.nextInt(3) == 0) Outfit.HOODIE.ordinal else listOf(Outfit.TEE, Outfit.COLLAR, Outfit.SWEATER, Outfit.BLAZER)[r.nextInt(4)].ordinal,
+        top = r.nextInt(Clothes.size),
     )
 }
+
+/** A look from palette positions, as chosen in the founder customizer or drawn from a seed. */
+internal fun lookOf(a: Appearance) = Look(
+    skin = Skins[a.skin.coerceIn(Skins.indices)],
+    hair = Hairs[a.hair.coerceIn(Hairs.indices)],
+    style = HairStyle.entries[a.style.coerceIn(HairStyle.entries.indices)],
+    glasses = a.glasses,
+    beard = a.beard,
+    outfit = Outfit.entries[a.outfit.coerceIn(Outfit.entries.indices)],
+    top = Clothes[a.top.coerceIn(Clothes.indices)],
+)
+
+/** The palettes the customizer offers, by position. Hair skips a repeat of the darkest brown. */
+internal val SkinTones: List<Color> get() = Skins
+internal val HairColours: List<IndexedValue<Color>> get() = Hairs.withIndex().filter { it.index != 1 }
+internal val ClothesColours: List<Color> get() = Clothes
 
 internal fun Color.shade(f: Float) = Color((red * f).coerceIn(0f, 1f), (green * f).coerceIn(0f, 1f), (blue * f).coerceIn(0f, 1f), alpha)
 
@@ -523,5 +543,6 @@ internal fun CandidatePortrait(id: Int, size: Dp = 44.dp, ring: Color? = null) {
 /** You, crowned. */
 @Composable
 internal fun FounderPortrait(state: GameState, size: Dp = 44.dp) {
-    Avatar(state.founderLook(), MaterialTheme.colorScheme.primary, size, crown = true, top = MaterialTheme.colorScheme.primary)
+    // A founder who chose their clothes wears them; otherwise the company's colour.
+    Avatar(state.founderLook(), MaterialTheme.colorScheme.primary, size, crown = true, top = if (state.founder.appearance != null) null else MaterialTheme.colorScheme.primary)
 }

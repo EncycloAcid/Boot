@@ -21,6 +21,9 @@ import com.boot.core.GameConcept
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.advance
+import com.boot.core.Appearance
+import com.boot.core.FounderTrait
+import com.boot.core.introduceFounder
 import com.boot.game.audio.Sfx
 import com.boot.game.audio.SoundBoard
 import com.boot.game.audio.cueFor
@@ -242,13 +245,18 @@ class GameStore(app: Application) : AndroidViewModel(app) {
         start: StartPoint = StartPoint.TODAY,
         sandbox: Boolean = false,
         tutorial: Boolean = false,
+        trait: FounderTrait? = null,
+        look: Appearance? = null,
     ) {
-        begin(GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start, sandbox = sandbox, tutorial = tutorial))
+        begin(
+            GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start, sandbox = sandbox, tutorial = tutorial)
+                .apply { introduceFounder(trait, look) },
+        )
     }
 
     /** Start one of the scenarios. */
-    fun newScenario(scenario: Scenario, company: String, founder: String, seed: Long = Random.nextLong()) {
-        begin(GameState.scenario(scenario, company, founder, seed, LegacyPerk.earned(hall)))
+    fun newScenario(scenario: Scenario, company: String, founder: String, seed: Long = Random.nextLong(), trait: FounderTrait? = null, look: Appearance? = null) {
+        begin(GameState.scenario(scenario, company, founder, seed, LegacyPerk.earned(hall)).apply { introduceFounder(trait, look) })
     }
 
     private fun begin(s: GameState) {

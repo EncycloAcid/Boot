@@ -116,7 +116,7 @@ internal fun GameState.holdShow(booth: Booth?) {
     val look = showcase()
     val press = mutableListOf<String>()
     var appeal = look.appeal
-    var hype = if (p != null) booth.hype * (0.4 + appeal) * p.revealBoost else 0.0
+    var hype = if (p != null) booth.hype * (0.4 + appeal) * p.revealBoost * (if (founderIs(FounderTrait.SHOWRUNNER)) 1.3 else 1.0) else 0.0
     var crashed = false
     if (p != null) {
         when {

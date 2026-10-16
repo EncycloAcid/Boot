@@ -109,6 +109,12 @@ private fun EmployeeDetails(state: GameState, e: Employee) {
 @Composable
 private fun FounderDetails(state: GameState) {
     val colors = gameColors
+    state.founder.trait?.let { t ->
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill(t.title, colors.milestone)
+            Text(t.detail.substringAfter(": ").replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
     Text(
         if (state.founder.freelancing) "Freelancing on the side to pay the rent." else "Running ${state.companyName}.",
         style = MaterialTheme.typography.bodyMedium,

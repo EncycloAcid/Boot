@@ -101,11 +101,14 @@ private class SceneModel(
     val wins: Int,
     /** Live games need servers. */
     val servers: Boolean = false,
+    /** The founder chose their own clothes. */
+    val dressed: Boolean = false,
 )
 
 private fun GameState.sceneModel(office: Office = this.office) = SceneModel(
     office, companyName, lanes.first(), perks, workers(this).take(office.shownDesks), games?.market?.wins ?: 0,
     servers = games?.releases?.any { it.live?.closed == false } == true,
+    dressed = founder.appearance != null,
 )
 
 private class Room(val w: Float, val d: Float, val h: Float, val cols: Int, val rows: Int, val seats: List<Seat>)
@@ -150,13 +153,13 @@ private fun roomFor(n: Int): Room {
 
 private fun workers(state: GameState): List<Worker> {
     val founderLane = state.lanes.maxByOrNull { state.founder.attentionShare(it, state.lanes) }
-    val founder = Worker(-1, founderLane, founder = true, look = lookFor(state.founder.name.hashCode() xor state.companyName.hashCode()))
+    val founder = Worker(-1, founderLane, founder = true, look = state.founderLook())
     return listOf(founder) +
         state.staff.sortedWith(compareBy({ it.lane?.ordinal ?: 99 }, { it.id })).map { Worker(it.id, it.lane, founder = false, look = lookFor(it.id)) }
 }
 
 /** The founder's look, for portraits. */
-internal fun GameState.founderLook(): Look = lookFor(founder.name.hashCode() xor companyName.hashCode())
+internal fun GameState.founderLook(): Look = founder.appearance?.let(::lookOf) ?: lookFor(founder.name.hashCode() xor companyName.hashCode())
 
 private fun fit(room: Room, w: Float, fullHeight: Float, top: Float = 0f): Iso {
     val h = fullHeight - top
@@ -330,7 +333,7 @@ private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolea
             val worker = model.people.getOrNull(i)
             val shirt = when {
                 worker == null -> Color.Transparent
-                worker.founder -> primary
+                worker.founder -> if (model.dressed) worker.look.top.let { if (night) it.shade(0.8f) else it } else primary
                 else -> worker.look.top.let { if (night) it.shade(0.8f) else it }
             }
             val badge = worker?.takeIf { !it.founder }?.let { w -> w.lane?.let { colors.lane(it) } ?: Color(0xFF9AA0A6) }
