@@ -146,6 +146,9 @@ class LayoutModesTest {
             store.todayOpen = false
         }
         compose.waitForIdle()
+        // Today opens by itself for a new company; the menu sits behind it.
+        compose.runOnIdle { store.todayOpen = false }
+        compose.waitForIdle()
         compose.onNodeWithContentDescription("Menu", substring = true).performClick()
         compose.onNodeWithText("Sound and music").performClick()
         compose.waitForIdle()
@@ -218,6 +221,38 @@ class LayoutModesTest {
         compose.onNodeWithText("Skip it").performClick()
         compose.waitForIdle()
         assertTrue(!store.state!!.needsDecision)
+    }
+
+    @Test
+    @Config(qualifiers = "w852dp-h393dp-land-xxhdpi")
+    fun tappingSomeoneShowsTheirCard() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Pixel Forge", "Sam Rivera", Lane.GAMES, seed = 9)
+            store.perform {
+                com.boot.core.Sandbox.setCash(this, 400_000.0)
+                repeat(2) { candidates.firstOrNull()?.let { c -> hire(c.id, Lane.GAMES) } }
+            }
+        }
+        compose.waitForIdle()
+        compose.runOnIdle { store.todayOpen = false }
+        compose.waitForIdle()
+        val hire = store.state!!.staff.first()
+        compose.onNodeWithContentDescription(hire.name).performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        compose.onNodeWithText("Level ${hire.level} ${hire.role.title.lowercase()}").assertExistsCompat()
+        compose.onNodeWithText("Morale").assertExistsCompat()
+        save("99h-sideways-person", top = true)
+        compose.onNodeWithText("Manage in Team").performClick()
+        compose.waitForIdle()
+        assertEquals(Tab.TEAM, store.tab)
+        // The founder has a card too.
+        compose.runOnIdle { store.tab = Tab.OFFICE }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("Sam Rivera").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitForIdle()
+        compose.onNodeWithText("Founder · that's you").assertExistsCompat()
+        save("99i-sideways-founder", top = true)
     }
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertExistsCompat() = fetchSemanticsNode()

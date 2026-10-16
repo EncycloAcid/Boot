@@ -217,6 +217,8 @@ private fun GameScreen(store: GameStore, state: GameState) {
                 store.playing,
                 Modifier.fillMaxSize(),
                 insetTop = insetTop,
+                people = true,
+                onManage = { store.tab = Tab.TEAM },
             )
             DeskChip(
                 state = state,

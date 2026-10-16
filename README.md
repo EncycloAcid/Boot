@@ -6,6 +6,8 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**3.8.2:** tap anyone in the office to see their card beside them: level, role, trait, what they're working on, design, tech and research, morale and experience, pay, and a button to manage them in Team (tap yourself for how your attention is split). Sideways, the game now goes full screen, hiding the phone's status and navigation bars (swipe from an edge to see them), and an open window gets the full height of the screen: the corner cards step aside, and the window's title bar carries the date and your cash. The bottom bar now runs the full width of the screen, with the tabs spaced evenly and the clock at the right.
+
 **3.8.1:** sideways, decisions pop up in a wider sheet with each choice as a card (three to a row, or two rows of two), with room to read them; and tapping the office no longer jumps to the Team tab (the desk count in the corner still does).
 
 **New in 3.8 (Android):** the show season. The year is full of stages now, each named for its time:

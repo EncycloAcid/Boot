@@ -9,12 +9,14 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -40,7 +43,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -50,6 +59,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.Office
@@ -167,12 +178,26 @@ private fun Iso.head(seat: Seat): Offset {
     return Offset(hip.x, hip.y - 0.77f * zpx)
 }
 
+/**
+ * The office. With [people] on, tapping someone pops up their card beside them ([onManage] opens
+ * the Team tab from it); taps anywhere else go to [onTap].
+ */
 @Composable
-fun OfficeScene(state: GameState, playing: Boolean, modifier: Modifier = Modifier, insetTop: Dp = 0.dp) {
+fun OfficeScene(
+    state: GameState,
+    playing: Boolean,
+    modifier: Modifier = Modifier,
+    insetTop: Dp = 0.dp,
+    people: Boolean = false,
+    onManage: (() -> Unit)? = null,
+    onTap: (() -> Unit)? = null,
+) {
     val colors = gameColors
     val model = state.sceneModel()
     val bubbles = remember { mutableStateListOf<Bubble>() }
     var seenWeek by remember { mutableIntStateOf(state.week) }
+    // The seat whose person's card is open.
+    var picked by remember { mutableStateOf<Int?>(null) }
     val density = LocalDensity.current
     BoxWithConstraints(modifier) {
         val room = remember(model.office) { roomFor(model.office.shownDesks) }
@@ -186,11 +211,86 @@ fun OfficeScene(state: GameState, playing: Boolean, modifier: Modifier = Modifie
             }
             seenWeek = state.week
         }
-        SceneCanvas(model, room, iso, playing)
+        // Someone who's left or been let go has no card to show.
+        val pickedSeat = picked?.takeIf { it < model.people.size }
+        val taps = if (people || onTap != null) {
+            Modifier.pointerInput(iso, model.people.size) {
+                detectTapGestures { at ->
+                    val seat = if (people) personAt(iso, room, model.people.size, at) else null
+                    if (seat != null) picked = seat else onTap?.invoke()
+                }
+            }
+        } else {
+            Modifier
+        }
+        Box(Modifier.fillMaxSize().then(taps)) { SceneCanvas(model, room, iso, playing, pickedSeat) }
+        if (people) {
+            // Everyone in the room, for screen readers: their name, and a tap opens their card.
+            model.people.take(room.seats.size).forEachIndexed { i, w ->
+                val head = iso.head(room.seats[i])
+                val name = if (w.founder) state.founder.name else state.staff.firstOrNull { it.id == w.key }?.name ?: return@forEachIndexed
+                val size = with(density) { (iso.t * 0.8f).toDp() }
+                Box(
+                    Modifier
+                        .offset { IntOffset((head.x - iso.t * 0.4f).toInt(), (head.y - iso.t * 0.2f).toInt()) }
+                        .size(size)
+                        .semantics {
+                            contentDescription = name
+                            role = Role.Button
+                            onClick(label = "Show $name") {
+                                picked = i
+                                true
+                            }
+                        },
+                )
+            }
+        }
         for (b in bubbles.toList()) {
             key(b.id) { FloatingBubble(b) { bubbles.remove(b) } }
         }
+        if (pickedSeat != null) {
+            val worker = model.people[pickedSeat]
+            val head = iso.head(room.seats[pickedSeat])
+            val cardWidth = with(density) { PersonCardWidth.toPx() }
+            val gap = with(density) { 36.dp.toPx() }
+            val estimate = with(density) { 300.dp.toPx() }
+            // Beside the person, on whichever side has room, and kept on screen.
+            val x = if (head.x + gap + cardWidth < constraints.maxWidth) head.x + gap else head.x - gap - cardWidth
+            val y = (head.y - with(density) { 70.dp.toPx() }).coerceIn(top, maxOf(top, constraints.maxHeight - estimate))
+            Popup(
+                offset = IntOffset(x.coerceAtLeast(0f).toInt(), y.toInt()),
+                onDismissRequest = { picked = null },
+                properties = PopupProperties(focusable = true),
+            ) {
+                Scaled {
+                    PersonCard(
+                        state, worker.key,
+                        onManage = onManage?.let { manage -> { picked = null; manage() } },
+                        onClose = { picked = null },
+                    )
+                }
+            }
+        }
     }
+}
+
+/** The seat of the person at [at], if a tap landed on someone: their head or their body. */
+private fun personAt(iso: Iso, room: Room, people: Int, at: Offset): Int? {
+    var best: Int? = null
+    var bestDistance = Float.MAX_VALUE
+    for (i in 0 until min(people, room.seats.size)) {
+        val head = iso.head(room.seats[i])
+        // An ellipse from just above the head down to the seat.
+        val centre = Offset(head.x, head.y + 0.35f * iso.zpx)
+        val dx = (at.x - centre.x) / (0.42f * iso.t)
+        val dy = (at.y - centre.y) / (0.62f * iso.zpx)
+        val d = dx * dx + dy * dy
+        if (d <= 1f && d < bestDistance) {
+            best = i
+            bestDistance = d
+        }
+    }
+    return best
 }
 
 /** A still of an office you could move to, with today's team in it. */
@@ -209,7 +309,7 @@ fun OfficePreview(state: GameState, office: Office, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolean) {
+private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolean, picked: Int? = null) {
     val night = isSystemInDarkTheme()
     val colors = gameColors
     val primary = MaterialTheme.colorScheme.primary
@@ -239,6 +339,21 @@ private fun SceneCanvas(model: SceneModel, room: Room, iso: Iso, playing: Boolea
         props.sortBy { it.depth }
         for (prop in props) prop.draw(this)
         if (night) drawNightGlow(iso, room, model.people)
+        // A marker over the person whose card is open.
+        picked?.let { i ->
+            val head = iso.head(room.seats[i])
+            val tip = Offset(head.x, head.y - 0.42f * iso.zpx)
+            val r = iso.t * 0.14f
+            val marker = Path().apply {
+                moveTo(tip.x, tip.y)
+                lineTo(tip.x - r, tip.y - r * 1.4f)
+                lineTo(tip.x + r, tip.y - r * 1.4f)
+                close()
+            }
+            drawCircle(Color.White, r * 0.95f, Offset(tip.x, tip.y - r * 1.75f))
+            drawCircle(primary, r * 0.75f, Offset(tip.x, tip.y - r * 1.75f))
+            drawPath(marker, primary)
+        }
     }
 }
 

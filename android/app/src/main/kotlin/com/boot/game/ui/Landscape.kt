@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
@@ -55,7 +54,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,8 +63,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -146,18 +142,19 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
 
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         BoxWithConstraints(Modifier.fillMaxSize().background(colors.grouped)) {
-            val windowWidth = (maxWidth * 0.76f).coerceIn(440.dp, 760.dp)
-            // Windows start just under the corner readouts, however tall big text makes them.
-            var cornerHeight by remember { mutableIntStateOf(0) }
-            val windowTop = with(LocalDensity.current) { cornerHeight.toDp() } + 22.dp
-            // The office, edge to edge, under everything. It's for looking at: taps on it do nothing,
-            // so a stray touch never yanks you into another screen. The desk chip opens Team.
-            OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 48.dp)
+            // An open window gets the whole height between the top of the screen and the dock: the
+            // corner cards step aside for it, and its title bar carries the cash and the date.
+            val windowWidth = (maxWidth * 0.82f).coerceIn(460.dp, 820.dp)
+            // The office, edge to edge, under everything. Tap someone to see their card; taps
+            // anywhere else do nothing, so a stray touch never yanks you into another screen.
+            OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 48.dp, people = true, onManage = { store.tab = Tab.TEAM })
 
             val safe = WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout)
             // Bottom left, above the dock: the desks.
-            Box(Modifier.fillMaxSize().windowInsetsPadding(safe).padding(horizontal = 16.dp, vertical = 12.dp)) {
-                DeskChip(state, Modifier.align(Alignment.BottomStart).padding(bottom = DockClearance)) { store.tab = Tab.TEAM }
+            if (!windowOpen) {
+                Box(Modifier.fillMaxSize().windowInsetsPadding(safe).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    DeskChip(state, Modifier.align(Alignment.BottomStart).padding(bottom = DockClearance)) { store.tab = Tab.TEAM }
+                }
             }
 
             // A window in the middle, with the office dimmed behind it. Tap outside to close.
@@ -176,42 +173,43 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .windowInsetsPadding(safe)
-                    .padding(top = windowTop, bottom = DockClearance),
+                    .padding(top = 12.dp, bottom = DockClearance),
             ) {
                 CenterWindow(store, state, Modifier.width(windowWidth).fillMaxHeight())
             }
 
-            // One row along the top, above any window so it stays in reach: who and when on the
-            // left, the game in development (or what's waiting in Today) in the middle, research
-            // and money on the right.
-            val measure = Modifier.onSizeChanged { cornerHeight = maxOf(cornerHeight, it.height) }
-            Row(Modifier.fillMaxWidth().windowInsetsPadding(safe).padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalAlignment = Alignment.Top) {
-                Identity(store, state, measure, onAbandon = { confirmAbandon = true })
-                Box(Modifier.weight(1f).padding(horizontal = 12.dp), contentAlignment = Alignment.TopCenter) {
-                    if (project != null) {
-                        Column(
-                            Modifier.widthIn(max = 400.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Box(measure) { ProjectStrip(store, state, project, team) }
-                            // The points the team is making, under the game, the way Game Dev Tycoon
-                            // shows them. A window would cover them, so they step aside for one.
-                            if (!windowOpen) {
-                                Floating {
-                                    Row(Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
-                                        BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
-                                        BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
+            // One row along the top: who and when on the left, the game in development (or what's
+            // waiting in Today) in the middle, research and money on the right. It steps aside for
+            // an open window.
+            AnimatedVisibility(visible = !windowOpen, enter = fadeIn(), exit = fadeOut()) {
+                Row(Modifier.fillMaxWidth().windowInsetsPadding(safe).padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalAlignment = Alignment.Top) {
+                    Identity(store, state, Modifier, onAbandon = { confirmAbandon = true })
+                    Box(Modifier.weight(1f).padding(horizontal = 12.dp), contentAlignment = Alignment.TopCenter) {
+                        if (project != null) {
+                            Column(
+                                Modifier.widthIn(max = 400.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                ProjectStrip(store, state, project, team)
+                                // The points the team is making, under the game, the way Game Dev Tycoon
+                                // shows them. A window would cover them, so they step aside for one.
+                                if (!windowOpen) {
+                                    Floating {
+                                        Row(Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                            BarStat(HudGlyph.DESIGN, Color(0xFFF08A24), "${project.design.toInt()}", "Design points") { store.openStudio(StudioPage.MAKE) }
+                                            BarStat(HudGlyph.TECH, Color(0xFFE8B923), "${project.tech.toInt()}", "Tech points") { store.openStudio(StudioPage.MAKE) }
+                                            BarStat(HudGlyph.BUGS, colors.bad, "${project.bugs.toInt()}", "Bugs") { store.openStudio(StudioPage.MAKE) }
+                                        }
                                     }
                                 }
                             }
+                        } else if (!windowOpen) {
+                            Box(Modifier.widthIn(max = 400.dp)) { TodayPrompt(store, state) }
                         }
-                    } else if (!windowOpen) {
-                        Box(Modifier.widthIn(max = 400.dp)) { TodayPrompt(store, state) }
                     }
+                    Readouts(store, state, Modifier)
                 }
-                Readouts(store, state, measure)
             }
 
             // The dock: tabs and the clock, always on top.
@@ -353,31 +351,35 @@ private fun Readouts(store: GameStore, state: GameState, modifier: Modifier) {
 private fun Dock(store: GameStore, state: GameState) {
     val colors = gameColors
     val unread = state.news.count { it.id > store.newsSeen }
-    Floating {
-        Column(Modifier.width(IntrinsicSize.Max)) {
+    // Across the whole width of the screen, the way a game's bottom bar sits: the tabs share the
+    // room evenly and the clock keeps to the right-hand end.
+    Floating(Modifier.fillMaxWidth().widthIn(max = 1_200.dp)) {
+        Column(Modifier.fillMaxWidth()) {
             WeekProgress(store, state)
-            Row(Modifier.padding(horizontal = 6.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                for (t in dockTabs) {
-                    val selected = if (t.tab == Tab.OFFICE) store.tab == Tab.OFFICE && store.todayOpen else store.tab == t.tab
-                    DockItem(if (t.tab == Tab.OFFICE) "Today" else t.label, selected, { HudIcon(t.glyph, it, 18.dp) }) {
-                        if (t.tab == Tab.OFFICE) {
-                            // The office is always on screen; this opens the Today briefing over it.
-                            store.todayOpen = !(store.tab == Tab.OFFICE && store.todayOpen)
-                            store.tab = Tab.OFFICE
-                        } else {
-                            store.todayOpen = false
-                            store.tab = if (store.tab == t.tab) Tab.OFFICE else t.tab
+            Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    for (t in dockTabs) {
+                        val selected = if (t.tab == Tab.OFFICE) store.tab == Tab.OFFICE && store.todayOpen else store.tab == t.tab
+                        DockItem(if (t.tab == Tab.OFFICE) "Today" else t.label, selected, { HudIcon(t.glyph, it, 18.dp) }, Modifier.weight(1f)) {
+                            if (t.tab == Tab.OFFICE) {
+                                // The office is always on screen; this opens the Today briefing over it.
+                                store.todayOpen = !(store.tab == Tab.OFFICE && store.todayOpen)
+                                store.tab = Tab.OFFICE
+                            } else {
+                                store.todayOpen = false
+                                store.tab = if (store.tab == t.tab) Tab.OFFICE else t.tab
+                            }
                         }
                     }
+                    DockItem("News", store.tab == Tab.NEWS, { tint ->
+                        BadgedBox(badge = { if (unread > 0) Badge() }) { Icon(Icons.Filled.Newspaper, null, tint = tint, modifier = Modifier.size(18.dp)) }
+                    }, Modifier.weight(1f)) {
+                        store.todayOpen = false
+                        store.tab = if (store.tab == Tab.NEWS) Tab.OFFICE else Tab.NEWS
+                    }
                 }
-                DockItem("News", store.tab == Tab.NEWS, { tint ->
-                    BadgedBox(badge = { if (unread > 0) Badge() }) { Icon(Icons.Filled.Newspaper, null, tint = tint, modifier = Modifier.size(18.dp)) }
-                }) {
-                    store.todayOpen = false
-                    store.tab = if (store.tab == Tab.NEWS) Tab.OFFICE else Tab.NEWS
-                }
-                Box(Modifier.padding(horizontal = 6.dp).width(1.dp).height(28.dp).background(colors.separator))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.padding(horizontal = 14.dp).width(1.dp).height(28.dp).background(colors.separator))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     TinyChip(store.speed.label, description = "Speed ${store.speed.label}") {
                         store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
                     }
@@ -395,25 +397,28 @@ private fun Dock(store: GameStore, state: GameState) {
 }
 
 @Composable
-private fun DockItem(label: String, selected: Boolean, icon: @Composable (Color) -> Unit, onClick: () -> Unit) {
+private fun DockItem(label: String, selected: Boolean, icon: @Composable (Color) -> Unit, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val sound = LocalSound.current
     val tint = if (selected) scheme.primary else scheme.onSurfaceVariant
-    Column(
-        Modifier
-            .widthIn(min = 64.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) scheme.primaryContainer else Color.Transparent)
-            .selectable(selected = selected, onClick = { sound.play(Sfx.CLICK); onClick() }, role = Role.Tab)
-            .padding(horizontal = 8.dp, vertical = 5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(1.dp),
-    ) {
-        icon(tint)
-        Text(
-            label, style = MaterialTheme.typography.labelSmall, color = tint, maxLines = 1,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-        )
+    // Each tab gets an even share of the bar; the highlight stays a pill in the middle of it.
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Column(
+            Modifier
+                .widthIn(min = 64.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (selected) scheme.primaryContainer else Color.Transparent)
+                .selectable(selected = selected, onClick = { sound.play(Sfx.CLICK); onClick() }, role = Role.Tab)
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
+            icon(tint)
+            Text(
+                label, style = MaterialTheme.typography.labelSmall, color = tint, maxLines = 1,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            )
+        }
     }
 }
 
@@ -533,6 +538,16 @@ private fun CenterWindow(store: GameStore, state: GameState, modifier: Modifier)
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            // The corner cards are hidden behind a window, so the money and the date ride along here.
+            Text(
+                state.dateLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                modifier = Modifier.padding(end = 12.dp),
+            )
+            Text(
+                Format.money(state.cash), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                color = if (state.cash < 0) colors.bad else colors.good,
+                modifier = Modifier.padding(end = 4.dp),
+            )
             IconButton(onClick = { if (today) store.todayOpen = false else store.tab = Tab.OFFICE }, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Filled.Close, contentDescription = "Close", modifier = Modifier.size(20.dp))
             }

@@ -139,10 +139,13 @@ private fun OfficeCard(store: GameStore, state: GameState) {
                 Modifier
                     .fillMaxWidth()
                     .height(290.dp)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .clickable { store.tab = Tab.TEAM },
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
             ) {
-                OfficeScene(state, store.playing, Modifier.fillMaxSize(), insetTop = 40.dp)
+                // Tap someone for their card; tap the room itself for the Team tab.
+                OfficeScene(
+                    state, store.playing, Modifier.fillMaxSize(), insetTop = 40.dp,
+                    people = true, onManage = { store.tab = Tab.TEAM }, onTap = { store.tab = Tab.TEAM },
+                )
                 Row(
                     Modifier.fillMaxWidth().padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
