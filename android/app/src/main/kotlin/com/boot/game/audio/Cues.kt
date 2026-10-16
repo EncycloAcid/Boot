@@ -2,6 +2,7 @@ package com.boot.game.audio
 
 import com.boot.core.EndingKind
 import com.boot.core.GameState
+import com.boot.core.ShowResults
 import kotlin.math.abs
 
 /**
@@ -17,6 +18,9 @@ fun cueFor(before: GameState, after: GameState, ticking: Boolean): Sfx? {
     val released = (after.games?.releases?.size ?: 0) > (before.games?.releases?.size ?: 0)
     if (released) return Sfx.LAUNCH
     if (after.world.era != before.world.era) return Sfx.ERA
+    // The crowd goes wild for Best in Show.
+    val show = after.events.firstNotNullOfOrNull { (it.kind as? ShowResults)?.report }
+    if (show?.bestInShow == true && before.events.none { it.kind is ShowResults }) return Sfx.HIT
     if (after.office.ordinal > before.office.ordinal) return Sfx.LEVEL_UP
     if (after.achievements.size > before.achievements.size || after.goalsDone.size > before.goalsDone.size) return Sfx.ACHIEVEMENT
     if (after.needsDecision && !before.needsDecision) return Sfx.ALERT

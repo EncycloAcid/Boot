@@ -17,6 +17,7 @@ enum class Achievement(val title: String, val detail: String, val tier: Tier, in
     BLOCKBUSTER("Blockbuster", "Ship an AAA game.", Tier.SILVER, { games?.releases?.any { it.concept.size == GameSize.AAA } == true }),
     NUMBER_ONE("Number One", "Top the weekly sales chart.", Tier.SILVER, { stats.chartToppers > 0 }),
     GOTY("Game of the Year", "Win Game of the Year.", Tier.GOLD, { (games?.market?.wins ?: 0) >= 1 }),
+    BEST_IN_SHOW("Best in Show", "Win Best in Show at the year's big games show.", Tier.SILVER, { stats.bestInShow > 0 }),
     DYNASTY("Dynasty", "Win Game of the Year three times.", Tier.PLATINUM, { (games?.market?.wins ?: 0) >= 3 }),
     PLATINUM_SALES("Platinum Seller", "Sell a million copies of one game.", Tier.SILVER, { games?.releases?.any { it.unitsSold >= 1e6 } == true }),
     DIAMOND_SALES("Diamond Seller", "Sell ten million copies of one game.", Tier.GOLD, { games?.releases?.any { it.unitsSold >= 1e7 } == true }),

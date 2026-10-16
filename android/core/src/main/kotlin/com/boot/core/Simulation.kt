@@ -242,7 +242,7 @@ private fun GameState.studioWeek() {
         if (next.title != t?.title) addLog("Trend: gamers can't get enough of ${next.title.lowercase()} games.", LogTone.NEUTRAL, Lane.GAMES)
         g.trend = next
     }
-    if (GameClock.weekOfYear(week) == 26) enqueue(EventKind.Convention)
+    if (GameClock.weekOfYear(week) == SHOW_WEEK) enqueue(EventKind.Convention)
     marketWeek()
     subsidiaryWeek()
     publishingWeek()

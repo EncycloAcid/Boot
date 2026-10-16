@@ -113,11 +113,19 @@ class Autopilot(
             is EventKind.Celebrity -> if ((s.social?.toxicity ?: 0.0) < 0.3) 0 else 1
             EventKind.OpenSource -> 0
             EventKind.Offsite -> if (s.runwayWeeks > 26) 0 else 1
-            EventKind.Convention -> when {
-                s.games?.project != null && s.cash > 2_000_000 -> 1
-                s.cash > 200_000 -> 0
-                else -> e.choices.lastIndex
+            EventKind.Convention -> {
+                // Go big with a promising game and money to spare; otherwise a stand that fits the budget.
+                val open = s.boothsOpen()
+                val promising = s.games?.project != null && s.showcase().appeal >= 0.7
+                val pick = when {
+                    promising && Booth.LARGE in open && s.cash > s.boothCost(Booth.LARGE) * 4 -> Booth.LARGE
+                    s.games?.project != null && s.cash > s.boothCost(Booth.MEDIUM) * 3 -> Booth.MEDIUM
+                    s.cash > s.boothCost(Booth.SMALL) * 4 -> Booth.SMALL
+                    else -> null
+                }
+                pick?.let { open.indexOf(it) } ?: e.choices.lastIndex
             }
+            is ShowResults -> 0
         }
         attempt { s.choose(choice) }
     }

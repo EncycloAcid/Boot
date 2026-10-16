@@ -45,6 +45,7 @@ import com.boot.core.GameProject
 import com.boot.core.GameSeason
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.nextShow
 import com.boot.core.Research
 import com.boot.core.buyCampaign
 import com.boot.core.expansionBlocker
@@ -334,7 +335,12 @@ private fun StudioNow(store: GameStore, state: GameState) {
     val p = g.project
     val c = g.contract
     val x = g.expansion
-    GroupedSection("Game studio", action = { PlainButton("Studio", { store.openStudio(StudioPage.MAKE) }) }) {
+    // The year's big show, counted down for the last couple of months so there's time to plan for it.
+    val show = state.nextShow()?.takeIf { it.weeks in 1..8 }?.let {
+        "${it.name} opens in ${Format.weeks(it.weeks)}. " +
+            (p?.let { game -> "A booth there would build hype for ${game.title}." } ?: "Have something in development to show off.")
+    }
+    GroupedSection("Game studio", footer = show, action = { PlainButton("Studio", { store.openStudio(StudioPage.MAKE) }) }) {
         g.project2?.let { p2 -> ProjectCard(store, state, p2, team = 2) }
         if (g.project2 != null && (p != null || c != null || x != null)) RowDivider()
         when {

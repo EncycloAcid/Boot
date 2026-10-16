@@ -304,6 +304,26 @@ Decisions now come in two kinds. Crises, people and rivals' moves stop the clock
 
 The ending screen tells the story of your run: where you started, what forced the Pivot Point and what you chose, the lanes you added, the crossovers you built, your record of hits, flops, recalls and scandals, the scars people still remember, how much you raised and kept, and the eras you lived through.
 
+## The trade show
+
+Week 26 of every year brings the big games show, named for its era: the Consumer Electronics Show before 1995, E3 until 2020, Summer Game Fest after. It's a decision for any studio with a game lane.
+
+| Booth | Cost today | Crowd | Hype | Fans | Needs |
+|---|---|---|---|---|---|
+| Small | $15k | 1× | 8 | 2% | Nothing |
+| Medium | $90k | 3× | 18 | 4.5% | Nothing |
+| Large | $400k | 8× | 32 | 8% | 50k fans |
+
+Costs follow the same past-price scaling as everything else, so an 1985 medium booth costs about $12k. What the crowd makes of the booth (its appeal, about 0.1 to 1.5) comes from the game's launch forecast, scaled down for a game less than half done, with 15% more for being on trend and 20% more for the sequel to an 8+ hit. Hype gained is the booth's hype × (0.4 + appeal), capped at 100 on the project; new fans are the booth's share of your fanbase × (0.5 + appeal), at least 400 per crowd unit. Visitors are 6,000 per crowd unit × (0.4 + appeal), give or take.
+
+- **Too early.** A game under 25% complete on a medium or large booth gets half the hype and a "too early to judge" write-up.
+- **Crashed demo.** A buggy build (bugs over a quarter of its design and tech) on the main stage crashes 40% of the time: 30% of the hype, a reputation knock, and no award.
+- **Best in Show.** A game forecast at 8 or more with appeal of 0.85 or more wins 60% of the time from a large booth and 25% from a medium one: 15 more hype, 25% more fans, +3 reputation, and the Best in Show achievement.
+- **Back catalogue.** With nothing in development the booth shows your old games: no hype, 60% of the fans, appeal from your best game of the last two years.
+- Medium and large booths lift the team's morale a little; a large booth that doesn't crash adds 1 reputation.
+
+A report follows straight away with the visitors, hype and new fans, and Today's Game studio card counts the show down from eight weeks out. Hype decays 1% a week, so a show is worth most a few months before launch. The autopilot books a large booth with a promising game and four times its cost in the bank, a medium one with any game and three times the cost, and a small one otherwise when it can afford four.
+
 ## Sound and music
 
 There are no audio files. A small synthesiser in the Android app (`audio/Synth.kt`) draws everything from oscillators: anti-aliased square and saw waves, triangle, sine, two-operator FM and noise, with envelopes, a one-pole filter, synthesised drums, and echoes that wrap round so a loop has no seam.

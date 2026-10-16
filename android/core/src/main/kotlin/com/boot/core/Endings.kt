@@ -68,6 +68,10 @@ class Stats {
     var rivalMoves = 0
     var rivalsBeaten = 0
 
+    /** Booths taken at the year's big games show, and Best in Show awards won there. */
+    var tradeShows = 0
+    var bestInShow = 0
+
     /** Companies taken over on the stock market. */
     var takeovers = 0
     var counterMoves = 0

@@ -383,22 +383,8 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
             Lane.GAMES,
         )
     }
-    EventKind.Convention -> {
-        val project = games?.project
-        val about = project?.let { "Show off ${it.title} and build hype before launch." } ?: "You've nothing in development, but fans still want to meet you."
-        val keynote = (games?.fans ?: 0.0) >= 100_000
-        Description(
-            "${gamesShowIn(calendarYear).replaceFirstChar { it.uppercase() }} is next week",
-            "The biggest games showcase of the year. $about",
-            listOfNotNull(
-                choice("Small booth", "${money(15_000.0)}. A little hype, a few new fans."),
-                choice("Big booth", "${money(120_000.0)}. Real hype, lots of new fans."),
-                if (keynote) choice("Keynote stage", "${money(600_000.0)}. Everyone's watching.") else null,
-                choice("Skip it", "Save the money."),
-            ),
-            Lane.GAMES,
-        )
-    }
+    EventKind.Convention -> describeShow()
+    is ShowResults -> describeShowResults(kind.report)
     EventKind.EcosystemAntitrust -> Description(
         "Antitrust regulators circle your ecosystem",
         "Hardware, software and services under one roof looks a lot like a monopoly to some people.",
@@ -746,24 +732,10 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
             announceWinner(g, awardNominees(), attended)
         }
 
-        EventKind.Convention -> {
-            val g = games ?: return
-            val keynote = g.fans >= 100_000
-            val options = listOfNotNull(Triple(15_000.0, 8.0, 0.02), Triple(120_000.0, 20.0, 0.05), if (keynote) Triple(600_000.0, 35.0, 0.1) else null)
-            val pick = options.getOrNull(choice) ?: run {
-                addLog("You skipped Summer Game Fest this year.", LogTone.NEUTRAL, Lane.GAMES)
-                return
-            }
-            val (cost, hype, fanGain) = pick
-            spend(cost, Lane.GAMES)
-            g.project?.let { it.hype = minOf(100.0, it.hype + hype) }
-            g.fans += max(500.0, g.fans * fanGain)
-            if (choice == 2) reputation.adjust(2.0)
-            addLog(
-                "Summer Game Fest went well. " + (g.project?.let { "Hype for ${it.title} is up. " } ?: "") + "New fans signed up.",
-                LogTone.GOOD, Lane.GAMES,
-            )
-        }
+        EventKind.Convention -> holdShow(boothsOpen().getOrNull(choice))
+
+        // Just a report to read.
+        is ShowResults -> Unit
 
         EventKind.EcosystemAntitrust -> {
             stats.hearings += 1

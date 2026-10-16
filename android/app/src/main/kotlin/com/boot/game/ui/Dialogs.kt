@@ -1,6 +1,5 @@
 package com.boot.game.ui
 
-import com.boot.core.ranked
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -11,13 +10,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -70,14 +69,18 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.PivotMode
 import com.boot.core.PivotTrigger
+import com.boot.core.ShowReport
+import com.boot.core.ShowResults
 import com.boot.core.acceptPivotBuyout
 import com.boot.core.choose
+import com.boot.core.keepPlaying
 import com.boot.core.pivotBlocker
 import com.boot.core.pivotChoices
-import com.boot.core.keepPlaying
+import com.boot.core.ranked
 import com.boot.core.resolvePivot
 import com.boot.core.stayFocused
 import com.boot.game.GameStore
+import kotlin.math.roundToInt
 
 private val fullScreen = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false, usePlatformDefaultWidth = false)
 
@@ -121,6 +124,7 @@ fun EventSheet(store: GameStore, state: GameState) {
                     }
                     Text(e.title, style = if (compact) MaterialTheme.typography.headlineSmallEmphasized else MaterialTheme.typography.headlineMediumEmphasized)
                     Text(e.body, style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge)
+                    (e.kind as? ShowResults)?.report?.let { ShowFigures(it) }
                     Spacer(Modifier.size(4.dp))
                     if (compact) {
                         // Sideways, every choice fits side by side, so they can be weighed at a glance.
@@ -134,6 +138,22 @@ fun EventSheet(store: GameStore, state: GameState) {
                     }
                 }
             }
+        }
+    }
+}
+
+/** The trade show in numbers. */
+@Composable
+private fun ShowFigures(r: ShowReport) {
+    val colors = gameColors
+    GroupedSection(null) {
+        Row(
+            Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            StatTile("Visitors", Format.count(r.visitors.toDouble()), Modifier.weight(1f), r.booth.title.lowercase())
+            if (r.game != null) StatTile("Hype", "+${r.hype.roundToInt()}", Modifier.weight(1f), r.game, colors.milestone)
+            StatTile("New fans", Format.count(r.fans), Modifier.weight(1f), if (r.bestInShow) "Best in Show" else null, colors.good)
         }
     }
 }

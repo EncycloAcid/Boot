@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import com.boot.core.Lane
 import com.boot.core.advance
 import com.boot.core.hire
+import com.boot.core.boothCost
 import com.boot.core.startGame
 import com.boot.game.ui.BootApp
 import com.boot.game.ui.BootTheme
@@ -162,6 +163,35 @@ class LayoutModesTest {
         val again = GameStore(RuntimeEnvironment.getApplication())
         assertEquals(0f, again.sound.musicVolume)
         assertEquals(0.5f, again.sound.effectsVolume, 0.01f)
+    }
+
+    @Test
+    @Config(qualifiers = "w852dp-h393dp-land-xxhdpi")
+    fun theTradeShow() {
+        launch()
+        compose.runOnIdle {
+            store.newGame("Pixel Forge", "You", Lane.GAMES, seed = 9)
+            store.perform {
+                com.boot.core.Sandbox.setCash(this, 400_000.0)
+                repeat(2) { candidates.firstOrNull()?.let { c -> hire(c.id, Lane.GAMES) } }
+                startGame(com.boot.core.GameConcept("Moss Knight", com.boot.core.Topic.FANTASY, com.boot.core.Genre.RPG, platforms = listOf(com.boot.core.Platform.PC), size = com.boot.core.GameSize.SMALL))
+                repeat(8) { advance() }
+                com.boot.core.Sandbox.enqueue(this, com.boot.core.EventKind.Convention)
+            }
+            store.todayOpen = false
+        }
+        save("99d-sideways-trade-show", top = true)
+        val cash = store.state!!.cash
+        compose.onNodeWithText("Medium booth").performClick()
+        compose.waitForIdle()
+        assertEquals(cash - store.state!!.boothCost(com.boot.core.Booth.MEDIUM), store.state!!.cash, 1.0)
+        val report = (store.state!!.events.first().kind as com.boot.core.ShowResults).report
+        assertEquals("Moss Knight", report.game)
+        compose.onNodeWithText("Visitors").assertExistsCompat()
+        save("99e-sideways-show-report", top = true)
+        compose.onNodeWithText("Back to work").performClick()
+        compose.waitForIdle()
+        assertTrue(!store.state!!.needsDecision)
     }
 
     private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertExistsCompat() = fetchSemanticsNode()
