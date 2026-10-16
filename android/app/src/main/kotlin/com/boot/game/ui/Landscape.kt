@@ -97,7 +97,7 @@ import java.util.Locale
  */
 
 /** Height of the bottom dock plus its margin, for windows to clear. */
-private val DockClearance = 58.dp
+private val DockClearance = 80.dp
 
 /** Everything in the game, held sideways. */
 @Composable
@@ -146,16 +146,16 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
 
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         BoxWithConstraints(Modifier.fillMaxSize().background(colors.grouped)) {
-            val windowWidth = (maxWidth * 0.8f).coerceIn(440.dp, 800.dp)
+            val windowWidth = (maxWidth * 0.76f).coerceIn(440.dp, 760.dp)
             // Windows start just under the corner readouts, however tall big text makes them.
             var cornerHeight by remember { mutableIntStateOf(0) }
-            val windowTop = with(LocalDensity.current) { cornerHeight.toDp() } + 16.dp
+            val windowTop = with(LocalDensity.current) { cornerHeight.toDp() } + 22.dp
             // The office, edge to edge, under everything.
             OfficeScene(state, store.playing, Modifier.fillMaxSize().clickable { store.tab = Tab.TEAM }, insetTop = 48.dp)
 
             val safe = WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.displayCutout)
             // Bottom left, above the dock: the desks.
-            Box(Modifier.fillMaxSize().windowInsetsPadding(safe).padding(8.dp)) {
+            Box(Modifier.fillMaxSize().windowInsetsPadding(safe).padding(horizontal = 16.dp, vertical = 12.dp)) {
                 DeskChip(state, Modifier.align(Alignment.BottomStart).padding(bottom = DockClearance)) { store.tab = Tab.TEAM }
             }
 
@@ -184,9 +184,9 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
             // left, the game in development (or what's waiting in Today) in the middle, research
             // and money on the right.
             val measure = Modifier.onSizeChanged { cornerHeight = maxOf(cornerHeight, it.height) }
-            Row(Modifier.fillMaxWidth().windowInsetsPadding(safe).padding(8.dp), verticalAlignment = Alignment.Top) {
+            Row(Modifier.fillMaxWidth().windowInsetsPadding(safe).padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalAlignment = Alignment.Top) {
                 Identity(store, state, measure, onAbandon = { confirmAbandon = true })
-                Box(Modifier.weight(1f).padding(horizontal = 8.dp), contentAlignment = Alignment.TopCenter) {
+                Box(Modifier.weight(1f).padding(horizontal = 12.dp), contentAlignment = Alignment.TopCenter) {
                     if (project != null) {
                         Column(
                             Modifier.widthIn(max = 400.dp),
@@ -218,7 +218,7 @@ internal fun LandscapeGameScreen(store: GameStore, state: GameState) {
                 Modifier
                     .align(Alignment.BottomCenter)
                     .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout))
-                    .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 SnackbarHost(snackbar)
@@ -262,7 +262,7 @@ private fun Identity(store: GameStore, state: GameState, modifier: Modifier, onA
     val unread = state.news.count { it.id > store.newsSeen }
     val attention = unread + state.inbox.size + if (state.tutorial != null) 1 else 0
     Floating(modifier.widthIn(max = 260.dp)) {
-        Row(Modifier.padding(start = 2.dp, end = 12.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box {
                 BadgedBox(badge = { if (attention > 0) Badge() }) {
                     Box(
@@ -315,7 +315,7 @@ private fun Readouts(store: GameStore, state: GameState, modifier: Modifier) {
     val colors = gameColors
     val weekly = state.trailingProfit(weeks = 4) / 4
     Floating(modifier) {
-        Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             BarStat(
                 HudGlyph.RESEARCH, colors.milestone, "${state.researchPoints.toInt()}",
                 "Research points, +${String.format(Locale.US, "%.1f", state.researchPerWeek)} a week",
@@ -355,7 +355,7 @@ private fun Dock(store: GameStore, state: GameState) {
     Floating {
         Column(Modifier.width(IntrinsicSize.Max)) {
             WeekProgress(store, state)
-            Row(Modifier.padding(horizontal = 4.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 6.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                 for (t in dockTabs) {
                     val selected = if (t.tab == Tab.OFFICE) store.tab == Tab.OFFICE && store.todayOpen else store.tab == t.tab
                     DockItem(if (t.tab == Tab.OFFICE) "Today" else t.label, selected, { HudIcon(t.glyph, it, 18.dp) }) {
@@ -400,11 +400,11 @@ private fun DockItem(label: String, selected: Boolean, icon: @Composable (Color)
     val tint = if (selected) scheme.primary else scheme.onSurfaceVariant
     Column(
         Modifier
-            .widthIn(min = 60.dp)
+            .widthIn(min = 64.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) scheme.primaryContainer else Color.Transparent)
             .selectable(selected = selected, onClick = { sound.play(Sfx.CLICK); onClick() }, role = Role.Tab)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
+            .padding(horizontal = 8.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(1.dp),
     ) {

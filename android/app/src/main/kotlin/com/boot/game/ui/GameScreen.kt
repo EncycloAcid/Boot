@@ -126,7 +126,7 @@ fun BootApp(store: GameStore) {
 }
 
 /** How much smaller the UI is drawn on a phone held sideways. */
-private const val CompactScale = 0.88f
+private const val CompactScale = 0.94f
 
 internal data class TabSpec(val tab: Tab, val label: String, val glyph: HudGlyph)
 
@@ -1240,7 +1240,7 @@ fun ScreenColumn(content: LazyListScope.() -> Unit) {
     }
     val compact = LocalCompact.current
     val side = when {
-        compact -> 10.dp
+        compact -> 14.dp
         inPanel -> 12.dp
         else -> 16.dp
     }
@@ -1249,7 +1249,7 @@ fun ScreenColumn(content: LazyListScope.() -> Unit) {
         contentPadding = PaddingValues(start = side, end = side, top = side, bottom = if (compact && inPanel) 12.dp else bottom),
         verticalArrangement = Arrangement.spacedBy(
             when {
-                compact -> 12.dp
+                compact -> 18.dp
                 inPanel -> 20.dp
                 else -> 28.dp
             },

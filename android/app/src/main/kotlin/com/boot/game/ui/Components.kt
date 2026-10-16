@@ -142,7 +142,7 @@ fun GroupedSection(
     Column(modifier.fillMaxWidth()) {
         if (header != null || action != null) {
             Row(
-                Modifier.heightIn(min = if (compact) 24.dp else 32.dp).padding(start = 4.dp, end = 0.dp, bottom = if (compact) 4.dp else 8.dp),
+                Modifier.heightIn(min = if (compact) 28.dp else 32.dp).padding(start = 4.dp, end = 0.dp, bottom = if (compact) 6.dp else 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -162,7 +162,7 @@ fun GroupedSection(
                 footer,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = if (compact) 4.dp else 8.dp),
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = if (compact) 6.dp else 8.dp),
             )
         }
     }
@@ -173,8 +173,8 @@ fun GroupedSection(
 fun CardBlock(spacing: Dp = 14.dp, content: @Composable ColumnScope.() -> Unit) {
     val compact = LocalCompact.current
     Column(
-        Modifier.fillMaxWidth().padding(if (compact) 12.dp else 20.dp),
-        verticalArrangement = Arrangement.spacedBy(if (compact) spacing * 0.6f else spacing),
+        Modifier.fillMaxWidth().padding(if (compact) 16.dp else 20.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) spacing * 0.8f else spacing),
         content = content,
     )
 }
@@ -182,7 +182,7 @@ fun CardBlock(spacing: Dp = 14.dp, content: @Composable ColumnScope.() -> Unit) 
 /** The hairline between rows, inset to the text. */
 @Composable
 fun RowDivider(inset: Dp = 20.dp) {
-    val edge = if (LocalCompact.current) 12.dp else 20.dp
+    val edge = if (LocalCompact.current) 16.dp else 20.dp
     HorizontalDivider(Modifier.padding(start = inset.coerceAtLeast(edge), end = edge), thickness = 1.dp, color = gameColors.separator)
 }
 
@@ -205,8 +205,8 @@ fun ListRow(
         Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .heightIn(min = if (compact) 44.dp else 56.dp)
-            .padding(horizontal = if (compact) 12.dp else 20.dp, vertical = if (compact) 6.dp else 12.dp),
+            .heightIn(min = if (compact) 50.dp else 56.dp)
+            .padding(horizontal = if (compact) 16.dp else 20.dp, vertical = if (compact) 9.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != null) {
@@ -298,7 +298,7 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, detail
 fun TileRow(content: @Composable RowScope.() -> Unit) {
     Row(
         Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(if (LocalCompact.current) 12.dp else 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (LocalCompact.current) 16.dp else 20.dp),
         content = content,
     )
 }
@@ -504,7 +504,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                 shadowElevation = if (on) 1.dp else 0.dp,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = if (compact) 34.dp else 40.dp)
+                    .heightIn(min = if (compact) 38.dp else 40.dp)
                     .selectable(selected = on, role = Role.RadioButton) {
                         if (!on) {
                             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -512,7 +512,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                         }
                     },
             ) {
-                Box(Modifier.padding(horizontal = 8.dp, vertical = if (compact) 5.dp else 9.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), contentAlignment = Alignment.Center) {
                     FitText(
                         label(option), MaterialTheme.typography.labelLarge,
                         color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
