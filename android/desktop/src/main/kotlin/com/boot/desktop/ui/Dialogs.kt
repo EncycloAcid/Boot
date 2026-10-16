@@ -1,0 +1,368 @@
+package com.boot.desktop.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.boot.core.EndingKind
+import com.boot.core.Format
+import com.boot.core.GameState
+import com.boot.core.PivotMode
+import com.boot.core.PivotTrigger
+import com.boot.core.acceptPivotBuyout
+import com.boot.core.acknowledgeReview
+import com.boot.core.choose
+import com.boot.core.keepPlaying
+import com.boot.core.pivotBlocker
+import com.boot.core.pivotChoices
+import com.boot.core.resolvePivot
+import com.boot.core.stayFocused
+import com.boot.desktop.DesktopStore
+
+private val modalProps = DialogProperties(
+    dismissOnBackPress = false,
+    dismissOnClickOutside = false,
+    usePlatformDefaultWidth = false,
+)
+
+/** Blocking overlays that mirror Android GameScreen: ending → pivot → event → review. */
+@Composable
+fun DecisionOverlays(store: DesktopStore, state: GameState) {
+    when {
+        state.isOver -> EndingDialog(store, state)
+        state.pendingPivot != null -> PivotDialog(store, state)
+        state.events.isNotEmpty() -> EventSheet(store, state)
+        state.games?.unseenReview != null -> ReviewSheet(store, state, state.games!!.unseenReview!!)
+    }
+}
+
+@Composable
+private fun ModalScaffold(
+    title: String,
+    subtitle: String? = null,
+    content: @Composable () -> Unit,
+    actions: @Composable () -> Unit,
+) {
+    val h = hudColors
+    Dialog(onDismissRequest = {}, properties = modalProps) {
+        // Heavy scrim — clock is blocked until the player picks an action.
+        Box(Modifier.fillMaxSize().background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+            Column(
+                Modifier
+                    .widthIn(min = 380.dp, max = 540.dp)
+                    .fillMaxWidth(0.58f)
+                    .heightIn(max = 660.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(h.panel)
+                    .border(2.dp, h.accent.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
+            ) {
+                Column(Modifier.padding(horizontal = 22.dp, vertical = 18.dp)) {
+                    Text(
+                        "Needs your choice",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = h.accent,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(title, style = MaterialTheme.typography.headlineMedium, color = h.ink)
+                    if (subtitle != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Hint(subtitle)
+                    }
+                }
+                Box(
+                    Modifier
+                        .weight(1f, fill = false)
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 22.dp),
+                ) {
+                    content()
+                }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFEAF2FA))
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Hint("Pick one option below — the calendar waits.")
+                    actions()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EventSheet(store: DesktopStore, state: GameState) {
+    val e = state.events.first()
+    ModalScaffold(
+        title = e.title,
+        subtitle = e.lane?.businessName,
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(e.body, style = MaterialTheme.typography.bodyLarge, color = hudColors.ink)
+            }
+        },
+        actions = {
+            e.choices.forEachIndexed { i, choice ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    MacButton(
+                        choice.label,
+                        onClick = { store.perform { choose(i) } },
+                        primary = i == 0,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Hint(choice.detail)
+                }
+            }
+        },
+    )
+}
+
+@Composable
+fun PivotDialog(store: DesktopStore, state: GameState) {
+    val offer = state.pendingPivot ?: return
+    var lane by remember(offer.week) { mutableStateOf(offer.suggestedLane) }
+    var mode by remember(offer.week) { mutableStateOf(PivotMode.EXPAND) }
+    var useVenture by remember(offer.week) { mutableStateOf(false) }
+    val colors = gameColors
+    ModalScaffold(
+        title = "The Pivot Point",
+        subtitle = "${offer.trigger.title} · ${offer.headline}",
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Hint(offer.body)
+                Text("Second lane", style = MaterialTheme.typography.labelLarge, color = hudColors.textDim)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.pivotChoices.forEach { l ->
+                        SelectChip(
+                            l.title + if (l == offer.suggestedLane) " · tip" else "",
+                            l == lane,
+                        ) { lane = l }
+                    }
+                }
+                Text("How", style = MaterialTheme.typography.labelLarge, color = hudColors.textDim)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (m in PivotMode.intoNewLane) {
+                        SelectChip(m.title, mode == m) { mode = m }
+                    }
+                }
+                Hint(
+                    when (mode) {
+                        PivotMode.PIVOT ->
+                            "${mode.summary} Sells the ${state.startingLane.businessName.lowercase()} for ${Format.money(offer.salePrice)}."
+                        PivotMode.EXPAND -> "${mode.summary} Setup ${Format.money(lane?.setupCost ?: 0.0)}."
+                        PivotMode.STAY -> mode.summary
+                    },
+                )
+                SelectChip(
+                    if (useVenture) "Venture funding · on" else "Venture funding · off",
+                    useVenture,
+                ) { useVenture = !useVenture }
+                lane?.let { l ->
+                    state.pivotBlocker(l, mode, useVenture)?.let { Hint(it, colors.bad) }
+                }
+            }
+        },
+        actions = {
+            val blocker = lane?.let { state.pivotBlocker(it, mode, useVenture) }
+            MacButton(
+                "${mode.title} into ${lane?.title ?: "…"}",
+                onClick = { lane?.let { l -> store.perform { resolvePivot(l, mode, useVenture) } } },
+                enabled = lane != null && blocker == null,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            MacButton(
+                "Stay focused on ${state.startingLane.businessName.lowercase()}",
+                onClick = { store.perform { stayFocused() } },
+                primary = false,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (offer.trigger == PivotTrigger.BUYOUT_OFFER) {
+                MacButton(
+                    "Sell everything and walk away",
+                    onClick = { store.perform { acceptPivotBuyout() } },
+                    primary = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+    )
+}
+
+@Composable
+fun EndingDialog(store: DesktopStore, state: GameState) {
+    val e = state.ending ?: return
+    val colors = gameColors
+    val good = e.kind == EndingKind.IPO || e.kind == EndingKind.ACQUIRED || e.kind == EndingKind.INDIE
+    ModalScaffold(
+        title = e.kind.title,
+        subtitle = e.title,
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Hint(e.summary, if (good) colors.good else colors.bad)
+                Stat("Final valuation", Format.money(e.valuation))
+                Stat("You walk away with", Format.money(e.founderTakeHome))
+                e.story.take(4).forEach { Hint(it) }
+            }
+        },
+        actions = {
+            if (e.kind == EndingKind.IPO || e.kind == EndingKind.INDIE) {
+                MacButton(
+                    if (e.kind == EndingKind.IPO && state.listing == null) {
+                        "Keep playing as a public company"
+                    } else {
+                        "Keep playing"
+                    },
+                    onClick = { store.perform { keepPlaying() } },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                MacButton("New game", onClick = { store.abandon() }, primary = false, modifier = Modifier.fillMaxWidth())
+            } else {
+                MacButton("New game", onClick = { store.abandon() }, modifier = Modifier.fillMaxWidth())
+            }
+        },
+    )
+}
+
+@Composable
+fun ReviewSheet(store: DesktopStore, state: GameState, releaseId: Int) {
+    val r = state.games?.release(releaseId) ?: return
+    val colors = gameColors
+    val h = hudColors
+    ModalScaffold(
+        title = "The reviews are in",
+        subtitle = r.title,
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            String.format("%.1f", r.score),
+                            style = MaterialTheme.typography.displayLarge,
+                            color = colors.good,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Hint("Critics · ${r.metascore}")
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val player = if (r.userScore > 0) String.format("%.1f", r.userScore) else "—"
+                        Text(
+                            player,
+                            style = MaterialTheme.typography.displayLarge,
+                            color = h.ink,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Hint(
+                            when {
+                                r.userScore <= 0 -> "Players · no data"
+                                !r.userScoreSettled -> "Players · settling"
+                                else -> "Players"
+                            },
+                        )
+                    }
+                }
+                Hint("${r.verdict} · launch week ${Format.money(r.salesHistory.firstOrNull() ?: r.weeklySales)}")
+                if (r.chartRank > 0) Hint("#${r.chartRank} on the charts", colors.milestone)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Hint("Earned")
+                        Text(Format.money(r.lifetimeSales), style = MaterialTheme.typography.titleMedium, color = h.ink)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Hint("Copies")
+                        Text(Format.count(r.unitsSold), style = MaterialTheme.typography.titleMedium, color = h.ink)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Hint("Best rank")
+                        Text(
+                            if (r.bestRank > 0) "#${r.bestRank}" else "—",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = h.ink,
+                        )
+                    }
+                }
+                Hint(
+                    "Dev cost ${Format.money(r.devCost)} · profit ${Format.signedMoney(r.lifetimeSales - r.devCost)}",
+                    if (r.lifetimeSales >= r.devCost) colors.good else colors.bad,
+                )
+                if (r.salesHistory.size > 1) {
+                    Hint(
+                        "Sales trail: " + r.salesHistory.takeLast(6).joinToString(" → ") { Format.money(it) },
+                    )
+                }
+                if (r.breakdown.isNotEmpty()) {
+                    Hint("Score breakdown")
+                    r.breakdown.take(6).forEach { part ->
+                        val pts = String.format("%+.1f", part.points)
+                        Hint("${part.label} $pts · ${part.note}")
+                    }
+                }
+                r.reviews.forEach { review ->
+                    GlassPanel(Modifier.fillMaxWidth()) {
+                        Text(
+                            "${review.outlet.title} · ${review.formatted}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = hudColors.text,
+                        )
+                        Hint("“${review.comment}”")
+                    }
+                }
+                if (r.pros.isNotEmpty()) Hint("Pros: ${r.pros.take(3).joinToString()}", colors.good)
+                if (r.cons.isNotEmpty()) Hint("Cons: ${r.cons.take(3).joinToString()}", colors.bad)
+                Hint(
+                    "Shipped D${r.design.toInt()} · T${r.tech.toInt()} · hype ${r.hype.toInt()} · bugs ${r.bugs.toInt()}" +
+                        if (r.patched) " · patched" else "",
+                )
+            }
+        },
+        actions = {
+            MacButton(
+                "Continue",
+                onClick = { store.perform { acknowledgeReview() } },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    )
+}
+
+@Composable
+private fun Stat(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Hint(label)
+        Text(value, style = MaterialTheme.typography.titleMedium, color = hudColors.ink, fontWeight = FontWeight.SemiBold)
+    }
+}

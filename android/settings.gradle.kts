@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Boot"
-include(":core", ":app")
+include(":core", ":app", ":desktop")

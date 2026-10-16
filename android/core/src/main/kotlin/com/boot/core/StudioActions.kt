@@ -122,6 +122,10 @@ fun GameState.estimatedWeeks(size: GameSize): Int = ceil(size.work / max(1.0, st
 /** Weeks a concept takes with today's team: remasters take half as long. */
 fun GameState.estimatedWeeks(c: GameConcept): Int = ceil(c.work / max(1.0, staffing(Lane.GAMES).output)).toInt()
 
+/** Public title invent for UI modules that cannot see the internal RNG. */
+fun GameState.suggestGameTitle(topic: Topic, genre: Genre): String =
+    studio().suggestTitle(rng, topic, genre)
+
 fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> = evenFocus(), team: Int = 1) {
     val g = studio()
     conceptBlocker(concept, team = team)?.let { throw notAvailable(it) }
@@ -144,6 +148,50 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
         (if (team == 2) "Team 2 started " else "Started ") + "${concept.title}: ${Format.a(concept.size.lower)} ${concept.topic.title.lowercase()} " +
             "${concept.genreLower} game for ${concept.platforms.joinToString { it.title }}." +
             (if (fees > 0) " Licence fees: ${money(fees)}." else ""),
+        LogTone.NEUTRAL, Lane.GAMES,
+    )
+}
+
+/**
+ * Spend money on a focused playtest. It finds real bugs and gives the team feedback before launch.
+ * Each development stage can be tested once, so testing is a strategic choice rather than a free button.
+ */
+fun GameState.playtestGame(team: Int = 1) {
+    val g = studio()
+    val p = g.projectOf(team) ?: throw invalid("Nothing in development to playtest.")
+    val stage = if (p.isReady) 3 else p.stage
+    if (stage in p.playtestedStages) throw busy("You've already playtested ${p.title} during this stage.")
+    val cost = p.concept.size.weeklyBudget * (1.5 + stage * 0.5)
+    if (cash < cost) throw insufficientFunds("A playtest costs ${money(cost)}. You have ${money(cash)}.")
+    spend(cost, Lane.GAMES)
+    val bugsBefore = p.bugs
+    val fixed = minOf(p.bugs, maxOf(1.0, p.bugs * 0.35))
+    p.bugs = (p.bugs - fixed).coerceAtLeast(0.0)
+    // Feedback turns into better decisions, represented by small, tangible design and tech gains.
+    p.design += p.work * 0.015
+    p.tech += p.work * 0.01
+    p.playtestedStages.add(stage)
+    val stageName = when (stage) {
+        0 -> "foundations"
+        1 -> "content"
+        2 -> "presentation"
+        else -> "final polish"
+    }
+    addLog(
+        "Playtested ${p.title} during $stageName: fixed ${Format.count(fixed)} bugs and improved the build's design and tech. " +
+            "Cost ${money(cost)}" +
+            if (bugsBefore < 1.0) ". Few bugs were found, but feedback still improved the build." else ".",
+        LogTone.GOOD, Lane.GAMES,
+    )
+}
+
+/** Set the weekly creative direction for the game in development. */
+fun GameState.setCreativeFocus(focus: GameFocus, team: Int = 1) {
+    val p = studio().projectOf(team) ?: throw invalid("Nothing in development.")
+    if (p.creativeFocus == focus) return
+    p.creativeFocus = focus
+    addLog(
+        "${p.title} is now ${focus.title.lowercase()}: ${focus.blurb}",
         LogTone.NEUTRAL, Lane.GAMES,
     )
 }

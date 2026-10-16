@@ -51,7 +51,8 @@ val guideTopics: List<GuideTopic> = listOf(
         "Games", "A studio in the Game Dev Tycoon mould",
         listOf(
             "Design a game: a topic, one or two genres, an audience, the platforms and a size. Topics suit some genres better than others, and genres suit some platforms. Game reports after each launch tell you what worked, and the designer remembers.",
-            "Development runs in three stages with three focus areas each. Rebalance a stage any time — the genre-fit meter and expected score move with the sliders. Finishing a stage teaches one sharper genre lesson.",
+            "Each week, pick a creative direction (gameplay, visuals, performance, content, or balanced) — it trades speed, polish, bugs and review quality. Stage sliders still decide where the hours go; finishing a stage teaches one sharper genre lesson.",
+            "Paid playtests once per stage catch bugs and improve the build. The four-season market calendar boosts featured genres at launch, so shipping early or waiting is a real call.",
             "Custom engines pack researched features: graphic styles and tech tiers have hidden levels until a build finishes or a game ships. Mixing pixel with realistic soft-penalties the effective level.",
             "Scores compare a game against your own best, so you have to keep getting better. Hype, fans and the platforms' players drive sales. Avoid launching next to a giant release.",
         ),

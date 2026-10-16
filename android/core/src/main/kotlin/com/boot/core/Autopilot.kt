@@ -349,11 +349,36 @@ class Autopilot(
             if (Research.MARKETING in s.researched) {
                 for (c in Campaign.entries) if (c !in p.campaigns && s.cash > c.cost * 25) attempt { s.buyCampaign(c) }
             }
+            // Playtest when bugs are biting and cash can cover it; once per stage.
+            val playStage = if (p.isReady) 3 else p.stage
+            if (playStage !in p.playtestedStages && p.bugs > p.work * 0.05) {
+                val cost = p.concept.size.weeklyBudget * (1.5 + playStage * 0.5)
+                if (s.cash > cost * 4) attempt { s.playtestGame() }
+            }
+            // Lean creative direction toward genre needs while content is still in progress.
+            if (!p.isReady) {
+                val want = when {
+                    p.concept.idealDesignShare >= 0.6 -> GameFocus.GAMEPLAY
+                    p.bugs > p.work * 0.12 -> GameFocus.PERFORMANCE
+                    else -> GameFocus.BALANCED
+                }
+                if (p.creativeFocus != want) attempt { s.setCreativeFocus(want) }
+            } else if (p.creativeFocus != GameFocus.VISUALS && p.polish < p.work * 0.25) {
+                attempt { s.setCreativeFocus(GameFocus.VISUALS) }
+            }
             val forecast = s.gameForecast()
             val polished = p.bugs < p.work * 0.08 ||
                 forecast?.polishPastSweetSpot == true ||
                 p.weeksInDev > p.work / 2 + 30
-            if (p.isReady && (polished || s.runwayWeeks < 10)) attempt { s.launchGame() }
+            // Prefer in-season launches when ready; ship off-season only if polish is full or cash is tight.
+            val season = GameSeason.forWeek(s.week)
+            val inSeason = season.launchMultiplier(p.concept.genre) >= 1.08
+            val shouldShip = p.isReady && (
+                s.runwayWeeks < 10 ||
+                    (polished && inSeason) ||
+                    (polished && (forecast?.polishPastSweetSpot == true || p.bugs < p.work * 0.04))
+                )
+            if (shouldShip) attempt { s.launchGame() }
             return
         }
         // License every engine but the newest.
