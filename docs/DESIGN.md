@@ -429,6 +429,49 @@ Comments sometimes name the game and add a second point. Three player reviews fo
 
 News stories carry a tag, an optional quote and speaker, a game cover, and from 1997 a comment count (more for your own stories as your fanbase grows) with a top comment. Launch stories carry the critics' roundup and the most quotable review. Awards, announcements, delays, shadow drops, chart-toppers and rival releases carry quotes and covers. A charts story runs every four weeks, and a rumour runs the week before each show on your calendar.
 
+## Buying a company
+
+A studio's owners have a stance, settled per studio and year: open to offers, needs convincing, or not for sale. Indies lean open; a studio whose last two years were poor leans open too, and so does a buyer with a good reputation. Nintendo and Valve are never for sale. Every studio also has a finding, fixed for the run: a hidden gem (2 in 10), talent ready to leave (2 in 10), a burnt-out team (1 in 10), past its best (1 in 10), or clean.
+
+Due diligence costs 0.5% of the studio's value, at least $50k in today's money, and reveals the finding. An offer is the studio's value × (1 + premium), with a premium from −10% to +80%. The chance of a yes is a base plus twice the distance between your premium and the premium the owners think fair, plus (reputation − 50) / 200, between 2% and 95%:
+
+| Stance | Base | Fair premium |
+|---|---|---|
+| Open | 0.75 | +10% |
+| Wary | 0.45 | +25% |
+| Closed | 0.15 | +50% |
+
+Paying half in shares (listed companies only) dilutes the founder's stake by the share price's portion of the enlarged company.
+
+Owners answer after two weeks:
+- **Yes:** for a publisher, 30% of the time a rival (Tencent, Sony, Microsoft, Embracer, Savvy) bids 8–20% more, and you can outbid them or let it go (no calls for a year).
+- **Counter-offer:** when the roll misses by less than 0.25, the owners ask for 10–25% more.
+- **No:** otherwise, and they take no calls for six months.
+
+Deals of $20B or more go to the regulators 40% of the time; their conditions cost 3% more. Closing asks how to run the studio:
+
+| Plan | Profit | What else |
+|---|---|---|
+| Leave them be | ×1.0 | |
+| Fold them in | ×0.6 | Three of their people (skill 6–10 by studio quality) join your game team, once |
+| Cut costs | ×1.4 | −2 reputation and a news story; their games score 0.8 lower; the studio loses value over time, down to 75% |
+
+The finding then plays out:
+- **Burnt out:** −20% profit for a year.
+- **Talent ready to leave:** −20% profit and −15% value unless left alone.
+- **Hidden gem:** +30% profit in the first year, +10% after, and +15% value after six months.
+- **Past its best:** loses 5% of its value every six months, down to 70%.
+
+Plans change once a year. The old one-step `acquire` remains for tests and tools.
+
+## Stages
+
+Each show draws a stage after the real one (`StageLook`, picked by name): the shows' colours, the shape of the set (LED walls, curtains, a ring of light, a ballroom, a conference screen, an expo hall, a festival roof, a white studio set), lighting rigs and beams, the floor and the front rows. No logos or real trophies are drawn; winners get a plain statuette. The award night opens on the stage, with the categories over the dimmed house; banners on decisions use the same stages.
+
+## Box art
+
+Covers add a backlight halo and ground shadow behind the hero, a film grade (the scene's light screened in, the sky and ground multiplied over), grain, and the studio's initials on the platform band. Logos are lettered by genre and topic: serif gold (fantasy, RPG, adventure, strategy), monospaced neon (sci-fi, cyberpunk, hacking, AI, robots, space, time travel), serif bone-to-blood (horror), candy with a white outline (casual) and chrome italic (everything else). Fill passes set their draw style explicitly; a stroke pass otherwise carried over and left thin faces hollow.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

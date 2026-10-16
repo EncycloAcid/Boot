@@ -165,6 +165,8 @@ class Autopilot(
             // Take the kind option: pair them, credit them, send them home, make it official, give the lead or the break.
             is StoryBeat -> 0
             is AwardNight -> 0
+            is IntegrationChoice -> 0
+            is DealCounter, is BiddingWar, is RegulatorReview -> 1
             is StreamerPreview -> if ((s.games?.projectOf(k.team)?.bugs ?: 0.0) < 5) 0 else 1
             is FanCampaign -> if (s.cash > s.fanCampaignCost() * 20) 0 else 1
             is PresenterInvite -> 0

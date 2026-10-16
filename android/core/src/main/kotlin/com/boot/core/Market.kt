@@ -154,6 +154,7 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     val s = if (rng.chance(0.75) || indies.isEmpty()) rng.pick(active.filter { !it.indie }) else rng.pick(indies)
     val studio = studioName(s.name)
     val quality = s.quality
+    val squeezed = ownedQualityPenalty(s.name)
     val year = GameClock.year(week)
     val size = when {
         s.indie -> if (rng.chance(0.75)) GameSize.SMALL else GameSize.MEDIUM
@@ -165,7 +166,7 @@ private fun GameState.releaseRivalGame(g: GamesStudio) {
     val topic = rng.pick(Topic.entries.filter { it.fit(genre) != Fit.BAD })
     // Licensing your engine helps them too.
     val licensed = g.engines.filter { it.licensed }.maxOfOrNull { it.level } ?: 0
-    val score = (rng.normal(6.2 + 1.2 * quality, 1.2) + licensed * 0.02).clamped(2.5, 9.7)
+    val score = (rng.normal(6.2 + 1.2 * quality, 1.2) + licensed * 0.02 - squeezed).clamped(2.5, 9.7)
     val sales = size.launchSales * (score / 7).pow(3) * rng.range(0.7, 1.3) * world.demand(Lane.GAMES)
     val title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), m.games.map { it.title }.toSet())
     val game = RivalGame(m.nextId++, title, studio, topic, genre, size, score, week, sales)

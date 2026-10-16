@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.boot.core.stanceOf
+import com.boot.core.Stance
 import com.boot.core.Achievement
 import com.boot.core.studioName
 import com.boot.core.Format
@@ -71,25 +73,36 @@ private fun Studio.blurb(): String {
     return if (series.isEmpty()) kind else "$kind · ${series.take(3).joinToString()}"
 }
 
-/** Studios you own, and the ones you could buy. */
+/** Studios you own, and the ones you could buy. Tap one to look it over. */
 @Composable
 fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
     var showAll by remember { mutableStateOf(false) }
-    var buying by remember { mutableStateOf<Studio?>(null) }
-    var selling by remember { mutableStateOf<Studio?>(null) }
     val colors = gameColors
+    g.deal?.let { d ->
+        GroupedSection("Waiting on an answer") {
+            ListRow(
+                d.studio,
+                subtitle = "You offered ${Format.money(d.price)}" + (if (d.inShares) ", half in shares" else "") + ". They answer " +
+                    (if (d.answerWeek <= state.week + 1) "next week." else "in ${Format.weeks(d.answerWeek - state.week)}."),
+                leading = { StudioBadge(d.studio) },
+                chevron = true,
+                onClick = { store.dealStudio = d.studio },
+            )
+        }
+    }
     if (g.subsidiaries.isNotEmpty()) {
-        GroupedSection("Your studios · ${g.subsidiaryProfit.perWeek()}", footer = "Each studio sends home about 6% of its value a year, more when it has hits out. Their games don't compete with yours.") {
+        GroupedSection("Your studios · ${g.subsidiaryProfit.perWeek()}", footer = "Each studio sends home about 6% of its value a year, more when it has hits out, and how you run it changes that. Their games don't compete with yours.") {
             g.subsidiaries.forEachIndexed { i, sub ->
                 if (i > 0) RowDivider(68.dp)
                 val s = com.boot.core.studio(sub.name) ?: return@forEachIndexed
                 ListRow(
                     sub.name,
-                    subtitle = "Since ${GameClock.label(sub.boughtWeek)} · worth ${Format.money(state.studioValue(s))} · earned ${Format.money(sub.lifetimeProfit)}",
+                    subtitle = "${sub.plan.title} · since ${GameClock.label(sub.boughtWeek)} · earned ${Format.money(sub.lifetimeProfit)}",
                     leading = { StudioBadge(sub.name) },
                     value = sub.lastProfit.perWeek(),
                     valueColor = if (sub.lastProfit > 0) colors.good else Color.Unspecified,
-                    trailing = { PlainButton("Sell", { selling = s }) },
+                    chevron = true,
+                    onClick = { store.dealStudio = s.name },
                 )
             }
         }
@@ -100,39 +113,26 @@ fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
     GroupedSection(
         "Buy a studio",
         action = { PlainButton(if (showAll) "Fewer" else "All ${forSale.size}", { showAll = !showAll }) },
-        footer = "You pay what a studio's worth plus a 15% premium, and what it's worth counts towards your company's value. The big publishers only talk to companies three years old or public.",
+        footer = "Tap a studio to look it over, check its books and make an offer. The big publishers only talk to companies three years old or public.",
     ) {
         shown.forEachIndexed { i, s ->
             if (i > 0) RowDivider(68.dp)
-            val blocked = state.acquisitionBlocker(s)
+            val stance = state.stanceOf(s)
             ListRow(
                 state.studioName(s.name),
                 subtitle = s.blurb(),
                 leading = { StudioBadge(s.name) },
-                value = Format.money(state.acquisitionPrice(s)),
-                valueColor = if (blocked == null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                trailing = { TonalButton("Buy", { buying = s }, enabled = blocked == null) },
+                value = Format.money(state.studioValue(s)),
+                valueDetail = stance.title,
+                valueDetailColor = when (stance) {
+                    Stance.OPEN -> colors.good
+                    Stance.WARY -> colors.warn
+                    Stance.CLOSED -> colors.bad
+                },
+                chevron = true,
+                onClick = { store.dealStudio = s.name },
             )
         }
-    }
-    buying?.let { s ->
-        ConfirmDialog(
-            title = "Buy ${s.name}?",
-            text = "It costs ${Format.money(state.acquisitionPrice(s))}. ${s.name} keeps making games under its own name, and a share of its profits comes to you every week.",
-            confirm = "Buy",
-            onConfirm = { store.perform { acquire(s.name) } },
-            onDismiss = { buying = null },
-        )
-    }
-    selling?.let { s ->
-        ConfirmDialog(
-            title = "Sell ${s.name}?",
-            text = "A buyer will pay ${Format.money(state.divestPrice(s))}.",
-            confirm = "Sell",
-            destructive = true,
-            onConfirm = { store.perform { divest(s.name) } },
-            onDismiss = { selling = null },
-        )
     }
 }
 

@@ -307,6 +307,7 @@ internal fun GameOverlays(store: GameStore, state: GameState) {
         store.soundOpen -> SoundDialog(store)
         store.calendarTeam != null -> ReleaseCalendar(store, state, store.calendarTeam!!)
         store.founderOpen -> FounderSheet(store, state)
+        store.dealStudio != null -> DealSheet(store, state, store.dealStudio!!)
     }
 }
 

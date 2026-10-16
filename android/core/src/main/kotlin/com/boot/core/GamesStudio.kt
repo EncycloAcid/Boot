@@ -331,6 +331,15 @@ class GamesStudio {
     /** Studios you've bought. */
     val subsidiaries = mutableListOf<Subsidiary>()
 
+    /** An offer for a studio, waiting on an answer. */
+    var deal: Deal? = null
+
+    /** Studios whose books you've been through. */
+    val diligence = mutableSetOf<String>()
+
+    /** Studios that won't hear another offer until a given week. */
+    val cooloff = mutableMapOf<String, Int>()
+
     /** Your label: pitches waiting for an answer, games you've funded, and the ones you've put out. */
     val pitches = mutableListOf<IndiePitch>()
     val signed = mutableListOf<SignedGame>()

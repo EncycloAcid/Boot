@@ -66,6 +66,13 @@ data class Subsidiary(
     val paid: Double,
     var lastProfit: Double = 0.0,
     var lifetimeProfit: Double = 0.0,
+    /** What was really going on there, found by due diligence or not. */
+    val finding: Finding? = null,
+    var plan: Plan = Plan.INDEPENDENT,
+    /** When the plan last changed: once a year. */
+    var planWeek: Int = -1_000,
+    /** Their best people already joined your team. */
+    var folded: Boolean = false,
 )
 
 /** What buyers pay over a studio's value. */
@@ -80,7 +87,8 @@ fun GameState.studioValue(s: Studio): Double {
 fun GameState.acquisitionPrice(s: Studio): Double = studioValue(s) * (1 + ACQUISITION_PREMIUM)
 
 /** What selling one of yours brings in. */
-fun GameState.divestPrice(s: Studio): Double = studioValue(s) * 0.9
+fun GameState.divestPrice(s: Studio): Double =
+    studioValue(s) * 0.9 * (games?.subsidiaries?.firstOrNull { it.name == s.name }?.valueFactor(week) ?: 1.0)
 
 fun GamesStudio.owns(name: String): Boolean = subsidiaries.any { it.name == name || it.name == canonicalStudio(name) }
 
@@ -106,7 +114,7 @@ fun GameState.acquire(name: String) {
     acquisitionBlocker(s)?.let { throw notAvailable(it) }
     val price = acquisitionPrice(s)
     spend(price, Lane.GAMES)
-    games!!.subsidiaries += Subsidiary(s.name, week, price)
+    games!!.subsidiaries += Subsidiary(s.name, week, price, finding = findingAt(s))
     stats.acquisitions += 1
     reputation.adjust(if (s.indie) 1.0 else 3.0)
     addLog("You bought ${s.name} for ${money(price)}. Their games are yours now.", LogTone.MILESTONE, Lane.GAMES)
@@ -126,7 +134,7 @@ fun GameState.divest(name: String) {
 
 /** What your studios are worth, for the company's valuation. */
 val GameState.subsidiaryValue: Double
-    get() = games?.subsidiaries?.sumOf { sub -> studio(sub.name)?.let { studioValue(it) } ?: 0.0 } ?: 0.0
+    get() = games?.subsidiaries?.sumOf { sub -> studio(sub.name)?.let { studioValue(it) * sub.valueFactor(week) } ?: 0.0 } ?: 0.0
 
 /** About 6% of a studio's value a year comes home as profit, more when it has hits on sale. */
 internal fun GameState.subsidiaryWeek() {
@@ -137,7 +145,7 @@ internal fun GameState.subsidiaryWeek() {
         val hits = theirs.count { it.score >= 8 }
         val flops = theirs.count { it.score < 5 }
         val form = (0.8 + 0.15 * hits - 0.1 * flops).clamped(0.6, 1.5)
-        val profit = studioValue(s) * 0.06 / 52 * form * rng.range(0.9, 1.1)
+        val profit = studioValue(s) * 0.06 / 52 * form * sub.profitFactor(week) * rng.range(0.9, 1.1)
         sub.lastProfit = profit
         sub.lifetimeProfit += profit
         cash += profit

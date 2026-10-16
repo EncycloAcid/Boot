@@ -236,7 +236,10 @@ class GameStore(app: Application) : AndroidViewModel(app) {
 
     /** A full-screen page that holds the clock while it's open. */
     val holdsClock: Boolean get() = designing || designingDevice || openRelease != null || guideOpen || openStock != null || campaignLane != null ||
-        calendarTeam != null || founderOpen
+        calendarTeam != null || founderOpen || dealStudio != null
+
+    /** The studio you're looking at buying, or running. */
+    var dealStudio by mutableStateOf<String?>(null)
 
     /** Your level, skills and traits. */
     var founderOpen by mutableStateOf(false)

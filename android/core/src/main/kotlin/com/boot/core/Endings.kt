@@ -74,6 +74,7 @@ class Stats {
     var tradeShows = 0
     var bestInShow = 0
     var ceremonies = 0
+    var offers = 0
     var previews = 0
     var presented = 0
 

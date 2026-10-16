@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.boot.core.calendarYear
+import com.boot.core.nextShow
 import com.boot.core.AwardNight
 import com.boot.core.Burnout
 import com.boot.core.Category
@@ -76,6 +78,7 @@ import com.boot.core.StreamerPreview
 import com.boot.core.OwnShowcase
 import com.boot.core.choose
 import com.boot.core.reactionWord
+import com.boot.core.studioValue
 import com.boot.game.GameStore
 import com.boot.game.audio.Sfx
 import kotlinx.coroutines.delay
@@ -86,8 +89,6 @@ import kotlin.math.roundToInt
  */
 
 private val Gold = Color(0xFFE9C46A)
-private val StageDark = Color(0xFF0E1020)
-private val StageDeep = Color(0xFF1C2147)
 
 /** The ceremony: each category's nominees, then the envelope, then (if you won) your speech. */
 @Composable
@@ -106,15 +107,18 @@ fun AwardNightSheet(store: GameStore, state: GameState, e: PendingEvent) {
     }
     val done = revealed >= night.categories.size
     GameDialog(onDismissRequest = {}, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = false, dismissOnClickOutside = false)) {
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(StageDeep, StageDark)))) {
-            Spotlights(Modifier.fillMaxSize())
+        val look = stageFor(night.show)
+        Box(Modifier.fillMaxSize().background(look.top)) {
+            // The stage itself, after the real one, with the house dark in front of it.
+            StageBackdrop(look, Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.25f to Color.Transparent, 0.55f to Color.Black.copy(alpha = 0.72f), 1f to Color.Black.copy(alpha = 0.85f))))
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     LivePill()
                     Spacer(Modifier.width(12.dp))
                     Text(
                         night.show, style = MaterialTheme.typography.headlineSmall, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
-                        color = Gold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = if (look.light) Color.White else look.accent, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     if (!done) TextButton(onClick = { revealed = night.categories.size }) { Text("Skip", color = Color.White.copy(alpha = 0.8f)) }
                 }
@@ -122,6 +126,8 @@ fun AwardNightSheet(store: GameStore, state: GameState, e: PendingEvent) {
                     Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    // Room to see the stage before the first category.
+                    Spacer(Modifier.height(96.dp))
                     night.categories.forEachIndexed { i, c ->
                         CategoryCard(state, c, opened = i < revealed, live = i == revealed)
                     }
@@ -210,26 +216,6 @@ private fun LivePill() {
     )
 }
 
-/** Three cones of light from the rig, and a glow on the stage floor. */
-@Composable
-private fun Spotlights(modifier: Modifier) {
-    Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        for ((x, tint) in listOf(0.18f to Color(0xFF9BB4FF), 0.5f to Color(0xFFFFE6A8), 0.82f to Color(0xFFFFA8D8))) {
-            val path = Path().apply {
-                moveTo(w * x - w * 0.02f, 0f)
-                lineTo(w * x + w * 0.02f, 0f)
-                lineTo(w * x + w * 0.16f, h)
-                lineTo(w * x - w * 0.16f, h)
-                close()
-            }
-            drawPath(path, Brush.verticalGradient(listOf(tint.copy(alpha = 0.16f), Color.Transparent)))
-        }
-        drawOval(Brush.radialGradient(listOf(Color(0x33FFE6A8), Color.Transparent), center = Offset(w / 2, h), radius = w * 0.45f), Offset(w * 0.05f, h * 0.8f), Size(w * 0.9f, h * 0.4f))
-    }
-}
-
 // The art at the top of a decision
 
 /** The people a decision is about. */
@@ -279,38 +265,54 @@ fun EventArt(state: GameState, kind: EventKind): Boolean {
         }
         return true
     }
+    val studio = when (kind) {
+        is com.boot.core.DealCounter -> kind.studio
+        is com.boot.core.BiddingWar -> kind.studio
+        is com.boot.core.RegulatorReview -> kind.studio
+        is com.boot.core.IntegrationChoice -> kind.studio
+        else -> null
+    }
+    if (studio != null) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StudioBadge(studio, 52.dp)
+            Column(Modifier.padding(start = 12.dp)) {
+                Text(studio, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                com.boot.core.studio(studio)?.let { Hint("Worth ${Format.money(state.studioValueOf(it))}") }
+            }
+        }
+        return true
+    }
     val stage = stageOf(state, kind) ?: return false
-    StageBanner(stage, live = kind is ShowResults && kind.report.stream)
+    // The trade show and Game of the Year are held on that year's stage.
+    val look = when (kind) {
+        EventKind.Convention -> stageFor(state.nextShow()?.name ?: stage)
+        EventKind.GameAwards -> stageFor(com.boot.core.yearEndShow(state.calendarYear))
+        else -> stageFor(stage)
+    }
+    StageBanner(stage, live = kind is ShowResults && kind.report.stream, look = look)
     return true
 }
 
 /** A lit stage with the show's name across it. */
 @Composable
-fun StageBanner(name: String, height: Dp = 84.dp, live: Boolean = false) {
+fun StageBanner(name: String, height: Dp = 96.dp, live: Boolean = false, look: StageLook = stageFor(name)) {
     Box(
         Modifier
             .fillMaxWidth()
             .height(height)
             .clip(RoundedCornerShape(16.dp))
-            .background(Brush.verticalGradient(listOf(StageDeep, StageDark))),
+            .background(look.top),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Spotlights(Modifier.fillMaxSize())
-        // A few heads in the front row.
-        Canvas(Modifier.fillMaxSize()) {
-            val n = 18
-            for (i in 0 until n) {
-                val x = size.width * (i + 0.5f) / n
-                val r = size.height * (0.09f + 0.02f * ((i * 7) % 3))
-                drawCircle(Color.Black.copy(alpha = 0.55f), r, Offset(x, size.height - r * 0.4f))
-            }
-        }
+        StageBackdrop(look, Modifier.fillMaxSize())
+        // A shade behind the name so it reads over the lights.
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.7f), 0.55f to Color.Transparent)))
         Row(Modifier.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             if (live) {
                 LivePill()
                 Spacer(Modifier.width(10.dp))
             }
-            Text(name, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, color = Gold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(name, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, color = if (look.light) Color.White else look.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -380,3 +382,5 @@ private fun CrowdMeter(reaction: Double) {
         }
     }
 }
+
+private fun GameState.studioValueOf(s: com.boot.core.Studio): Double = studioValue(s)

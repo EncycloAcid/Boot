@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
+import com.boot.core.studiosForSale
 import com.boot.core.Autopilot
 import com.boot.core.gameTeam
 import com.boot.core.hire
@@ -585,14 +586,18 @@ class GameFlowTest {
         compose.waitForIdle()
         compose.onNodeWithText("Team Cherry").assertExists()
         screen("45-studios")
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Buy"))
+        // Buying is a deal now: open a studio, and make an offer its owners will answer in two weeks.
+        val target = store.state!!.studiosForSale().first().name
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(target))
         compose.waitForIdle()
-        compose.onAllNodesWithText("Buy")[0].performSemanticsAction(SemanticsActions.OnClick)
+        compose.onAllNodesWithText(target)[0].performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
-        val dialogButtons = compose.onAllNodesWithText("Buy")
-        dialogButtons[dialogButtons.fetchSemanticsNodes().size - 1].performClick()
+        compose.onNodeWithText("Offer $", substring = true).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitForIdle()
-        assertEquals(2, store.state!!.games!!.subsidiaries.size)
+        assertEquals(target, store.state!!.games!!.deal?.studio)
+        compose.runOnIdle { store.dealStudio = null }
+        compose.waitForIdle()
+        assertEquals(1, store.state!!.games!!.subsidiaries.size)
 
         studio(StudioPage.GAMES)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Live games", ignoreCase = true))

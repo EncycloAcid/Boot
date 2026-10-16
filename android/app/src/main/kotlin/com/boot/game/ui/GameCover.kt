@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.text.font.FontFamily
+import kotlin.math.max
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -25,6 +28,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextLayoutResult
@@ -190,8 +194,8 @@ fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, st
             val heroBase = if (titleTop || !detailed) h * 0.97f else horizon + h * 0.02f
             val heroH = h * when {
                 thumb -> 0.52f
-                titleTop || !detailed -> 0.46f
-                else -> 0.34f
+                titleTop || !detailed -> 0.52f
+                else -> 0.4f
             }
             hero(concept.genre, heroX, heroBase, heroH, art, lightAt, mirror)
             // Skip fine atmosphere on thumbs — it muddies the silhouette.
@@ -205,6 +209,7 @@ fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, st
                 ),
             )
             if (thumb) topicBadge(concept.topic, art, w, h, mirror)
+            if (detailed) grade(art, lightAt, w, h, rng)
         }
 
         // The platform band.
@@ -219,6 +224,14 @@ fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, st
                 maxLines = 1, overflow = TextOverflow.Clip, constraints = Constraints(maxWidth = (w * 0.9f).toInt()),
             )
             drawText(label, topLeft = Offset(w * 0.05f, (band - label.size.height) / 2))
+            // The publisher's mark on the right of the band, as on a real case.
+            if (studio != null) {
+                val initials = studio.split(' ').filter { it.isNotEmpty() }.take(2).joinToString("") { it.take(1) }.uppercase(Locale.US)
+                val mark = measurer.measure(initials, TextStyle(fontSize = (band * 0.42f).toSp(), fontWeight = FontWeight.Black, color = pc.shade(0.6f)))
+                val mw = mark.size.width + band * 0.4f
+                drawRoundRect(Color.White.copy(alpha = 0.92f), Offset(w - w * 0.04f - mw, band * 0.18f), Size(mw, band * 0.64f), CornerRadius(band * 0.12f))
+                drawText(mark, topLeft = Offset(w - w * 0.04f - mw + band * 0.2f, (band - mark.size.height) / 2))
+            }
         }
 
         if (detailed) {
@@ -268,6 +281,40 @@ fun CoverWithScore(concept: GameConcept, score: Double, width: Dp = 44.dp) {
 
 // Lettering
 
+/** How a genre's logo is lettered, the way real boxes do it. */
+private class LogoLook(val family: FontFamily, val fill: List<Color>, val spacing: Float = 0f, val outline: Color? = null, val glow: Boolean = false, val metal: Boolean = false)
+
+private fun logoLook(c: GameConcept, art: Art): LogoLook {
+    val t = c.topic
+    return when {
+        // Neon and terminals: a monospaced, glowing sign.
+        t in listOf(Topic.CYBERPUNK, Topic.HACKING, Topic.ARTIFICIAL_INTELLIGENCE, Topic.ROBOTS, Topic.SCI_FI, Topic.SPACE, Topic.TIME_TRAVEL) ->
+            LogoLook(FontFamily.Monospace, listOf(Color.White, art.light.mix(Color.White, 0.4f)), spacing = 1.5f, glow = true)
+        // Horror: bone white running to blood red.
+        t in listOf(Topic.HORROR, Topic.ZOMBIES, Topic.VAMPIRES) ->
+            LogoLook(FontFamily.Serif, listOf(Color(0xFFF4EEDC), Color(0xFFD9CFB4), Color(0xFFB3202A)), spacing = 1f)
+        // Swords and sorcery: gold, in a serif.
+        c.genre == Genre.RPG || c.genre == Genre.ADVENTURE || c.genre == Genre.STRATEGY ||
+            t in listOf(Topic.FANTASY, Topic.MEDIEVAL, Topic.MYTHOLOGY, Topic.PIRATES, Topic.FOLKLORE, Topic.STEAMPUNK) ->
+            LogoLook(FontFamily.Serif, listOf(Color(0xFFFFE9A8), Color(0xFFE0A92E), Color(0xFF9A6514)), metal = true)
+        // Casual: candy colours with a fat white outline.
+        c.genre == Genre.CASUAL -> LogoLook(FontFamily.SansSerif, listOf(Color.White, art.light.mix(Color(0xFFFF7AB6), 0.4f)), outline = Color.White)
+        // Action, war and speed: brushed chrome.
+        else -> LogoLook(FontFamily.SansSerif, listOf(Color.White, Color(0xFFB7C0CC), Color.White, Color(0xFF6B7482)), metal = true)
+    }
+}
+
+/** A film look: the light bleeding in, colour pulled towards the scene, and a little grain. */
+private fun DrawScope.grade(a: Art, light: Offset, w: Float, h: Float, rng: java.util.Random) {
+    drawCircle(Brush.radialGradient(listOf(a.light.copy(alpha = 0.22f), Color.Transparent), light, w * 0.8f), w * 0.8f, light, blendMode = BlendMode.Screen)
+    drawRect(Brush.verticalGradient(listOf(a.sky.copy(alpha = 0.18f), Color.Transparent, a.ground.copy(alpha = 0.25f))), blendMode = BlendMode.Multiply)
+    val dot = max(1f, w * 0.006f)
+    repeat(220) {
+        val c = if (it % 2 == 0) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.07f)
+        drawRect(c, Offset(rng.nextFloat() * w, rng.nextFloat() * h), Size(dot, dot))
+    }
+}
+
 private val sequelSuffix = Regex("^(.*?)( (?:\\d+|[IVX]+))(:.*)?$")
 
 /** The title as a logo: a light-to-accent fill, a dark outline and a drop shadow, with any sequel number picked out. */
@@ -277,9 +324,12 @@ private fun DrawScope.titleLogo(measurer: TextMeasurer, c: GameConcept, art: Art
     val m = sequelSuffix.matchEntire(c.title)
     val main = m?.groupValues?.get(1)?.let { it + (m.groupValues.getOrNull(3) ?: "") } ?: c.title
     val number = m?.groupValues?.get(2)?.trim()
+    val look = logoLook(c, art)
     fun style(fs: Float) = TextStyle(
-        fontSize = fs.toSp(), fontWeight = FontWeight.Black, lineHeight = (fs * 1.0f).toSp(),
-        fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
+        // Serif and mono faces have a real bold; a faked black weight renders them hollow.
+        fontSize = fs.toSp(), fontWeight = if (look.family == FontFamily.SansSerif) FontWeight.Black else FontWeight.Bold, lineHeight = (fs * 1.0f).toSp(),
+        fontStyle = if (italic && look.family == FontFamily.SansSerif) FontStyle.Italic else FontStyle.Normal,
+        fontFamily = look.family, letterSpacing = look.spacing.sp,
     )
     var fs = w * 0.13f
     var layout: TextLayoutResult = measurer.measure(main.uppercase(Locale.US), style(fs), maxLines = 3, constraints = Constraints(maxWidth = maxW))
@@ -299,14 +349,25 @@ private fun DrawScope.titleLogo(measurer: TextMeasurer, c: GameConcept, art: Art
     val y0 = if (top) band + h * 0.035f else (h - footerReserve - blockH).coerceAtLeast(band + h * 0.08f)
     val x = w * 0.06f
     val at = Offset(x, y0)
-    drawText(layout, color = Color.Black.copy(alpha = 0.45f), topLeft = at + Offset(0f, fs * 0.07f))
-    drawText(layout, color = Color(0xFF14101E), topLeft = at, drawStyle = Stroke(fs * 0.09f, join = StrokeJoin.Round))
-    drawText(layout, brush = Brush.verticalGradient(listOf(Color.White, art.light.mix(Color.White, 0.35f)), y0, y0 + layout.size.height), topLeft = at)
+    drawText(layout, color = Color.Black.copy(alpha = 0.45f), topLeft = at + Offset(0f, fs * 0.07f), drawStyle = Fill)
+    // Neon signs glow; everything else gets an outline (two, for candy-coloured casual logos).
+    if (look.glow) {
+        for (r in listOf(0.08f, 0.05f, 0.03f)) {
+            drawText(layout, color = art.light.copy(alpha = 0.22f), topLeft = at, drawStyle = Stroke(fs * r * 2, join = StrokeJoin.Round))
+        }
+    }
+    if (look.outline != null) drawText(layout, color = look.outline, topLeft = at, drawStyle = Stroke(fs * 0.14f, join = StrokeJoin.Round))
+    // Serif letters are thin: a thick outline would hollow them out.
+    val edge = if (look.family == FontFamily.Serif) 0.04f else 0.09f
+    drawText(layout, color = Color(0xFF14101E), topLeft = at, drawStyle = Stroke(fs * edge, join = StrokeJoin.Round))
+    drawText(layout, brush = Brush.verticalGradient(look.fill, y0, y0 + layout.size.height), topLeft = at, drawStyle = Fill)
+    // A glint across metal and gold.
+    if (look.metal) drawText(layout, brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.3f), Color.Transparent), y0, y0 + layout.size.height * 0.4f), topLeft = at, drawStyle = Fill)
     var y = y0 + layout.size.height
     if (num != null) {
         val nAt = Offset(x, y - num.size.height * 0.15f)
         drawText(num, color = Color(0xFF14101E), topLeft = nAt, drawStyle = Stroke(fs * 0.12f, join = StrokeJoin.Round))
-        drawText(num, brush = Brush.verticalGradient(listOf(art.light, art.light.shade(0.75f)), nAt.y, nAt.y + num.size.height), topLeft = nAt)
+        drawText(num, brush = Brush.verticalGradient(listOf(art.light, art.light.shade(0.75f)), nAt.y, nAt.y + num.size.height), topLeft = nAt, drawStyle = Fill)
         y += num.size.height * 0.8f
     }
     drawText(genre, topLeft = Offset(x + 1f, y))
@@ -1013,8 +1074,12 @@ private fun DrawScope.hero(genre: Genre, x: Float, base: Float, size: Float, a: 
         withTransform({ translate(x, base) }) { mascot(size, a) }
         return
     }
+    // A backlight behind the hero, and their shadow on the ground, the way box art lights a lead.
+    drawCircle(Brush.radialGradient(listOf(rim.copy(alpha = 0.35f), Color.Transparent), Offset(x, base - size * 0.6f), size * 0.8f), size * 0.8f, Offset(x, base - size * 0.6f))
+    drawOval(Color.Black.copy(alpha = 0.45f), Offset(x - size * 0.32f, base - size * 0.04f), Size(size * 0.64f, size * 0.08f))
     shape(rim, towardLight * size * 0.025f)
     shape(body, 0f)
+
     // What the hero holds glows.
     val glowAt = when (genre) {
         Genre.RPG -> Offset(x + (if (mirror) -1 else 1) * size * 0.32f, base - size * 1.05f)
