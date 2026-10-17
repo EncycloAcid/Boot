@@ -59,6 +59,7 @@ class Stats {
     var ecosystemOpened = false
     var crunchWeeks = 0
     var ports = 0
+    var exclusives = 0
     var sales = 0
     var founderLevels = 0
     var stories = 0

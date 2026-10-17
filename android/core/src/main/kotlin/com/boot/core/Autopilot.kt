@@ -141,6 +141,7 @@ class Autopilot(
             }
             is ShowResults -> 0
             is MilestoneReview -> 0
+            is ExclusiveOffer -> e.choices.indexOfFirst { it.label == "Timed exclusive" }.takeIf { it >= 0 } ?: e.choices.lastIndex
             is PlatformInvite -> {
                 val labels = e.choices.map { it.label }
                 val p = s.games?.projectOf(k.team)

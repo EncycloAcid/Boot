@@ -256,6 +256,7 @@ private fun GameState.studioWeek() {
     showMomentsWeek(g)
     dealWeek(g)
     milestoneWeek(g)
+    exclusiveWeek(g)
     portWeek(g)
     chartsStory()
     feedWeek()

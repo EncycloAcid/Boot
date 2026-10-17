@@ -233,9 +233,15 @@ fun GameState.gameForecast(team: Int = 1): LaunchForecast? {
 
 fun GameState.launchGame(team: Int = 1) {
     val g = studio()
-    val p = g.projectOf(team) ?: throw invalid("No game in development.")
+    val signed = g.projectOf(team) ?: throw invalid("No game in development.")
+    // An exclusive ships only on its maker's platforms.
+    val exclusive = signed.exclusive
+    val held = exclusive?.let { e -> signed.concept.platforms.filter { it.maker != e.maker } }.orEmpty()
+    if (exclusive != null && held.isNotEmpty()) g.setProject(team, signed.copy(concept = exclusiveConcept(signed)))
+    val p = g.projectOf(team)!!
     val suited = p.concept.platforms.any { it.suits(p.concept.audience) }
     val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team)
+    if (exclusive != null) g.releases.firstOrNull()?.let { afterExclusiveLaunch(exclusive, held, it) }
     g.releases.firstOrNull()?.let { r ->
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)
         val outlet = rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon"))

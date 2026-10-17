@@ -290,7 +290,9 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
         ListRow(
             "Port it",
             subtitle = when {
-                porting != null -> "Coming to ${porting.platform.title} ${com.boot.core.GameClock.label(porting.doneWeek)}."
+                porting != null -> "Coming to ${porting.platform.title} ${com.boot.core.GameClock.label(porting.doneWeek)}." +
+                    (if (r.exclusiveTo != null && state.week < r.exclusiveUntil) " A ${r.exclusiveTo} exclusive until then." else "")
+                r.exclusiveTo != null && r.exclusiveUntil == Int.MAX_VALUE && targets.isEmpty() -> "A ${r.exclusiveTo} exclusive, for good."
                 r.developer != null -> "Ports are for games you made."
                 targets.isEmpty() -> "It's on every platform it can go to."
                 else -> "${Format.money(portCost)} and ${Format.weeks(portWeeks)}. A new crowd buys it, if it's good." +

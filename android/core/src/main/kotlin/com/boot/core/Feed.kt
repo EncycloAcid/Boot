@@ -207,6 +207,18 @@ internal fun GameState.feedOnDeal(studio: String) {
     say(rng, Poster.PLAYER, listOf("Please don't ruin $studio", "$studio fans, hold on to something", "Hope $companyName leaves $studio alone", "This could be good for $studio actually"), null, LogTone.NEUTRAL, 1.0)
 }
 
+/** What people say when a game goes exclusive. */
+internal fun GameState.feedOnExclusive(title: String, maker: String, timed: Boolean) {
+    val rng = flavour("exclusive $title")
+    say(rng, Poster.PRESS, listOf("Confirmed: {t} is ${if (timed) "a timed" else "an"} exclusive for $maker.", "$maker has locked down {t}.", "{s} signs {t} with $maker"), title, LogTone.NEUTRAL, 1.5)
+    say(
+        rng, Poster.PLAYER,
+        if (timed) listOf("So I just wait six months. Fine.", "Timed exclusive. Of course it is.", "I'll still be here when it comes out for everyone, {s}") else listOf("Guess I'm not playing {t} then", "Money talks. {tag}", "Another game I can't play. Thanks {s}", "Exclusives are bad for players and you know it"),
+        title, LogTone.BAD, 1.4,
+    )
+    say(rng, Poster.FAN, listOf("Day one on my $maker machine {tag}", "This is why I picked a $maker console", "W for $maker {tag}"), title, LogTone.GOOD, 1.0)
+}
+
 /** A game of yours tops the charts. */
 internal fun GameState.feedOnChart(title: String) {
     val rng = flavour("$title charts")

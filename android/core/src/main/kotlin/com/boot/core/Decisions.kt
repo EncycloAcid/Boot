@@ -644,4 +644,7 @@ object Sandbox {
     }
     fun founderXp(s: GameState, xp: Double) = s.founderXp(xp)
     fun startStory(s: GameState, kind: StoryKind, people: List<Int>) = s.startStory(kind, people)
+    fun research(s: GameState, r: Research) {
+        s.researched += r
+    }
 }

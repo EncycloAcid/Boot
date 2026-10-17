@@ -75,6 +75,7 @@ import com.boot.core.SideProject
 import com.boot.core.StaffClash
 import com.boot.core.StoryBeat
 import com.boot.core.StreamerPreview
+import com.boot.core.exclusiveLoss
 import com.boot.core.OwnShowcase
 import com.boot.core.choose
 import com.boot.core.reactionWord
@@ -264,6 +265,21 @@ fun EventArt(state: GameState, kind: EventKind): Boolean {
             }
         }
         return true
+    }
+    if (kind is com.boot.core.ExclusiveOffer) {
+        val p = state.games?.projectOf(kind.team)
+        if (p != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CompanyLogo(kind.maker, size = 52.dp)
+                GameCover(p.concept, 52.dp, studio = state.companyName)
+                Column(Modifier.padding(start = 4.dp)) {
+                    Text("${kind.maker} × ${p.title}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    val keep = com.boot.core.exclusivePlatforms(p.concept, kind.maker)
+                    Hint("Only on ${keep.joinToString { it.title }} · gives up ${Format.percent(state.exclusiveLoss(p.concept, kind.maker))} of players")
+                }
+            }
+            return true
+        }
     }
     if (kind is com.boot.core.MilestoneReview) {
         val p = state.games?.projectOf(kind.team)

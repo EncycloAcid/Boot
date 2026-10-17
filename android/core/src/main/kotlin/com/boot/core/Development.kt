@@ -193,7 +193,10 @@ fun GameState.portQuote(r: GameRelease): Pair<Double, Int> = when (r.concept.siz
 
 /** Platforms a game could be ported to. */
 fun GameState.portTargets(r: GameRelease): List<Platform> =
-    Platform.entries.filter { availablePlatform(it) && it != Platform.OWN_CONSOLE && it !in r.concept.platforms && it !in r.extraPlatforms }
+    Platform.entries.filter {
+        availablePlatform(it) && it != Platform.OWN_CONSOLE && it !in r.concept.platforms && it !in r.extraPlatforms &&
+            (r.exclusiveTo == null || week >= r.exclusiveUntil || it.maker == r.exclusiveTo)
+    }
 
 /** Why a game can't be ported to [platform], or null if it can. */
 fun GameState.portBlocker(r: GameRelease, platform: Platform): String? {

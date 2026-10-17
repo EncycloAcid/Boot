@@ -502,6 +502,12 @@ Milestones: once a stage is done (`stage >= 1`, `>= 2`, ready) the game gets a `
 
 After launch: `portGame` costs money and weeks by size; when it's done the platform joins `extraPlatforms` and the game gets a burst of sales scaled by (score/7)³. `runSale` lifts weekly sales by half and adds fans from the extra buyers, at most once every 13 weeks and not in the first 8.
 
+## Console exclusives (3.17)
+
+Exclusives.kt. `exclusiveTerms` prices a full exclusive at 3× the marketing deal for the game's size, times (forecast/7)² (clamped 0.4–1.8), times (0.6 + the share of players lost by going exclusive), times (1 + hype/200); a timed one pays 45% of that. Offers come at most one at a time, once per maker per game, from stage 1 on, to games forecast at 6.5+ or with hype 25+. Each week there's a 2% (+hype/2000) chance, rolled on the wording dice so the simulation's dice aren't shifted. A pitch succeeds with odds from the forecast, hype and whether it's been announced; a yes is an offer at 85%.
+
+Signing sets `GameProject.exclusive`, pays up front, adds hype (+8 full, +4 timed) and costs fan trust (−0.05, −0.02). At launch the project's concept is narrowed to the maker's platforms, so reach and sales come from those alone; the release records `exclusiveTo`/`exclusiveUntil`. A timed exclusive queues the held-back platforms as ports due when the window closes (26 weeks), so they get the port sales burst. `portTargets` leaves out other makers' platforms while the exclusivity lasts.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.17 (Android):** console exclusive deals.
+
+A console maker can pay to have your game only on its machines. Sony, Microsoft or Nintendo comes asking about a promising game in development (a good forecast or plenty of buzz helps), and you can pitch a game to them yourself from the project card, with your chances shown. Each deal comes in two kinds:
+- *Full exclusive:* the most money, up front. The game ships only on their consoles, for good, and can't be ported anywhere else.
+- *Timed exclusive:* a little under half the money. The other versions come out six months after launch, and sell to a new crowd then.
+
+The offer says how much of the game's audience you'd be giving up, and makers pay more when that's a lot. Signing hurts your standing with fans on other platforms a little (more for a full exclusive), adds buzz from the maker's marketing, makes the news and sets off Chirp: some fans cheer, others grumble.
+
 **New in 3.16 (Android):** making a game is hands-on from the first idea to long after launch.
 
 *Designing it.* The designer's summary has two new choices. Production: lean (70% of the budget, 15% less work, and it shows), standard, or lavish (half as much again, 15% more work, and every corner polished). And a hook, the one thing the game is known for: an open world, co-op, a story, roguelike runs, crafting, competitive play, mod support or cozy. A hook that suits the genre lifts the score and gets a line in the reviews. A forced one feels tacked on.

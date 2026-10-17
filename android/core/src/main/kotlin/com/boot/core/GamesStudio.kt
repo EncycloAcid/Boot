@@ -112,6 +112,10 @@ data class GameProject(
     val choices: MutableList<String> = mutableListOf(),
     /** The forecast score, week by week. */
     val forecasts: MutableList<Double> = mutableListOf(),
+    /** A console maker's exclusive, if one's signed. */
+    var exclusive: Exclusive? = null,
+    /** Makers who've been pitched or made an offer. */
+    val pitched: MutableSet<String> = mutableSetOf(),
 ) {
     val title: String get() = concept.title
     val work: Double get() = concept.work * workScale
@@ -202,6 +206,9 @@ data class GameRelease(
     val extraPlatforms: MutableList<Platform> = mutableListOf(),
     /** The last week it was on sale. */
     var lastSaleWeek: Int = -1000,
+    /** The console maker it's exclusive to, and until when (forever for a full exclusive). */
+    var exclusiveTo: String? = null,
+    var exclusiveUntil: Int = 0,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()

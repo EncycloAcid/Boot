@@ -49,7 +49,10 @@ import com.boot.core.Lane
 import com.boot.core.showsAhead
 import com.boot.core.Research
 import com.boot.core.buyCampaign
+import com.boot.core.exclusiveBlocker
 import com.boot.core.expansionBlocker
+import com.boot.core.pitchExclusive
+import com.boot.core.pitchOdds
 import com.boot.core.freeDesks
 import com.boot.core.gameForecast
 import com.boot.core.launchGame
@@ -447,6 +450,25 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
             Hint(listOfNotNull("${c.production.title} production".takeIf { c.production != com.boot.core.Production.STANDARD }, c.hook?.let { "${it.title} hook" }).joinToString(" · "))
         }
         if (p.choices.isNotEmpty()) Hint("Decided · " + p.choices.joinToString(" · "))
+        val signed = p.exclusive
+        if (signed != null) {
+            val where = com.boot.core.exclusivePlatforms(c, signed.maker).joinToString(" and ") { it.title }
+            Hint(
+                if (signed.timed) "Timed exclusive · $where first, everywhere else ${Format.weeks(signed.window)} later · ${signed.maker} paid ${Format.money(signed.payment)}"
+                else "$where exclusive · ${signed.maker} paid ${Format.money(signed.payment)}",
+                MaterialTheme.colorScheme.primary,
+            )
+        } else if (!p.isReady) {
+            val makers = com.boot.core.exclusiveMakers(c).filter { state.exclusiveBlocker(team, it) == null }
+            if (makers.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Console makers pay for exclusives.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    MenuButton("Pitch an exclusive", makers, { "$it · ${Format.percent(state.pitchOdds(team, it))} chance" }) { maker ->
+                        store.perform { pitchExclusive(team, maker) }
+                    }
+                }
+            }
+        }
         val season = GameSeason.forWeek(state.week)
         val lift = season.launchMultiplier(c.genre)
         val seasonPct = ((lift - 1) * 100).toInt()
