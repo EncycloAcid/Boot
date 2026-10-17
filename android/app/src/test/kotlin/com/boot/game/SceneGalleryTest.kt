@@ -139,7 +139,13 @@ class SceneGalleryTest {
 
     @Test
     fun moreBoxArt() {
-        covers(Topic.entries.drop(20), "54-box-art")
+        covers(Topic.entries.drop(20).take(23), "54-box-art")
+    }
+
+    /** The topics added in 3.20, each with one of the new genres. */
+    @Test
+    fun newBoxArt() {
+        covers(Topic.entries.drop(43), "54b-box-art-new")
     }
 
     @Test

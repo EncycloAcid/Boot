@@ -328,6 +328,9 @@ class GamesStudio {
     var hits = 0
     var flops = 0
     val topics: MutableList<Topic> = Topic.entries.filter { it.starter }.toMutableList()
+
+    /** Genres you can make. The first six are known from the start; the rest are researched. */
+    val genres: MutableList<Genre> = Genre.entries.filter { it.starter }.toMutableList()
     val engines = mutableListOf(Engine(0, "Starter kit", emptyList(), 0))
 
     /** Ports under way. */

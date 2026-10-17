@@ -329,7 +329,7 @@ private fun ConceptStep(
     GroupedSection("Genre", footer = genreFooter) {
         CardBlock {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Genre.entries.forEach { gn ->
+                g.genres.forEach { gn ->
                     val fit = g.knownFit(topic, gn)
                     FilterChip(
                         selected = gn == genre,
@@ -347,7 +347,7 @@ private fun ConceptStep(
             CardBlock {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     FilterChip(selected = genre2 == null, onClick = { onGenre2(null) }, label = { Text("None") })
-                    Genre.entries.filter { it != genre }.forEach { gn ->
+                    g.genres.filter { it != genre }.forEach { gn ->
                         FilterChip(selected = gn == genre2, onClick = { onGenre2(gn) }, label = { Text(gn.title) })
                     }
                 }

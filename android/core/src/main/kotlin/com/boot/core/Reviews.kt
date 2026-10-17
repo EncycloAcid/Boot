@@ -442,6 +442,12 @@ private fun genreTopicPraise(genre: Genre, topic: Topic): String = when (genre) 
     Genre.SIMULATION -> "running a ${topic.title.lowercase()} sim is oddly compulsive"
     Genre.STRATEGY -> "${topic.title.lowercase()} makes for meaty strategic puzzles"
     Genre.CASUAL -> "the ${topic.title.lowercase()} hook is instant and friendly"
+    Genre.PUZZLE -> "the ${topic.title.lowercase()} puzzles click in the most satisfying way"
+    Genre.PLATFORMER -> "every jump through its ${topic.title.lowercase()} levels feels just right"
+    Genre.SHOOTER -> "the gunplay sells the ${topic.title.lowercase()} fantasy"
+    Genre.FIGHTING -> "the ${topic.title.lowercase()} roster is a joy to master"
+    Genre.RHYTHM -> "the ${topic.title.lowercase()} soundtrack makes every beat land"
+    Genre.SANDBOX -> "building a ${topic.title.lowercase()} world of your own is endlessly absorbing"
 }
 
 private fun genreTopicPan(genre: Genre, topic: Topic): String = when (genre) {
@@ -451,6 +457,12 @@ private fun genreTopicPan(genre: Genre, topic: Topic): String = when (genre) {
     Genre.SIMULATION -> "the ${topic.title.lowercase()} sim never finds a loop"
     Genre.STRATEGY -> "${topic.title.lowercase()} and strategy keep stepping on each other"
     Genre.CASUAL -> "even as a casual game, the ${topic.title.lowercase()} theme feels forced"
+    Genre.PUZZLE -> "the ${topic.title.lowercase()} puzzles are either obvious or obtuse"
+    Genre.PLATFORMER -> "the ${topic.title.lowercase()} levels are a chore to jump through"
+    Genre.SHOOTER -> "the ${topic.title.lowercase()} setting is just a backdrop for generic shooting"
+    Genre.FIGHTING -> "the ${topic.title.lowercase()} fighters all feel the same"
+    Genre.RHYTHM -> "the ${topic.title.lowercase()} theme and the music never sync up"
+    Genre.SANDBOX -> "there's little to build in this ${topic.title.lowercase()} sandbox"
 }
 
 /** Optional topic-flavoured colour for pros/cons lists. */

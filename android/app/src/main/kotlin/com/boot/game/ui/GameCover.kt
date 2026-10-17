@@ -123,6 +123,22 @@ private val Topic.art: Art
         Topic.BALLET -> Art(0xFF1A0A22, 0xFFD48AD0, 0xFF0E0614, 0xFFFFE6F2, Scene.BALLET_STAGE, Fx.SPARKLES)
         Topic.FOLKLORE -> Art(0xFF1C2A1C, 0xFF8FA86A, 0xFF101810, 0xFFFFE08A, Scene.VILLAGE, Fx.FIREFLIES)
         Topic.ESPORTS_SCENE -> Art(0xFF0A0E24, 0xFF3A5CFF, 0xFF060812, 0xFF7CF0FF, Scene.ARENA, Fx.CONFETTI)
+        Topic.SAMURAI -> Art(0xFF2A0E1E, 0xFFFF8FA3, 0xFF140810, 0xFFFFD1DC, Scene.PAGODA, Fx.SPARKLES)
+        Topic.VIKINGS -> Art(0xFF0E1A2A, 0xFF5E7FA3, 0xFF0A1220, 0xFFE0F0FF, Scene.SHIP, Fx.NONE)
+        Topic.DRAGONS -> Art(0xFF2A0A0A, 0xFFFF5A3C, 0xFF180606, 0xFFFFB347, Scene.DRAGON, Fx.EMBERS)
+        Topic.GANGSTERS -> Art(0xFF120C08, 0xFF6B4A2E, 0xFF080604, 0xFFFFC46B, Scene.NOIR, Fx.RAIN)
+        Topic.PRISON -> Art(0xFF14161A, 0xFF4A5560, 0xFF0A0B0D, 0xFFFFE08A, Scene.VAULT, Fx.NONE)
+        Topic.CIRCUS -> Art(0xFF2A0A1A, 0xFFFF5252, 0xFF180610, 0xFFFFE066, Scene.STAGE, Fx.CONFETTI)
+        Topic.TRAINS -> Art(0xFF3A2A5A, 0xFFFFB27A, 0xFF22162E, 0xFFFFE08A, Scene.ROAD, Fx.NONE)
+        Topic.AVIATION -> Art(0xFF4A90D9, 0xFFFFE8C2, 0xFF2E6BA8, 0xFFFFFFFF, Scene.AIRSHIP, Fx.NONE)
+        Topic.DESERT_ISLAND -> Art(0xFF5EC8F0, 0xFFFFF0C2, 0xFFE8C97A, 0xFFFFFFFF, Scene.REEF, Fx.BUBBLES)
+        Topic.GHOSTS -> Art(0xFF0A0F1A, 0xFF3A4E7A, 0xFF05080E, 0xFFBFE8FF, Scene.GOTHIC, Fx.FIREFLIES)
+        Topic.MONSTER_TAMING -> Art(0xFF6EC8FF, 0xFFFFF4D6, 0xFF5AB86A, 0xFFFFE27A, Scene.PETS, Fx.SPARKLES)
+        Topic.CARD_BATTLES -> Art(0xFF1A0A2E, 0xFFB57AFF, 0xFF0E0618, 0xFFFFD866, Scene.ARENA, Fx.SPARKLES)
+        Topic.POLITICS -> Art(0xFF0E1A3A, 0xFFB0B8D0, 0xFF0A1024, 0xFFFFFFFF, Scene.TOWER, Fx.CONFETTI)
+        Topic.WIZARDS -> Art(0xFF1A0F3E, 0xFF7A5CFF, 0xFF0E0824, 0xFFC9A7FF, Scene.CASTLE, Fx.SPARKLES)
+        Topic.JUNGLE -> Art(0xFF0E2A1A, 0xFF4CAF50, 0xFF0A1A10, 0xFFFFE08A, Scene.JUNGLE, Fx.FIREFLIES)
+        Topic.SKATEBOARDING -> Art(0xFFFF8A65, 0xFFFFE0B2, 0xFF3E2723, 0xFFFFFFFF, Scene.CITY, Fx.NONE)
     }
 
 private fun platformColor(p: Platform): Color = when (p.maker) {
@@ -1098,6 +1114,11 @@ private fun DrawScope.figure(genre: Genre, s: Float, c: Color, a: Art) {
     fun limb(x0: Float, y0: Float, x1: Float, y1: Float, wd: Float) =
         drawLine(c, Offset(x0 * s, -y0 * s), Offset(x1 * s, -y1 * s), strokeWidth = wd * s, cap = StrokeCap.Round)
     when (genre) {
+        // The newer genres borrow the closest pose.
+        Genre.SHOOTER, Genre.FIGHTING -> figure(Genre.ACTION, s, c, a)
+        Genre.PLATFORMER -> figure(Genre.ADVENTURE, s, c, a)
+        Genre.PUZZLE, Genre.RHYTHM -> figure(Genre.CASUAL, s, c, a)
+        Genre.SANDBOX -> figure(Genre.SIMULATION, s, c, a)
         Genre.ACTION -> {
             // Legs apart, sword raised.
             limb(-0.08f, 0f, -0.02f, 0.45f, 0.1f)

@@ -484,7 +484,7 @@ class Autopilot(
 
     /** A decent concept: the best known combo, the biggest affordable size, the widest reach. */
     private fun bestConcept(s: GameState, g: GamesStudio): GameConcept? {
-        val genre = Genre.entries.maxBy { genre ->
+        val genre = g.genres.maxBy { genre ->
             g.topics.maxOf { t -> (g.knownFit(t, genre)?.multiplier ?: 0.98) - if (g.releases.firstOrNull()?.concept?.genre == genre) 0.2 else 0.0 }
         }
         val last = g.releases.firstOrNull()?.concept

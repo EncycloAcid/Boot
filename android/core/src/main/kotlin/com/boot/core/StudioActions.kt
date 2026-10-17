@@ -74,6 +74,7 @@ fun GameState.conceptBlocker(
     }
     c.sequelOf?.let { g.release(it) }?.let { if (it.developer != null) return "${it.title} belongs to ${it.developer}." }
     if (c.topic !in g.topics) return "Research ${c.topic.title} first."
+    for (gn in listOfNotNull(c.genre, c.genre2)) if (gn !in g.genres) return "Research the ${gn.lower} genre first."
     c.size.requires?.let { if (it !in researched) return "Research ${it.title} first." }
     if (teamSize(team) < c.size.minTeam) {
         return "${c.size.title} games need ${c.size.minTeam} people on the team. ${if (team == 2) "Team 2 has" else "You have"} ${teamSize(team)}."

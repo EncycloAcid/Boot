@@ -701,6 +701,23 @@ fun GameState.researchTopic(topic: Topic) {
     addLog("New topic researched: ${topic.title}.", LogTone.GOOD, Lane.GAMES)
 }
 
+/** Why [genre] can't be researched yet, or null if it can. */
+fun GameState.genreBlocker(genre: Genre): String? {
+    val g = games ?: return "Genres are for game studios."
+    if (genre in g.genres) return "You already make ${genre.lower} games."
+    if (isDecades && calendarYear < genre.year) return "Nobody's making ${genre.lower} games yet. Wait for ${genre.year}."
+    if (researchPoints < genre.researchCost) return "Needs ${genre.researchCost} RP."
+    return null
+}
+
+fun GameState.researchGenre(genre: Genre) {
+    if (ending != null) throw gameOver()
+    genreBlocker(genre)?.let { throw notAvailable(it) }
+    researchPoints -= genre.researchCost
+    games!!.genres += genre
+    addLog("New genre researched: ${genre.title}. ${genre.title} games are yours to make.", LogTone.GOOD, Lane.GAMES)
+}
+
 /** Research points earned this week. */
 internal fun GameState.weeklyResearch(gameWork: Double): Double {
     var rp = 0.5 + founder.skillBonus(lanes.firstOrNull() ?: startingLane) * 0.1

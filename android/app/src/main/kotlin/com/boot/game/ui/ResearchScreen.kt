@@ -32,6 +32,9 @@ import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Research
 import com.boot.core.Topic
+import com.boot.core.Genre
+import com.boot.core.genreBlocker
+import com.boot.core.researchGenre
 import com.boot.core.research
 import com.boot.core.researchBlocker
 import com.boot.core.researchPerWeek
@@ -39,7 +42,7 @@ import com.boot.core.researchTopic
 import com.boot.game.GameStore
 import java.util.Locale
 
-private enum class ResearchPage(val title: String) { STUDIO("Studio"), ENGINE("Engine"), TOPICS("Topics"), COMPANY("Company") }
+private enum class ResearchPage(val title: String) { STUDIO("Studio"), ENGINE("Engine"), TOPICS("Genres & topics"), COMPANY("Company") }
 
 /** Spend research points: game studio unlocks, engine features, topics, and upgrades for every lane. */
 @Composable
@@ -72,7 +75,10 @@ fun ResearchScreen(store: GameStore, state: GameState) {
                     )
                 }
             }
-            ResearchPage.TOPICS -> item { TopicList(store, state) }
+            ResearchPage.TOPICS -> {
+                item { GenreList(store, state) }
+                item { TopicList(store, state) }
+            }
             ResearchPage.COMPANY -> {
                 item { ResearchList(store, state, "Company", Research.entries.filter { it.kind == Research.Kind.COMPANY }.visible(state)) }
                 val pastEras = Research.entries.filter { it.kind == Research.Kind.ERA && it in state.researched }
@@ -145,6 +151,32 @@ private fun ResearchList(store: GameStore, state: GameState, header: String, ite
             }
         }
     }
+}
+
+@Composable
+private fun GenreList(store: GameStore, state: GameState) {
+    val g = state.games ?: return
+    val locked = Genre.entries.filter { it !in g.genres }
+    if (locked.isEmpty()) return
+    GroupedSection("Genres", footer = "You make ${g.genres.size} of ${Genre.entries.size} genres. Each new one opens up combos with every topic you know.") {
+        locked.forEachIndexed { i, gn ->
+            if (i > 0) RowDivider()
+            val blocker = state.genreBlocker(gn)
+            ListRow(gn.title, subtitle = if (blocker != null && blocker.startsWith("Nobody")) blocker else genreBlurb(gn)) {
+                TonalButton("${gn.researchCost} RP", { store.perform { researchGenre(gn) } }, enabled = blocker == null)
+            }
+        }
+    }
+}
+
+private fun genreBlurb(g: Genre): String = when (g) {
+    Genre.PUZZLE -> "Brain-teasers. Gameplay and level design are everything."
+    Genre.PLATFORMER -> "Run and jump. Tight controls and clever levels."
+    Genre.SHOOTER -> "Aim and fire. Tech-heavy: engine, AI and graphics."
+    Genre.FIGHTING -> "One on one. Engine, gameplay and AI decide it."
+    Genre.RHYTHM -> "Play to the beat. Sound matters more than anywhere."
+    Genre.SANDBOX -> "Build anything. Big worlds and systems."
+    else -> ""
 }
 
 @Composable

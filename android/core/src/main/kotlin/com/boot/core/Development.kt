@@ -30,14 +30,14 @@ enum class Production(val title: String, val blurb: String, val cost: Double, va
 /** The one thing a game is known for. */
 @Serializable
 enum class Hook(val title: String, val blurb: String, val suits: Set<Genre>, val pro: String) {
-    OPEN_WORLD("Open world", "Go anywhere, do anything.", setOf(Genre.ACTION, Genre.ADVENTURE, Genre.RPG), "the open world is a joy to explore"),
-    CO_OP("Co-op", "Better with friends.", setOf(Genre.ACTION, Genre.STRATEGY, Genre.CASUAL), "playing with friends is a blast"),
+    OPEN_WORLD("Open world", "Go anywhere, do anything.", setOf(Genre.ACTION, Genre.ADVENTURE, Genre.RPG, Genre.SANDBOX, Genre.SHOOTER), "the open world is a joy to explore"),
+    CO_OP("Co-op", "Better with friends.", setOf(Genre.ACTION, Genre.STRATEGY, Genre.CASUAL, Genre.SHOOTER, Genre.PLATFORMER), "playing with friends is a blast"),
     STORY("Story-driven", "A tale people talk about.", setOf(Genre.ADVENTURE, Genre.RPG), "the story grips from start to finish"),
-    ROGUELIKE("Roguelike runs", "Die, learn, go again.", setOf(Genre.ACTION, Genre.STRATEGY), "every run feels different"),
-    CRAFTING("Crafting", "Build anything from what you find.", setOf(Genre.SIMULATION, Genre.ADVENTURE), "the crafting is deep and satisfying"),
-    COMPETITIVE("Competitive", "Ranked play and a scene to grow.", setOf(Genre.ACTION, Genre.STRATEGY), "the competitive play has real depth"),
-    MODS("Mod support", "Players make more of it.", setOf(Genre.SIMULATION, Genre.STRATEGY), "the modding scene is already thriving"),
-    COZY("Cozy", "A gentle game to unwind with.", setOf(Genre.CASUAL, Genre.SIMULATION), "it's the most relaxing game in years"),
+    ROGUELIKE("Roguelike runs", "Die, learn, go again.", setOf(Genre.ACTION, Genre.STRATEGY, Genre.PLATFORMER, Genre.SHOOTER), "every run feels different"),
+    CRAFTING("Crafting", "Build anything from what you find.", setOf(Genre.SIMULATION, Genre.ADVENTURE, Genre.SANDBOX), "the crafting is deep and satisfying"),
+    COMPETITIVE("Competitive", "Ranked play and a scene to grow.", setOf(Genre.ACTION, Genre.STRATEGY, Genre.SHOOTER, Genre.FIGHTING, Genre.RHYTHM), "the competitive play has real depth"),
+    MODS("Mod support", "Players make more of it.", setOf(Genre.SIMULATION, Genre.STRATEGY, Genre.SANDBOX, Genre.SHOOTER), "the modding scene is already thriving"),
+    COZY("Cozy", "A gentle game to unwind with.", setOf(Genre.CASUAL, Genre.SIMULATION, Genre.PUZZLE, Genre.RHYTHM), "it's the most relaxing game in years"),
     ;
 
     fun fits(c: GameConcept): Boolean = c.genre in suits || c.genre2 in suits

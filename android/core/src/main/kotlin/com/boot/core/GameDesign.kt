@@ -9,8 +9,11 @@ import kotlin.math.min
 // and where the team spends its effort in each of the three development stages.
 
 @Serializable
-enum class Genre(val code: Char) {
-    ACTION('A'), ADVENTURE('V'), RPG('R'), SIMULATION('S'), STRATEGY('T'), CASUAL('C');
+enum class Genre(val code: Char, val starter: Boolean = true) {
+    ACTION('A'), ADVENTURE('V'), RPG('R'), SIMULATION('S'), STRATEGY('T'), CASUAL('C'),
+
+    // Researched, not known from the start.
+    PUZZLE('P', false), PLATFORMER('L', false), SHOOTER('H', false), FIGHTING('F', false), RHYTHM('B', false), SANDBOX('X', false);
 
     val title: String
         get() = when (this) {
@@ -20,6 +23,12 @@ enum class Genre(val code: Char) {
             SIMULATION -> "Simulation"
             STRATEGY -> "Strategy"
             CASUAL -> "Casual"
+            PUZZLE -> "Puzzle"
+            PLATFORMER -> "Platformer"
+            SHOOTER -> "Shooter"
+            FIGHTING -> "Fighting"
+            RHYTHM -> "Rhythm"
+            SANDBOX -> "Sandbox"
         }
 
     /** For use mid-sentence: "rpg" reads wrong, "RPG" stays. */
@@ -34,6 +43,12 @@ enum class Genre(val code: Char) {
             SIMULATION -> 0.36
             STRATEGY -> 0.58
             CASUAL -> 0.55
+            PUZZLE -> 0.64
+            PLATFORMER -> 0.52
+            SHOOTER -> 0.32
+            FIGHTING -> 0.42
+            RHYTHM -> 0.5
+            SANDBOX -> 0.4
         }
 
     /** How much each development area matters to this genre: 0 low, 1 medium, 2 high. */
@@ -44,7 +59,27 @@ enum class Genre(val code: Char) {
         SIMULATION -> intArrayOf(2, 2, 0, 0, 1, 2, 1, 2, 0)
         STRATEGY -> intArrayOf(2, 2, 0, 0, 1, 2, 2, 0, 1)
         CASUAL -> intArrayOf(0, 2, 0, 0, 2, 0, 1, 2, 2)
+        PUZZLE -> intArrayOf(0, 2, 0, 0, 2, 0, 0, 1, 1)
+        PLATFORMER -> intArrayOf(1, 2, 0, 0, 2, 1, 1, 2, 1)
+        SHOOTER -> intArrayOf(2, 2, 1, 0, 2, 2, 1, 2, 1)
+        FIGHTING -> intArrayOf(2, 2, 0, 0, 0, 2, 0, 2, 1)
+        RHYTHM -> intArrayOf(1, 2, 0, 0, 1, 0, 0, 1, 2)
+        SANDBOX -> intArrayOf(2, 2, 0, 0, 1, 1, 2, 1, 0)
     }[area.ordinal]
+
+    /** Research points to unlock a genre you don't start with. */
+    val researchCost: Int get() = if (starter) 0 else 14 + (ordinal % 4) * 4
+
+    /** The year it caught on: in a run set in the past, it can't be researched before then. */
+    val year: Int
+        get() = when (this) {
+            PLATFORMER -> 1981
+            FIGHTING -> 1987
+            SHOOTER -> 1992
+            RHYTHM -> 1996
+            SANDBOX -> 2009
+            else -> 0
+        }
 
     companion object {
         fun of(code: Char): Genre = entries.first { it.code == code }
@@ -227,49 +262,65 @@ enum class Topic(
     private val audienceBad: String = "",
     val starter: Boolean = false,
 ) {
-    FANTASY("RV", "AT", "S", "EM", starter = true),
-    SCI_FI("AT", "RV", "C", "EM", starter = true),
-    RACING("SA", "C", "RVT", "YE", starter = true),
-    SPORTS("SC", "AT", "RV", "YE", starter = true),
-    MILITARY("TA", "S", "CV", "M", "Y", starter = true),
-    SPACE("TS", "AR", "C", "EM", starter = true),
-    PIRATES("VA", "TR", "S", "YE", starter = true),
-    DETECTIVE("V", "RC", "AS", "EM", starter = true),
-    CITY("ST", "C", "AVR", "E", starter = true),
-    NINJA("A", "VR", "S", "YE", starter = true),
-    ZOMBIES("A", "VT", "CS", "M", "Y"),
-    HORROR("VA", "R", "CST", "M", "Y"),
-    CYBERPUNK("RA", "VT", "CS", "M", "Y"),
-    MEDIEVAL("TR", "ASV", "C", "EM"),
-    FARMING("SC", "T", "A", "YE"),
-    COOKING("CS", "V", "ART", "YE"),
-    SCHOOL("CV", "SR", "AT", "Y", "M"),
-    DINOSAURS("AS", "VC", "T", "Y"),
-    SUPERHEROES("A", "VR", "ST", "YE"),
-    POST_APOCALYPTIC("RA", "TV", "C", "M", "Y"),
-    MYSTERY("V", "CR", "AS", "EM"),
-    MUSIC("C", "S", "ART", "YE"),
-    MYTHOLOGY("RT", "AV", "SC", "EM"),
-    WILD_WEST("AV", "STR", "C", "EM"),
-    ALIENS("AT", "VS", "C", "E"),
-    ROBOTS("AS", "TC", "V", "YE"),
-    TIME_TRAVEL("VR", "A", "S", "E"),
-    PETS("CS", "V", "ATR", "Y", "M"),
-    BUSINESS("ST", "C", "AVR", "EM", "Y"),
-    HACKING("TS", "VA", "C", "M", "Y"),
-    VAMPIRES("RV", "A", "CS", "M", "Y"),
-    OCEAN("SV", "C", "T", "YE"),
-    SPY("AV", "T", "SC", "EM"),
-    MARS("ST", "VA", "C", "E"),
-    FASHION("CS", "V", "ATR", "YE", "M"),
-    HOSPITAL("S", "CT", "AR", "EM", "Y"),
-    ARTIFICIAL_INTELLIGENCE("TS", "VR", "C", "EM"),
-    HEIST("AV", "T", "CS", "EM", "Y"),
-    STEAMPUNK("RA", "VS", "C", "EM"),
-    SURVIVAL("SA", "TV", "C", "EM", "Y"),
-    BALLET("C", "VS", "ART", "YE", "M"),
-    FOLKLORE("RV", "AT", "CS", "EM"),
-    ESPORTS_SCENE("AC", "S", "VRT", "YE", "M");
+    FANTASY("RV", "ATLF", "SB", "EM", starter = true),
+    SCI_FI("ATH", "RVL", "C", "EM", starter = true),
+    RACING("SA", "CX", "RVTPF", "YE", starter = true),
+    SPORTS("SC", "ATB", "RVL", "YE", starter = true),
+    MILITARY("TAH", "S", "CVBLP", "M", "Y", starter = true),
+    SPACE("TS", "ARHX", "CB", "EM", starter = true),
+    PIRATES("VA", "TRL", "SB", "YE", starter = true),
+    DETECTIVE("VP", "RC", "ASHF", "EM", starter = true),
+    CITY("STX", "C", "AVRF", "E", starter = true),
+    NINJA("AF", "VRL", "SB", "YE", starter = true),
+    ZOMBIES("AH", "VTX", "CSB", "M", "Y"),
+    HORROR("VA", "RPH", "CSTB", "M", "Y"),
+    CYBERPUNK("RA", "VTHF", "CS", "M", "Y"),
+    MEDIEVAL("TR", "ASVX", "CB", "EM"),
+    FARMING("SC", "TX", "AHF", "YE"),
+    COOKING("CS", "VPB", "ARTHF", "YE"),
+    SCHOOL("CV", "SRB", "ATH", "Y", "M"),
+    DINOSAURS("AS", "VCHL", "T", "Y"),
+    SUPERHEROES("AF", "VRL", "ST", "YE"),
+    POST_APOCALYPTIC("RAH", "TVX", "C", "M", "Y"),
+    MYSTERY("VP", "CR", "ASF", "EM"),
+    MUSIC("CB", "S", "ARTHF", "YE"),
+    MYTHOLOGY("RT", "AVF", "SC", "EM"),
+    WILD_WEST("AV", "STRH", "C", "EM"),
+    ALIENS("ATH", "VS", "C", "E"),
+    ROBOTS("AS", "TCFX", "V", "YE"),
+    TIME_TRAVEL("VR", "APL", "S", "E"),
+    PETS("CS", "VL", "ATRHF", "Y", "M"),
+    BUSINESS("ST", "C", "AVRHFL", "EM", "Y"),
+    HACKING("TS", "VAP", "CF", "M", "Y"),
+    VAMPIRES("RV", "AF", "CS", "M", "Y"),
+    OCEAN("SV", "CX", "T", "YE"),
+    SPY("AV", "TH", "SC", "EM"),
+    MARS("ST", "VAX", "C", "E"),
+    FASHION("CS", "VB", "ATRHF", "YE", "M"),
+    HOSPITAL("S", "CT", "ARHF", "EM", "Y"),
+    ARTIFICIAL_INTELLIGENCE("TS", "VRP", "C", "EM"),
+    HEIST("AV", "TH", "CS", "EM", "Y"),
+    STEAMPUNK("RA", "VSL", "C", "EM"),
+    SURVIVAL("SAX", "TV", "C", "EM", "Y"),
+    BALLET("CB", "VS", "ARTHF", "YE", "M"),
+    FOLKLORE("RV", "ATL", "CS", "EM"),
+    ESPORTS_SCENE("ACH", "SF", "VRT", "YE", "M"),
+    SAMURAI("AF", "VRT", "CB", "EM"),
+    VIKINGS("AT", "RSX", "CB", "EM"),
+    DRAGONS("R", "AVF", "SH", "E"),
+    GANGSTERS("AH", "VS", "CBL", "M", "Y"),
+    PRISON("VP", "AS", "CB", "M", "Y"),
+    CIRCUS("CB", "LP", "HT", "YE"),
+    TRAINS("S", "CTX", "AF", "E"),
+    AVIATION("S", "AH", "VB", "E"),
+    DESERT_ISLAND("XS", "V", "FH", "YE"),
+    GHOSTS("VP", "AL", "S", "EM"),
+    MONSTER_TAMING("R", "CT", "H", "YE"),
+    CARD_BATTLES("T", "CRP", "AHL", "YE"),
+    POLITICS("T", "S", "AFL", "M", "Y"),
+    WIZARDS("RV", "AFL", "S", "YE"),
+    JUNGLE("VL", "AX", "T", "YE"),
+    SKATEBOARDING("C", "BSL", "RT", "YE");
 
     val title: String
         get() = when (this) {
@@ -279,7 +330,7 @@ enum class Topic(
             TIME_TRAVEL -> "Time travel"
             ARTIFICIAL_INTELLIGENCE -> "Artificial intelligence"
             ESPORTS_SCENE -> "Esports"
-            else -> name.lowercase().replaceFirstChar { it.uppercase() }
+            else -> name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
         }
 
     /** Research points to unlock a topic you don't start with. */
@@ -395,40 +446,40 @@ enum class Platform(
 ) {
     // Enum names are kept from earlier versions so old saves still load. Weeks are on the shared
     // timeline, where week 0 is the start of MODERN_YEAR; a run started today begins there.
-    PC("PC", "Valve (Steam)", -2_600, 100_000, 55.0, 1.0, 0.0, "TSR", "", "EM"),
-    PLAYSYSTEM_5("PlayStation 5", "Sony", -322, 330, 50.0, 1.0, 80_000.0, "AVR", "T", "EM"),
-    MBOX_Z("Xbox Series X|S", "Microsoft", -322, 330, 28.0, 1.0, 80_000.0, "AS", "C", "M"),
-    SWITCHEROO("Nintendo Switch", "Nintendo", -514, 160, 42.0, 0.9, 50_000.0, "CVA", "ST", "YE"),
-    GRPHONE("iPhone & Android", "Apple and Google", -988, 100_000, 400.0, 0.08, 2_000.0, "C", "TS", "YE"),
-    VAPOR_DECK("Steam Deck", "Valve", -255, 560, 9.0, 1.1, 0.0, "RTA", "", "EM"),
-    STRATOS("Amazon Luna", "Amazon", -220, 230, 6.0, 0.7, 20_000.0, "A", "T", "E"),
-    VISOR_VR("Meta Quest", "Meta", -376, 620, 14.0, 1.1, 30_000.0, "AS", "TR", "EM"),
-    SWITCHEROO_2("Nintendo Switch 2", "Nintendo", -82, 100_000, 60.0, 0.9, 70_000.0, "CVA", "ST", "YE"),
-    PLAYSYSTEM_6("PlayStation 6", "Sony", 110, 100_000, 65.0, 1.0, 120_000.0, "AVR", "T", "EM"),
-    MBOX_INFINITY("Next-gen Xbox", "Microsoft", 100, 100_000, 34.0, 1.0, 120_000.0, "AS", "C", "M"),
-    SPECTACLE_AR("Apple Vision", "Apple", 300, 100_000, 30.0, 0.8, 50_000.0, "CA", "T", "YE"),
+    PC("PC", "Valve (Steam)", -2_600, 100_000, 55.0, 1.0, 0.0, "TSRHX", "", "EM"),
+    PLAYSYSTEM_5("PlayStation 5", "Sony", -322, 330, 50.0, 1.0, 80_000.0, "AVRHF", "T", "EM"),
+    MBOX_Z("Xbox Series X|S", "Microsoft", -322, 330, 28.0, 1.0, 80_000.0, "ASH", "C", "M"),
+    SWITCHEROO("Nintendo Switch", "Nintendo", -514, 160, 42.0, 0.9, 50_000.0, "CVALP", "ST", "YE"),
+    GRPHONE("iPhone & Android", "Apple and Google", -988, 100_000, 400.0, 0.08, 2_000.0, "CP", "TSHF", "YE"),
+    VAPOR_DECK("Steam Deck", "Valve", -255, 560, 9.0, 1.1, 0.0, "RTAL", "", "EM"),
+    STRATOS("Amazon Luna", "Amazon", -220, 230, 6.0, 0.7, 20_000.0, "AH", "T", "E"),
+    VISOR_VR("Meta Quest", "Meta", -376, 620, 14.0, 1.1, 30_000.0, "ASB", "TRL", "EM"),
+    SWITCHEROO_2("Nintendo Switch 2", "Nintendo", -82, 100_000, 60.0, 0.9, 70_000.0, "CVALP", "ST", "YE"),
+    PLAYSYSTEM_6("PlayStation 6", "Sony", 110, 100_000, 65.0, 1.0, 120_000.0, "AVRHF", "T", "EM"),
+    MBOX_INFINITY("Next-gen Xbox", "Microsoft", 100, 100_000, 34.0, 1.0, 120_000.0, "ASH", "C", "M"),
+    SPECTACLE_AR("Apple Vision", "Apple", 300, 100_000, 30.0, 0.8, 50_000.0, "CAPB", "T", "YE"),
 
     // The consoles of the past, for runs that start there. They're long retired by today.
-    ATARI_2600("Atari 2600", "Atari", -2_584, -1_820, 18.0, 1.0, 0.0, "AC", "RS", "YE"),
-    C64("Commodore 64", "Commodore", -2_324, -1_700, 14.0, 0.9, 0.0, "AVS", "", "YEM"),
-    NES("NES", "Nintendo", -2_174, -1_664, 34.0, 1.0, 20_000.0, "AVC", "S", "YE"),
-    GAME_BOY("Game Boy", "Nintendo", -1_957, -1_248, 40.0, 0.7, 15_000.0, "CV", "ST", "YE"),
-    GENESIS("Sega Genesis", "Sega", -1_950, -1_508, 22.0, 1.0, 20_000.0, "A", "", "YEM"),
-    SNES("Super Nintendo", "Nintendo", -1_836, -1_456, 30.0, 1.0, 25_000.0, "RVA", "", "YE"),
-    PLAYSTATION("PlayStation", "Sony", -1_628, -1_144, 60.0, 1.0, 30_000.0, "AVR", "", "EM"),
-    N64("Nintendo 64", "Nintendo", -1_576, -1_300, 22.0, 1.0, 30_000.0, "AV", "T", "YE"),
-    PS2("PlayStation 2", "Sony", -1_362, -728, 90.0, 1.0, 40_000.0, "AVR", "", "EM"),
-    XBOX("Xbox", "Microsoft", -1_304, -1_092, 18.0, 1.0, 40_000.0, "AS", "C", "M"),
-    GAMECUBE("GameCube", "Nintendo", -1_304, -1_040, 15.0, 1.0, 35_000.0, "CVA", "ST", "YE"),
-    NINTENDO_DS("Nintendo DS", "Nintendo", -1_144, -676, 80.0, 0.8, 25_000.0, "CV", "ST", "YE"),
-    XBOX_360("Xbox 360", "Microsoft", -1_092, -572, 60.0, 1.0, 50_000.0, "AS", "C", "M"),
-    WII("Wii", "Nintendo", -1_040, -676, 70.0, 0.8, 40_000.0, "CS", "TR", "YE"),
-    PS3("PlayStation 3", "Sony", -1_040, -520, 60.0, 1.0, 50_000.0, "AVR", "", "EM"),
-    PS4("PlayStation 4", "Sony", -684, -156, 85.0, 1.0, 60_000.0, "AVR", "T", "EM"),
-    XBOX_ONE("Xbox One", "Microsoft", -684, -260, 40.0, 1.0, 60_000.0, "AS", "C", "M"),
+    ATARI_2600("Atari 2600", "Atari", -2_584, -1_820, 18.0, 1.0, 0.0, "ACL", "RS", "YE"),
+    C64("Commodore 64", "Commodore", -2_324, -1_700, 14.0, 0.9, 0.0, "AVSP", "", "YEM"),
+    NES("NES", "Nintendo", -2_174, -1_664, 34.0, 1.0, 20_000.0, "AVCL", "S", "YE"),
+    GAME_BOY("Game Boy", "Nintendo", -1_957, -1_248, 40.0, 0.7, 15_000.0, "CVP", "ST", "YE"),
+    GENESIS("Sega Genesis", "Sega", -1_950, -1_508, 22.0, 1.0, 20_000.0, "ALF", "", "YEM"),
+    SNES("Super Nintendo", "Nintendo", -1_836, -1_456, 30.0, 1.0, 25_000.0, "RVALF", "", "YE"),
+    PLAYSTATION("PlayStation", "Sony", -1_628, -1_144, 60.0, 1.0, 30_000.0, "AVRFB", "", "EM"),
+    N64("Nintendo 64", "Nintendo", -1_576, -1_300, 22.0, 1.0, 30_000.0, "AVL", "T", "YE"),
+    PS2("PlayStation 2", "Sony", -1_362, -728, 90.0, 1.0, 40_000.0, "AVRBF", "", "EM"),
+    XBOX("Xbox", "Microsoft", -1_304, -1_092, 18.0, 1.0, 40_000.0, "ASH", "C", "M"),
+    GAMECUBE("GameCube", "Nintendo", -1_304, -1_040, 15.0, 1.0, 35_000.0, "CVAL", "ST", "YE"),
+    NINTENDO_DS("Nintendo DS", "Nintendo", -1_144, -676, 80.0, 0.8, 25_000.0, "CVP", "ST", "YE"),
+    XBOX_360("Xbox 360", "Microsoft", -1_092, -572, 60.0, 1.0, 50_000.0, "ASH", "C", "M"),
+    WII("Wii", "Nintendo", -1_040, -676, 70.0, 0.8, 40_000.0, "CSB", "TRH", "YE"),
+    PS3("PlayStation 3", "Sony", -1_040, -520, 60.0, 1.0, 50_000.0, "AVRF", "", "EM"),
+    PS4("PlayStation 4", "Sony", -684, -156, 85.0, 1.0, 60_000.0, "AVRHF", "T", "EM"),
+    XBOX_ONE("Xbox One", "Microsoft", -684, -260, 40.0, 1.0, 60_000.0, "ASH", "C", "M"),
 
     /** Your own handheld, once Games and Hardware have built the Handheld Console crossover. */
-    OWN_CONSOLE("Your handheld", "You", -2_000, 100_000, 0.0, 1.2, 0.0, "AVRSTC", "", "YEM");
+    OWN_CONSOLE("Your handheld", "You", -2_000, 100_000, 0.0, 1.2, 0.0, "AVRSTCPLB", "", "YEM");
 
     fun fit(genre: Genre): Fit = when (genre.code) {
         in good -> Fit.GOOD
