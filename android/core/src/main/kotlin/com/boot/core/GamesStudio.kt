@@ -102,9 +102,19 @@ data class GameProject(
     var releaseWeek: Int? = null,
     /** Times it's slipped. */
     var delays: Int = 0,
+    /** Scope changes at milestones: more or less work than planned. */
+    var workScale: Double = 1.0,
+    /** What milestone decisions added to (or took from) the score. */
+    var qualityBonus: Double = 0.0,
+    /** Milestones reviewed: 0 the vertical slice, 1 alpha, 2 beta. */
+    val milestones: MutableSet<Int> = mutableSetOf(),
+    /** What was decided at each milestone, for the review breakdown. */
+    val choices: MutableList<String> = mutableListOf(),
+    /** The forecast score, week by week. */
+    val forecasts: MutableList<Double> = mutableListOf(),
 ) {
     val title: String get() = concept.title
-    val work: Double get() = concept.work
+    val work: Double get() = concept.work * workScale
     val isReady: Boolean get() = progress >= work
     val completion: Double get() = min(1.0, progress / work)
 
@@ -188,6 +198,10 @@ data class GameRelease(
     val wishlists: Double = 0.0,
     /** What players said in their reviews. */
     val playerQuotes: List<PlayerQuote> = emptyList(),
+    /** Platforms it was ported to after launch. */
+    val extraPlatforms: MutableList<Platform> = mutableListOf(),
+    /** The last week it was on sale. */
+    var lastSaleWeek: Int = -1000,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -298,6 +312,9 @@ class GamesStudio {
     var flops = 0
     val topics: MutableList<Topic> = Topic.entries.filter { it.starter }.toMutableList()
     val engines = mutableListOf(Engine(0, "Starter kit", emptyList(), 0))
+
+    /** Ports under way. */
+    val ports = mutableListOf<Port>()
     var engineBuild: EngineBuild? = null
 
     /** What game reports have taught you: fits keyed "TG:topic:genre", "TA:topic:audience", "PG:platform:genre". */
@@ -562,7 +579,7 @@ class GamesStudio {
             p.lastBugs = -fixed
         }
         p.hype *= 0.99
-        val budget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0) * (if (p.concept.live) 1.25 else 1.0)
+        val budget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0) * (if (p.concept.live) 1.25 else 1.0) * p.concept.production.cost
         p.spent += budget
         report.expenses += budget
     }
@@ -683,6 +700,11 @@ class GamesStudio {
                 "${p.creativeFocus.title}: ${p.creativeFocus.blurb}",
             )
         }
+        if (c.production != Production.STANDARD) part("Production", c.production.score, "${c.production.title}: ${c.production.blurb}")
+        c.hook?.let { h ->
+            part(h.title, h.points(c), if (h.fits(c)) "${h.title} suits ${c.genreLower} games." else "${h.title} doesn't suit ${c.genreLower} games.")
+        }
+        part("Milestones", p.qualityBonus, p.choices.joinToString("; ").ifEmpty { "Decisions made along the way." })
         val recent = releases.filter { it.developer == null }.take(3).map { it.score }
         val before = SCORE_BASELINE + parts.sumOf { it.points }
         val stepBack = recent.isNotEmpty() && before < recent.average() - 1.5
@@ -753,7 +775,7 @@ class GamesStudio {
                 hype = p.hype, fanTrust = fanTrust, onTrend = onTrend, repeated = repeated, rushedSequel = rushedSequel,
                 worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
                 wrongCrowd = audienceFit == Fit.BAD || !audienceSuited, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
-                year = ctx.year,
+                year = ctx.year, production = c.production,
             ),
             rng,
         )

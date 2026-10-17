@@ -140,6 +140,7 @@ class Autopilot(
                 pick?.let { open.indexOf(it) } ?: e.choices.lastIndex
             }
             is ShowResults -> 0
+            is MilestoneReview -> 0
             is PlatformInvite -> {
                 val labels = e.choices.map { it.label }
                 val p = s.games?.projectOf(k.team)

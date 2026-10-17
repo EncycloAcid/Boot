@@ -494,6 +494,14 @@ Ambient posts come each week, about announced games (more with hype, and countin
 
 **Reach and trending.** Likes scale with the kind of poster and the size of the moment, by the founder's fanbase for your own account, and by era (×0.05 before 2006, ×0.4 to 2011). Trending ranks a month's hashtags by likes. All text uses `flavour` dice; the outlets' sign-off lines draw extra wording dice so review outcomes don't move.
 
+## Making a game, hands-on (3.16)
+
+Development.kt. The concept carries a `Production` (cost, work and score multipliers: lean 0.7/0.85/−0.3, standard, lavish 1.5/1.15/+0.4) and an optional `Hook`. A hook adds 8% work and scores +0.4 when it suits the genre (either genre of a combo), −0.2 when it doesn't; reviewers mention it either way, and lavish or lean production gets a line too.
+
+Milestones: once a stage is done (`stage >= 1`, `>= 2`, ready) the game gets a `MilestoneReview`, one at a time, each once. The choices change `workScale` (so `work` = concept work × scale), `qualityBonus` (a "Milestones" part in the breakdown, noted with the choices), bugs, the focus match, hype and wishlists, morale and crunch weeks. The last choice is always neutral, so tests and players who wave it through change nothing; autopilot takes the first. The forecast is stored each week (`forecasts`, last 60) for the card's trend line.
+
+After launch: `portGame` costs money and weeks by size; when it's done the platform joins `extraPlatforms` and the game gets a burst of sales scaled by (score/7)³. `runSale` lifts weekly sales by half and adds fans from the extra buyers, at most once every 13 weeks and not in the first 8.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

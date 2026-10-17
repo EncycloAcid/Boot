@@ -265,6 +265,23 @@ fun EventArt(state: GameState, kind: EventKind): Boolean {
         }
         return true
     }
+    if (kind is com.boot.core.MilestoneReview) {
+        val p = state.games?.projectOf(kind.team)
+        if (p != null) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GameCover(p.concept, 52.dp, studio = state.companyName)
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text(p.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Hint("${com.boot.core.Milestone.entries[kind.milestone].title} · ${Format.percent(p.completion)} built · ${p.bugs.toInt()} bugs")
+                    }
+                }
+                BuildTimeline(p)
+                ForecastTrend(p.forecasts)
+            }
+            return true
+        }
+    }
     val studio = when (kind) {
         is com.boot.core.DealCounter -> kind.studio
         is com.boot.core.BiddingWar -> kind.studio

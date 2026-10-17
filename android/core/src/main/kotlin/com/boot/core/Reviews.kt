@@ -153,6 +153,7 @@ internal data class ReviewInputs(
     val awkwardPlatform: Platform?,
     val price: PriceTier = PriceTier.STANDARD,
     val year: Int = MODERN_YEAR,
+    val production: Production = Production.STANDARD,
 )
 
 internal data class ReviewResult(
@@ -235,6 +236,12 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
         }
     }
     if (i.focusMatch > 0.85) pros += Point(1.4, "Every part pulls its weight", listOf("every part of it pulls its weight", "it knows exactly what it wants to be"))
+    i.concept.hook?.let { h ->
+        if (h.fits(i.concept)) pros += Point(1.3, "${h.title} done right", listOf(h.pro, "the ${h.title.lowercase()} side of it is a real draw"))
+        else cons += Point(1.0, "${h.title} feels tacked on", listOf("the ${h.title.lowercase()} side feels tacked on", "it didn't need to be ${h.title.lowercase()}"))
+    }
+    if (i.production == Production.LAVISH && i.score >= 6.5) pros += Point(0.9, "Lavish production", listOf("every frame looks expensive", "the production values are sky-high"))
+    if (i.production == Production.LEAN && i.score < 7) cons += Point(0.8, "Feels cheap", listOf("it feels cheap in places", "the budget shows"))
     if (i.onTrend) pros += Point(0.8, "Right on trend", listOf("it's right on trend", "it arrives at exactly the right time"))
     if (i.worthySequel) pros += Point(1.2, "A worthy sequel", listOf("it's a worthy sequel", "it builds on the original in every way"))
     if (i.record && i.score >= 7.5) pros += Point(1.5, "The studio's best work yet", listOf("it's the studio's best work yet", "the studio has outdone itself"))

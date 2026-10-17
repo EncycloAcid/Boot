@@ -46,6 +46,12 @@ import com.boot.core.Review
 import com.boot.core.acknowledgeReview
 import com.boot.core.expansionBlocker
 import com.boot.core.patchBlocker
+import com.boot.core.portBlocker
+import com.boot.core.portGame
+import com.boot.core.portQuote
+import com.boot.core.portTargets
+import com.boot.core.runSale
+import com.boot.core.saleBlocker
 import com.boot.core.patchCost
 import com.boot.core.patchGame
 import com.boot.core.leagueBlocker
@@ -277,6 +283,33 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
                 ValueRow(league.name, if (league.closed) "folded" else "${Format.count(league.viewers)} viewers")
             }
         }
+        RowDivider()
+        val targets = state.portTargets(r)
+        val porting = state.games?.ports?.firstOrNull { it.releaseId == r.id }
+        val (portCost, portWeeks) = state.portQuote(r)
+        ListRow(
+            "Port it",
+            subtitle = when {
+                porting != null -> "Coming to ${porting.platform.title} ${com.boot.core.GameClock.label(porting.doneWeek)}."
+                r.developer != null -> "Ports are for games you made."
+                targets.isEmpty() -> "It's on every platform it can go to."
+                else -> "${Format.money(portCost)} and ${Format.weeks(portWeeks)}. A new crowd buys it, if it's good." +
+                    (if (r.extraPlatforms.isNotEmpty()) " Already on ${r.extraPlatforms.joinToString { it.title }}." else "")
+            },
+        ) {
+            Spacer(Modifier.width(8.dp))
+            MenuButton("Port to…", targets, { "${it.title}${state.portBlocker(r, it)?.let { " · can't" } ?: ""}" }, enabled = porting == null && targets.any { state.portBlocker(r, it) == null }) { p ->
+                store.perform { portGame(r.id, p) }
+            }
+        }
+        RowDivider()
+        val sale = state.saleBlocker(r)
+        ActionRow(
+            "Put it on sale",
+            sale ?: "Half price for a week: more copies, a little more money, and new fans. Once a season.",
+            "Sale",
+            enabled = sale == null,
+        ) { store.perform { runSale(r.id) } }
         RowDivider()
         ActionRow(
             "Make an expansion pack",

@@ -427,7 +427,11 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
                 eta <= 0 -> "ready this week"
                 else -> "~${Format.weeks(eta)} left · ${Format.weeks(p.weeksInDev)} in"
             }
-            Meter("Development", p.completion, wavy = store.playing, caption = caption)
+            Row(horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Development · ${Format.percent(p.completion)}", style = MaterialTheme.typography.bodyMedium, maxLines = 1, modifier = Modifier.padding(end = 12.dp))
+                Text(caption, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
+            }
+            BuildTimeline(p)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             MiniStat("Design", Format.count(p.design), colors.design, Modifier.weight(1f))
@@ -435,6 +439,14 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
             MiniStat("Bugs", Format.count(p.bugs), colors.bad, Modifier.weight(1f))
             MiniStat("Hype", "${p.hype.toInt()}", colors.warn, Modifier.weight(1f))
         }
+        ForecastTrend(p.forecasts)
+        if (p.lastDesign + p.lastTech > 0.5) {
+            Hint("This week · +${Format.count(p.lastDesign)} design, +${Format.count(p.lastTech)} tech" + if (p.lastBugs >= 1) ", ${Format.count(p.lastBugs)} new bugs" else "")
+        }
+        if (c.production != com.boot.core.Production.STANDARD || c.hook != null) {
+            Hint(listOfNotNull("${c.production.title} production".takeIf { c.production != com.boot.core.Production.STANDARD }, c.hook?.let { "${it.title} hook" }).joinToString(" · "))
+        }
+        if (p.choices.isNotEmpty()) Hint("Decided · " + p.choices.joinToString(" · "))
         val season = GameSeason.forWeek(state.week)
         val lift = season.launchMultiplier(c.genre)
         val seasonPct = ((lift - 1) * 100).toInt()

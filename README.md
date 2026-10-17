@@ -6,6 +6,21 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.16 (Android):** making a game is hands-on from the first idea to long after launch.
+
+*Designing it.* The designer's summary has two new choices. Production: lean (70% of the budget, 15% less work, and it shows), standard, or lavish (half as much again, 15% more work, and every corner polished). And a hook, the one thing the game is known for: an open world, co-op, a story, roguelike runs, crafting, competitive play, mod support or cozy. A hook that suits the genre lifts the score and gets a line in the reviews. A forced one feels tacked on.
+
+*While it's being made.* Three milestones each bring a decision:
+- At the vertical slice: lock the vision, add a feature, cut scope, or keep to the plan.
+- At alpha: fix bugs now, crunch for a month, or stay the course.
+- At beta: an open beta (free; it builds buzz, and builds sometimes leak), a closed beta (costs money, finds more bugs, quietly), or ship it as it is.
+
+What you decide shows in the score breakdown afterwards.
+
+*Seeing progress.* The project card has a build timeline with the three milestones marked on it, the forecast score week by week (with how far it's moved in a month), what the team added this week, and the decisions made so far.
+
+*After launch.* Port a game you made to a platform it isn't on yet; it comes out weeks later and a new crowd buys it, if it's good. Or put it on sale: half price for a week, more copies, a little more money and new fans, once a season.
+
 **New in 3.15 (Android):** a social feed, and far more variety in everything the game writes.
 
 *The feed.* The News tab has a new page: Chirp (the message boards, in runs set before 2006). Players, fans, streamers, journalists, insiders, rival developers, meme accounts and your own account post about every moment: your announcements (how a trailer landed changes what they say), release dates, launch day (following the reviews), delays (the second one gets the memes), awards won and lost, buyouts and chart-toppers. In between they keep asking about your next game and talking about what's out. Posts show replies, reposts and likes, and a Trending row shows the month's hashtags. The front page puts the latest posts beside the lead story.

@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.boot.core.Audience
@@ -63,6 +64,8 @@ import com.boot.core.GameConcept
 import com.boot.core.GameSeason
 import com.boot.core.GameSize
 import com.boot.core.GameState
+import com.boot.core.Hook
+import com.boot.core.Production
 import com.boot.core.Genre
 import com.boot.core.Platform
 import com.boot.core.PriceTier
@@ -115,12 +118,14 @@ fun GameDesigner(store: GameStore, state: GameState) {
     var engineId by remember { mutableIntStateOf(seed?.engineId ?: g.engines.maxBy { it.level }.id) }
     var price by remember { mutableStateOf(seed?.price ?: PriceTier.STANDARD) }
     var live by remember { mutableStateOf(seed?.live ?: false) }
+    var production by remember { mutableStateOf(seed?.production ?: Production.STANDARD) }
+    var hook by remember { mutableStateOf(seed?.hook) }
     val focus = remember { List(3) { mutableStateListOf(0.5, 0.5, 0.5) } }
 
     val concept = GameConcept(
         title = title.trim().ifEmpty { "Untitled" }, topic = topic, genre = genre, genre2 = genre2, audience = audience,
         platforms = platforms.toList(), size = size, engineId = engineId, sequelOf = sequel, price = price, remasterOf = remaster,
-        live = live && size != GameSize.SMALL,
+        live = live && size != GameSize.SMALL, production = production, hook = hook,
     )
     fun close() {
         store.designing = false
@@ -201,7 +206,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                             )
                             1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it }, remaster != null)
                             2 -> FocusStep(state, concept, focus)
-                            else -> SummaryStep(state, concept, team, { price = it }, { live = it })
+                            else -> SummaryStep(state, concept, team, { price = it }, { live = it }, { production = it }, { hook = it })
                         }
                     }
                 }
@@ -474,7 +479,15 @@ private fun FocusStep(state: GameState, concept: GameConcept, focus: List<Mutabl
 }
 
 @Composable
-private fun SummaryStep(state: GameState, concept: GameConcept, team: Int, onPrice: (PriceTier) -> Unit, onLive: (Boolean) -> Unit) {
+private fun SummaryStep(
+    state: GameState,
+    concept: GameConcept,
+    team: Int,
+    onPrice: (PriceTier) -> Unit,
+    onLive: (Boolean) -> Unit,
+    onProduction: (Production) -> Unit = {},
+    onHook: (Hook?) -> Unit = {},
+) {
     val g = state.games!!
     val colors = gameColors
     val fees = concept.platforms.sumOf { it.fee }
@@ -511,10 +524,35 @@ private fun SummaryStep(state: GameState, concept: GameConcept, team: Int, onPri
             ValueRow("Trend", "On trend", colors.good)
         }
     }
+    GroupedSection("Production", footer = concept.production.blurb) {
+        CardBlock { Segmented(Production.entries, concept.production, { it.title }) { onProduction(it) } }
+    }
+    GroupedSection(
+        "The hook",
+        footer = concept.hook?.let { h ->
+            if (h.fits(concept)) "${h.blurb} It suits ${concept.genreLower} games: critics will notice."
+            else "${h.blurb} It doesn't suit ${concept.genreLower} games, and it'll feel tacked on."
+        } ?: "What will people say it's about? A hook that suits the genre lifts the score. It adds a little work.",
+    ) {
+        CardBlock {
+            FlowRow(Modifier.testTag("hooks"), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                FilterChip(selected = concept.hook == null, onClick = { onHook(null) }, label = { Text("None") })
+                Hook.entries.forEach { h ->
+                    val suits = h.fits(concept)
+                    FilterChip(
+                        selected = concept.hook == h,
+                        onClick = { onHook(if (concept.hook == h) null else h) },
+                        label = { Text(h.title) },
+                        leadingIcon = { Box(Modifier.size(8.dp).background(if (suits) colors.good else MaterialTheme.colorScheme.outline, CircleShape)) },
+                    )
+                }
+            }
+        }
+    }
     GroupedSection("Budget", footer = blocker) {
         ValueRow("Development", "about ${state.estimatedWeeks(concept)} weeks")
         RowDivider()
-        ValueRow("Budget", concept.size.weeklyBudget.perWeek())
+        ValueRow("Budget", (concept.size.weeklyBudget * concept.production.cost).perWeek())
         RowDivider()
         ValueRow("Licence fees", if (fees > 0) Format.money(fees) else "None")
     }
