@@ -66,7 +66,7 @@ class ReleaseCalendarTest {
             store.perform {
                 Sandbox.setCash(this, 400_000.0)
                 startGame(GameConcept("Moss Knight", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.SWITCHEROO_2), size = GameSize.SMALL))
-                repeat(6) { advance() }
+                weeks(6)
                 Sandbox.enqueue(this, PlatformInvite("Nintendo", "a Nintendo Direct", 1))
             }
             store.todayOpen = false

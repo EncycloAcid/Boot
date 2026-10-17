@@ -92,7 +92,7 @@ class LayoutModesTest {
                 com.boot.core.Sandbox.setCash(this, 400_000.0)
                 repeat(2) { candidates.firstOrNull()?.let { c -> hire(c.id, Lane.GAMES) } }
                 startGame(com.boot.core.GameConcept("Moss Knight", com.boot.core.Topic.FANTASY, com.boot.core.Genre.RPG, platforms = listOf(com.boot.core.Platform.PC), size = com.boot.core.GameSize.SMALL))
-                repeat(3) { advance() }
+                weeks(3)
             }
             store.tab = Tab.OFFICE
         }
@@ -178,7 +178,7 @@ class LayoutModesTest {
                 com.boot.core.Sandbox.setCash(this, 400_000.0)
                 repeat(2) { candidates.firstOrNull()?.let { c -> hire(c.id, Lane.GAMES) } }
                 startGame(com.boot.core.GameConcept("Moss Knight", com.boot.core.Topic.FANTASY, com.boot.core.Genre.RPG, platforms = listOf(com.boot.core.Platform.PC), size = com.boot.core.GameSize.SMALL))
-                repeat(8) { advance() }
+                weeks(8)
                 com.boot.core.Sandbox.enqueue(this, com.boot.core.EventKind.Convention)
             }
             store.todayOpen = false
@@ -206,7 +206,7 @@ class LayoutModesTest {
             store.perform {
                 com.boot.core.Sandbox.setCash(this, 400_000.0)
                 startGame(com.boot.core.GameConcept("Moss Knight", com.boot.core.Topic.FANTASY, com.boot.core.Genre.RPG, platforms = listOf(com.boot.core.Platform.SWITCHEROO_2), size = com.boot.core.GameSize.SMALL))
-                repeat(6) { advance() }
+                weeks(6)
                 com.boot.core.Sandbox.enqueue(this, com.boot.core.PlatformInvite("Nintendo", "a Nintendo Direct", 1))
             }
             store.todayOpen = false

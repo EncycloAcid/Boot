@@ -660,7 +660,10 @@ class GameFlowTest {
         val g = store.state!!.games!!
         assertNotNull(g.project2)
         assertEquals("Moss Knight", g.project!!.title)
-        compose.runOnIdle { store.advance(2) }
+        compose.runOnIdle {
+            store.advance(2)
+            store.perform { settleMilestones() }
+        }
         compose.waitForIdle()
         assertTrue(store.state!!.games!!.project2!!.progress > 0)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Team 2 · In development", substring = true, ignoreCase = true))

@@ -25,11 +25,12 @@ fun cueFor(before: GameState, after: GameState, ticking: Boolean): Sfx? {
     if (after.stats.honours > before.stats.honours) return Sfx.HIT
     if (after.office.ordinal > before.office.ordinal) return Sfx.LEVEL_UP
     if (after.achievements.size > before.achievements.size || after.goalsDone.size > before.goalsDone.size) return Sfx.ACHIEVEMENT
-    if (after.needsDecision && !before.needsDecision) return Sfx.ALERT
-    if (before.cash >= 0 && after.cash < 0) return Sfx.WARNING
+    // A game reaching content complete chimes even though its beta review comes up the same week.
     val ready = (after.games?.project?.isReady == true && before.games?.project?.isReady != true) ||
         (after.games?.project2?.isReady == true && before.games?.project2?.isReady != true)
     if (ready) return Sfx.READY
+    if (after.needsDecision && !before.needsDecision) return Sfx.ALERT
+    if (before.cash >= 0 && after.cash < 0) return Sfx.WARNING
     if (after.researched.size > before.researched.size) return Sfx.RESEARCH
     if (after.staff.size > before.staff.size) return Sfx.HIRE
     if (!ticking && abs(after.cash - before.cash) >= 1.0) return Sfx.COIN

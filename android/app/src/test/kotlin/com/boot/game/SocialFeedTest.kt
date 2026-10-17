@@ -63,7 +63,7 @@ class SocialFeedTest {
             store.perform {
                 Sandbox.setCash(this, 2_000_000.0)
                 startGame(GameConcept("Moss Knight", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PLAYSYSTEM_5), size = GameSize.SMALL))
-                repeat(8) { advance() }
+                weeks(8)
                 Sandbox.enqueue(this, PlatformInvite("Sony", "a PlayStation State of Play", 1))
                 choose(0)
                 while (needsDecision) choose(0)

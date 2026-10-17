@@ -76,7 +76,7 @@ class ShowNightUiTest {
                 Sandbox.setCash(this, 2_000_000.0)
                 repeat(2) { candidates.firstOrNull()?.let { c -> hire(c.id, Lane.GAMES) } }
                 startGame(GameConcept("Moss Knight", Topic.FANTASY, Genre.RPG, platforms = listOf(Platform.PLAYSYSTEM_5), size = GameSize.SMALL))
-                repeat(6) { advance() }
+                weeks(6)
             }
             store.todayOpen = false
         }
@@ -152,6 +152,7 @@ class ShowNightUiTest {
                     while (needsDecision) choose(events.first().choices.lastIndex)
                     advance()
                 }
+                settleMilestones()
                 launchGame()
             }
         }

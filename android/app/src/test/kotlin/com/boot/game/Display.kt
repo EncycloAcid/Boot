@@ -1,5 +1,7 @@
 package com.boot.game
 
+import com.boot.core.advance
+import com.boot.core.choose
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
@@ -31,4 +33,18 @@ class DisplayRule : TestRule {
                 "build/" + listOfNotNull("screenshots", "large".takeIf { fontScale != 1f }, "night".takeIf { night }).joinToString("-"),
             ).apply { mkdirs() }
     }
+}
+
+/** Waves through any milestone reviews waiting on a game in development (the last choice changes nothing). */
+fun com.boot.core.GameState.settleMilestones() {
+    while (needsDecision && events.first().kind is com.boot.core.MilestoneReview) {
+        choose(events.first().choices.lastIndex)
+    }
+}
+
+/** [n] weeks, waving through milestone reviews on the way. */
+fun com.boot.core.GameState.weeks(n: Int) = repeat(n) {
+    settleMilestones()
+    advance()
+    settleMilestones()
 }

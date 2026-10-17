@@ -1,5 +1,6 @@
 package com.boot.game.audio
 
+import com.boot.game.settleMilestones
 import com.boot.core.Era
 import com.boot.core.GameConcept
 import com.boot.core.GameSize
@@ -118,7 +119,7 @@ class AudioTest {
         var sawReady = false
         repeat(80) {
             if (before.games?.project?.isReady == true) return@repeat
-            val after = before.copy().apply { advance() }
+            val after = before.copy().apply { settleMilestones(); advance() }
             if (cueFor(before, after, ticking = true) == Sfx.READY) sawReady = true
             before = after
         }
