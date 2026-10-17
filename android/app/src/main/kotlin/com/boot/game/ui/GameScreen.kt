@@ -608,7 +608,8 @@ private fun FloatingHud(
             horizontalAlignment = Alignment.End,
         ) {
             Tip("Calendar week and season") {
-                StatusPill(HudGlyph.CALENDAR, MaterialTheme.colorScheme.primary, "${state.dateLabel} · $season")
+                // Narrow screens drop the season rather than cut the date short.
+                StatusPill(HudGlyph.CALENDAR, MaterialTheme.colorScheme.primary, if (narrow && state.dateLabel.length + season.length > 13) state.dateLabel else "${state.dateLabel} · $season")
             }
             val fans = state.games?.fans
             if (fans != null && Lane.GAMES in state.lanes) {
@@ -798,12 +799,12 @@ internal fun ProjectSoftPanel(
                     .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             )
+            // Only the second team needs saying; a cut-off company name is just noise.
             Text(
-                if (team == 2) "Team 2" else state.companyName,
+                if (team == 2) "Team 2" else "",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             Text(etaLabel, style = MaterialTheme.typography.labelSmall, color = colors.milestone, maxLines = 1)
