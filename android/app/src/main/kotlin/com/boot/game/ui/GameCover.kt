@@ -358,7 +358,10 @@ private fun DrawScope.titleLogo(measurer: TextMeasurer, c: GameConcept, art: Art
     )
     var fs = w * 0.13f
     var layout: TextLayoutResult = measurer.measure(main.uppercase(Locale.US), style(fs), maxLines = 3, constraints = Constraints(maxWidth = maxW))
-    while ((layout.hasVisualOverflow || layout.lineCount > 2) && fs > w * 0.07f) {
+    // A long word must fit on its own line: never "CIRCUITBOU / ND".
+    val words = main.uppercase(Locale.US).split(' ').filter { it.isNotEmpty() }
+    fun wordTooWide(size: Float) = words.any { measurer.measure(it, style(size), maxLines = 1).size.width > maxW }
+    while ((layout.hasVisualOverflow || layout.lineCount > 2 || wordTooWide(fs)) && fs > w * 0.05f) {
         fs *= 0.9f
         layout = measurer.measure(main.uppercase(Locale.US), style(fs), maxLines = 3, constraints = Constraints(maxWidth = maxW))
     }
@@ -395,7 +398,9 @@ private fun DrawScope.titleLogo(measurer: TextMeasurer, c: GameConcept, art: Art
         drawText(num, brush = Brush.verticalGradient(listOf(art.light, art.light.shade(0.75f)), nAt.y, nAt.y + num.size.height), topLeft = nAt, drawStyle = Fill)
         y += num.size.height * 0.8f
     }
-    drawText(genre, topLeft = Offset(x + 1f, y))
+    // A dark edge keeps the genre line readable over busy art.
+    drawText(genre, color = Color.Black.copy(alpha = 0.75f), topLeft = Offset(x + 1f, y), drawStyle = Stroke(w * 0.012f, join = StrokeJoin.Round))
+    drawText(genre, topLeft = Offset(x + 1f, y), drawStyle = Fill)
 }
 
 /** The rating box and the studio's name. */
@@ -403,6 +408,8 @@ private fun DrawScope.footer(measurer: TextMeasurer, c: GameConcept, studio: Str
     val box = w * 0.11f
     val rx = w * 0.06f
     val ry = h - w * 0.05f - box
+    // A dark strip along the bottom so the credit reads over the hero.
+    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)), ry - box * 0.6f, h), Offset(0f, ry - box * 0.6f), Size(w, h - ry + box * 0.6f))
     drawRect(Color.White, Offset(rx, ry), Size(box * 0.8f, box))
     drawRect(Color.Black, Offset(rx + 1.5f, ry + 1.5f), Size(box * 0.8f - 3f, box * 0.72f))
     val r = measurer.measure(c.audience.rating, TextStyle(fontSize = (box * 0.5f).toSp(), fontWeight = FontWeight.Black, color = Color.White))

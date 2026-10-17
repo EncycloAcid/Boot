@@ -249,7 +249,7 @@ private fun GameState.studioWeek() {
         val next = (eraTrend()?.takeIf { rng.chance(0.75) }
             ?: if (rng.chance(0.6)) Trend(topic = rng.pick(Topic.entries), until = 0) else Trend(genre = rng.pick(Genre.entries), until = 0))
             .copy(until = week + rng.int(40, 70))
-        if (next.title != t?.title) addLog("Trend: gamers can't get enough of ${next.title.lowercase()} games.", LogTone.NEUTRAL, Lane.GAMES)
+        if (next.title != t?.title) addLog("Trend: gamers can't get enough of ${next.lower} games.", LogTone.NEUTRAL, Lane.GAMES)
         g.trend = next
     }
     if (GameClock.weekOfYear(week) == SHOW_WEEK) enqueue(EventKind.Convention)

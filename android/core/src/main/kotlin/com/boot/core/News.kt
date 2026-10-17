@@ -136,7 +136,7 @@ private val industryLedes = listOf(
         "Studios and labs are poaching each other with equity, remote perks and signing bonuses. Salaries keep climbing.",
     "Platform install base hits a new high" to
         "One more living-room device crosses a hundred million active users. Developers scramble to ship for it first.",
-    "Lawsuit rumor swirls around a major studio" to
+    "Lawsuit rumour swirls around a major studio" to
         "Anonymous filings and carefully worded denials. Lawyers are busy; nobody will go on the record yet.",
 )
 

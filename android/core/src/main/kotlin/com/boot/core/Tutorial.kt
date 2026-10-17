@@ -89,7 +89,7 @@ fun GameState.lesson(): Lesson? {
         }
         TutorialStep.PLAY -> Lesson(
             step, n, of, "Let time run",
-            "Tap ▶ at the top to run the calendar, or ⏭ for a week at a time. The clock stops by itself when something needs you: " +
+            "Tap Play at the top to run the calendar, or Week for one week at a time. The clock stops by itself when something needs you: " +
                 "a decision, a review, something ready to ship.",
             "Play a week", acknowledge = false,
         )

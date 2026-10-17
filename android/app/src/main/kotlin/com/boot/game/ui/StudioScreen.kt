@@ -170,13 +170,13 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
 private fun StudioOverview(state: GameState, g: GamesStudio) {
     GroupedSection(
         "Studio",
-        footer = g.trend?.let { "Trend: gamers can't get enough of ${it.title.lowercase()} games right now." },
+        footer = g.trend?.let { "Trend: gamers can't get enough of ${it.lower} games right now." },
     ) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
             TileRow {
                 StatTile("Fans", Format.count(g.fans), Modifier.weight(1f), "trust ${String.format(Locale.US, "%.2f", g.fanTrust)}")
                 StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), if (g.releases.size == 1) "1 game" else "${g.releases.size} games")
-                StatTile("Research", "${state.researchPoints.toInt()}", Modifier.weight(1f), "RP to spend")
+                StatTile("Research", "${Format.count(state.researchPoints)}", Modifier.weight(1f), "RP to spend")
             }
             val season = GameSeason.forWeek(state.week)
             Spacer(Modifier.size(12.dp))
@@ -637,7 +637,7 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
         "Engines",
         footer = when {
             !canBuild -> "Research custom engines, then graphic styles and tech features. Games on dated engines look it."
-            else -> "Reviewers expect about level $standard by now. Individual feature levels stay hidden until a build finishes or a game ships. Mixing pixel with realistic cuts effective level."
+            else -> "Reviewers expect about level $standard by now. Individual feature levels stay hidden until a build finishes or a game ships. Mixing pixel art with realistic materials lowers the engine's level."
         },
     ) {
         g.engines.sortedByDescending { it.level }.forEachIndexed { i, e ->

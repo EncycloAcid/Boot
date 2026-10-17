@@ -42,7 +42,7 @@ import com.boot.core.researchTopic
 import com.boot.game.GameStore
 import java.util.Locale
 
-private enum class ResearchPage(val title: String) { STUDIO("Studio"), ENGINE("Engine"), TOPICS("Genres & topics"), COMPANY("Company") }
+private enum class ResearchPage(val title: String) { STUDIO("Studio"), ENGINE("Engine"), TOPICS("Genres"), COMPANY("Company") }
 
 /** Spend research points: game studio unlocks, engine features, topics, and upgrades for every lane. */
 @Composable
@@ -100,9 +100,9 @@ private fun PointsHero(state: GameState) {
     GroupedSection(null, footer = "Points come from your researchers, from you, and from every week the team spends making games.") {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("Research points", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("${state.researchPoints.toInt()} RP", style = MaterialTheme.typography.displaySmallEmphasized)
+            Text("${Format.count(state.researchPoints)} RP", style = MaterialTheme.typography.displaySmallEmphasized)
             Text(
-                String.format(Locale.US, "+%.1f RP a week · %d researched", state.researchPerWeek, state.researched.size),
+                String.format(Locale.US, "+%.1f RP/wk · %d researched", state.researchPerWeek, state.researched.size),
                 style = MaterialTheme.typography.bodyMedium,
                 color = gameColors.milestone,
             )

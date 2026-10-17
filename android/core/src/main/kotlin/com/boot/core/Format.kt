@@ -24,19 +24,23 @@ object Format {
             a >= 1_000_000_000 -> "$sign\$${short(a / 1_000_000_000)}B"
             a >= 1_000_000 -> "$sign\$${short(a / 1_000_000)}M"
             a >= 10_000 -> "$sign\$${f("%.0f", a / 1_000)}k"
-            a >= 1_000 -> "$sign\$${f("%.1f", a / 1_000)}k"
+            a >= 1_000 -> "$sign\$${f("%.1f", a / 1_000).removeSuffix(".0")}k"
             else -> "$sign\$${f("%.0f", a)}"
         }
     }
 
     /** Money with an explicit + for gains. */
-    fun signedMoney(v: Double): String = if (v >= 0) "+${money(v)}" else money(v)
+    fun signedMoney(v: Double): String = when {
+        abs(v) < 0.5 -> money(0.0)
+        v > 0 -> "+${money(v)}"
+        else -> money(v)
+    }
 
     fun count(v: Double): String = when {
         v >= 1_000_000_000 -> short(v / 1_000_000_000) + "B"
         v >= 1_000_000 -> short(v / 1_000_000) + "M"
         v >= 10_000 -> f("%.0fk", v / 1_000)
-        v >= 1_000 -> f("%.1fk", v / 1_000)
+        v >= 1_000 -> f("%.1f", v / 1_000).removeSuffix(".0") + "k"
         else -> f("%.0f", v)
     }
 

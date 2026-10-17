@@ -10,6 +10,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -78,10 +80,13 @@ fun OfficeScreen(store: GameStore, state: GameState) {
                 GroupedSection("Office") {
                     CardBlock {
                         val crowded = state.staff.size > state.office.desks
-                        Text(state.office.title, style = MaterialTheme.typography.titleLargeEmphasized)
+                        Text(state.office.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Hint(
-                            "${state.staff.size}/${state.office.desks} desks" +
-                                if (crowded) " · crowded — hire after you expand" else " · hire from the Team tab",
+                            "${state.staff.size}/${state.office.desks} desks · " + when {
+                                crowded -> "crowded: move somewhere bigger before you hire"
+                                state.staff.size == state.office.desks -> "full: move somewhere bigger to grow"
+                                else -> "hire from the Team tab"
+                            },
                         )
                         Ticker(store, state)
                     }
@@ -198,13 +203,13 @@ private fun VitalsGlance(store: GameStore, state: GameState) {
             }
             GlanceTile(
                 "Research",
-                "${state.researchPoints.toInt()} RP",
+                "${Format.count(state.researchPoints)} RP",
                 "+${String.format(Locale.US, "%.1f", state.researchPerWeek)}/wk",
                 colors.milestone,
                 Modifier.weight(1f),
             ) { store.tab = Tab.RESEARCH }
             if (fans != null && Lane.GAMES in state.lanes) {
-                GlanceTile("Fans", Format.count(fans), "buy launches", Color(0xFFC44D8A), Modifier.weight(1f)) {
+                GlanceTile("Fans", Format.count(fans), "loyal", Color(0xFFC44D8A), Modifier.weight(1f)) {
                     store.openStudio(StudioPage.GAMES)
                 }
             }
@@ -224,8 +229,12 @@ private fun VitalsGlance(store: GameStore, state: GameState) {
             GlanceTile(
                 "Desks",
                 "${state.staff.size}/${state.office.desks}",
-                if (state.staff.size > state.office.desks) "crowded" else state.office.title,
-                if (state.staff.size > state.office.desks) colors.bad else colors.other,
+                when {
+                    state.staff.size > state.office.desks -> "crowded"
+                    state.staff.size == state.office.desks -> "all full"
+                    else -> "${state.office.desks - state.staff.size} free"
+                },
+                if (state.staff.size > state.office.desks) colors.bad else MaterialTheme.colorScheme.primary,
                 Modifier.weight(1f),
             ) { store.tab = Tab.TEAM }
             state.listing?.let { listing ->
@@ -250,14 +259,15 @@ private fun VitalsGlance(store: GameStore, state: GameState) {
         CardBlock {
             if (LocalCompact.current) {
                 // Sideways there's room for every tile on one row.
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     money()
                     company()
                 }
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), content = money)
+                // Tiles in a row share a height, whatever their captions.
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp), content = money)
                 Spacer(Modifier.size(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), content = company)
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(6.dp), content = company)
             }
         }
     }
@@ -274,6 +284,7 @@ private fun GlanceTile(
 ) {
     Column(
         modifier
+            .fillMaxHeight()
             .clip(RoundedCornerShape(14.dp))
             .background(color.copy(alpha = 0.12f))
             .clickable(onClick = onClick)
@@ -287,7 +298,7 @@ private fun GlanceTile(
             caption,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
@@ -562,7 +573,7 @@ private fun Shortcuts(store: GameStore, state: GameState) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Shortcut(
             Icons.Filled.Science, "Research",
-            if (ready > 0) "$ready ready" else "${state.researchPoints.toInt()} RP",
+            if (ready > 0) "$ready ready" else "${Format.count(state.researchPoints)} RP",
             colors.milestone, Modifier.weight(1f), highlight = ready > 0,
         ) { store.tab = Tab.RESEARCH }
         Shortcut(

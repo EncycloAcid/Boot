@@ -101,6 +101,7 @@ fun DealSheet(store: GameStore, state: GameState, name: String) {
                     }
                     if (owned == null) StanceChip(state.stanceOf(s))
                 }
+                Box(Modifier.fillMaxWidth().padding(top = 4.dp).height(1.dp).background(colors.separator))
                 BoxWithConstraints(Modifier.weight(1f)) {
                     val about: @Composable () -> Unit = { About(store, state, s) }
                     val act: @Composable () -> Unit = { if (owned != null) Running(store, state, s) else Offer(store, state, s) }

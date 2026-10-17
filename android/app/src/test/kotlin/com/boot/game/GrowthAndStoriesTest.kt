@@ -121,7 +121,7 @@ class GrowthAndStoriesTest {
         compose.runOnIdle { store.tab = Tab.TEAM }
         compose.waitForIdle()
         compose.onAllNodes(hasScrollAction())[0].performScrollToNode(hasText("Now and then", substring = true))
-        compose.onNodeWithText("Under way").fetchSemanticsNode()
+        compose.onNodeWithText("Underway").fetchSemanticsNode()
         save("99p-team-stories")
     }
 }

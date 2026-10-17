@@ -546,6 +546,9 @@ enum class Platform(
 data class Trend(val topic: Topic? = null, val genre: Genre? = null, val until: Int) {
     val title: String get() = topic?.title ?: genre?.title ?: ""
 
+    /** For use mid-sentence: "fantasy", but "RPG". */
+    val lower: String get() = topic?.title?.lowercase() ?: genre?.lower ?: ""
+
     fun matches(c: GameConcept): Boolean = (topic != null && c.topic == topic) || (genre != null && (c.genre == genre || c.genre2 == genre))
 }
 

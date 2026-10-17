@@ -4,7 +4,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -161,6 +164,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                     IconButton(onClick = { store.openRelease = null }) { Icon(Icons.Filled.Close, "Close") }
                     Text("Game report", style = MaterialTheme.typography.titleMedium)
                 }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(colors.separator))
                 Column(
                     Modifier
                         .weight(1f)
@@ -362,6 +366,9 @@ fun ScoreBreakdown(r: GameRelease, top: Int? = null) {
         if (top == null) {
             RowDivider()
             ListRow("Total", value = String.format(Locale.US, "%.1f", total))
+            RowDivider()
+            // The critics' own average, which is what the game scored: near the total, but each has a taste.
+            ListRow("What the critics gave it", value = String.format(Locale.US, "%.1f", r.score), valueColor = MaterialTheme.colorScheme.primary)
         }
     }
 }

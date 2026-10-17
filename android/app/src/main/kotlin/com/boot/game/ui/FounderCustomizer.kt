@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -80,13 +83,21 @@ fun FounderLook(look: Appearance, onChange: (Appearance) -> Unit) {
 @Composable
 fun FounderTraitPicker(trait: FounderTrait?, onChange: (FounderTrait?) -> Unit) {
     GroupedSection("Your special trait", footer = trait?.detail ?: "No trait: you play it straight.") {
-        FlowRow(
-            Modifier.fillMaxWidth().padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            TraitCard("None", "Play it straight.", trait == null) { onChange(null) }
-            for (t in FounderTrait.entries) TraitCard(t.title, t.detail.substringAfter(": ").replaceFirstChar { it.uppercase() }, trait == t) { onChange(t) }
+        // A grid that fills the width: as many columns as fit, every card in a row the same size.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(12.dp)) {
+            val cols = ((maxWidth + 10.dp) / (170.dp + 10.dp)).toInt().coerceIn(1, 4)
+            val cards = listOf<Pair<FounderTrait?, Pair<String, String>>>(null to ("None" to "Play it straight.")) +
+                FounderTrait.entries.map { it to (it.title to it.detail.substringAfter(": ").replaceFirstChar { c -> c.uppercase() }) }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                for (row in cards.chunked(cols)) {
+                    Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        for ((t, text) in row) {
+                            TraitCard(text.first, text.second, trait == t, Modifier.weight(1f).fillMaxHeight()) { onChange(t) }
+                        }
+                        repeat(cols - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+            }
         }
     }
 }
@@ -138,12 +149,11 @@ private fun Tag(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun TraitCard(title: String, detail: String, selected: Boolean, onClick: () -> Unit) {
+private fun TraitCard(title: String, detail: String, selected: Boolean, modifier: Modifier = Modifier.width(196.dp), onClick: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(14.dp)
     Column(
-        Modifier
-            .width(196.dp)
+        modifier
             .heightIn(min = 84.dp)
             .clip(shape)
             .background(if (selected) scheme.primaryContainer.copy(alpha = 0.6f) else gameColors.card)

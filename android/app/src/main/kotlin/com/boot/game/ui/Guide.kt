@@ -24,6 +24,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -40,7 +45,7 @@ val guideTopics: List<GuideTopic> = listOf(
     GuideTopic(
         "The basics", "Weeks, money and how a run ends",
         listOf(
-            "Time moves in weeks. Tap ▶ to let the calendar run (1×, 2× or 3×), or ⏭ for one week at a time. The clock stops by itself when something needs you: a decision, reviews coming in, a game ready to ship, the account going red.",
+            "Time moves in weeks. Tap Play to let the calendar run (1×, 2× or 3×), or Week for one week at a time. The clock stops by itself when something needs you: a decision, reviews coming in, a game ready to ship, the account going red.",
             "Money comes in from your businesses and goes out on their costs, payroll and rent. The top bar shows your cash and what you made last week. If your cash stays below zero for eight weeks (twelve on Easy, six on Hard), you're bankrupt.",
             "Decisions arrive two ways. Events stop the clock until you answer. The inbox on the office screen holds opportunities that wait for a few weeks without stopping anything; let one lapse and it's a no.",
             "There's no single way to win. Go public, sell to a rival, stay independent to the end, go bust or get fired by your own board: the ending you get tells the story of how you got there.",
@@ -52,7 +57,7 @@ val guideTopics: List<GuideTopic> = listOf(
             "Design a game: a topic, one or two genres, an audience, the platforms and a size. Topics suit some genres better than others, and genres suit some platforms. Game reports after each launch tell you what worked, and the designer remembers.",
             "Each week, pick a creative direction (gameplay, visuals, performance, content, or balanced) — it trades speed, polish, bugs and review quality. Stage sliders still decide where the hours go; finishing a stage teaches one sharper genre lesson.",
             "Paid playtests once per stage catch bugs and improve the build. The four-season market calendar boosts featured genres at launch, so shipping early or waiting is a real call.",
-            "Custom engines pack researched features: graphic styles and tech tiers have hidden levels until a build finishes or a game ships. Mixing pixel with realistic soft-penalties the effective level.",
+            "Custom engines pack researched features: graphic styles and tech tiers have hidden levels until a build finishes or a game ships. Mixing pixel art with realistic materials lowers the engine's level.",
             "Scores compare a game against your own best, so you have to keep getting better. Hype, fans and the platforms' players drive sales. Avoid launching next to a giant release.",
         ),
         Lane.GAMES,
@@ -229,7 +234,14 @@ fun GuideSheet(store: GameStore, state: GameState) {
                                 ListRow(
                                     t.title,
                                     subtitle = t.summary + if (t.lane != null && t.lane in state.lanes) " · your business" else "",
-                                    leading = t.lane?.let { l -> { LaneBadge(l, 36.dp) } },
+                                    // Every row gets a leading mark, so the titles line up.
+                                    leading = {
+                                        val l = t.lane
+                                        if (l != null) LaneBadge(l, 36.dp) else Box(
+                                            Modifier.size(36.dp).clip(CircleShape).background(gameColors.fill),
+                                            contentAlignment = Alignment.Center,
+                                        ) { Text(t.title.take(1), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    },
                                     onClick = { open = t.title },
                                 )
                             }

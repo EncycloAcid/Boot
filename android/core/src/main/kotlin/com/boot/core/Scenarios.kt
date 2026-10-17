@@ -194,7 +194,7 @@ internal fun GameState.describeScenario(k: ScenarioOver): Description? {
     return if (k.won) {
         Description(
             "${run.medal!!.title} medal: ${run.scenario.title}",
-            "${run.scenario.goal}: done, in ${Format.weeks(week)}. " + when (run.medal) {
+            "${run.scenario.goal}: done, in ${Format.weeks(maxOf(1, week))}. " + when (run.medal) {
                 Medal.GOLD -> "In half the time or less. Remarkable."
                 Medal.SILVER -> "With time to spare."
                 else -> "Just in time."

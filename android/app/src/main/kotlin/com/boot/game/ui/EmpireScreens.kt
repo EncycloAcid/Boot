@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -261,17 +263,19 @@ fun RecentAchievements(state: GameState, onMore: () -> Unit) {
         "Achievements · ${state.achievements.size} of ${Achievement.entries.size}",
         action = { PlainButton("All", onMore) },
     ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).padding(12.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
             recent.forEach { (a, _) ->
                 Column(
                     Modifier
                         .weight(1f)
+                        .fillMaxHeight()
                         .background(a.tier.color().copy(alpha = 0.12f), RoundedCornerShape(16.dp))
                         .padding(10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(Icons.Filled.EmojiEvents, null, tint = a.tier.color(), modifier = Modifier.size(28.dp))
-                    Text(a.title, style = MaterialTheme.typography.labelLarge, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    // Long single words shrink rather than break mid-word.
+                    FitText(a.title, MaterialTheme.typography.labelLarge, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
         }

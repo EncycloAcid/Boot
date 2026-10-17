@@ -117,12 +117,16 @@ private fun LaneHero(state: GameState, lane: Lane) {
             TileGrid(
                 first = {
                     StatTile("Revenue", (state.trailingRevenue(lane, 4) / 4).perWeek(), Modifier.weight(1f), "4-week average")
-                    StatTile("Profit", profit.signedPerWeek(), Modifier.weight(1f), "after this lane's payroll", if (profit >= 0) colors.good else colors.bad)
+                    StatTile("Profit", profit.signedPerWeek(), Modifier.weight(1f), "after this lane's payroll", when {
+                        profit >= 0.5 -> colors.good
+                        profit <= -0.5 -> colors.bad
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    })
                 },
                 second = {
                     StatTile(
                         "Team", "${state.staff(lane).size}", Modifier.weight(1f),
-                        "plus ${Format.percent(state.founder.attentionShare(lane, state.lanes))} of you",
+                        "and ${Format.percent(state.founder.attentionShare(lane, state.lanes))} of your time",
                     )
                     StatTile(
                         "Market", Format.percent(state.world.era.demand(lane) * state.world.competition(lane)), Modifier.weight(1f),

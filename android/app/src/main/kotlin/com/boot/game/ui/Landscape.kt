@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -263,7 +264,8 @@ private fun Identity(store: GameStore, state: GameState, modifier: Modifier, onA
     Floating(modifier.widthIn(max = 260.dp)) {
         Row(Modifier.padding(start = 4.dp, end = 14.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box {
-                BadgedBox(badge = { if (attention > 0) Badge() }) {
+                // The dot sits on the menu button itself, clear of the company name beside it.
+                BadgedBox(badge = { if (attention > 0) Badge(Modifier.offset(x = (-8).dp, y = 6.dp)) }) {
                     Box(
                         Modifier
                             .size(36.dp)
@@ -320,7 +322,7 @@ private fun Readouts(store: GameStore, state: GameState, modifier: Modifier) {
     Floating(modifier) {
         Row(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             BarStat(
-                HudGlyph.RESEARCH, colors.milestone, "${state.researchPoints.toInt()}",
+                HudGlyph.RESEARCH, colors.milestone, "${Format.count(state.researchPoints)}",
                 "Research points, +${String.format(Locale.US, "%.1f", state.researchPerWeek)} a week",
             ) { store.tab = Tab.RESEARCH }
             val fans = state.games?.fans

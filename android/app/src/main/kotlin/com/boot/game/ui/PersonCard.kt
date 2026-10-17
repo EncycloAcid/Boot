@@ -131,7 +131,7 @@ private fun FounderDetails(state: GameState) {
         Bar(lane.businessName, share, colors.lane(lane), Format.percent(share) + " of you")
     }
     Text(
-        "${state.staff.size} on the team · ${state.office.title}",
+        "${if (state.staff.isEmpty()) "Just you" else "You and ${state.staff.size} " + (if (state.staff.size == 1) "other" else "others")} · ${state.office.title}",
         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }

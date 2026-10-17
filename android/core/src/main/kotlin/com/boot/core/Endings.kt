@@ -12,7 +12,7 @@ enum class EndingKind {
         get() = when (this) {
             IPO -> "IPO"
             ACQUIRED -> "Acquired"
-            INDIE -> "Stayed Independent"
+            INDIE -> "Stayed independent"
             BANKRUPT -> "Bankrupt"
             OUSTED -> "Ousted"
         }

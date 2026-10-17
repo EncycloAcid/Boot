@@ -51,8 +51,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Desk
+import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
@@ -108,11 +108,11 @@ import com.boot.game.Tab
 private data class ClassicTabSpec(val tab: Tab, val label: String, val icon: ImageVector)
 
 private val classicTabs = listOf(
-    ClassicTabSpec(Tab.OFFICE, "Office", Icons.Filled.Desk),
-    ClassicTabSpec(Tab.LANES, "Lanes", Icons.Filled.Work),
+    ClassicTabSpec(Tab.OFFICE, "Office", Icons.Filled.Computer),
+    ClassicTabSpec(Tab.LANES, "Lanes", Icons.Filled.FormatListBulleted),
     ClassicTabSpec(Tab.RESEARCH, "Research", Icons.Filled.Science),
     ClassicTabSpec(Tab.TEAM, "Team", Icons.Filled.Groups),
-    ClassicTabSpec(Tab.COMPANY, "Company", Icons.Filled.AccountBalance),
+    ClassicTabSpec(Tab.COMPANY, "Company", Icons.Filled.Work),
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -244,7 +244,7 @@ private fun ClassicHud(store: GameStore, state: GameState, onAbandon: () -> Unit
                     store.tab = Tab.COMPANY
                 }
                 ClassicHudChip(
-                    "${state.researchPoints.toInt()}", detail = if (roomy) "RP" else null, icon = Icons.Filled.Science, iconTint = colors.milestone,
+                    "${Format.count(state.researchPoints)}", detail = if (roomy) "RP" else null, icon = Icons.Filled.Science, iconTint = colors.milestone,
                     description = "Research points", tip = "Research points, to spend on new tech. Tap for research.",
                     modifier = Modifier.weight(1f, fill = false),
                 ) {

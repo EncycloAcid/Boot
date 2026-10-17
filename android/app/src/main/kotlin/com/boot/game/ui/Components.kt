@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -486,6 +487,15 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
     val colors = gameColors
     val motion = MaterialTheme.motionScheme
     val compact = LocalCompact.current
+    // One size for every label: the largest at which the longest one fits its segment.
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val base = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val segment = with(density) { ((maxWidth - 6.dp) / options.size.coerceAtLeast(1) - 16.dp).toPx() }
+    val widest = options.maxOfOrNull { measurer.measure(label(it), base, maxLines = 1, softWrap = false).size.width } ?: 0
+    val scale = if (widest > 0 && segment > 0) (segment / widest).coerceIn(0.7f, 1f) else 1f
+    val shared = base.copy(fontSize = base.fontSize * scale)
     Row(
         Modifier
             .fillMaxWidth()
@@ -513,14 +523,15 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                     },
             ) {
                 Box(Modifier.padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), contentAlignment = Alignment.Center) {
-                    FitText(
-                        label(option), MaterialTheme.typography.labelLarge,
+                    Text(
+                        label(option), style = shared.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium),
                         color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
                     )
                 }
             }
         }
+    }
     }
 }
 

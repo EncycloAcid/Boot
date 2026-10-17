@@ -307,7 +307,7 @@ fun StoriesSection(state: GameState) {
     val past = state.stories.filter { it.ending != null && !it.lasting }.takeLast(3).reversed()
     if (active.isEmpty() && lasting.isEmpty() && past.isEmpty()) return
     GroupedSection("Stories", footer = "Now and then someone on the team has a story: how it goes is up to you.") {
-        val rows = active.map { it to "Under way" } + lasting.map { it to "For good" } + past.map { it to "Ended" }
+        val rows = active.map { it to "Underway" } + lasting.map { it to "For good" } + past.map { it to "Ended" }
         rows.forEachIndexed { i, (s, label) ->
             if (i > 0) RowDivider()
             ListRow(
@@ -315,7 +315,7 @@ fun StoriesSection(state: GameState) {
                 subtitle = state.storyStatus(s),
                 value = label,
                 valueColor = when (label) {
-                    "Under way" -> MaterialTheme.colorScheme.primary
+                    "Underway" -> MaterialTheme.colorScheme.primary
                     "For good" -> gameColors.milestone
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },

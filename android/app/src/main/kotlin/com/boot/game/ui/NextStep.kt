@@ -70,7 +70,7 @@ fun nextStep(state: GameState): NextStep? {
     }.minByOrNull { it.rp }
     if (affordable != null && state.researchPoints >= affordable.rp * 2) {
         return NextStep(
-            "research-${affordable.name}", "${state.researchPoints.toInt()} research points to spend",
+            "research-${affordable.name}", "${com.boot.core.Format.count(state.researchPoints)} research points to spend",
             "${affordable.title} costs ${affordable.rp} RP: ${affordable.detail.replaceFirstChar { it.lowercase() }}",
             "Research", { it.tab = Tab.RESEARCH },
         )

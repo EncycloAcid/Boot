@@ -6,6 +6,19 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.22 (Android):** a polish pass over every screen.
+
+- The HUD date no longer covers the Bugs counter, and never cuts off (on phones it shows just the date; the season is in the panel below). The project panel's stage chip no longer shows a cut-off company name.
+- Box-art titles shrink to fit rather than break a word in two, and the genre line and studio credit read clearly over the art.
+- Show-stage banners keep the whole show name, on a dark plate so it reads over trophies, presenters and bright screens.
+- Tabs (Company, Research and others) use one text size for every label. The research tab is now just "Genres".
+- The "At a glance" tiles in each row are the same height, with one-line captions (desks now say how many are free). The office title is sized like other card titles.
+- The HUD panel puts the era and office on lines of their own, keeps numbers with their units, and tapping it toggles Today.
+- Achievement tiles share a height and shrink long names rather than break them. Founder trait cards fill the row in an even grid.
+- Numbers: "$2k" not "$2.0k", big counts get grouped ("100k RP"), zero profit reads "$0" in grey rather than a green "+$0".
+- Sheets get a hairline under their header. The guide's topics line up, the upright layout's tab icons match the standard ones, and the menu's dot sits on the menu button.
+- Copy: "Underway", "Stayed independent", "rumour", "a mascot" mid-sentence, "RPG games" keeps its capitals, Play and Week named as they appear, a clearer line about mixing art styles, and the score breakdown shows what the critics gave it next to the total.
+
 **New in 3.21 (Android):** 23 more platforms, from the Intellivision to the Steam Machine.
 
 *Today.* The Mac, the web browser, the Steam Machine, the ROG Xbox Ally, PlayStation VR2 and the Playdate join the platform list, each with its own audience, licence fee and the genres that suit it. Puzzles and casual games do well on the web, which reaches a huge crowd that spends very little each.

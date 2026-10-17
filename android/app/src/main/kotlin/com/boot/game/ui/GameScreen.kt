@@ -465,6 +465,8 @@ fun FloatingWindow(
                 )
             }
         }
+        // A hairline under the header, so content scrolling beneath it reads as an edge, not a cut.
+        Box(Modifier.fillMaxWidth().height(1.dp).background(colors.separator))
         Box(Modifier.fillMaxWidth().weight(1f)) { content() }
     }
 }
@@ -609,7 +611,7 @@ private fun FloatingHud(
         ) {
             Tip("Calendar week and season") {
                 // Narrow screens drop the season rather than cut the date short.
-                StatusPill(HudGlyph.CALENDAR, MaterialTheme.colorScheme.primary, if (narrow && state.dateLabel.length + season.length > 13) state.dateLabel else "${state.dateLabel} · $season")
+                StatusPill(HudGlyph.CALENDAR, MaterialTheme.colorScheme.primary, if (narrow) state.dateLabel else "${state.dateLabel} · $season")
             }
             val fans = state.games?.fans
             if (fans != null && Lane.GAMES in state.lanes) {
@@ -723,7 +725,7 @@ private fun ResourceDiscRow(
         }
         if (!narrow) Spacer(Modifier.width(4.dp))
         LabeledDisc(
-            "${state.researchPoints.toInt()}",
+            "${Format.count(state.researchPoints)}",
             colors.milestone,
             HudGlyph.RESEARCH,
             "RP",
@@ -834,10 +836,10 @@ private fun IdleSoftPanel(
     val crowded = state.staff.size > state.office.desks
     val avgMorale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
     val tip = when {
-        todayOpen -> "Today is open — Close or tap Office"
-        state.tutorial != null -> "Lesson waiting — open Today"
-        state.inbox.isNotEmpty() -> "${state.inbox.size} in inbox — open Today"
-        else -> "$season · tap Office for Today"
+        todayOpen -> "Tap to hide\u00A0Today"
+        state.tutorial != null -> "A lesson is waiting: tap for\u00A0Today"
+        state.inbox.isNotEmpty() -> "${state.inbox.size} in your inbox: tap for\u00A0Today"
+        else -> "$season · tap for\u00A0Today"
     }
     SoftPanel(
         Modifier
@@ -845,24 +847,22 @@ private fun IdleSoftPanel(
             .fillMaxWidth()
             .clickable {
                 store.tab = Tab.OFFICE
-                if (!todayOpen) onToggleToday()
+                onToggleToday()
             },
     ) {
         Text(state.companyName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // The era and the office on lines of their own, so neither splits.
+        for (line in listOf(state.world.era.title.removePrefix("The "), state.office.title)) {
+            Text(line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        // Each figure keeps its unit: non-breaking spaces inside, breaks only between them.
         Text(
-            "${state.world.era.title.removePrefix("The ")} · ${state.office.title}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            buildString {
-                append("+${String.format(Locale.US, "%.1f", state.researchPerWeek)} RP/wk")
-                append(" · ${state.staff.size}/${state.office.desks} desks")
-                if (crowded) append(" · crowded")
-                avgMorale?.let { append(" · morale ${String.format(Locale.US, "%.0f", it * 100)}%") }
-            },
+            listOfNotNull(
+                "+${String.format(Locale.US, "%.1f", state.researchPerWeek)}\u00A0RP/wk",
+                "${state.staff.size}/${state.office.desks}\u00A0desks",
+                "crowded".takeIf { crowded },
+                avgMorale?.let { "morale\u00A0${String.format(Locale.US, "%.0f", it * 100)}%" },
+            ).joinToString(" · "),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,

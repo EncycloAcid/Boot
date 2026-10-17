@@ -84,7 +84,11 @@ internal fun GameState.announceEraResearch() {
 
 /** A research item's name mid-sentence: "copy protection", but "AI copilots" and "fire-sale GPUs" keep their capitals. */
 val Research.inSentence: String
-    get() = if (title.length > 1 && title[1].isLowerCase()) title.replaceFirstChar { it.lowercase() } else title
+    get() = when {
+        title.startsWith("A ") || title.startsWith("An ") -> title.replaceFirstChar { it.lowercase() }
+        title.length > 1 && title[1].isLowerCase() -> title.replaceFirstChar { it.lowercase() }
+        else -> title
+    }
 
 /** An era's name mid-sentence: "the home computer revolution", "Web 2.0". */
 val Era.inSentence: String get() = if (title.startsWith("The ")) "the " + title.removePrefix("The ").lowercase() else title

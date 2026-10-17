@@ -423,7 +423,7 @@ class HardwareLab {
             design?.let { parts += "Designing ${it.name} ${(it.completion * 100).toInt()}%" }
             onMarket?.let { parts += "${it.name} on sale, $inventory in stock" }
             val incoming = orders.sumOf { it.units }
-            if (incoming > 0) parts += "$incoming units inbound"
+            if (incoming > 0) parts += "${Format.count(incoming.toDouble())} units inbound"
             return if (parts.isEmpty()) "No device in design" else parts.joinToString("; ")
         }
 

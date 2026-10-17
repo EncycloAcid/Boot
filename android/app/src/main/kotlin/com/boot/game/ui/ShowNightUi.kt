@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -346,7 +347,18 @@ fun StageBanner(name: String, height: Dp = 96.dp, live: Boolean = false, look: S
                 LivePill()
                 Spacer(Modifier.width(10.dp))
             }
-            Text(name, style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, color = if (look.light) Color.White else look.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // On its own dark plate, so the name reads over trophies, presenters and bright screens; long names shrink and wrap rather than cut off.
+            Text(
+                name,
+                style = if (name.length > 22) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold,
+                color = if (look.light) Color.White else look.accent.mix(Color.White, 0.35f),
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .widthIn(max = 420.dp)
+                    .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
         }
     }
 }

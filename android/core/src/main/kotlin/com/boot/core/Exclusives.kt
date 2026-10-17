@@ -116,7 +116,7 @@ internal fun GameState.describeExclusive(k: ExclusiveOffer): Description? {
         "${k.maker} wants an exclusive",
         "${if (k.pitched) "${k.maker} liked the pitch." else "${k.maker} has been watching ${p.title}."} " +
             "They'd pay to have it only on $keep" +
-            (if (others.isNotEmpty()) ", which means giving up ${others.joinToString { it.title }}: about ${Format.percent(loss)} of its players." else ". It's only on their console anyway; they want it to stay that way.") +
+            (if (others.isNotEmpty()) ", which means giving up ${others.map { it.title }.let { if (it.size > 1) it.dropLast(1).joinToString() + " and " + it.last() else it.first() }}, about ${Format.percent(loss)} of its players." else ". It's only on their console anyway; they want it to stay that way.") +
             " Their marketing comes with it.",
         listOfNotNull(
             choice("Full exclusive", "${money(k.full)} now. Only ever on $keep. Fans elsewhere won't forget it."),
