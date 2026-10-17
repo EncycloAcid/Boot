@@ -3,6 +3,7 @@ package com.boot.desktop.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,18 +21,26 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 /** Soft GDT float — white panel, soft shadow, light rim. */
 private val PanelShape = RoundedCornerShape(14.dp)
@@ -59,8 +69,8 @@ fun GlassPanel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier.hudSurface().padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier.hudSurface().padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         content = content,
     )
 }
@@ -71,6 +81,8 @@ fun StatusPill(
     glyph: HudGlyph,
     label: String,
     valueColor: Color = hudColors.ink,
+    detail: String? = null,
+    detailColor: Color = hudColors.inkMute,
     onClick: (() -> Unit)? = null,
 ) {
     val h = hudColors
@@ -81,26 +93,38 @@ fun StatusPill(
             .background(h.panel)
             .border(1.dp, h.panelBorder, ChipShape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(start = 9.dp, end = 12.dp, top = 7.dp, bottom = 7.dp),
+            .defaultMinSize(minHeight = 36.dp)
+            .padding(start = 10.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(
             Modifier
-                .size(20.dp)
+                .size(22.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(iconTint.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            HudIcon(glyph, iconTint, 12.dp)
+            HudIcon(glyph, iconTint, 13.dp)
         }
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = valueColor,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                color = valueColor,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+            if (detail != null) {
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = detailColor,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -111,36 +135,89 @@ fun ResourceBubble(
     fill: Color,
     glyph: HudGlyph,
     size: Dp = 56.dp,
+    caption: String? = null,
+    onClick: (() -> Unit)? = null,
 ) {
     val h = hudColors
-    Box(
-        Modifier
-            .size(size)
-            .shadow(7.dp, DiscShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
-            .clip(DiscShape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        fill,
-                        fill.copy(red = fill.red * 0.9f, green = fill.green * 0.9f, blue = fill.blue * 0.9f),
-                    ),
-                ),
-            )
-            .border(2.dp, Color.White.copy(alpha = 0.45f), DiscShape),
-        contentAlignment = Alignment.Center,
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy((-1).dp),
+        Box(
+            Modifier
+                .size(size)
+                .shadow(7.dp, DiscShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+                .clip(DiscShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            fill,
+                            fill.copy(red = fill.red * 0.9f, green = fill.green * 0.9f, blue = fill.blue * 0.9f),
+                        ),
+                    ),
+                )
+                .border(2.dp, Color.White.copy(alpha = 0.45f), DiscShape),
+            contentAlignment = Alignment.Center,
         ) {
-            HudIcon(glyph, Color.White, size * 0.4f)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy((-1).dp),
+            ) {
+                HudIcon(glyph, Color.White, size * 0.38f)
+                Text(
+                    value,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (size.value * 0.26f).sp,
+                    lineHeight = (size.value * 0.28f).sp,
+                    maxLines = 1,
+                )
+            }
+        }
+        if (caption != null) {
             Text(
-                value,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = (size.value * 0.26f).sp,
-                lineHeight = (size.value * 0.28f).sp,
-                maxLines = 1,
+                caption,
+                style = MaterialTheme.typography.labelSmall,
+                color = h.inkMute,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+/** Shared progress meter used by HUD project card and floating panels. */
+@Composable
+fun StatMeter(
+    label: String,
+    value: Float,
+    color: Color,
+    caption: String? = null,
+) {
+    val h = hudColors
+    val clamped = value.coerceIn(0f, 1f)
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = h.inkMute)
+            Text(
+                caption ?: "${(clamped * 100).toInt()}%",
+                style = MaterialTheme.typography.labelMedium,
+                color = h.inkMute,
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0x22000000)),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(clamped)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(color),
             )
         }
     }
@@ -172,7 +249,8 @@ fun MacButton(
             .background(bg)
             .then(if (!primary && enabled) Modifier.border(1.dp, Color(0x22000000), ChipShape) else Modifier)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .defaultMinSize(minHeight = 40.dp)
+            .padding(horizontal = 18.dp, vertical = 11.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = FontWeight.SemiBold)
@@ -188,7 +266,8 @@ fun SelectChip(label: String, selected: Boolean, onClick: () -> Unit) {
             .background(if (selected) h.accentSoft else h.panel)
             .border(1.dp, if (selected) h.accent.copy(alpha = 0.4f) else Color(0x22000000), ChipShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .defaultMinSize(minHeight = 36.dp)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
     ) {
         Text(
             label,
@@ -216,6 +295,32 @@ fun Hint(text: String, color: Color = hudColors.inkMute) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
 }
 
+/** Scannable empty / next-step block inside a panel. */
+@Composable
+fun EmptyState(
+    title: String,
+    body: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    val h = hudColors
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(h.accentSoft.copy(alpha = 0.55f))
+            .border(1.dp, h.accent.copy(alpha = 0.18f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = h.ink, fontWeight = FontWeight.Bold)
+        Text(body, style = MaterialTheme.typography.bodyMedium, color = h.inkMute)
+        if (actionLabel != null && onAction != null) {
+            MacButton(actionLabel, onClick = onAction, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
 @Composable
 fun ToastBanner(message: String, onDismiss: () -> Unit) {
     val h = hudColors
@@ -232,7 +337,7 @@ fun ToastBanner(message: String, onDismiss: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium, color = h.ink, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(12.dp))
-            Text("OK", style = MaterialTheme.typography.labelLarge, color = h.accent, fontWeight = FontWeight.Bold)
+            Text("Dismiss", style = MaterialTheme.typography.labelLarge, color = h.accent, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -247,46 +352,90 @@ fun WorldBackdrop(modifier: Modifier = Modifier) {
 
 private val WindowShape = RoundedCornerShape(16.dp)
 
-/** Floating window over the office — soft white chrome, title + Close. */
+/**
+ * Floating window over the office — title bar with drag grip, clear Close, focused chrome.
+ * [onDrag] reports pointer delta in dp so the shell can offset the window.
+ */
 @Composable
 fun FloatingWindow(
     title: String,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    focused: Boolean = true,
+    onDrag: ((DpOffset) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val h = hudColors
+    val border = if (focused) h.accent.copy(alpha = 0.35f) else h.panelBorder
     Column(
         modifier
-            .shadow(14.dp, WindowShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
+            .shadow(if (focused) 18.dp else 10.dp, WindowShape, clip = false, ambientColor = h.shadow, spotColor = h.shadow)
             .clip(WindowShape)
             .background(h.panel)
-            .border(1.dp, h.panelBorder, WindowShape),
+            .border(1.5.dp, border, WindowShape),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF4F6F8))
-                .padding(start = 14.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
+                .background(if (focused) Color(0xFFEAF2FA) else Color(0xFFF4F6F8))
+                .then(
+                    if (onDrag != null) {
+                        Modifier.pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                onDrag(DpOffset(dragAmount.x.toDp(), dragAmount.y.toDp()))
+                            }
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleLarge,
-                color = h.ink,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-            )
+            // Drag affordance — six-dot grip.
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(2) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        repeat(3) {
+                            Box(
+                                Modifier
+                                    .size(3.dp)
+                                    .clip(CircleShape)
+                                    .background(h.inkMute.copy(alpha = 0.45f)),
+                            )
+                        }
+                    }
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = h.ink,
+                    maxLines = 1,
+                )
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = h.inkMute,
+                        maxLines = 1,
+                    )
+                }
+            }
             Box(
                 Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(h.accentSoft)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(h.accent)
                     .clickable(onClick = onClose)
-                    .padding(horizontal = 11.dp, vertical = 5.dp),
+                    .defaultMinSize(minWidth = 72.dp, minHeight = 36.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("Close", style = MaterialTheme.typography.labelLarge, color = h.accent, fontWeight = FontWeight.Bold)
+                Text("Close", style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
         Box(Modifier.fillMaxWidth().weight(1f)) {
@@ -297,4 +446,53 @@ fun FloatingWindow(
 
 val ScreenPad = PaddingValues(start = 32.dp, end = 32.dp, top = 128.dp, bottom = 124.dp)
 
-val WindowPad = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+val WindowPad = PaddingValues(horizontal = 18.dp, vertical = 16.dp)
+
+/** Slider that only commits when the finger lifts — avoids encode/save spam while dragging. */
+@Composable
+fun CommitSlider(
+    value: Double,
+    label: (Float) -> String,
+    valueRange: ClosedFloatingPointRange<Float> = 0.05f..1f,
+    onCommit: (Double) -> Unit,
+) {
+    var local by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label(local), style = MaterialTheme.typography.labelLarge, color = hudColors.text)
+        Slider(
+            value = local.coerceIn(valueRange.start, valueRange.endInclusive),
+            onValueChange = { local = it },
+            onValueChangeFinished = { onCommit(local.toDouble()) },
+            valueRange = valueRange,
+        )
+    }
+}
+
+@Composable
+fun ConfirmDialog(
+    title: String,
+    text: String,
+    confirm: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    destructive: Boolean = false,
+) {
+    val h = hudColors
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .widthIn(max = 420.dp)
+                .hudSurface()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = h.ink)
+            Hint(text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MacButton("Cancel", onClick = onDismiss, primary = false)
+                Spacer(Modifier.weight(1f))
+                MacButton(confirm, onClick = { onConfirm(); onDismiss() }, primary = !destructive)
+            }
+        }
+    }
+}
