@@ -97,7 +97,8 @@ fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
                 val s = com.boot.core.studio(sub.name) ?: return@forEachIndexed
                 ListRow(
                     sub.name,
-                    subtitle = "${sub.plan.title} · since ${GameClock.label(sub.boughtWeek)} · earned ${Format.money(sub.lifetimeProfit)}",
+                    subtitle = "${sub.plan.title} · morale ${Format.percent(sub.morale)} · " +
+                        (sub.project?.let { "making ${it.title}" } ?: "earned ${Format.money(sub.lifetimeProfit)}"),
                     leading = { StudioBadge(sub.name) },
                     value = sub.lastProfit.perWeek(),
                     valueColor = if (sub.lastProfit > 0) colors.good else Color.Unspecified,

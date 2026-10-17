@@ -508,6 +508,12 @@ Exclusives.kt. `exclusiveTerms` prices a full exclusive at 3× the marketing dea
 
 Signing sets `GameProject.exclusive`, pays up front, adds hype (+8 full, +4 timed) and costs fan trust (−0.05, −0.02). At launch the project's concept is narrowed to the maker's platforms, so reach and sales come from those alone; the release records `exclusiveTo`/`exclusiveUntil`. A timed exclusive queues the held-back platforms as ports due when the window closes (26 weeks), so they get the port sales burst. `portTargets` leaves out other makers' platforms while the exclusivity lasts.
 
+## Running owned studios (3.18)
+
+OwnedStudios.kt. `studioPitch` is seeded from the run, the studio, its purchase week and how many games it's shipped for you, so it stays put until made. Indies pitch small or medium games; studios of quality 0.8+ pitch large or AAA; 70% of pitches from a studio with real series use one (title "Series: Subtitle"). Normal budgets cost 1M/5M/25M/80M (scaled to the year) and take 30/45/65/90 weeks; tight is ×0.6 money and −0.4 score, generous ×1.6 and +0.5. The game ships as a `RivalGame` with `funded = true`, scored normal(6.2 + 1.2 × quality − 0.05 × walkouts + budget + 2 × (morale − 0.6) − squeeze penalty, 0.8), and `subsidiaryWeek` adds 60% of funded games' weekly sales.
+
+Morale moves 3% of the way each week toward the plan's target (independent 0.75, integrated 0.5, squeezed 0.2). Greenlighting adds 0.03 plus the budget's effect (−0.05, 0, +0.08), a hit +0.12, a flop −0.12, a cancellation −0.15. Profit scales by 0.8 + 0.4 × morale. Below 0.3 (at most twice a year) a `StudioUnrest` decision: a retention bonus (0.4% of value, +0.3 morale), going back to independent (+0.2), or letting them walk (value ×0.92 per walkout, floor 0.6; games score a little lower).
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

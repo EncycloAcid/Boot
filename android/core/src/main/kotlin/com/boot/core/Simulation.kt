@@ -262,6 +262,7 @@ private fun GameState.studioWeek() {
     feedWeek()
     marketWeek()
     subsidiaryWeek()
+    ownedStudioWeek(g)
     publishingWeek()
     esportsWeek()
     // Pushy stores get noticed.

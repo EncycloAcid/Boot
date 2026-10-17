@@ -25,6 +25,8 @@ data class RivalGame(
     var lifetime: Double = 0.0,
     /** The real series it belongs to, if any. */
     val franchise: String? = null,
+    /** You paid for it: one of your studios made it with your money. */
+    val funded: Boolean = false,
 ) {
     /** The kind of release everyone stops to play. */
     val mega: Boolean get() = size == GameSize.AAA && score >= 9

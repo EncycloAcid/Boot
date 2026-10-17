@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.18 (Android):** running the studios you own.
+
+*Their next game.* Every studio you own pitches the game it wants to make next, often the next in one of its own series (FromSoftware might pitch the next Armored Core). Greenlight it with a tight, normal or generous budget and pay for it up front. It comes out under their name, months later, and you keep 60% of what it sells on top of the studio's usual profit. Bigger budgets and a happier team make better games. You can cancel a game, but the money's gone and the team takes it hard.
+
+*Morale.* Each studio has a morale you can see on its page and in your list of studios. Leaving them be keeps it high; folding them in or cutting costs wears it down. Hits, generous budgets and greenlit games lift it; flops and cancellations hurt. A happier studio earns more.
+
+*Trouble.* When morale falls too far, the studio speaks up: pay retention bonuses, let them run themselves again (even if you changed how they're run this year), or let senior people walk, which costs the studio quality and value.
+
 **New in 3.17 (Android):** console exclusive deals.
 
 A console maker can pay to have your game only on its machines. Sony, Microsoft or Nintendo comes asking about a promising game in development (a good forecast or plenty of buzz helps), and you can pitch a game to them yourself from the project card, with your chances shown. Each deal comes in two kinds:

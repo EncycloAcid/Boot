@@ -73,6 +73,16 @@ data class Subsidiary(
     var planWeek: Int = -1_000,
     /** Their best people already joined your team. */
     var folded: Boolean = false,
+    /** How the people there feel, 0...1. */
+    var morale: Double = 0.7,
+    /** The game they're making with your money, if any. */
+    var project: StudioGame? = null,
+    /** Games of theirs you paid for that came out, and how many were hits. */
+    var shipped: Int = 0,
+    var hits: Int = 0,
+    /** When they last spoke up, and how many times senior people walked. */
+    var unrestWeek: Int = -1_000,
+    var talentLost: Int = 0,
 )
 
 /** What buyers pay over a studio's value. */
@@ -145,7 +155,7 @@ internal fun GameState.subsidiaryWeek() {
         val hits = theirs.count { it.score >= 8 }
         val flops = theirs.count { it.score < 5 }
         val form = (0.8 + 0.15 * hits - 0.1 * flops).clamped(0.6, 1.5)
-        val profit = studioValue(s) * 0.06 / 52 * form * sub.profitFactor(week) * rng.range(0.9, 1.1)
+        val profit = studioValue(s) * 0.06 / 52 * form * sub.profitFactor(week) * rng.range(0.9, 1.1) * (0.8 + 0.4 * sub.morale) + fundedSales(sub)
         sub.lastProfit = profit
         sub.lifetimeProfit += profit
         cash += profit

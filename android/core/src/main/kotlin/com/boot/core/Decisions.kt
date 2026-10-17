@@ -644,6 +644,12 @@ object Sandbox {
     }
     fun founderXp(s: GameState, xp: Double) = s.founderXp(xp)
     fun startStory(s: GameState, kind: StoryKind, people: List<Int>) = s.startStory(kind, people)
+    /** Hands you [name] as if you'd bought it. */
+    fun own(s: GameState, name: String) {
+        val g = s.games ?: return
+        if (g.owns(name)) return
+        g.subsidiaries += Subsidiary(name, s.week, studio(name)?.let { s.studioValue(it) } ?: 0.0)
+    }
     fun research(s: GameState, r: Research) {
         s.researched += r
     }

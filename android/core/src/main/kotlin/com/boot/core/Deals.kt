@@ -340,7 +340,7 @@ internal fun Subsidiary.profitFactor(week: Int): Double {
 }
 
 /** How what was found changes what a studio is worth. */
-internal fun Subsidiary.valueFactor(week: Int): Double = when (finding) {
+internal fun Subsidiary.valueFactor(week: Int): Double = max(0.6, 1 - 0.08 * talentLost) * when (finding) {
     Finding.PAST_ITS_BEST -> max(0.7, 1 - 0.05 * ((week - boughtWeek) / 26))
     Finding.HIDDEN_GEM -> if (week - boughtWeek >= 26) 1.15 else 1.0
     Finding.TALENT_FLIGHT -> if (plan != Plan.INDEPENDENT) 0.85 else 1.0

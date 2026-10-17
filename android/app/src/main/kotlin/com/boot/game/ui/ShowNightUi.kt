@@ -303,6 +303,7 @@ fun EventArt(state: GameState, kind: EventKind): Boolean {
         is com.boot.core.BiddingWar -> kind.studio
         is com.boot.core.RegulatorReview -> kind.studio
         is com.boot.core.IntegrationChoice -> kind.studio
+        is com.boot.core.StudioUnrest -> kind.studio
         else -> null
     }
     if (studio != null) {

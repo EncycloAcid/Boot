@@ -141,6 +141,10 @@ class Autopilot(
             }
             is ShowResults -> 0
             is MilestoneReview -> 0
+            is StudioUnrest -> {
+                val st = studio(k.studio)
+                if (st != null && s.cash > s.retentionCost(st) * 5) 0 else e.choices.lastIndex
+            }
             is ExclusiveOffer -> e.choices.indexOfFirst { it.label == "Timed exclusive" }.takeIf { it >= 0 } ?: e.choices.lastIndex
             is PlatformInvite -> {
                 val labels = e.choices.map { it.label }

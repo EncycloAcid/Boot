@@ -65,6 +65,14 @@ import com.boot.core.studioFranchises
 import com.boot.core.studioName
 import com.boot.core.studioValue
 import com.boot.core.withdrawOffer
+import com.boot.core.StudioBudget
+import com.boot.core.cancelStudioGame
+import com.boot.core.fundedGames
+import com.boot.core.greenlight
+import com.boot.core.greenlightBlocker
+import com.boot.core.moraleTarget
+import com.boot.core.studioGameProgress
+import com.boot.core.studioPitch
 import com.boot.game.GameStore
 import kotlin.math.roundToInt
 
@@ -237,6 +245,29 @@ private fun Running(store: GameStore, state: GameState, s: Studio) {
             StatTile("Since you bought it", Format.money(sub.lifetimeProfit), Modifier.weight(1f), "paid ${Format.money(sub.paid)}")
         }
     }
+    GroupedSection(
+        "The team",
+        footer = "Morale heads toward ${Format.percent(sub.plan.moraleTarget())} the way you run them. Hits, bigger budgets and leaving them be raise it; flops, cuts and cancelled games lower it." +
+            (if (sub.talentLost > 0) " Senior people have walked out ${if (sub.talentLost == 1) "once" else "${sub.talentLost} times"}." else ""),
+    ) {
+        CardBlock {
+            Meter(
+                "Morale", sub.morale,
+                when {
+                    sub.morale >= 0.6 -> colors.good
+                    sub.morale >= 0.35 -> colors.warn
+                    else -> colors.bad
+                },
+                caption = "${Format.percent(sub.morale)} · " + when {
+                    sub.morale >= 0.75 -> "thriving"
+                    sub.morale >= 0.6 -> "happy"
+                    sub.morale >= 0.35 -> "uneasy"
+                    else -> "close to walking out"
+                },
+            )
+        }
+    }
+    NextGame(store, state, s, sub)
     val canChange = state.week - sub.planWeek >= 52
     GroupedSection("How you run it", footer = if (canChange) "You can change this once a year." else "You can change this in ${GameClock.label(sub.planWeek + 52)}.") {
         Plan.entries.forEachIndexed { i, p ->
@@ -262,5 +293,59 @@ private fun Running(store: GameStore, state: GameState, s: Studio) {
             },
             onDismiss = { selling = false },
         )
+    }
+}
+
+/** The game a studio you own is making with your money, or the one it wants to make next. */
+@Composable
+private fun NextGame(store: GameStore, state: GameState, s: Studio, sub: com.boot.core.Subsidiary) {
+    val p = sub.project
+    if (p != null) {
+        var cancelling by remember { mutableStateOf(false) }
+        GroupedSection("Their next game", footer = "You keep ${Format.percent(com.boot.core.FUNDED_SHARE)} of what it sells, on top of the studio's own profit.") {
+            CardBlock {
+                Text(p.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Hint("${p.size.title} ${p.topic.title.lowercase()} ${p.genre.lower} game · ${p.budget.title.lowercase()} budget, ${Format.money(p.cost)}")
+                Meter("In development", state.studioGameProgress(p), caption = "out ${GameClock.label(p.doneWeek)}")
+                PlainButton("Cancel it", { cancelling = true })
+            }
+        }
+        if (cancelling) {
+            ConfirmDialog(
+                title = "Cancel ${p.title}?",
+                text = "The ${Format.money(p.cost)} is gone, and the team at ${s.name} will take it hard.",
+                confirm = "Cancel the game",
+                destructive = true,
+                onConfirm = {
+                    store.perform { cancelStudioGame(s.name) }
+                    cancelling = false
+                },
+                onDismiss = { cancelling = false },
+            )
+        }
+        return
+    }
+    val pitch = state.studioPitch(sub)
+    var budget by remember { mutableStateOf(StudioBudget.NORMAL) }
+    val blocker = state.greenlightBlocker(s.name, budget)
+    GroupedSection("Their pitch", footer = blocker ?: "${budget.blurb} About ${Format.weeks(pitch.doneWeek - pitch.startWeek)} to make. It comes out under their name; you keep ${Format.percent(com.boot.core.FUNDED_SHARE)} of what it sells.") {
+        CardBlock {
+            Text(pitch.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Hint(
+                "${pitch.size.title} ${pitch.topic.title.lowercase()} ${pitch.genre.lower} game" +
+                    (pitch.franchise?.let { " · the next $it" } ?: " · something new"),
+            )
+            Segmented(StudioBudget.entries, budget, { it.title }) { budget = it }
+            PrimaryButton("Greenlight it · ${Format.money(pitch.cost * budget.cost)}", { store.perform { greenlight(s.name, budget) } }, Modifier.fillMaxWidth(), enabled = blocker == null)
+        }
+    }
+    val funded = state.fundedGames(sub)
+    if (funded.isNotEmpty()) {
+        GroupedSection("Games you paid for") {
+            funded.take(4).forEachIndexed { i, r ->
+                if (i > 0) RowDivider()
+                ValueRow(r.title, String.format(java.util.Locale.US, "%.1f", r.score))
+            }
+        }
     }
 }

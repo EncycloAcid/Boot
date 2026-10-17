@@ -391,6 +391,7 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is DealCounter, is BiddingWar, is RegulatorReview, is IntegrationChoice -> describeDeal(kind)
     is MilestoneReview -> describeMilestone(kind)
     is ExclusiveOffer -> describeExclusive(kind)
+    is StudioUnrest -> describeUnrest(kind)
     is StreamerPreview, is FanCampaign, is PresenterInvite -> describeShowMoment(kind)
     is ShowResults -> describeShowResults(kind.report)
     EventKind.EcosystemAntitrust -> Description(
@@ -750,6 +751,7 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         is DealCounter, is BiddingWar, is RegulatorReview, is IntegrationChoice -> resolveDeal(kind, choice)
         is MilestoneReview -> resolveMilestone(kind, choice)
         is ExclusiveOffer -> resolveExclusive(kind, choice)
+        is StudioUnrest -> resolveUnrest(kind, choice)
         is StreamerPreview, is FanCampaign, is PresenterInvite -> resolveShowMoment(kind, choice)
 
         // Just a report to read.
