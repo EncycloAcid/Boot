@@ -178,6 +178,20 @@ fun chartCoverConcept(title: String, topic: Topic, genre: Genre, platform: Platf
 /** Box art for [concept], by [studio] if given. Small covers keep the picture and drop the words. */
 @Composable
 fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, studio: String? = null) {
+    // A real game gets its real cover.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val real = remember(concept.title) { RealCovers.load(context, concept.title) }
+    if (real != null) {
+        androidx.compose.foundation.Image(
+            real, contentDescription = concept.title,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = modifier
+                .size(width, width * 4 / 3)
+                .shadow(if (width >= 56.dp) 8.dp else 2.dp, RoundedCornerShape(width * 0.06f))
+                .clip(RoundedCornerShape(width * 0.06f)),
+        )
+        return
+    }
     val measurer = rememberTextMeasurer()
     // Studio (64dp) and designer (104dp+) get lettering; tiny list thumbs stay pictorial.
     val detailed = width >= 56.dp

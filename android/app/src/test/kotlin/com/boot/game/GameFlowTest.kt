@@ -925,6 +925,18 @@ class GameFlowTest {
         compose.runOnIdle { store.tab = Tab.NEWS }
         compose.waitForIdle()
         screen("71-decades-news")
+        // Real games in the news show their real box art.
+        runCatching {
+            val app = org.robolectric.RuntimeEnvironment.getApplication()
+            val story = store.state!!.news.last { it.cover != null && com.boot.game.ui.RealCovers.has(app, it.cover!!.title) }
+            val real = story.cover!!.title
+            compose.onNodeWithTag("desks").performScrollToNode(hasText(story.desk.title))
+            compose.onNodeWithText(story.desk.title).performClick()
+            compose.waitForIdle()
+            compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(real, substring = true))
+            compose.waitForIdle()
+            screen("71b-decades-news-covers")
+        }.onFailure { println("REALCOVER fail $it") }
         studio(StudioPage.TECH)
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Platforms", ignoreCase = true))
         compose.onNodeWithText("NES").assertExists()

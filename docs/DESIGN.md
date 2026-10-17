@@ -534,6 +534,10 @@ Platform entries are dated on the shared timeline (week = (year + (month − 1)/
 
 LaneSales.kt. Any business but the last can be sold whenever there's no Pivot Point pending. `laneSalePrice` = `laneValue` × 1.15 if the last 13 weeks were profitable (× 0.8 if not), plus 90% of owned studios' value for games, at least 25k (scaled), rounded to the thousand. The buyer is the rival in that lane, or a named default. Staff with a role weight of 0.8+ in a kept lane move to the best fit; the rest leave. Pending events and inbox items for that lane are dropped, the lane closes (its combos with it), and the profitable streak resets. Selling down to one lane sets `focusedUntil` = now + 52 weeks, during which that lane's output is ×1.12. `focusOn` sells every lane but one.
 
+## Real covers (3.24)
+
+`assets/covers/` holds 300×400 JPEGs (odd shapes get a blurred, darkened backdrop) and `index.tsv` (key, series, year, file). `RealCovers.key` folds a title to lowercase ASCII: accents stripped, "&" read as "and", everything else non-alphanumeric turned into spaces. `GameCover` looks the concept's title up first and draws the real cover if there is one (LRU of 48 decoded bitmaps); otherwise it draws the box art as before. Exact titles only, no series fallback, so invented sequels stay drawn. The images are third-party box art supplied for a personal build; a public release needs the rights or the folder removed (the game falls back to drawn art on its own).
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

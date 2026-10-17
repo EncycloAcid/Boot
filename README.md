@@ -6,6 +6,10 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.24 (Android):** real box art for real games.
+
+The 265 real games in the market, the news, the charts and the award nights now show their real covers: Super Mario Bros. 3, Ocarina of Time, Halo, Final Fantasy VII, GTA V and the rest. Covers match by exact title, so future entries that only exist in the game (say, a Battlefield sequel in 2031) and every game you or your studios make keep the drawn box art.
+
 **New in 3.23 (Android):** sell a business, or keep one to focus on.
 
 Running more than one business? Each one's page in the Lanes tab now ends with *Sell or focus*:
