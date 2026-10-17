@@ -145,6 +145,8 @@ class Autopilot(
                 val st = studio(k.studio)
                 if (st != null && s.cash > s.retentionCost(st) * 5) 0 else e.choices.lastIndex
             }
+            // Co-produce when there is money to spare; otherwise take the fee.
+            is ScreenOffer -> if (s.cash > k.stake * 4) 1 else 0
             is ExclusiveOffer -> e.choices.indexOfFirst { it.label == "Timed exclusive" }.takeIf { it >= 0 } ?: e.choices.lastIndex
             is PlatformInvite -> {
                 val labels = e.choices.map { it.label }

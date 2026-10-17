@@ -267,6 +267,7 @@ fun EventArt(state: GameState, kind: EventKind): Boolean {
         }
         return true
     }
+    if (kind is com.boot.core.ScreenOffer && ScreenOfferArt(state, kind)) return true
     if (kind is com.boot.core.ExclusiveOffer) {
         val p = state.games?.projectOf(kind.team)
         if (p != null) {

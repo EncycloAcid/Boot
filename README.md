@@ -6,6 +6,13 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.25 (Android):** film and TV deals.
+
+A hit series now gets calls from film and TV studios (Universal, Warner Bros., HBO, Netflix, Cartoon Network and others, depending on the year). You can also shop a series' rights yourself from the new *Film and TV* section on the Games page.
+- **License it:** the studio pays you up front and makes it their way. Game adaptations have a bad name, so expect mixed results.
+- **Co-produce:** you put money in, get a say, and share the takings. It costs more and turns out better on average.
+- A year or two later it comes out. A hit brings new fans, sends people back to the games, and gives the next game in the series a bigger launch. A flop costs you fans' trust and drags down the next game.
+
 **New in 3.24 (Android):** real box art for real games.
 
 The 265 real games in the market, the news, the charts and the award nights now show their real covers: Super Mario Bros. 3, Ocarina of Time, Halo, Final Fantasy VII, GTA V and the rest. Covers match by exact title, so future entries that only exist in the game (say, a Battlefield sequel in 2031) and every game you or your studios make keep the drawn box art.

@@ -49,6 +49,10 @@ class Stats {
     var buyoutsDeclined = 0
     var saleProceeds = 0.0
     var lanesSold = 0
+
+    /** Films and shows of your series that came out, and the ones critics loved. */
+    var adaptations = 0
+    var adaptationHits = 0
     var weeksInRed = 0
 
     /** Consecutive weeks every lane has been profitable over the trailing quarter. */
