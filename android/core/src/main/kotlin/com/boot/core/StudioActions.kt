@@ -126,7 +126,14 @@ fun GameState.estimatedWeeks(c: GameConcept): Int = ceil(c.work / max(1.0, staff
 fun GameState.suggestGameTitle(topic: Topic, genre: Genre): String =
     studio().suggestTitle(rng, topic, genre)
 
-fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> = evenFocus(), team: Int = 1) {
+fun GameState.startGame(
+    concept: GameConcept,
+    focus: List<MutableList<Double>> = evenFocus(),
+    team: Int = 1,
+    /** The engine features to build in; null for the engine's whole kit, the old way. */
+    features: Set<Research>? = null,
+    leads: Map<FocusArea, Int> = emptyMap(),
+) {
     val g = studio()
     conceptBlocker(concept, team = team)?.let { throw notAvailable(it) }
     val fees = concept.platforms.sumOf { it.fee }
@@ -143,7 +150,15 @@ fun GameState.startGame(concept: GameConcept, focus: List<MutableList<Double>> =
         hype += 20.0
         g.promisedSequel = null
     }
-    g.setProject(team, GameProject(concept, focus.map { it.toMutableList() }, week, hype = hype))
+    val engine = g.engine(concept.engineId)
+    g.setProject(
+        team,
+        GameProject(
+            concept, focus.map { it.toMutableList() }, week, hype = hype,
+            features = features?.filter { it in engine.features }?.toMutableSet(),
+            leads = leads.filterValues { id -> staff.any { it.id == id && it.lane == Lane.GAMES } }.toMutableMap(),
+        ),
+    )
     addLog(
         (if (team == 2) "Team 2 started " else "Started ") + "${concept.title}: ${Format.a(concept.size.lower)} ${concept.topic.title.lowercase()} " +
             "${concept.genreLower} game for ${concept.platforms.joinToString { it.title }}." +

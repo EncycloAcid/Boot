@@ -26,7 +26,10 @@ fun GameState.advance() {
     for (lane in lanes) {
         val ctx = context(lane, fx)
         val report = when (lane) {
-            Lane.GAMES -> games!!.tick(ctx, rng)
+            Lane.GAMES -> {
+                prepareLeads()
+                games!!.tick(ctx, rng)
+            }
             Lane.WEBSITES -> web!!.tick(ctx, rng)
             Lane.APPS -> apps!!.tick(ctx, rng)
             Lane.SOCIAL -> social!!.tick(ctx, rng)

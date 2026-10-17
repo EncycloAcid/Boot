@@ -20,6 +20,12 @@ data class LaneModifiers(
     var risk: Double = 1.0,
     /** Multiplier on capability gained per training run. */
     var gain: Double = 1.0,
+    /** Multiplier on bugs made while building a game. */
+    var bugs: Double = 1.0,
+    /** Added to how well a game's effort split matches its genre. */
+    var focus: Double = 0.0,
+    /** Genre lessons learned each time a development stage finishes. */
+    var insights: Int = 1,
 )
 
 /** Everything a lane needs to simulate one week. */

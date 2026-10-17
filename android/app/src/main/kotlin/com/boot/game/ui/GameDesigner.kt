@@ -121,6 +121,8 @@ fun GameDesigner(store: GameStore, state: GameState) {
     var production by remember { mutableStateOf(seed?.production ?: Production.STANDARD) }
     var hook by remember { mutableStateOf(seed?.hook) }
     val focus = remember { List(3) { mutableStateListOf(0.5, 0.5, 0.5) } }
+    var features by remember(engineId) { mutableStateOf(com.boot.core.defaultFeatures(g.engine(engineId))) }
+    val leads = remember { androidx.compose.runtime.mutableStateMapOf<com.boot.core.FocusArea, Int>() }
 
     val concept = GameConcept(
         title = title.trim().ifEmpty { "Untitled" }, topic = topic, genre = genre, genre2 = genre2, audience = audience,
@@ -148,7 +150,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
         } else {
             PrimaryButton("Start development", {
                 val split = focus.map { it.toMutableList() }
-                store.perform { startGame(concept, split, team) }
+                store.perform { startGame(concept, split, team, features = features, leads = if (com.boot.core.Research.LEAD_ROLES in researched) leads.toMap() else emptyMap()) }
                 if (store.state?.games?.projectOf(team) != null) close()
             }, enabled = blocker == null)
         }
@@ -205,7 +207,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                                 genre2, { genre2 = it }, audience, { audience = it }, seriesGenre, remaster != null,
                             )
                             1 -> PlatformStep(state, genre, audience, platforms, size, { size = it }, engineId, { engineId = it }, remaster != null)
-                            2 -> FocusStep(state, concept, focus)
+                            2 -> FocusStep(state, concept, focus, features, { features = it }, leads)
                             else -> SummaryStep(state, concept, team, { price = it }, { live = it }, { production = it }, { hook = it })
                         }
                     }
@@ -239,7 +241,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
                         } else {
                             PrimaryButton("Start development", {
                                 val split = focus.map { it.toMutableList() }
-                                store.perform { startGame(concept, split, team) }
+                                store.perform { startGame(concept, split, team, features = features, leads = if (com.boot.core.Research.LEAD_ROLES in researched) leads.toMap() else emptyMap()) }
                                 if (store.state?.games?.projectOf(team) != null) close()
                             }, enabled = blocker == null)
                         }
@@ -442,36 +444,31 @@ private fun PlatformStep(
 }
 
 @Composable
-private fun FocusStep(state: GameState, concept: GameConcept, focus: List<MutableList<Double>>) {
+private fun FocusStep(
+    state: GameState,
+    concept: GameConcept,
+    focus: List<MutableList<Double>>,
+    features: Set<com.boot.core.Research> = emptySet(),
+    onFeatures: (Set<com.boot.core.Research>) -> Unit = {},
+    leads: MutableMap<com.boot.core.FocusArea, Int> = mutableMapOf(),
+) {
     val g = state.games!!
+    val engine = g.engine(concept.engineId)
     Text(
-        "Split each stage's effort between its three areas. Every ${concept.genreLower} game rewards the right split. " +
-            "Game reports tell you what matters.",
+        "Split each stage's effort between its three areas, pick which of ${engine.name}'s features go in, and who leads what. " +
+            "Every ${concept.genreLower} game rewards the right split. You can change later stages when you get to them.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 4.dp),
     )
     for (stage in 0..2) {
-        val areas = FocusArea.forStage(stage)
-        val alloc = focus[stage]
         GroupedSection(FocusArea.STAGES[stage]) {
             CardBlock {
-                areas.forEachIndexed { i, area ->
-                    val total = alloc.sum().coerceAtLeast(0.01)
-                    val lesson = insight(g, concept.genre, area)
-                    val slider = remember(stage, i) { SliderState(alloc[i].toFloat()) }
-                    Column {
-                        Row {
-                            Text(area.title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            if (lesson != null) Hint(lesson, MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(8.dp))
-                            Text(Format.percent(alloc[i] / total), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Slider(state = slider, onValueChange = {
-                            slider.value = it
-                            alloc[i] = it.toDouble()
-                        })
-                    }
+                StageSliders(state, concept, stage, focus[stage])
+                FeaturePicker(state, concept, engine, stage, features, onChange = onFeatures)
+                LeadPicker(state, stage, leads.filterKeys { it.stage == stage }) { next ->
+                    com.boot.core.FocusArea.forStage(stage).forEach { leads.remove(it) }
+                    leads.putAll(next)
                 }
             }
         }

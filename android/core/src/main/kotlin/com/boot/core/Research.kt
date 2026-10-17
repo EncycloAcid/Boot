@@ -106,6 +106,31 @@ enum class Research(
     CROSS_PLAY("Cross-play", "Everyone in one lobby.", Kind.ENGINE, 140, requires = ONLINE_SERVICES, engineLevel = 3),
     PROCEDURAL("Procedural generation", "Infinite worlds, finite budget.", Kind.ENGINE, 65, engineLevel = 2),
     OPEN_WORLD("Open world", "Go anywhere.", Kind.ENGINE, 85, requires = PHYSICS, engineLevel = 3),
+
+    // More engine features, one or two for every part of a game.
+    ACHIEVEMENTS("Achievements", "Little trophies for everything. Players chase them.", Kind.ENGINE, 20, engineLevel = 1),
+    PHOTO_MODE("Photo mode and replays", "Players share your game for you.", Kind.ENGINE, 30, engineLevel = 1),
+    HAPTICS("Advanced haptics", "Feel the rain through the controller.", Kind.ENGINE, 60, engineLevel = 2),
+    BRANCHING_STORY("Branching story", "Choices that change how it ends.", Kind.ENGINE, 25, engineLevel = 1),
+    CINEMATIC_CUTSCENES("In-engine cutscenes", "The story told in the game's own graphics.", Kind.ENGINE, 45, requires = GRAPHICS_3D_V1, engineLevel = 2),
+    DIALOGUE_TREES("Dialogue trees", "Pick what to say, and live with it.", Kind.ENGINE, 15, engineLevel = 1),
+    FACIAL_ANIMATION("Facial animation", "Faces that act.", Kind.ENGINE, 70, requires = MOTION_CAPTURE, engineLevel = 2),
+    LEVEL_EDITOR("Level editor", "Designers build levels without waiting on engineers.", Kind.ENGINE, 20, engineLevel = 1),
+    MOD_TOOLS("Mod tools", "Hand the editor to the players.", Kind.ENGINE, 50, requires = LEVEL_EDITOR, engineLevel = 2),
+    COMPANION_AI("Companion AI", "Sidekicks who help instead of getting stuck on doors.", Kind.ENGINE, 45, requires = BASIC_AI, engineLevel = 2),
+    DAY_NIGHT("Day and night", "The sun goes down and the world changes.", Kind.ENGINE, 25, engineLevel = 1),
+    DYNAMIC_WEATHER("Dynamic weather", "Storms roll in.", Kind.ENGINE, 50, requires = DAY_NIGHT, engineLevel = 2),
+    WORLD_STREAMING("Seamless streaming", "A whole world and no loading screens.", Kind.ENGINE, 90, requires = OPEN_WORLD, engineLevel = 3),
+    ORCHESTRAL_SCORE("Orchestral score", "A real orchestra in a real hall.", Kind.ENGINE, 35, requires = SOUND_STEREO, engineLevel = 1),
+    ADAPTIVE_MUSIC("Adaptive music", "The score follows the action.", Kind.ENGINE, 60, requires = ORCHESTRAL_SCORE, engineLevel = 2),
+    PARTICLES("Particle effects", "Sparks, smoke and magic.", Kind.ENGINE, 20, requires = GRAPHICS_2D_V2, engineLevel = 1),
+    ANTI_CHEAT("Anti-cheat", "Keeps online play fair.", Kind.ENGINE, 40, requires = MULTIPLAYER, engineLevel = 1),
+
+    // How the studio makes games.
+    DESIGN_DOCS("Design documents", "Everyone works from the same plan: the effort split counts for a little more.", Kind.STUDIO, 18),
+    LEAD_ROLES("Lead roles", "Put someone in charge of each part of a game. A good lead makes their part better.", Kind.STUDIO, 15, requires = MEDIUM_GAMES),
+    QA_DEPARTMENT("QA department", "Testers on staff from day one: a fifth fewer bugs while a game is made.", Kind.STUDIO, 30, requires = PLAYTESTING),
+    FOCUS_GROUPS("Focus groups", "Players tell you what they want: every finished stage teaches two lessons, not one.", Kind.STUDIO, 25, requires = TARGET_AUDIENCE),
     LIVE_SERVICE(
         "Live service games", "Ship medium and bigger games as live games: seasons of new content, in-game purchases, servers to run.",
         Kind.STUDIO, 70, requires = ONLINE_SERVICES,
@@ -276,7 +301,21 @@ enum class Research(
     /** The year it became possible. In a run set in the past, nothing can be researched before its time. */
     val year: Int
         get() = when (this) {
-            SEQUELS, PROCEDURAL, BASIC_AI, MULTIPLAYER, STYLE_PIXEL -> 1978
+            SEQUELS, PROCEDURAL, BASIC_AI, MULTIPLAYER, STYLE_PIXEL, DESIGN_DOCS -> 1978
+            DIALOGUE_TREES, LEAD_ROLES -> 1983
+            LEVEL_EDITOR -> 1984
+            BRANCHING_STORY, FOCUS_GROUPS -> 1985
+            QA_DEPARTMENT -> 1991
+            ORCHESTRAL_SCORE -> 1995
+            PARTICLES -> 1996
+            CINEMATIC_CUTSCENES, MOD_TOOLS, DAY_NIGHT -> 1998
+            ANTI_CHEAT -> 2002
+            ADAPTIVE_MUSIC -> 2003
+            COMPANION_AI, DYNAMIC_WEATHER, ACHIEVEMENTS -> 2005
+            FACIAL_ANIMATION -> 2007
+            PHOTO_MODE -> 2010
+            WORLD_STREAMING -> 2013
+            HAPTICS -> 2020
             MERCHANDISE, PUBLISHING, CUSTOM_ENGINES, STOCK_OPTIONS, REGIONAL_EXPANSION -> 1980
             MEDIUM_GAMES, GLOBAL_ALLIANCES -> 1983
             VENTURE_ARM -> 1985
@@ -595,6 +634,9 @@ internal fun GameState.applyResearch(lane: Lane, mods: LaneModifiers) {
             if (has(Research.LOCALIZATION)) mods.demand *= 1.06
             if (has(Research.DIGITAL_STORES)) mods.demand *= 1.05
             if (has(Research.PLAYTESTING)) mods.quality += 3
+            if (has(Research.QA_DEPARTMENT)) mods.bugs *= 0.8
+            if (has(Research.DESIGN_DOCS)) mods.focus += 0.05
+            if (has(Research.FOCUS_GROUPS)) mods.insights = 2
             if (has(Research.ACCESSIBLE_DESIGN)) {
                 mods.quality += 2
                 mods.demand *= 1.02

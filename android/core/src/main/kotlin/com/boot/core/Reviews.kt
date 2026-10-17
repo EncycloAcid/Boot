@@ -154,6 +154,8 @@ internal data class ReviewInputs(
     val price: PriceTier = PriceTier.STANDARD,
     val year: Int = MODERN_YEAR,
     val production: Production = Production.STANDARD,
+    /** Areas that matter to the genre that got none of the engine's features. */
+    val bare: List<FocusArea> = emptyList(),
 )
 
 internal data class ReviewResult(
@@ -239,6 +241,9 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     i.concept.hook?.let { h ->
         if (h.fits(i.concept)) pros += Point(1.3, "${h.title} done right", listOf(h.pro, "the ${h.title.lowercase()} side of it is a real draw"))
         else cons += Point(1.0, "${h.title} feels tacked on", listOf("the ${h.title.lowercase()} side feels tacked on", "it didn't need to be ${h.title.lowercase()}"))
+    }
+    i.bare.firstOrNull()?.let { a ->
+        cons += Point(1.1, "Bare-bones ${a.title.lowercase()}", listOf("the ${a.title.lowercase()} feels bare-bones", "it skimps on ${a.title.lowercase()}, of all things"))
     }
     if (i.production == Production.LAVISH && i.score >= 6.5) pros += Point(0.9, "Lavish production", listOf("every frame looks expensive", "the production values are sky-high"))
     if (i.production == Production.LEAN && i.score < 7) cons += Point(0.8, "Feels cheap", listOf("it feels cheap in places", "the budget shows"))

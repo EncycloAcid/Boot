@@ -6,6 +6,20 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.19 (Android):** making a game the Game Dev Tycoon way, and much more to research.
+
+*Features, stage by stage.* Each part of a game can now use features from the engine it's built on: physics and online play in the engine; achievements, photo mode and haptics in gameplay; a branching story and cutscenes; dialogue trees, voice acting and facial animation; level tools and procedural levels; AI and companions; open worlds, day and night and weather; graphics, art style, lighting and effects; sound and music. Some are ladders (stereo, then surround, then spatial audio), some are a choice of one (an art style), and the rest are on or off. Each costs money when its stage starts and brings a few bugs. In return, that stage's work counts for more, most of all in the parts the genre cares about: voice acting matters in an RPG and is money down the drain in a casual game. Leave out everything a genre needs in one area and reviewers call it bare-bones.
+
+*Leads.* With the new Lead roles research, put someone in charge of each area. A good lead makes their area's work count for up to a third more: design skill for the design-heavy areas, tech for the rest. Nobody can lead two areas of the same stage.
+
+*Stage by stage.* The designer's focus step now plans every stage: the effort split, the features and the leads. When a stage ends, the game stops at the vertical slice and alpha decisions so you can replan the next stage (its split, features and leads) before carrying on. The studio page shows the current stage's features and leads too.
+
+*More to research.* 15 new engine features: achievements, photo mode and replays, advanced haptics, branching story, in-engine cutscenes, dialogue trees, facial animation, level editor, mod tools, companion AI, day and night, dynamic weather, seamless world streaming, an orchestral score, adaptive music, particle effects and anti-cheat. Each arrives in its own year in runs set in the past. There are also 4 new studio upgrades:
+- *Design documents:* the effort split counts for a little more.
+- *Lead roles:* lets you give each area a lead.
+- *QA department:* a fifth fewer bugs while a game is made.
+- *Focus groups:* two genre lessons from every finished stage instead of one.
+
 **New in 3.18 (Android):** running the studios you own.
 
 *Their next game.* Every studio you own pitches the game it wants to make next, often the next in one of its own series (FromSoftware might pitch the next Armored Core). Greenlight it with a tight, normal or generous budget and pay for it up front. It comes out under their name, months later, and you keep 60% of what it sells on top of the studio's usual profit. Bigger budgets and a happier team make better games. You can cancel a game, but the money's gone and the team takes it hard.

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.boot.core.planStage
 import com.boot.core.GameClock
 import com.boot.core.Campaign
 import com.boot.core.calendarYear
@@ -127,7 +128,7 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
     when {
         p != null -> {
             item { DevelopmentSection(store, state, p) }
-            item { FocusSection(store, g, p) }
+            item { FocusSection(store, g, p, state = state) }
             item { HypeSection(store, state, p) }
         }
         x != null -> item {
@@ -201,7 +202,7 @@ private fun LazyListScope.secondTeamItems(store: GameStore, state: GameState, g:
     val p2 = g.project2
     if (p2 != null) {
         item { DevelopmentSection(store, state, p2, team = 2) }
-        item { FocusSection(store, g, p2, team = 2) }
+        item { FocusSection(store, g, p2, team = 2, state = state) }
         item { HypeSection(store, state, p2, team = 2) }
     } else {
         item {
@@ -434,7 +435,7 @@ private fun PointTile(label: String, value: Double, delta: Double, color: Color,
 }
 
 @Composable
-private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject, team: Int = 1) {
+private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject, team: Int = 1, state: GameState? = null) {
     GroupedSection(
         (if (team == 2) "Team 2 · " else "") + "Direction",
         footer = if (p.isReady) {
@@ -463,6 +464,16 @@ private fun FocusSection(store: GameStore, g: GamesStudio, p: GameProject, team:
                     FocusSlider(area, alloc, i, insight(g, p.concept.genre, area)) { v ->
                         val next = alloc.toMutableList().also { it[i] = v }
                         store.perform { setStageFocus(stage, next, team) }
+                    }
+                }
+                if (state != null) {
+                    p.features?.let { chosen ->
+                        FeaturePicker(state, p.concept, g.engine(p.concept.engineId), stage, chosen, editable = stage !in p.paidStages) { next ->
+                            store.perform { planStage(team, stage, features = next) }
+                        }
+                    }
+                    LeadPicker(state, stage, p.leads.filterKeys { it.stage == stage }) { next ->
+                        store.perform { planStage(team, stage, leads = next) }
                     }
                 }
             }

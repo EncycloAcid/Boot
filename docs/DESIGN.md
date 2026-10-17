@@ -514,6 +514,14 @@ OwnedStudios.kt. `studioPitch` is seeded from the run, the studio, its purchase 
 
 Morale moves 3% of the way each week toward the plan's target (independent 0.75, integrated 0.5, squeezed 0.2). Greenlighting adds 0.03 plus the budget's effect (−0.05, 0, +0.08), a hit +0.12, a flop −0.12, a cancellation −0.15. Profit scales by 0.8 + 0.4 × morale. Below 0.3 (at most twice a year) a `StudioUnrest` decision: a retention bonus (0.4% of value, +0.3 morale), going back to independent (+0.2), or letting them walk (value ×0.92 per walkout, floor 0.6; games score a little lower).
 
+## Features and leads (3.19)
+
+GameFeatures.kt. Every engine feature belongs to one `FeatureGroup` in one focus area. A ladder's pick counts its rungs below (points = the sum of their engine levels); otherwise the pick's own level. A project's `features` is null for games built the old way (no cost, no boost); the designer starts from `defaultFeatures(engine)`: the top of each ladder and the first of each other group. A stage's features are paid (`rp × 30/200/1,000/3,000` by size, scaled to the year, times the lane's cost modifier) and add 1.5 bugs per engine level when the stage first develops, so the gate before it can still change them. That stage's design and tech output is multiplied by `1 + 0.025 × Σ points × idealShare(area) × 3`. At launch, areas the genre weighs 2 that had features available but got none are "bare-bones" (a review con).
+
+Leads (`LEAD_ROLES`): `leadBoost` = Σ over the stage's areas of share × (1 + 0.33 × fit), fit = design (or tech, for areas under half design) / 10 × morale factor. It's worked out before each games tick (`prepareLeads`); leads who leave the games team drop off. `planStage` sets a stage's split, features (until paid) and leads; the stage-gate sheet calls it for the next stage before the milestone choice.
+
+New studio research: `DESIGN_DOCS` adds 0.05 to the weekly focus match; `QA_DEPARTMENT` makes 20% fewer bugs; `FOCUS_GROUPS` grants two stage insights.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

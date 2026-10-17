@@ -142,6 +142,9 @@ fun EventSheet(store: GameStore, state: GameState) {
                     Text(e.title, style = if (compact) MaterialTheme.typography.headlineSmallEmphasized else MaterialTheme.typography.headlineMediumEmphasized)
                     Text(e.body, style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge)
                     (e.kind as? ShowResults)?.report?.let { StageFigures(it) }
+                    // A stage gate: plan the next stage before deciding.
+                    val plan = (e.kind as? com.boot.core.MilestoneReview)?.let { rememberStagePlan(state, it) }
+                    plan?.let { StagePlanSection(state, it) }
                     Spacer(Modifier.size(4.dp))
                     if (compact) {
                         // Sideways, the choices sit side by side as cards so they can be weighed at a
@@ -151,7 +154,12 @@ fun EventSheet(store: GameStore, state: GameState) {
                             e.choices.withIndex().chunked(perRow).forEach { row ->
                                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     for ((i, choice) in row) {
-                                        ChoiceCard(choice, primary = i == 0, Modifier.weight(1f).fillMaxHeight()) { store.perform { choose(i) } }
+                                        ChoiceCard(choice, primary = i == 0, Modifier.weight(1f).fillMaxHeight()) {
+                                            store.perform {
+                                                plan?.apply(this)
+                                                choose(i)
+                                            }
+                                        }
                                     }
                                     // Keep a short last row's cards the same width as the rest.
                                     repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
@@ -159,7 +167,14 @@ fun EventSheet(store: GameStore, state: GameState) {
                             }
                         }
                     } else {
-                        e.choices.forEachIndexed { i, choice -> ChoiceButton(choice, primary = i == 0) { store.perform { choose(i) } } }
+                        e.choices.forEachIndexed { i, choice ->
+                            ChoiceButton(choice, primary = i == 0) {
+                                store.perform {
+                                    plan?.apply(this)
+                                    choose(i)
+                                }
+                            }
+                        }
                     }
                 }
             }

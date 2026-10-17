@@ -116,7 +116,17 @@ data class GameProject(
     var exclusive: Exclusive? = null,
     /** Makers who've been pitched or made an offer. */
     val pitched: MutableSet<String> = mutableSetOf(),
+    /** The engine features that go into it. Null: built the old way, with the engine's whole kit. */
+    var features: MutableSet<Research>? = null,
+    /** Who leads each area, by staff id. */
+    val leads: MutableMap<FocusArea, Int> = mutableMapOf(),
+    /** Stages whose features have been paid for. */
+    val paidStages: MutableSet<Int> = mutableSetOf(),
 ) {
+    /** How much the leads add to this week's work. Worked out each week before the team gets going. */
+    @kotlinx.serialization.Transient
+    var leadFactor: Double = 1.0
+
     val title: String get() = concept.title
     val work: Double get() = concept.work * workScale
     val isReady: Boolean get() = progress >= work
@@ -550,30 +560,40 @@ class GamesStudio {
         val paced = work * directive.workMultiplier
         if (!p.isReady) {
             val stage = p.stage
+            // A stage's features are paid for, and bring their bugs, when it starts.
+            val chosen = p.features
+            if (chosen != null && stage !in p.paidStages) {
+                p.paidStages += stage
+                val cost = stageFeatureCost(chosen, stage, p.concept.size, ctx.year) * ctx.mods.cost
+                p.spent += cost
+                report.expenses += cost
+                p.bugs += featureBugs(chosen, stage)
+            }
             val alloc = p.focus[stage]
             val total = alloc.sum().takeIf { it > 0 } ?: 1.0
             val areas = FocusArea.forStage(stage)
             val designShare = areas.indices.sumOf { alloc[it] / total * areas[it].designShare }
-            val d = paced * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult
-            val t = paced * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult
+            val boost = featureBoost(p.concept, chosen, stage) * p.leadFactor
+            val d = paced * 2 * designShare * (ctx.staffing.avgDesign / 5) * engineMult * boost
+            val t = paced * 2 * (1 - designShare) * (ctx.staffing.avgTech / 5) * engineMult * boost
             val engineBugs = engine(p.concept.engineId).combo.bugRisk
             val b = paced * 0.3 * (1.3 - ctx.staffing.avgTech / 10) * (if (ctx.crunch) 1.6 else 1.0) *
-                (1 + engineBugs) * directive.bugMultiplier
+                (1 + engineBugs) * directive.bugMultiplier * ctx.mods.bugs
             p.design += d
             p.tech += t
             p.bugs += b
             p.lastDesign = d
             p.lastTech = t
             p.lastBugs = b
-            p.matchSum += focusMatch(p.concept, stage, alloc) * paced
+            p.matchSum += min(1.0, focusMatch(p.concept, stage, alloc) + ctx.mods.focus) * paced
             p.matchWork += paced
             val wasStage = stage
             p.progress += paced
             if (p.isReady) {
-                grantStageInsight(p, wasStage, report)
+                repeat(ctx.mods.insights) { grantStageInsight(p, wasStage, report) }
                 report.log("${p.title} is content complete. Fix bugs and polish, or ship it now.", LogTone.GOOD)
             } else if (p.stage != wasStage) {
-                grantStageInsight(p, wasStage, report)
+                repeat(ctx.mods.insights) { grantStageInsight(p, wasStage, report) }
                 report.log("${p.title} moves on to ${FocusArea.STAGES[p.stage].lowercase()}.")
             }
         } else {
@@ -637,7 +657,7 @@ class GamesStudio {
         }
         val remaining = if (projectRemaining && !p.isReady) (p.work - p.progress).coerceAtLeast(0.0) else 0.0
         val projectedShare = if (projectRemaining) p.projectedDesignShare() else null
-        val engineMult = engine.multiplier
+        val engineMult = engine.multiplier * (if (remaining > 0) featureBoost(c, p.features, p.stage) * p.leadFactor else 1.0)
         val projectedDesign = if (remaining > 0) {
             val share = projectedShare ?: c.idealDesignShare
             p.design + remaining * 2 * share * (ctx.staffing.avgDesign / 5) * engineMult
@@ -782,7 +802,7 @@ class GamesStudio {
                 hype = p.hype, fanTrust = fanTrust, onTrend = onTrend, repeated = repeated, rushedSequel = rushedSequel,
                 worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
                 wrongCrowd = audienceFit == Fit.BAD || !audienceSuited, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
-                year = ctx.year, production = c.production,
+                year = ctx.year, production = c.production, bare = bareAreas(c, p.features, engine),
             ),
             rng,
         )
