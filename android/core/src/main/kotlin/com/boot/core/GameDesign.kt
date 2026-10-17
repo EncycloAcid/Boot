@@ -478,6 +478,31 @@ enum class Platform(
     PS4("PlayStation 4", "Sony", -684, -156, 85.0, 1.0, 60_000.0, "AVRHF", "T", "EM"),
     XBOX_ONE("Xbox One", "Microsoft", -684, -260, 40.0, 1.0, 60_000.0, "ASH", "C", "M"),
 
+    // More machines, old and new.
+    INTELLIVISION("Intellivision", "Mattel", -2_448, -2_184, 3.0, 1.0, 0.0, "TS", "", "EM"),
+    COLECOVISION("ColecoVision", "Coleco", -2_310, -2_162, 2.0, 1.0, 0.0, "AC", "R", "YE"),
+    MAC("Mac", "Apple", -2_236, 100_000, 8.0, 0.9, 0.0, "VPS", "HF", "EM"),
+    AMIGA("Amiga", "Commodore", -2_158, -1_612, 5.0, 0.9, 0.0, "TSV", "", "EM"),
+    MASTER_SYSTEM("Sega Master System", "Sega", -2_097, -1_768, 13.0, 1.0, 10_000.0, "ALC", "R", "YE"),
+    TURBOGRAFX("TurboGrafx-16", "NEC", -1_946, -1_694, 5.0, 1.0, 10_000.0, "AHL", "", "YE"),
+    NEO_GEO("Neo Geo", "SNK", -1_898, -1_512, 1.0, 1.8, 15_000.0, "FA", "SVR", "EM"),
+    GAME_GEAR("Sega Game Gear", "Sega", -1_885, -1_547, 10.0, 0.7, 10_000.0, "AC", "TS", "YE"),
+    THREE_DO("3DO", "Panasonic", -1_729, -1_560, 2.0, 1.0, 10_000.0, "VH", "C", "EM"),
+    ATARI_JAGUAR("Atari Jaguar", "Atari", -1_725, -1_590, 0.8, 1.0, 5_000.0, "AH", "", "EM"),
+    SATURN("Sega Saturn", "Sega", -1_647, -1_456, 9.0, 1.0, 25_000.0, "FAR", "", "EM"),
+    DREAMCAST("Sega Dreamcast", "Sega", -1_421, -1_291, 9.0, 1.0, 30_000.0, "FAB", "", "EM"),
+    WEB("Web browser", "The open web", -1_404, 100_000, 200.0, 0.03, 0.0, "CP", "HRT", "YE"),
+    GAME_BOY_ADVANCE("Game Boy Advance", "Nintendo", -1_330, -966, 80.0, 0.7, 15_000.0, "LRP", "H", "YE"),
+    N_GAGE("N-Gage", "Nokia", -1_209, -1_092, 1.5, 0.6, 5_000.0, "C", "TS", "YE"),
+    PSP("PSP", "Sony", -1_135, -654, 70.0, 0.7, 25_000.0, "ARF", "", "EM"),
+    NINTENDO_3DS("Nintendo 3DS", "Nintendo", -823, -329, 75.0, 0.8, 25_000.0, "RLP", "H", "YE"),
+    PS_VITA("PS Vita", "Sony", -776, -407, 15.0, 0.8, 25_000.0, "RAV", "", "EM"),
+    WII_U("Wii U", "Nintendo", -737, -511, 13.0, 0.9, 40_000.0, "LC", "H", "YE"),
+    PLAYDATE("Playdate", "Panic", -247, 208, 0.6, 0.6, 0.0, "PC", "HF", "YE"),
+    PSVR2("PlayStation VR2", "Sony", -204, 52, 5.0, 1.1, 30_000.0, "AHB", "TR", "EM"),
+    ROG_ALLY("ROG Xbox Ally", "Asus", -65, 260, 6.0, 1.1, 0.0, "RTAH", "", "EM"),
+    STEAM_MACHINE("Steam Machine", "Valve", -43, 100_000, 12.0, 1.1, 0.0, "TSRHX", "", "EM"),
+
     /** Your own handheld, once Games and Hardware have built the Handheld Console crossover. */
     OWN_CONSOLE("Your handheld", "You", -2_000, 100_000, 0.0, 1.2, 0.0, "AVRSTCPLB", "", "YEM");
 

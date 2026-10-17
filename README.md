@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.21 (Android):** 23 more platforms, from the Intellivision to the Steam Machine.
+
+*Today.* The Mac, the web browser, the Steam Machine, the ROG Xbox Ally, PlayStation VR2 and the Playdate join the platform list, each with its own audience, licence fee and the genres that suit it. Puzzles and casual games do well on the web, which reaches a huge crowd that spends very little each.
+
+*The past.* Runs set in the past now have the machines of their time: Intellivision and ColecoVision, the Amiga, the Sega Master System, Game Gear, Saturn and Dreamcast, the TurboGrafx-16, the Neo Geo (made for fighting games), the 3DO, the Atari Jaguar, the Game Boy Advance, the N-Gage, the PSP and PS Vita, the Nintendo 3DS and the Wii U. Each arrives and fades on its real dates.
+
+Only console makers offer exclusive deals: Sony, Microsoft, Nintendo, Sega and the like, not open platforms like PC, Mac, phones or the web.
+
 **New in 3.20 (Android):** six new genres and sixteen new topics.
 
 *Genres.* Puzzle, Platformer, Shooter, Fighting, Rhythm and Sandbox join the original six. Research them in Research → Genres & topics. In runs set in the past each arrives in its own time: platformers in 1981, fighting games in 1987, shooters in 1992, rhythm games in 1996, sandboxes in 2009. Each has its own design-to-tech balance and its own areas that matter (sound for rhythm games, AI and engine for shooters and fighters, gameplay and level design for puzzles). Platforms take to them differently: shooters on PC and Xbox, platformers and puzzles on Nintendo, puzzles on phones. Every topic knows how well it goes with each, the hooks know which genres they suit, and each genre gets its own titles, review lines and box-art pose.

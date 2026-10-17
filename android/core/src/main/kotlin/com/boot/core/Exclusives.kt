@@ -27,9 +27,12 @@ data class Exclusive(val maker: String, val timed: Boolean, val payment: Double,
 @Serializable @SerialName("exclusiveOffer")
 data class ExclusiveOffer(val team: Int, val maker: String, val full: Double, val timed: Double, val pitched: Boolean = false) : EventKind
 
-/** The makers of the consoles a game is on (not PC, not your own console). */
+/** Who signs exclusives: the console makers, not open platforms like PC, phones or the web. */
+val EXCLUSIVE_MAKERS = setOf("Sony", "Microsoft", "Nintendo", "Sega", "Meta", "Amazon", "Atari", "NEC", "SNK", "Panasonic", "Nokia", "Mattel", "Coleco")
+
+/** The makers of the consoles a game is on who'd pay to keep it. */
 fun exclusiveMakers(c: GameConcept): List<String> =
-    c.platforms.filter { it != Platform.PC && it != Platform.OWN_CONSOLE }.map { it.maker }.distinct()
+    c.platforms.filter { it != Platform.OWN_CONSOLE && it.maker in EXCLUSIVE_MAKERS }.map { it.maker }.distinct()
 
 /** The platforms a game keeps when it's exclusive to [maker]. */
 fun exclusivePlatforms(c: GameConcept, maker: String): List<Platform> = c.platforms.filter { it.maker == maker }

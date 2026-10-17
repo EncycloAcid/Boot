@@ -526,6 +526,10 @@ New studio research: `DESIGN_DOCS` adds 0.05 to the weekly focus match; `QA_DEPA
 
 `Genre` has a `starter` flag: the original six are known from the start, the six new ones (codes P, L, H, F, B, X) are researched with `researchGenre` (14–26 RP; `Genre.year` in runs set in the past). `GamesStudio.genres` holds what you can make, defaulting to the starters for old saves; `conceptBlocker` refuses a genre you don't have. Topic and platform fit strings carry the new codes; any genre a topic or platform doesn't mention is an okay fit. Rival studios, owned studios and indie pitches pick from every genre.
 
+## More platforms (3.21)
+
+Platform entries are dated on the shared timeline (week = (year + (month − 1)/12 − MODERN_YEAR) × 52). A platform is on sale while its players are at least 0.5M, so tiny machines (Playdate, Jaguar) are kept just above that. Exclusives come only from makers in `EXCLUSIVE_MAKERS`.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.
