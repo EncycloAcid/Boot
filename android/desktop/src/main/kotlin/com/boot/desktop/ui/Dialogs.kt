@@ -124,26 +124,30 @@ private fun ModalScaffold(
 @Composable
 fun EventSheet(store: DesktopStore, state: GameState) {
     val e = state.events.first()
+    // Choices live in the scrollable body so multi-option events can't clip off-screen.
     ModalScaffold(
         title = e.title,
         subtitle = e.lane?.businessName,
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(e.body, style = MaterialTheme.typography.bodyLarge, color = hudColors.ink)
+                Spacer(Modifier.height(4.dp))
+                e.choices.forEachIndexed { i, choice ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        MacButton(
+                            choice.label,
+                            onClick = { store.perform { choose(i) } },
+                            primary = i == 0,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Hint(choice.detail)
+                    }
+                }
             }
         },
         actions = {
-            e.choices.forEachIndexed { i, choice ->
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    MacButton(
-                        choice.label,
-                        onClick = { store.perform { choose(i) } },
-                        primary = i == 0,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Hint(choice.detail)
-                }
-            }
+            Hint("Pick an option above — the calendar waits until you do.")
+            store.error?.let { Hint(it, gameColors.bad) }
         },
     )
 }
@@ -350,11 +354,22 @@ fun ReviewSheet(store: DesktopStore, state: GameState, releaseId: Int) {
             }
         },
         actions = {
-            MacButton(
-                "Continue",
-                onClick = { store.perform { acknowledgeReview() } },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MacButton(
+                    "Game report",
+                    onClick = {
+                        store.openRelease = r.id
+                        store.perform { acknowledgeReview() }
+                    },
+                    primary = false,
+                    modifier = Modifier.weight(1f),
+                )
+                MacButton(
+                    "Continue",
+                    onClick = { store.perform { acknowledgeReview() } },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         },
     )
 }

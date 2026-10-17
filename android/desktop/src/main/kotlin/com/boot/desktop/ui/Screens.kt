@@ -35,15 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import com.boot.core.AgencyRate
-import com.boot.core.Campaign
-import com.boot.core.DeviceCategory
-import com.boot.core.DeviceTier
 import com.boot.core.Difficulty
-import com.boot.core.FocusArea
 import com.boot.core.Format
-import com.boot.core.GameFocus
 import com.boot.core.GameSeason
 import com.boot.core.GameState
+import com.boot.core.GamesStudio
 import com.boot.core.Lane
 import com.boot.core.Research
 import com.boot.core.Scenario
@@ -56,27 +52,27 @@ import com.boot.core.acceptDeal
 import com.boot.core.arrival
 import com.boot.core.arrives
 import com.boot.core.assign
-import com.boot.core.buyCampaign
-import com.boot.core.cancelGame
+import com.boot.core.buyBack
+import com.boot.core.buybackCost
 import com.boot.core.declineContract
 import com.boot.core.expand
 import com.boot.core.expansionBlocker
 import com.boot.core.fire
+import com.boot.core.founderNetWorth
 import com.boot.core.freeDesks
-import com.boot.core.gameForecast
 import com.boot.core.goPublic
 import com.boot.core.hire
 import com.boot.core.ipoBlocker
+import com.boot.core.issueShares
 import com.boot.core.laneOpen
 import com.boot.core.launchDevice
-import com.boot.core.launchGame
 import com.boot.core.loanBlocker
 import com.boot.core.loanLimit
 import com.boot.core.loanOffer
 import com.boot.core.loanPayoff
 import com.boot.core.moveOffice
+import com.boot.core.offeringBlocker
 import com.boot.core.orderUnits
-import com.boot.core.playtestGame
 import com.boot.core.rankings
 import com.boot.core.awareness
 import com.boot.core.brandLift
@@ -87,19 +83,19 @@ import com.boot.core.research
 import com.boot.core.researchBlocker
 import com.boot.core.researchPerWeek
 import com.boot.core.researchTopic
+import com.boot.core.retire
 import com.boot.core.roundOffer
 import com.boot.core.setAgencyRate
-import com.boot.core.setCreativeFocus
 import com.boot.core.setCrunch
 import com.boot.core.setFocus
 import com.boot.core.setFreelancing
 import com.boot.core.setScopePolicy
-import com.boot.core.setStageFocus
-import com.boot.core.startDevice
 import com.boot.core.takeGameContract
 import com.boot.core.takeLoan
 import com.boot.core.train
+import com.boot.core.trainingBlocker
 import com.boot.desktop.DesktopStore
+import com.boot.desktop.StudioPage
 
 @Composable
 fun NewGameScreen(store: DesktopStore) {
@@ -328,6 +324,9 @@ fun LanesScreen(store: DesktopStore, state: GameState) {
             }
         }
         item { LaneDepthPanel(store, state, lane) }
+        item { LaneMarketingRow(store, state, lane) }
+        if (lane != Lane.GAMES) item { RoadmapPanel(store, state, lane) }
+        item { LaneDepthExtras(store, state, lane) }
     }
 }
 
@@ -452,22 +451,10 @@ private fun HardwarePanel(store: DesktopStore, state: GameState) {
                 primary = true,
             )
         } else {
-            Hint("Pick a category and tier — same startDevice path as Android's Device Designer.")
-            var category by remember { mutableStateOf(DeviceCategory.PHONE) }
-            var tier by remember { mutableStateOf(DeviceTier.BUDGET) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DeviceCategory.entries.forEach { c ->
-                    SelectChip(c.title, category == c) { category = c }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DeviceTier.entries.forEach { t ->
-                    SelectChip(t.title, tier == t) { tier = t }
-                }
-            }
+            Hint("Open the Device Designer: category, form factor, and component mix.")
             MacButton(
-                "Start design",
-                onClick = { store.perform { startDevice(category, tier) } },
+                "Design a device",
+                onClick = { store.designDevice() },
                 primary = true,
             )
         }
@@ -477,20 +464,40 @@ private fun HardwarePanel(store: DesktopStore, state: GameState) {
     }
 }
 
-/** Games lane with real choices: designer, stage focus, deals, hype, playtest, ship. */
+/** Games lane: Make / Games / Market / Tech pages over shared studio core. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
     val h = hudColors
     val colors = gameColors
     val g = state.games
+    if (g == null) {
+        GlassPanel {
+            Text("Game studio", style = MaterialTheme.typography.titleLarge, color = h.accent)
+            Hint("Games lane book not open yet.")
+        }
+        return
+    }
     val season = GameSeason.forWeek(state.week)
+    var page by remember { mutableStateOf(store.studioPage) }
 
     GlassPanel {
         Text("Game studio", style = MaterialTheme.typography.titleLarge, color = h.accent)
-        if (g == null) {
-            Hint("Games lane book not open yet.")
-            return@GlassPanel
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StudioPage.entries.forEach { p ->
+                val waiting = when (p) {
+                    StudioPage.MAKE -> g.contractOffers.size + g.dealOffers.size
+                    StudioPage.MARKET -> g.pitches.size
+                    else -> 0
+                }
+                SelectChip(
+                    if (waiting > 0) "${p.title} · $waiting" else p.title,
+                    page == p,
+                ) {
+                    page = p
+                    store.studioPage = p
+                }
+            }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Stat("Fans", Format.count(g.fans))
@@ -510,6 +517,50 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
                 colors.good,
             )
         }
+    }
+
+    when (page) {
+        StudioPage.MAKE -> GamesMakePage(store, state, g)
+        StudioPage.GAMES -> {
+            GlassPanel {
+                Hint("Catalogue and live titles.")
+                if (g.releases.isEmpty()) Hint("Ship a game to fill the shelf.")
+                g.releases.take(8).forEach { r ->
+                    val player = if (r.userScore > 0) {
+                        " · players ${"%.1f".format(r.userScore)}${if (!r.userScoreSettled) "…" else ""}"
+                    } else {
+                        ""
+                    }
+                    val weekly = if (r.onSale) " · ${Format.money(r.weeklySales)}/wk" else ""
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "★ ${r.title} · critics ${"%.1f".format(r.score)}$player · ${Format.money(r.lifetimeSales)}$weekly",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = h.textDim,
+                            modifier = Modifier.weight(1f),
+                        )
+                        MacButton("Report", onClick = { store.openRelease = r.id }, primary = false)
+                    }
+                }
+            }
+            EsportsPanel(store, state, g)
+        }
+        StudioPage.MARKET -> {
+            LabelPanel(store, state, g)
+            RemastersPanel(store, state)
+        }
+        StudioPage.TECH -> EnginesPanel(store, state, g)
+    }
+}
+
+@Composable
+private fun GamesMakePage(store: DesktopStore, state: GameState, g: GamesStudio) {
+    val h = hudColors
+    val colors = gameColors
+    GlassPanel {
         state.world.rival(Lane.GAMES)?.let { rival ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CompanyLogo(rival.name, size = 26.dp)
@@ -517,7 +568,18 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
             }
         }
 
-        if (g.dealOffers.isNotEmpty()) {
+        g.expansion?.let { e ->
+            Hint("Expansion · ${e.title} · ${Format.percent(e.completion)}", colors.warn)
+            Hint("The whole team is on this DLC until it ships.")
+            StatMeter("Progress", e.completion.toFloat(), h.accent)
+        }
+        g.contract?.let { c ->
+            Hint("Contract · ${c.title} · ${Format.percent(c.completion)}", colors.warn)
+            Hint("${Format.money(c.pay)} when done · week ${c.weeksElapsed}/${c.weeksAllowed}")
+            StatMeter("Progress", c.completion.toFloat(), h.accent)
+        }
+
+        if (g.dealOffers.isNotEmpty() && !g.busy) {
             Hint("Publisher deals — accept starts the project with their concept.")
             g.dealOffers.take(3).forEach { d ->
                 Row(
@@ -533,9 +595,11 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
                     MacButton("Accept", onClick = { store.perform { acceptDeal(d.id) } })
                 }
             }
+        } else if (g.dealOffers.isNotEmpty()) {
+            Hint("${g.dealOffers.size} publisher deal(s) waiting — finish the current work first.")
         }
 
-        if (g.contractOffers.isNotEmpty() && g.project == null && g.contract == null) {
+        if (g.contractOffers.isNotEmpty() && !g.busy) {
             Hint("Contract work")
             g.contractOffers.take(2).forEach { c ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -548,217 +612,32 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
             }
         }
 
-        g.contract?.let { c ->
-            Spacer(Modifier.height(4.dp))
-            Text(c.title, style = MaterialTheme.typography.titleMedium, color = h.text)
-            Hint("Contract · ${Format.money(c.pay)} on delivery")
-            StatMeter("Progress", c.completion.toFloat(), h.accent)
-        }
-        g.expansion?.let { x ->
-            Spacer(Modifier.height(4.dp))
-            Text(x.title, style = MaterialTheme.typography.titleMedium, color = h.text)
-            Hint("Expansion pack in progress")
-            StatMeter("Progress", x.completion.toFloat(), h.accent)
-        }
-
         val project = g.project
         if (project != null) {
             Spacer(Modifier.height(4.dp))
-            Text(project.title, style = MaterialTheme.typography.titleMedium, color = h.text)
-            Hint(
-                "${project.concept.size.title} ${project.concept.topic.title.lowercase()} ${project.concept.genreLower} · " +
-                    "stage ${if (project.isReady) "polish" else "${project.stage + 1}/3"} · ${Format.percent(project.completion)}",
-            )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Stat(
-                    "Design",
-                    Format.count(project.design) + deltaSuffix(project.lastDesign),
-                    colors.design,
-                )
-                Stat(
-                    "Tech",
-                    Format.count(project.tech) + deltaSuffix(project.lastTech),
-                    colors.tech,
-                )
-                Stat(
-                    "Bugs",
-                    Format.count(project.bugs) + deltaSuffix(project.lastBugs),
-                    colors.bad,
-                )
-                Stat("Hype", "${project.hype.toInt()}", colors.warn)
-            }
-            StatMeter("Development", project.completion.toFloat(), h.accent)
-            StatMeter(
-                "Hype",
-                (project.hype / 100.0).toFloat().coerceIn(0f, 1f),
-                colors.warn,
-                caption = "${project.hype.toInt()}",
-            )
-            if (!project.isReady) {
-                StatMeter(
-                    "Genre fit",
-                    project.designLeanFit().toFloat(),
-                    if (project.designLeanFit() >= 0.7) colors.design else colors.warn,
-                    caption = "${Format.percent(project.projectedDesignShare())} design",
-                )
-            } else {
-                StatMeter(
-                    "Polish",
-                    (project.polish / (project.work * 0.4)).toFloat().coerceIn(0f, 1f),
-                    colors.milestone,
-                )
-            }
-            state.gameForecast()?.let { f ->
-                Hint("Expected ~${"%.1f".format(f.expectedScore)} (${f.low}–${f.high})")
-            }
-
-            Hint("Creative direction — trades speed, polish, bugs, and score:")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (focus in GameFocus.entries) {
-                    SelectChip(focus.title, project.creativeFocus == focus) {
-                        store.perform { setCreativeFocus(focus) }
-                    }
-                }
-            }
-            Hint(project.creativeFocus.blurb)
-
-            if (!project.isReady) {
-                val stage = project.stage
-                val areas = FocusArea.forStage(stage)
-                val alloc = project.focus[stage]
-                Hint(FocusArea.STAGES[stage])
-                areas.forEachIndexed { i, area ->
-                    val total = alloc.sum().takeIf { it > 0 } ?: 1.0
-                    Text(
-                        "${area.title} · ${Format.percent(alloc[i] / total)}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = h.text,
-                    )
-                    Slider(
-                        value = alloc[i].toFloat().coerceIn(0.05f, 1f),
-                        onValueChange = { v ->
-                            val next = alloc.toMutableList().also { it[i] = v.toDouble() }
-                            store.perform { setStageFocus(stage, next) }
-                        },
-                        valueRange = 0.05f..1f,
-                    )
-                }
-            }
-
-            if (Research.MARKETING in state.researched) {
-                Hint("Hype campaigns")
-                Campaign.entries.forEach { c ->
-                    val done = c in project.campaigns
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Hint(c.title)
-                            Hint("${Format.money(c.cost)} · +${c.hype.toInt()} hype")
-                        }
-                        MacButton(
-                            if (done) "Done" else "Run",
-                            onClick = { store.perform { buyCampaign(c) } },
-                            enabled = !done && state.cash >= c.cost,
-                            primary = false,
-                        )
-                    }
-                }
-            }
-
-            val playStage = if (project.isReady) 3 else project.stage
-            val playCost = project.concept.size.weeklyBudget * (1.5 + playStage * 0.5)
-            if (playStage !in project.playtestedStages) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Hint("Playtest this stage — cut ~35% of bugs and gain craft.")
-                        Hint(Format.money(playCost), h.accent)
-                    }
-                    MacButton(
-                        "Playtest",
-                        onClick = { store.perform { playtestGame() } },
-                        enabled = state.cash >= playCost,
-                    )
-                }
-            } else {
-                Hint("Stage playtested. Next stage unlocks another test.", colors.good)
-            }
-
-            if (project.isReady) {
-                val lift = season.launchMultiplier(project.concept.genre)
-                Hint(
-                    if (lift >= 1.08) "${season.title} boosts ${project.concept.genre.lower} launches (+${((lift - 1) * 100).toInt()}%)."
-                    else if (lift < 1.0) "Off-season for ${project.concept.genre.lower} (−${((1 - lift) * 100).toInt()}%). Wait or ship anyway."
-                    else season.marketTip,
-                )
-                MacButton(
-                    "Release ${project.title}",
-                    onClick = { store.perform { launchGame() } },
-                    primary = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                Hint("Next · advance weeks from the HUD Play / Week controls, or playtest between ticks.")
-            }
-            MacButton(
-                "Cancel project",
-                onClick = { store.perform { cancelGame() } },
-                primary = false,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else if (g.contract == null && g.expansion == null) {
-            EmptyState(
-                title = "No game in development",
-                body = "Design a concept — topic, genre, platforms, size, and stage focus. This is your primary studio action.",
-                actionLabel = "Design a game",
-                onAction = { store.designGame() },
-            )
+            ProjectControls(store, state, project, team = 1)
+        } else if (!g.busy) {
+            Hint("Design a concept — topic, genre, platforms, size, and stage focus.")
+            MacButton("Design a game", onClick = { store.designGame() }, primary = true)
             if (Research.SECOND_TEAM in state.researched) {
-                MacButton(
-                    "Design for Team 2",
-                    onClick = { store.designGame(team = 2) },
-                    primary = false,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                MacButton("Design for Team 2", onClick = { store.designGame(team = 2) }, primary = false)
             }
+        } else if (g.project == null && (g.expansion != null || g.contract != null)) {
+            Hint("Team 1 is busy on ${g.expansion?.title ?: g.contract?.title}. Finish that before starting a new game.")
         }
 
         g.project2?.let { p2 ->
-            Spacer(Modifier.height(4.dp))
-            Text("Team 2 · ${p2.title}", style = MaterialTheme.typography.titleMedium, color = h.text)
-            Hint(
-                "${p2.concept.size.title} ${p2.concept.genreLower} · " +
-                    "stage ${if (p2.isReady) "polish" else "${p2.stage + 1}/3"}",
-            )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Stat("Design", Format.count(p2.design) + deltaSuffix(p2.lastDesign), colors.design)
-                Stat("Tech", Format.count(p2.tech) + deltaSuffix(p2.lastTech), colors.tech)
-                Stat("Bugs", Format.count(p2.bugs) + deltaSuffix(p2.lastBugs), colors.bad)
-                Stat("Hype", "${p2.hype.toInt()}", colors.warn)
-            }
-            StatMeter("Development", p2.completion.toFloat(), h.accent)
-            if (!p2.isReady) {
-                StatMeter("Genre fit", p2.designLeanFit().toFloat(), colors.design)
-            } else {
-                StatMeter(
-                    "Polish",
-                    (p2.polish / (p2.work * 0.4)).toFloat().coerceIn(0f, 1f),
-                    colors.milestone,
-                )
-            }
-            state.gameForecast(2)?.let { f ->
-                Hint("Expected ~${"%.1f".format(f.expectedScore)} (${f.low}–${f.high})")
-            }
-            if (p2.isReady) {
-                MacButton("Release Team 2's ${p2.title}", onClick = { store.perform { launchGame(2) } })
+            Spacer(Modifier.height(8.dp))
+            ProjectControls(store, state, p2, team = 2)
+        } ?: run {
+            if (Research.SECOND_TEAM in state.researched && g.project != null && g.project2 == null) {
+                MacButton("Design for Team 2", onClick = { store.designGame(team = 2) }, primary = false)
             }
         }
 
         if (g.releases.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            Hint("Recent releases")
+            Hint("Recent releases — open for patch / sequel")
             g.releases.take(4).forEach { r ->
                 val player = if (r.userScore > 0) {
                     " · players ${"%.1f".format(r.userScore)}${if (!r.userScoreSettled) "…" else ""}"
@@ -766,22 +645,22 @@ private fun GamesStudioPanel(store: DesktopStore, state: GameState) {
                     ""
                 }
                 val weekly = if (r.onSale) " · ${Format.money(r.weeklySales)}/wk" else ""
-                Text(
-                    "★ ${r.title} · critics ${"%.1f".format(r.score)}$player · ${Format.money(r.lifetimeSales)}$weekly",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = h.textDim,
-                )
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "★ ${r.title} · critics ${"%.1f".format(r.score)}$player · ${Format.money(r.lifetimeSales)}$weekly",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = h.textDim,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MacButton("Report", onClick = { store.openRelease = r.id }, primary = false)
+                }
             }
         }
     }
 }
-
-private fun deltaSuffix(delta: Double): String =
-    when {
-        delta >= 1 -> " (+${delta.toInt()})"
-        delta <= -1 -> " (${delta.toInt()})"
-        else -> ""
-    }
 
 @Composable
 fun ResearchScreen(store: DesktopStore, state: GameState) {
@@ -932,12 +811,20 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
                 val nextOffice = Office.entries.firstOrNull { it.ordinal == state.office.ordinal + 1 }
                 if (nextOffice != null) {
                     Hint("Next: ${nextOffice.title} · ${nextOffice.desks} desks · rent ${Format.money(nextOffice.rent)}/wk · move ${Format.money(nextOffice.moveCost)}")
-                    MacButton("Move office", onClick = { store.perform { moveOffice() } }, primary = false)
+                    MacButton(
+                        "Move office",
+                        onClick = { store.perform { moveOffice() } },
+                        enabled = state.cash >= nextOffice.moveCost,
+                        primary = false,
+                    )
                 }
             }
         }
+        item { AttentionPanel(store, state) }
+        item { PerksPanel(store, state) }
         items(state.staff, key = { it.id }) { e ->
             val colors = gameColors
+            var confirmFire by remember(e.id) { mutableStateOf(false) }
             GlassPanel {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StaffPortrait(e, 44.dp)
@@ -962,8 +849,26 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
                     state.lanes.forEach { l ->
                         SelectChip(l.title, e.lane == l) { store.perform { assign(e.id, l) } }
                     }
-                    MacButton("Train", onClick = { store.perform { train(e.id) } }, primary = false)
-                    MacButton("Fire", onClick = { store.perform { fire(e.id) } }, primary = false)
+                    val trainBlock = state.trainingBlocker(e)
+                    if (Research.TRAINING in state.researched) {
+                        MacButton(
+                            "Train",
+                            onClick = { store.perform { train(e.id) } },
+                            enabled = trainBlock == null,
+                            primary = false,
+                        )
+                    }
+                    MacButton("Fire", onClick = { confirmFire = true }, primary = false)
+                }
+                if (confirmFire) {
+                    ConfirmDialog(
+                        title = "Let ${e.name} go?",
+                        text = "Four weeks' severance: ${Format.money(e.salary * 4)}. Morale dips for everyone else.",
+                        confirm = "Fire",
+                        destructive = true,
+                        onConfirm = { store.perform { fire(e.id) } },
+                        onDismiss = { confirmFire = false },
+                    )
                 }
             }
         }
@@ -988,9 +893,15 @@ fun TeamScreen(store: DesktopStore, state: GameState) {
                                 Hint("${Format.money(cand.askingSalary)}/wk ask" + (cand.contestedBy?.let { " · contested by $it" } ?: ""))
                             }
                             val hireLane = store.lane?.takeIf { it in state.lanes } ?: state.startingLane
-                            MacButton("Hire", onClick = { store.perform { hire(cand.id, hireLane) } })
+                            val fee = cand.askingSalary * 2
+                            MacButton(
+                                "Hire",
+                                onClick = { store.perform { hire(cand.id, hireLane) } },
+                                enabled = state.freeDesks > 0 && state.cash >= fee,
+                            )
                         }
                     }
+                    if (state.freeDesks <= 0) Hint("No free desks — move office first.", gameColors.bad)
                 }
             }
         }
@@ -1014,13 +925,17 @@ fun CompanyScreen(store: DesktopStore, state: GameState) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectChip("Overview", page == 0) { page = 0; store.companyPage = 0 }
             SelectChip("Money", page == 1) { page = 1; store.companyPage = 1 }
-            SelectChip("Expand", page == 2) { page = 2; store.companyPage = 2 }
-            SelectChip("Strategy", page == 3) { page = 3; store.companyPage = 3 }
+            SelectChip("Markets", page == 2) { page = 2; store.companyPage = 2 }
+            SelectChip("Expand", page == 3) { page = 3; store.companyPage = 3 }
+            SelectChip("Strategy", page == 4) { page = 4; store.companyPage = 4 }
+            SelectChip("Combos", page == 5) { page = 5; store.companyPage = 5 }
         }
         when (page) {
             1 -> MoneyPanel(store, state)
-            2 -> ExpandPanel(store, state)
-            3 -> StrategyPanel(store, state)
+            2 -> MarketsPanel(store, state)
+            3 -> ExpandPanel(store, state)
+            4 -> StrategyPanel(store, state)
+            5 -> CombosPanel(store, state)
             else -> {
                 val listing = state.listing
                 GlassPanel {
@@ -1223,12 +1138,53 @@ private fun MoneyPanel(store: DesktopStore, state: GameState) {
             )
         }
     } else {
-        val listing = state.listing!!
-        GlassPanel {
-            Text("${listing.ticker} listing", style = MaterialTheme.typography.titleLarge, color = h.accent)
-            Hint("\$${"%.2f".format(listing.price)}/share · cap ${Format.money(listing.marketCap)}")
-            Hint("You own ${Format.percent(state.venture.founderEquity)}")
+        PublicStockPanel(store, state)
+    }
+}
+
+@Composable
+private fun PublicStockPanel(store: DesktopStore, state: GameState) {
+    val h = hudColors
+    val colors = gameColors
+    val l = state.listing ?: return
+    var retiring by remember { mutableStateOf(false) }
+    val change = l.changeSinceIpo
+    GlassPanel {
+        Text("Stock · ${l.ticker}", style = MaterialTheme.typography.titleLarge, color = h.accent)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Stat(
+                "Share price",
+                "$" + "%.2f".format(l.price),
+                if (change >= 0) colors.good else colors.bad,
+            )
+            Stat("Market cap", Format.money(l.marketCap))
         }
+        Hint((if (change >= 0) "+" else "") + Format.percent(change) + " since IPO")
+        Hint("You own ${Format.percent(state.venture.founderEquity)}")
+        l.lastEarnings?.let { Hint(it) }
+        val offering = state.offeringBlocker()
+        MacButton(
+            "Issue shares",
+            onClick = { store.perform { issueShares() } },
+            enabled = offering == null,
+        )
+        Hint(offering ?: "Raise ${Format.money(l.marketCap * 0.1)}. Your stake shrinks a little.")
+        MacButton(
+            "Buy back · ${Format.money(state.buybackCost)}",
+            onClick = { store.perform { buyBack() } },
+            enabled = state.cash >= state.buybackCost,
+            primary = false,
+        )
+        MacButton("Retire", onClick = { retiring = true }, primary = false)
+    }
+    if (retiring) {
+        ConfirmDialog(
+            title = "Step down?",
+            text = "Your stake is worth ${Format.money(state.founderNetWorth)}. The run ends here.",
+            confirm = "Retire",
+            onConfirm = { store.perform { retire() } },
+            onDismiss = { retiring = false },
+        )
     }
 }
 

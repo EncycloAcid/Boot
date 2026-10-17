@@ -23,6 +23,14 @@ import kotlin.random.Random
 
 enum class Tab { OFFICE, LANES, RESEARCH, TEAM, COMPANY, NEWS }
 
+/** Games studio sub-pages (mirrors Android StudioPage). */
+enum class StudioPage(val title: String) {
+    MAKE("Make"),
+    GAMES("Games"),
+    MARKET("Market"),
+    TECH("Tech"),
+}
+
 enum class Speed(val label: String, val millis: Long) {
     NORMAL("1×", 1_100),
     FAST("2×", 500),
@@ -61,13 +69,31 @@ class DesktopStore(dataDir: File) {
 
     var companyPage by mutableIntStateOf(0)
 
+    /** Games studio sub-page (Make / Games / Market / Tech). */
+    var studioPage by mutableStateOf(StudioPage.MAKE)
+
     /** Newest news story id the player has seen (unread badge). */
     var newsSeen by mutableIntStateOf(state?.news?.lastOrNull()?.id ?: 0)
+
+    /** Dismissed office next-step key. */
+    var dismissedStep by mutableStateOf<String?>(null)
 
     /** Game designer overlay is open. */
     var designing by mutableStateOf(false)
     var draft by mutableStateOf<GameConcept?>(null)
     var designTeam by mutableIntStateOf(1)
+
+    /** Hardware device designer overlay. */
+    var designingDevice by mutableStateOf(false)
+
+    /** Released game report sheet (patch / expansion / sequel). */
+    var openRelease by mutableStateOf<Int?>(null)
+
+    /** Marketing planner for this lane. */
+    var campaignLane by mutableStateOf<Lane?>(null)
+
+    /** Stock trade sheet for this company key. */
+    var openStock by mutableStateOf<String?>(null)
 
     var playing by mutableStateOf(false)
         private set
@@ -79,7 +105,8 @@ class DesktopStore(dataDir: File) {
     val canAdvance: Boolean
         get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
 
-    val holdsClock: Boolean get() = designing
+    val holdsClock: Boolean
+        get() = designing || designingDevice || openRelease != null || campaignLane != null || openStock != null
 
     fun newGame(
         company: String,
@@ -108,11 +135,17 @@ class DesktopStore(dataDir: File) {
         state = s
         playing = false
         designing = false
+        designingDevice = false
+        openRelease = null
+        campaignLane = null
+        openStock = null
         draft = null
         designTeam = 1
+        dismissedStep = null
         tab = Tab.OFFICE
         lane = s.startingLane
         companyPage = 0
+        studioPage = StudioPage.MAKE
         newsSeen = 0
         showCoach = true
         save(s)
@@ -125,6 +158,10 @@ class DesktopStore(dataDir: File) {
     fun abandon() {
         playing = false
         designing = false
+        designingDevice = false
+        openRelease = null
+        campaignLane = null
+        openStock = null
         draft = null
         state = null
         json = null
@@ -145,6 +182,7 @@ class DesktopStore(dataDir: File) {
     }
 
     fun advance(weeks: Int) {
+        if (holdsClock) return
         val done = state?.goalsDone?.size ?: 0
         val had = state?.achievements?.keys.orEmpty()
         perform { this.advance(weeks) }
@@ -202,14 +240,30 @@ class DesktopStore(dataDir: File) {
         designTeam = 1
     }
 
+    fun designDevice() {
+        pause()
+        designingDevice = true
+    }
+
+    fun closeDeviceDesigner() {
+        designingDevice = false
+    }
+
     fun openLane(lane: Lane) {
         this.lane = lane
         tab = Tab.LANES
     }
 
+    fun dismissError() {
+        error = null
+    }
+
     fun dismissNotice() {
         notice = null
-        error = null
+    }
+
+    fun dismissToast() {
+        if (error != null) error = null else notice = null
     }
 
     private fun save(s: GameState) {

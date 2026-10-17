@@ -21,8 +21,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +40,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 /** Soft GDT float — white panel, soft shadow, light rim. */
 private val PanelShape = RoundedCornerShape(14.dp)
@@ -441,3 +447,52 @@ fun FloatingWindow(
 val ScreenPad = PaddingValues(start = 32.dp, end = 32.dp, top = 128.dp, bottom = 124.dp)
 
 val WindowPad = PaddingValues(horizontal = 18.dp, vertical = 16.dp)
+
+/** Slider that only commits when the finger lifts — avoids encode/save spam while dragging. */
+@Composable
+fun CommitSlider(
+    value: Double,
+    label: (Float) -> String,
+    valueRange: ClosedFloatingPointRange<Float> = 0.05f..1f,
+    onCommit: (Double) -> Unit,
+) {
+    var local by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label(local), style = MaterialTheme.typography.labelLarge, color = hudColors.text)
+        Slider(
+            value = local.coerceIn(valueRange.start, valueRange.endInclusive),
+            onValueChange = { local = it },
+            onValueChangeFinished = { onCommit(local.toDouble()) },
+            valueRange = valueRange,
+        )
+    }
+}
+
+@Composable
+fun ConfirmDialog(
+    title: String,
+    text: String,
+    confirm: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    destructive: Boolean = false,
+) {
+    val h = hudColors
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .widthIn(max = 420.dp)
+                .hudSurface()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = h.ink)
+            Hint(text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MacButton("Cancel", onClick = onDismiss, primary = false)
+                Spacer(Modifier.weight(1f))
+                MacButton(confirm, onClick = { onConfirm(); onDismiss() }, primary = !destructive)
+            }
+        }
+    }
+}

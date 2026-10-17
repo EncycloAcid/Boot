@@ -112,18 +112,20 @@ private fun GameShell(
 
         FloatingTabWindow(store, state)
 
-        // Office-layer actions (inbox) when no floating tab is open.
-        if (store.tab == Tab.OFFICE && !store.designing &&
+        // Office-layer cards when no floating tab / modal is open.
+        if (store.tab == Tab.OFFICE && !store.holdsClock &&
             state.events.isEmpty() && state.pendingPivot == null && !state.isOver &&
-            state.games?.unseenReview == null && state.inbox.isNotEmpty()
+            state.games?.unseenReview == null
         ) {
-            Box(
+            Column(
                 Modifier
                     .align(Alignment.BottomStart)
                     .padding(start = 36.dp, bottom = 118.dp)
                     .widthIn(max = 380.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                InboxPanel(store, state)
+                OfficeHints(store, state)
+                if (state.inbox.isNotEmpty()) InboxPanel(store, state)
             }
         }
 
@@ -151,8 +153,17 @@ private fun GameShell(
 
         // Same decision stack as Android GameScreen — blocks the calendar.
         DecisionOverlays(store, state)
-        if (store.designing) {
-            GameDesigner(store, state)
+        if (store.designing) GameDesigner(store, state)
+        if (store.designingDevice) DeviceDesigner(store, state)
+        store.openRelease?.let { ReleaseReport(store, state, it) }
+        store.campaignLane?.let { MarketingPlanner(store, state, it) }
+        store.openStock?.let { StockSheet(store, state, it) }
+
+        // Toasts above every Dialog so designer / event failures aren't invisible.
+        if (toast != null) {
+            Box(Modifier.align(Alignment.TopCenter).padding(top = 210.dp)) {
+                ToastBanner(toast) { store.dismissToast() }
+            }
         }
     }
 }
@@ -360,7 +371,14 @@ private fun GdtHud(
                 MacButton(
                     "Advance week",
                     onClick = { store.advance(1); onMenu() },
-                    enabled = store.canAdvance && !store.playing,
+                    enabled = store.canAdvance && !store.holdsClock && !store.playing,
+                    primary = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val unread = (state.news.lastOrNull()?.id ?: 0) - store.newsSeen
+                MacButton(
+                    if (unread > 0) "News ($unread)" else "News",
+                    onClick = { store.tab = Tab.NEWS; onMenu() },
                     primary = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -574,11 +592,13 @@ private fun GdtHud(
                 TransportChip(store.speed.label) {
                     store.speed = Speed.entries[(store.speed.ordinal + 1) % Speed.entries.size]
                 }
-                TransportChip("Week", enabled = store.canAdvance && !store.playing) { store.advance(1) }
+                TransportChip("Week", enabled = store.canAdvance && !store.holdsClock && !store.playing) {
+                    store.advance(1)
+                }
                 TransportChip(
                     if (store.playing) "Pause" else "Play",
                     filled = true,
-                    enabled = store.canAdvance || store.playing,
+                    enabled = (store.canAdvance && !store.holdsClock) || store.playing,
                 ) {
                     store.togglePlay()
                 }

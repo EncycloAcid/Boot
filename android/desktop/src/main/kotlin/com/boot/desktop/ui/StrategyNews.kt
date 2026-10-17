@@ -35,6 +35,8 @@ import com.boot.core.Region
 import com.boot.core.Research
 import com.boot.core.exitVenture
 import com.boot.core.exitVentureBlocker
+import com.boot.core.followOnBlocker
+import com.boot.core.followOnTicket
 import com.boot.core.followOnVenture
 import com.boot.core.localizeOffice
 import com.boot.core.localizeOfficeBlocker
@@ -42,6 +44,7 @@ import com.boot.core.marketCycleLabel
 import com.boot.core.openOffice
 import com.boot.core.openOfficeBlocker
 import com.boot.core.rankings
+import com.boot.core.seedOwnershipPreview
 import com.boot.core.seedTicket
 import com.boot.core.seedVenture
 import com.boot.core.seedVentureBlocker
@@ -139,40 +142,52 @@ fun StrategyPanel(store: DesktopStore, state: GameState) {
         }
         GlassPanel {
             Text("Venture Arm", style = MaterialTheme.typography.titleLarge, color = h.text)
-            var conviction by remember { mutableFloatStateOf(0.55f) }
-            Hint("Seed conviction ${Format.percent(conviction.toDouble())}")
-            Slider(value = conviction, onValueChange = { conviction = it }, valueRange = 0.2f..0.9f)
-            Lane.entries.filter { it !in state.lanes }.forEach { lane ->
-                val blocker = state.seedVentureBlocker(lane)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Hint("Seed ${lane.title}")
-                        Hint(blocker ?: "Ticket ~${Format.money(state.seedTicket(lane))}")
-                    }
-                    MacButton(
-                        "Seed",
-                        onClick = { store.perform { seedVenture(lane, conviction.toDouble()) } },
-                        enabled = blocker == null,
-                        primary = false,
-                    )
+            val researched = Research.VENTURE_ARM in state.researched
+            if (!researched) {
+                Hint("Research Venture Arm to seed minority investments in your open lanes.")
+            } else if (state.lanes.isEmpty()) {
+                Hint("No open lanes to seed in.")
+            } else {
+                var lane by remember(state.lanes) { mutableStateOf(state.lanes.first()) }
+                if (lane !in state.lanes) lane = state.lanes.first()
+                var conviction by remember { mutableFloatStateOf(0.55f) }
+                Hint("Any active lane — ${state.lanes.joinToString { it.title }}.")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.lanes.forEach { l -> SelectChip(l.title, lane == l) { lane = l } }
                 }
+                Hint("Conviction ${Format.percent(conviction.toDouble())}")
+                Slider(value = conviction, onValueChange = { conviction = it }, valueRange = 0.25f..0.95f)
+                val ticket = state.seedTicket(lane)
+                val own = state.seedOwnershipPreview(conviction.toDouble())
+                val blocker = state.seedVentureBlocker(lane)
+                Hint("${Format.money(ticket)} cheque · ~${Format.percent(own)} ownership · ${state.marketCycleLabel().lowercase()} cycle")
+                if (blocker != null) Hint(blocker, colors.bad)
+                MacButton(
+                    "Seed in ${lane.title} · ${Format.money(ticket)}",
+                    onClick = { store.perform { seedVenture(lane, conviction.toDouble()) } },
+                    enabled = blocker == null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             book.liveHoldings.forEach { holding ->
+                val followBlock = state.followOnBlocker(holding.id)
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "${holding.lane.title} · ${holding.stage.title}",
+                            "${holding.name} · ${holding.lane.title} · ${holding.stage.title}",
                             style = MaterialTheme.typography.titleMedium,
                             color = h.text,
                         )
                         Hint("Marked ${Format.money(holding.marketValue)} · basis ${Format.money(holding.basis)}")
+                        if (followBlock != null) Hint(followBlock) else Hint("Follow-on ~${Format.money(state.followOnTicket(holding))}")
                     }
                     MacButton(
                         "Follow-on",
                         onClick = { store.perform { followOnVenture(holding.id) } },
+                        enabled = followBlock == null,
                         primary = false,
                     )
                     MacButton(
