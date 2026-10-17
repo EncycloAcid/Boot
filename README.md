@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.23 (Android):** sell a business, or keep one to focus on.
+
+Running more than one business? Each one's page in the Lanes tab now ends with *Sell or focus*:
+- **Sell it:** a buyer (usually the rival in that market) pays what it's worth: more if it's making money, less if it isn't. A games business takes the studios you own with it. People whose craft fits a business you keep move across; the rest stay with the buyer. Decisions about it go with it.
+- **Keep only this one:** sells all the others in one go, with the total shown up front.
+
+Once you're down to one business, the whole company pulls one way: 12% more done there for a year. You can always expand again later, once it's profitable.
+
 **New in 3.22 (Android):** a polish pass over every screen.
 
 - The HUD date no longer covers the Bugs counter, and never cuts off (on phones it shows just the date; the season is in the panel below). The project panel's stage chip no longer shows a cut-off company name.

@@ -191,6 +191,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var pendingPivot: PivotOffer? = null
         internal set
     var expansions: List<ExpansionRecord> = emptyList()
+
+    /** Until when being down to one business keeps everyone pulling the same way. */
+    var focusedUntil: Int = -1
         internal set
     var events: List<PendingEvent> = emptyList()
         internal set
@@ -396,6 +399,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         if (founderHas(FounderSkill.DEALMAKER)) mods.demand *= 1.04
         if (founderHas(FounderSkill.CRAFTSMANSHIP)) mods.quality += 1.0
         mods.cost *= difficulty.costs
+        // Down to one business: the whole company pulls one way for a while.
+        if (lanes.size == 1 && week < focusedUntil) mods.output *= FOCUS_OUTPUT
         if (isEcosystem) {
             mods.demand *= if (stats.ecosystemOpened) 1.08 else 1.15
             if (lane == Lane.APPS) mods.churn *= 0.9

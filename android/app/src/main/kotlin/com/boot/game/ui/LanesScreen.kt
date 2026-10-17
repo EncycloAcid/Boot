@@ -22,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,6 +35,15 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.boot.core.sellLaneBlocker
+import com.boot.core.sellLane
+import com.boot.core.laneSalePrice
+import com.boot.core.laneBuyer
+import com.boot.core.followersOf
+import com.boot.core.focusPrice
+import com.boot.core.focusOn
+import com.boot.core.focusBlocker
+import com.boot.core.FOCUS_OUTPUT
 import com.boot.core.AIProduct
 import com.boot.core.AppCategory
 import com.boot.core.AppMonetization
@@ -94,6 +105,77 @@ fun LanesScreen(store: GameStore, state: GameState) {
         item { MarketingSection(store, state, lane) }
         item { RivalSection(store, state, lane) }
         if (lane != Lane.GAMES) item { RoadmapSection(store, state, lane) }
+        if (state.lanes.size > 1) item { SellSection(store, state, lane) }
+    }
+}
+
+/** Selling this business, or keeping only this one. */
+@Composable
+private fun SellSection(store: GameStore, state: GameState, lane: Lane) {
+    var confirm by remember { mutableStateOf<Lane?>(null) }
+    var focus by remember { mutableStateOf(false) }
+    val price = state.laneSalePrice(lane)
+    val buyer = state.laneBuyer(lane)
+    val blocker = state.sellLaneBlocker(lane)
+    val others = state.lanes - lane
+    GroupedSection(
+        "Sell or focus",
+        footer = blocker ?: "People whose craft fits a business you keep come with you; the rest stay with the buyer. " +
+            "Down to one business, the whole company pulls one way: ${Format.percent(FOCUS_OUTPUT - 1)} more done there for a year.",
+    ) {
+        val followers = state.followersOf(lane).size
+        ActionRow(
+            "Sell the ${lane.businessName.lowercase()}",
+            "$buyer would pay ${Format.money(price)}." +
+                (if (state.staff(lane).isNotEmpty()) " $followers of ${state.staff(lane).size} people would come with you." else ""),
+            "Sell",
+            enabled = blocker == null,
+        ) { confirm = lane }
+        RowDivider()
+        val focusBlocker = state.focusBlocker(lane)
+        ActionRow(
+            "Keep only this one",
+            "Sell ${others.joinToString { it.businessName.lowercase() }} for ${Format.money(state.focusPrice(lane))} all told, and go all in on ${lane.title}.",
+            "Focus",
+            enabled = focusBlocker == null,
+        ) { focus = true }
+    }
+    confirm?.let { l ->
+        ConfirmDialog(
+            title = "Sell the ${l.businessName.lowercase()}?",
+            text = "$buyer pays ${Format.money(price)}. " + run {
+                val people = state.staff(l).size
+                val moving = state.followersOf(l).size
+                when {
+                    people == 0 -> "Nobody works there but you."
+                    moving == 0 -> "All $people of its people stay with $buyer."
+                    moving == people -> "All $people of its people move to the business they fit."
+                    else -> "$moving of its $people people move to the business they fit; the rest stay with $buyer."
+                }
+            } + " You can't buy it back.",
+            confirm = "Sell for ${Format.money(price)}",
+            destructive = true,
+            onConfirm = {
+                store.perform { sellLane(l) }
+                store.lane = null
+                confirm = null
+            },
+            onDismiss = { confirm = null },
+        )
+    }
+    if (focus) {
+        ConfirmDialog(
+            title = "Go all in on ${lane.title}?",
+            text = "You'll sell ${others.joinToString { it.businessName.lowercase() }} for ${Format.money(state.focusPrice(lane))} in all, and keep only the ${lane.businessName.lowercase()}.",
+            confirm = "Focus",
+            destructive = true,
+            onConfirm = {
+                store.perform { focusOn(lane) }
+                store.lane = lane
+                focus = false
+            },
+            onDismiss = { focus = false },
+        )
     }
 }
 

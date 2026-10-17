@@ -650,6 +650,8 @@ object Sandbox {
         if (g.owns(name)) return
         g.subsidiaries += Subsidiary(name, s.week, studio(name)?.let { s.studioValue(it) } ?: 0.0)
     }
+    /** Opens another business, as if you'd expanded into it. */
+    fun openLane(s: GameState, lane: Lane) = s.openLane(lane)
     fun research(s: GameState, r: Research) {
         s.researched += r
     }

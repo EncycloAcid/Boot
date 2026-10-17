@@ -48,6 +48,7 @@ class Stats {
     var layoffs = 0
     var buyoutsDeclined = 0
     var saleProceeds = 0.0
+    var lanesSold = 0
     var weeksInRed = 0
 
     /** Consecutive weeks every lane has been profitable over the trailing quarter. */

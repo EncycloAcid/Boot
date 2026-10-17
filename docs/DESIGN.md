@@ -530,6 +530,10 @@ New studio research: `DESIGN_DOCS` adds 0.05 to the weekly focus match; `QA_DEPA
 
 Platform entries are dated on the shared timeline (week = (year + (month − 1)/12 − MODERN_YEAR) × 52). A platform is on sale while its players are at least 0.5M, so tiny machines (Playdate, Jaguar) are kept just above that. Exclusives come only from makers in `EXCLUSIVE_MAKERS`.
 
+## Selling a business (3.23)
+
+LaneSales.kt. Any business but the last can be sold whenever there's no Pivot Point pending. `laneSalePrice` = `laneValue` × 1.15 if the last 13 weeks were profitable (× 0.8 if not), plus 90% of owned studios' value for games, at least 25k (scaled), rounded to the thousand. The buyer is the rival in that lane, or a named default. Staff with a role weight of 0.8+ in a kept lane move to the best fit; the rest leave. Pending events and inbox items for that lane are dropped, the lane closes (its combos with it), and the profitable streak resets. Selling down to one lane sets `focusedUntil` = now + 52 weeks, during which that lane's output is ×1.12. `focusOn` sells every lane but one.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.
