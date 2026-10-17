@@ -132,6 +132,7 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
         p != null -> {
             item { DevelopmentSection(store, state, p) }
             item { FocusSection(store, g, p, state = state) }
+            item { TeamFitSection(state, p) }
             item { HypeSection(store, state, p) }
         }
         x != null -> item {

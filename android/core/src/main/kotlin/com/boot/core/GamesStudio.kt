@@ -128,10 +128,16 @@ data class GameProject(
     var uncut: Boolean = false,
     /** The ratings board has looked at it. */
     var rated: Boolean = false,
+    /** Areas that had enough specialists on them while their stage was worked. */
+    val covered: MutableSet<FocusArea> = mutableSetOf(),
 ) {
     /** How much the leads add to this week's work. Worked out each week before the team gets going. */
     @kotlinx.serialization.Transient
     var leadFactor: Double = 1.0
+
+    /** The stage it was on when this week began. */
+    @kotlinx.serialization.Transient
+    var weekStartStage: Int = 0
 
     val title: String get() = concept.title
     val work: Double get() = concept.work * workScale
@@ -411,6 +417,9 @@ class GamesStudio {
     /** Collections being put together, and the games already in one. */
     val collectionJobs = mutableListOf<CollectionJob>()
     val collected: MutableSet<Int> = mutableSetOf()
+
+    /** Pairs of people who've found out how they get on ("id:id"). */
+    val knownPairs: MutableSet<String> = mutableSetOf()
     private var nextId = 1
 
     internal fun nextId(): Int = nextId++
@@ -757,6 +766,11 @@ class GamesStudio {
             )
         }
         if (c.production != Production.STANDARD) part("Production", c.production.score, "${c.production.title}: ${c.production.blurb}")
+        val specialist = specialistPoints(c, p.covered)
+        if (specialist > 0) {
+            val areas = keyAreas(c).filter { it in p.covered }.joinToString { it.title.lowercase() }
+            part("Specialists", specialist, "Specialists on what ${c.genreLower} games need most: $areas.")
+        }
         if (p.uncut) {
             val uncut = uncutPoints(c)
             part("Uncut", uncut, if (uncut > 0) "Adults Only, and ${c.topic.title.lowercase()} is better for it." else "Adults Only, and it feels gratuitous.")

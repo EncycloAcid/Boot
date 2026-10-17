@@ -100,7 +100,7 @@ fun LeadPicker(state: GameState, stage: Int, leads: Map<FocusArea, Int>, onChang
                 if (lead != null) Hint("${Format.percent(leadFit(lead, area))} fit  ")
                 val options = listOf<Int?>(null) + people.filter { it.id !in leads.filterKeys { k -> k != area }.values }.sortedByDescending { leadFit(it, area) }.map { it.id }
                 MenuButton(lead?.name ?: "No lead", options, { id ->
-                    if (id == null) "No lead" else people.first { it.id == id }.let { "${it.name} · ${Format.percent(leadFit(it, area))} fit" }
+                    if (id == null) "No lead" else people.first { it.id == id }.let { "${it.name}${it.specialty?.let { s -> " · " + s.person.lowercase() } ?: ""} · ${Format.percent(leadFit(it, area))} fit" }
                 }) { id -> onChange(if (id == null) leads - area else leads + (area to id)) }
             }
         }

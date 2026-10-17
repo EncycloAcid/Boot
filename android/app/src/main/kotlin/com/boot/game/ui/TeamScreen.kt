@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.boot.core.Role
 import com.boot.core.skillPoints
 import com.boot.core.Employee
 import com.boot.core.Format
@@ -190,7 +191,7 @@ private fun HiringSection(store: GameStore, state: GameState) {
             if (i > 0) RowDivider(68.dp)
             ListRow(
                 c.name,
-                subtitle = "${c.role.title} · skill ${c.skill} · ${c.askingSalary.perWeek()}${joiner}Design ${c.design} · Tech ${c.tech} · Research ${c.research}" +
+                subtitle = "${c.role.title}${c.specialty?.let { " · " + it.person.lowercase() } ?: ""} · skill ${c.skill} · ${c.askingSalary.perWeek()}${joiner}Design ${c.design} · Tech ${c.tech} · Research ${c.research}" +
                     (c.trait?.let { "\n${it.title}: ${it.detail.replaceFirstChar { ch -> ch.lowercase() }}" } ?: "") +
                     (c.contestedBy?.let { "\n$it is circling" } ?: ""),
                 leading = { CandidatePortrait(c.id, 44.dp, ring = if (c.contestedBy != null) gameColors.warn else null) },
@@ -209,6 +210,7 @@ private fun HiringSection(store: GameStore, state: GameState) {
 private fun TeamSection(store: GameStore, state: GameState) {
     var firing by remember { mutableStateOf<Employee?>(null) }
     var training by remember { mutableStateOf<Employee?>(null) }
+    var specialising by remember { mutableStateOf<Employee?>(null) }
     val canTrain = Research.TRAINING in state.researched
     GroupedSection(
         "Staff",
@@ -222,9 +224,12 @@ private fun TeamSection(store: GameStore, state: GameState) {
                 onAssign = { lane -> store.perform { assign(e.id, lane) } },
                 onFire = { firing = e },
                 onTrain = if (canTrain) ({ training = e }) else null,
+                onSpecialise = if (state.games != null && (e.role == Role.DESIGNER || e.role == Role.ENGINEER)) ({ specialising = e }) else null,
+                note = state.chemistryNote(e),
             )
         }
     }
+    specialising?.let { e -> SpecialiseDialog(store, state, e) { specialising = null } }
     training?.let { e ->
         val (rp, cost) = state.trainingCost(e)
         val blocker = state.trainingBlocker(e)
@@ -249,7 +254,15 @@ private fun TeamSection(store: GameStore, state: GameState) {
 }
 
 @Composable
-private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Unit, onFire: () -> Unit, onTrain: (() -> Unit)?) {
+private fun EmployeeRow(
+    e: Employee,
+    lanes: List<Lane>,
+    onAssign: (Lane?) -> Unit,
+    onFire: () -> Unit,
+    onTrain: (() -> Unit)?,
+    onSpecialise: (() -> Unit)? = null,
+    note: String? = null,
+) {
     val colors = gameColors
     var menu by remember { mutableStateOf(false) }
     val compact = LocalCompact.current
@@ -272,7 +285,9 @@ private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Uni
                 Text("Lv ${e.level}", style = MaterialTheme.typography.labelMedium, color = colors.milestone)
                 // The trait by name; long-press for what it does.
                 e.trait?.let { t -> Tip("${t.title}: ${t.detail}") { Pill(t.title, colors.milestone) } }
+                e.specialty?.let { s -> Tip("${s.person}: best at ${s.areas.joinToString(" and ") { it.lower }}") { SpecialtyPill(s) } }
             }
+            note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.milestone) }
             if (compact) {
                 // Sideways: one line of details, the bars to the right.
                 Text("$role · $skills", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -299,6 +314,12 @@ private fun EmployeeRow(e: Employee, lanes: List<Lane>, onAssign: (Lane?) -> Uni
                     )
                 }
                 HorizontalDivider()
+                if (onSpecialise != null) {
+                    DropdownMenuItem(text = { Text("Make a specialist") }, leadingIcon = { Icon(Icons.Filled.School, null) }, onClick = {
+                        menu = false
+                        onSpecialise()
+                    })
+                }
                 if (onTrain != null) {
                     DropdownMenuItem(text = { Text("Send on a course") }, leadingIcon = { Icon(Icons.Filled.School, null) }, onClick = {
                         menu = false

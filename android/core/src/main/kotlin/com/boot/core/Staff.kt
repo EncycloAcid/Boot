@@ -99,6 +99,9 @@ data class Employee(
     val trait: Trait? = null,
     /** Away (a break, a course) until this week. They're paid but do no work. */
     var leaveUntil: Int = -1,
+    /** What they're best at making, if anything. */
+    var specialty: Specialty? = null,
+    var specializedWeek: Int = -1_000,
 ) {
     internal val moraleFactor: Double get() = 0.5 + 0.5 * morale
 
@@ -128,6 +131,7 @@ data class Candidate(
     val tech: Int = roleTech(role, skill),
     val research: Int = roleResearch(role, skill),
     val trait: Trait? = null,
+    val specialty: Specialty? = null,
 )
 
 @Serializable

@@ -264,6 +264,7 @@ private fun GameState.studioWeek() {
     ratingsWeek(g)
     bombWeek(g)
     collectionWeek(g)
+    teamWeek(g)
     portWeek(g)
     chartsStory()
     feedWeek()

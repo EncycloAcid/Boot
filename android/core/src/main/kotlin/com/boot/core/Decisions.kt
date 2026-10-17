@@ -638,6 +638,17 @@ private fun GameState.land(c: Consequence) {
 /** For tests and tools: put things in front of the player directly. */
 object Sandbox {
     fun offer(s: GameState, kind: EventKind, weeks: Int) = s.offer(kind, weeks)
+
+    /** Adds someone straight to the team. */
+    fun addStaff(s: GameState, name: String, role: Role, lane: Lane?, specialty: Specialty? = null, trait: Trait? = null, skill: Int = 6): Employee {
+        val e = Employee(s.nextId(), name, role, skill, 2_000.0, 0.8, lane, s.week, trait = trait, specialty = specialty)
+        s.staff = s.staff + e
+        return e
+    }
+
+    fun setResearchPoints(s: GameState, rp: Double) {
+        s.researchPoints = rp
+    }
     fun enqueue(s: GameState, kind: EventKind) = s.enqueue(kind)
     fun setCash(s: GameState, cash: Double) {
         s.cash = cash

@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.27 (Android):** specialists and team chemistry.
+
+Staffing a game is now a puzzle, not just a headcount.
+- **Specialists.** Designers and engineers can be specialists: writers (story and dialogues), game designers (gameplay and level design), engine programmers (engine and AI), artists (world design and graphics) and composers (sound). An area with a specialist on the game team gets about a quarter more out of every week spent on it, and bigger games need more of them: one each for small and medium games, two for large, three for AAA. A game whose genre's key areas had specialists on them also reviews better.
+- **Where they come from.** About half of the designers and engineers you can hire already have a specialty; it shows next to their name. Anyone else can go on a course from the Team tab ("Make a specialist"): it costs a little RP and cash, and they're away for three weeks.
+- **Chemistry.** Some pairs on the game team work well together and some clash. Divas clash with divas, team players get on with almost anyone, mentors make friends. You find out as they work together. Good pairs speed up the whole team; clashes slow it and wear both people down. Move one of them to another lane to split them up.
+- The new *Who's making it* panel on the Make page shows every stage's areas, who's on each, the boost, which areas the genre cares most about, and the team's chemistry. Specialists also lead their own areas better.
+
 **New in 3.26 (Android):** piracy and copy protection, collections, age ratings and review bombs.
 
 - **Piracy and copy protection.** Popular games get copied, and how much depends on the year and the machine: tapes and floppies in the 80s, cracks and CD burners later, torrents today. Cartridges were hard to copy; modded disc consoles weren't. Pick copy protection on the game's card while it's being made. The choices change by era (manual checks, disk protection, disc checks, intrusive DRM, online activation, always online, anti-tamper). Stronger protection saves more sales, but players complain and the heavy kinds lower the user score.

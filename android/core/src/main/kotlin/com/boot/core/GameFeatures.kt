@@ -122,7 +122,7 @@ fun leadBoost(concept: GameConcept, leads: Map<FocusArea, Employee>, stage: Int,
 
 /** How good someone is at leading [area], 0...1: design for the design-heavy areas, tech for the rest. */
 fun leadFit(e: Employee, area: FocusArea): Double =
-    ((if (area.designShare >= 0.5) e.design else e.tech) / 10.0 * e.moraleFactor).coerceIn(0.0, 1.0)
+    ((if (area.designShare >= 0.5) e.design else e.tech) / 10.0 * e.moraleFactor + (if (e.specialty?.areas?.contains(area) == true) 0.2 else 0.0)).coerceIn(0.0, 1.0)
 
 /** The game staff who could lead an area of [team]'s game. */
 fun GameState.leadCandidates(): List<Employee> = staff(Lane.GAMES).filter { it.leaveUntil < week }
@@ -191,10 +191,16 @@ internal fun bareAreas(concept: GameConcept, features: Set<Research>?, engine: E
 /** Works out each project's lead boost for the week ahead. */
 internal fun GameState.prepareLeads() {
     val g = games ?: return
+    // Note who's on each area before the week's work moves a stage on.
+    noteCoverage(g, weekStart = true)
     for (team in 1..2) {
         val p = g.projectOf(team) ?: continue
         // Leads who've left the game team stop leading.
         p.leads.entries.removeAll { (_, id) -> staff.none { it.id == id && it.lane == Lane.GAMES } }
-        p.leadFactor = if (p.isReady) 1.0 else leadBoost(p.concept, leadsOf(p), p.stage, p.focus[p.stage])
+        p.leadFactor = if (p.isReady) {
+            1.0
+        } else {
+            leadBoost(p.concept, leadsOf(p), p.stage, p.focus[p.stage]) * specialistBoost(p.concept, p.stage, p.focus[p.stage]) * chemistryFactor()
+        }
     }
 }
