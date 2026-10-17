@@ -48,7 +48,7 @@ public enum Lane: String, Codable, CodingKeyRepresentable, CaseIterable, Identif
         case .social:
             "A slow start that turns exponential if it catches on. Server costs outrun revenue early; success brings bots, moderation fires, and press scandals."
         case .hardware:
-            "Supply chains and timing. Book factory capacity months ahead and guess how many units to make. Huge margins if you nail it."
+            "Phones, laptops and headphones. Book factory capacity months ahead and guess how many units to make. Huge margins if you nail it."
         case .ai:
             "Compute and burn rate. Training runs cost a fortune and you don't know how good the model is until it finishes. Highest ceiling, fastest way to go broke."
         }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An isometric block, the company, booting up: a power symbol on one face, rising bars on the other, a spark above. Everything sits in the middle 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#40130A5C" android:pathData="M54,83.2 m-17,0 a17,3 0 1,0 34,0 a17,3 0 1,0 -34,0" />
+    <path android:fillColor="#FFE6E0FF" android:pathData="M32,40.65 L54,53.3 L54,80.3 L32,67.65 Z" />
+    <path android:fillColor="#FFA99BFF" android:pathData="M54,53.3 L76,40.65 L76,67.65 L54,80.3 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M54,28 L76,40.65 L54,53.3 L32,40.65 Z" />
+    <path android:fillColor="#C8FFFFFF" android:pathData="M58,74 L62,71.7 L62,64.7 L58,67 Z" />
+    <path android:fillColor="#C8FFFFFF" android:pathData="M63.5,70.84 L67.5,68.54 L67.5,56.54 L63.5,58.84 Z" />
+    <path android:fillColor="#C8FFFFFF" android:pathData="M69,67.67 L73,65.38 L73,47.38 L69,49.67 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFB020" android:strokeWidth="2.8" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M46.08,58.6 L46.54,59.28 L46.95,59.98 L47.3,60.69 L47.58,61.41 L47.79,62.11 L47.93,62.79 L48,63.45 L47.98,64.06 L47.89,64.62 L47.73,65.12 L47.49,65.56 L47.18,65.92 L46.81,66.2 L46.38,66.4 L45.9,66.52 L45.38,66.54 L44.82,66.48 L44.23,66.33 L43.62,66.09 L43,65.77 L42.38,65.38 L41.77,64.92 L41.18,64.39 L40.62,63.81 L40.1,63.18 L39.62,62.51 L39.19,61.82 L38.82,61.11 L38.51,60.39 L38.27,59.68 L38.11,58.99 L38.02,58.33 L38,57.7 L38.07,57.12 L38.21,56.6 L38.42,56.14 L38.7,55.75 L39.05,55.44 L39.46,55.21 L39.92,55.06" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFB020" android:strokeWidth="2.8" android:strokeLineCap="round" android:pathData="M43,54.77 L43,59.57" />
+    <path android:fillColor="#FFFFD36B" android:pathData="M68.5,26 Q69.2,29.8 73,30.5 Q69.2,31.2 68.5,35 Q67.8,31.2 64,30.5 Q67.8,29.8 68.5,26 Z" />
+</vector>

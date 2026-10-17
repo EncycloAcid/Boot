@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The logo in one colour, for themed icons: the block's faces in three strengths, the bars and the spark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#B3FFFFFF" android:pathData="M32,40.65 L54,53.3 L54,80.3 L32,67.65 Z" />
+    <path android:fillColor="#66FFFFFF" android:pathData="M54,53.3 L76,40.65 L76,67.65 L54,80.3 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M54,28 L76,40.65 L54,53.3 L32,40.65 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M58,74 L62,71.7 L62,64.7 L58,67 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M63.5,70.84 L67.5,68.54 L67.5,56.54 L63.5,58.84 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M69,67.67 L73,65.38 L73,47.38 L69,49.67 Z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M68.5,26 Q69.2,29.8 73,30.5 Q69.2,31.2 68.5,35 Q67.8,31.2 64,30.5 Q67.8,29.8 68.5,26 Z" />
+</vector>
