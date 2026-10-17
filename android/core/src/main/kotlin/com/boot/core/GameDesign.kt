@@ -591,6 +591,8 @@ data class GameConcept(
     val production: Production = Production.STANDARD,
     /** The one thing it's known for, if anything. */
     val hook: Hook? = null,
+    /** For a collection: the titles of the games it brings together. */
+    val collects: List<String> = emptyList(),
 ) {
     /** What a copy sells for. */
     val unitPrice: Double get() = size.price * price.multiplier

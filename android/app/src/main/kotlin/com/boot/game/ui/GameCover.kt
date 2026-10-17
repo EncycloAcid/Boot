@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.text.font.FontFamily
@@ -178,6 +179,11 @@ fun chartCoverConcept(title: String, topic: Topic, genre: Genre, platform: Platf
 /** Box art for [concept], by [studio] if given. Small covers keep the picture and drop the words. */
 @Composable
 fun GameCover(concept: GameConcept, width: Dp, modifier: Modifier = Modifier, studio: String? = null) {
+    // A collection shows the games inside it.
+    if (concept.collects.isNotEmpty()) {
+        CollectionCover(concept, width, modifier, studio)
+        return
+    }
     // A real game gets its real cover.
     val context = androidx.compose.ui.platform.LocalContext.current
     val real = remember(concept.title) { RealCovers.load(context, concept.title) }
@@ -1262,5 +1268,53 @@ private fun DrawScope.atmosphere(fx: Fx, light: Color, w: Float, h: Float, top: 
             poly(light.mix(Color.White, 0.5f).copy(alpha = 0.85f), p.x, p.y - r, p.x + r * 0.25f, p.y - r * 0.25f, p.x + r, p.y, p.x + r * 0.25f, p.y + r * 0.25f, p.x, p.y + r, p.x - r * 0.25f, p.y + r * 0.25f, p.x - r, p.y, p.x - r * 0.25f, p.y - r * 0.25f)
         }
         Fx.NONE -> {}
+    }
+}
+
+
+/** A collection's box: the series name over the covers of the games inside, fanned out. */
+@Composable
+private fun CollectionCover(concept: GameConcept, width: Dp, modifier: Modifier, studio: String?) {
+    val games = concept.collects.take(4)
+    val inner = width * (if (games.size <= 2) 0.5f else 0.42f)
+    val shape = RoundedCornerShape(width * 0.06f)
+    val label = concept.title.substringAfterLast(' ').uppercase(Locale.US)
+    val series = concept.title.removeSuffix(concept.title.substringAfterLast(' ')).trim().removeSuffix(" Double").trim()
+    Box(
+        modifier
+            .size(width, width * 4 / 3)
+            .shadow(if (width >= 56.dp) 8.dp else 2.dp, shape)
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF1F2333), Color(0xFF0B0D14)))),
+    ) {
+        if (width >= 56.dp) {
+            Text(
+                series.uppercase(Locale.US), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                color = Color.White, fontWeight = FontWeight.Black, fontSize = (width.value * 0.1f).sp,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = width * 0.07f, start = 6.dp, end = 6.dp),
+            )
+        }
+        Box(Modifier.align(Alignment.Center).padding(top = width * 0.1f)) {
+            val mid = (games.size - 1) / 2f
+            // The middle one on top.
+            games.withIndex().sortedByDescending { kotlin.math.abs(it.index - mid) }.forEach { (i, t) ->
+                val offset = (i - mid)
+                GameCover(
+                    GameConcept(t, concept.topic, concept.genre, audience = concept.audience, platforms = concept.platforms, size = concept.size),
+                    inner,
+                    Modifier.graphicsLayer {
+                        rotationZ = offset * 9f
+                        translationX = offset * inner.toPx() * 0.42f
+                        translationY = kotlin.math.abs(offset) * inner.toPx() * 0.06f
+                    },
+                    studio = studio,
+                )
+            }
+        }
+        Text(
+            if (label == "PACK") "DOUBLE PACK" else label, color = Color(0xFFFFD166), fontWeight = FontWeight.Bold,
+            fontSize = (width.value * 0.075f).coerceAtLeast(7f).sp, letterSpacing = (width.value * 0.012f).sp, maxLines = 1,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = width * 0.05f),
+        )
     }
 }

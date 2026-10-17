@@ -292,7 +292,7 @@ private fun Comments(s: NewsStory) {
 
 @Composable
 private fun StoryCover(c: NewsCover, width: Dp) {
-    GameCover(GameConcept(c.title, c.topic, c.genre, platforms = listOf(Platform.PC), size = c.size), width)
+    GameCover(GameConcept(c.title, c.topic, c.genre, platforms = listOf(Platform.PC), size = c.size, collects = c.collects), width)
 }
 
 /** Outlet and when, coloured by the desk. The date only shows once it's more than a year ago. */

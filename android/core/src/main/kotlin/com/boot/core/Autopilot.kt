@@ -147,6 +147,8 @@ class Autopilot(
             }
             // Co-produce when there is money to spare; otherwise take the fee.
             is ScreenOffer -> if (s.cash > k.stake * 4) 1 else 0
+            is RatingDispute -> 0
+            is ReviewBomb -> s.games?.release(k.releaseId)?.let { r -> if (s.cash > s.bombFixCost(r, k.reason) * 3) 0 else 1 } ?: 1
             is ExclusiveOffer -> e.choices.indexOfFirst { it.label == "Timed exclusive" }.takeIf { it >= 0 } ?: e.choices.lastIndex
             is PlatformInvite -> {
                 val labels = e.choices.map { it.label }
@@ -401,7 +403,10 @@ class Autopilot(
             if (g.team2Share != 0.3) attempt { s.setTeamSplit(0.3) }
             bestConcept(s, g)?.let { c ->
                 val c2 = c.copy(size = minOf(c.size, GameSize.MEDIUM), live = false)
-                if (s.conceptBlocker(c2, team = 2) == null) attempt { s.startGame(c2, idealFocus(c2), 2) }
+                if (s.conceptBlocker(c2, team = 2) == null) attempt {
+                    s.startGame(c2, idealFocus(c2), 2)
+                    mildProtection(s, 2)
+                }
             }
         }
         val p = g.project
@@ -481,7 +486,10 @@ class Autopilot(
             g.contractOffers.firstOrNull()?.let { attempt { s.takeGameContract(it.id) } }
             return
         }
-        attempt { s.startGame(concept, idealFocus(concept)) }
+        attempt {
+            s.startGame(concept, idealFocus(concept))
+            mildProtection(s, 1)
+        }
     }
 
     /** A decent concept: the best known combo, the biggest affordable size, the widest reach. */
@@ -509,6 +517,12 @@ class Autopilot(
             size = size, engineId = g.engines.maxBy { it.level }.id,
             live = Research.LIVE_SERVICE in s.researched && size >= GameSize.LARGE,
         )
+    }
+
+    /** The strongest copy protection players barely mind, if any is around. */
+    private fun mildProtection(s: GameState, team: Int) {
+        val pick = protections(s.calendarYear).filter { it.annoys <= 0.3 && it != Protection.NONE }.maxByOrNull { it.stops } ?: return
+        if (s.protectionBlocker(team, pick) == null) s.setProtection(team, pick)
     }
 
     /** An experienced designer's instinct: close to the genre's ideal, not perfect. */

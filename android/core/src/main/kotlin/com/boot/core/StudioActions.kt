@@ -254,9 +254,22 @@ fun GameState.launchGame(team: Int = 1) {
     val exclusive = signed.exclusive
     val held = exclusive?.let { e -> signed.concept.platforms.filter { it.maker != e.maker } }.orEmpty()
     if (exclusive != null && held.isNotEmpty()) g.setProject(team, signed.copy(concept = exclusiveConcept(signed)))
+    // An Adults Only game only goes out where it's carried.
+    val rated = calendarYear >= RATINGS_YEAR
+    g.projectOf(team)?.let { q ->
+        val keep = adultsOnlyPlatforms(q.concept)
+        if (rated && q.uncut && keep.isNotEmpty() && keep.size < q.concept.platforms.size) g.setProject(team, q.copy(concept = q.concept.copy(platforms = keep)))
+    }
     val p = g.projectOf(team)!!
     val suited = p.concept.platforms.any { it.suits(p.concept.audience) }
-    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team)
+    // Pirates take a share of a popular game; many shops won't stock an Adults Only one.
+    val piracy = piracyLoss(p.concept, p.protection, popularity(gameForecast(team)?.expectedScore ?: 6.0, p.hype))
+    val shelf = if (rated && p.uncut) adultsOnlyShelf(calendarYear) else 1.0
+    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team, kept = (1 - piracy) * shelf)
+    g.releases.firstOrNull()?.let { r ->
+        r.rating = if (rated) ratingFor(r.concept.audience, p.uncut) else null
+        afterPiracy(p, r, 1 - piracy, shelf)
+    }
     if (exclusive != null) g.releases.firstOrNull()?.let { afterExclusiveLaunch(exclusive, held, it) }
     g.releases.firstOrNull()?.let { r ->
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)

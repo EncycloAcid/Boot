@@ -27,7 +27,7 @@ enum class NewsTag(val title: String) {
 
 /** Enough of a game to draw its cover beside a story. */
 @Serializable
-data class NewsCover(val title: String, val topic: Topic, val genre: Genre, val size: GameSize = GameSize.MEDIUM)
+data class NewsCover(val title: String, val topic: Topic, val genre: Genre, val size: GameSize = GameSize.MEDIUM, val collects: List<String> = emptyList())
 
 @Serializable
 data class NewsStory(
@@ -97,7 +97,7 @@ private fun GameState.readersOn(desk: NewsDesk, tag: NewsTag, tone: LogTone, lea
 }
 
 /** A game's cover, for a story about it. */
-internal fun GameRelease.newsCover() = NewsCover(title, concept.topic, concept.genre, concept.size)
+internal fun GameRelease.newsCover() = NewsCover(title, concept.topic, concept.genre, concept.size, concept.collects)
 internal fun RivalGame.newsCover() = NewsCover(title, topic, genre, size)
 internal fun GameProject.newsCover() = NewsCover(title, concept.topic, concept.genre, concept.size)
 

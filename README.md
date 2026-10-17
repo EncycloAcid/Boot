@@ -6,6 +6,13 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.26 (Android):** piracy and copy protection, collections, age ratings and review bombs.
+
+- **Piracy and copy protection.** Popular games get copied, and how much depends on the year and the machine: tapes and floppies in the 80s, cracks and CD burners later, torrents today. Cartridges were hard to copy; modded disc consoles weren't. Pick copy protection on the game's card while it's being made. The choices change by era (manual checks, disk protection, disc checks, intrusive DRM, online activation, always online, anti-tamper). Stronger protection saves more sales, but players complain and the heavy kinds lower the user score.
+- **Collections.** Once a series has two games over two years old, package them from the new *Collections* section on the Games page as a double pack, trilogy or collection. It's cheap, it comes out a few months later at a budget price, and its box shows the games inside. Real covers are used where they exist. The originals sell less while it's out.
+- **Age ratings.** From 1994 every game gets a rating from the audience it's for. A mature game can go uncut and ship Adults Only: the darkest topics are better for it and people talk, but consoles and phone stores won't carry it and many shops won't stock it. The ratings board can also hand a mature game an Adults Only rating; cut it to an M, appeal, or ship it anyway.
+- **Review bombs.** From 2004, an unpopular choice can bring a flood of angry user reviews: heavy DRM, a pushy in-game store, a full console exclusive, a buggy launch, or a premium price for a so-so game. Fix what they're angry about, apologise, or ride it out. Since 2019 the stores flag some of it, so it hurts less.
+
 **New in 3.25 (Android):** film and TV deals.
 
 A hit series now gets calls from film and TV studios (Universal, Warner Bros., HBO, Netflix, Cartoon Network and others, depending on the year). You can also shop a series' rights yourself from the new *Film and TV* section on the Games page.

@@ -122,6 +122,12 @@ data class GameProject(
     val leads: MutableMap<FocusArea, Int> = mutableMapOf(),
     /** Stages whose features have been paid for. */
     val paidStages: MutableSet<Int> = mutableSetOf(),
+    /** Copy protection it'll ship with, paid for at launch. */
+    var protection: Protection = Protection.NONE,
+    /** Shipping uncut, rated Adults Only. */
+    var uncut: Boolean = false,
+    /** The ratings board has looked at it. */
+    var rated: Boolean = false,
 ) {
     /** How much the leads add to this week's work. Worked out each week before the team gets going. */
     @kotlinx.serialization.Transient
@@ -219,6 +225,13 @@ data class GameRelease(
     /** The console maker it's exclusive to, and until when (forever for a full exclusive). */
     var exclusiveTo: String? = null,
     var exclusiveUntil: Int = 0,
+    /** The copy protection it shipped with, and about how many copies were pirated. */
+    var protection: Protection = Protection.NONE,
+    var pirated: Double = 0.0,
+    /** Its age rating, once there were ratings. */
+    var rating: AgeRating? = null,
+    /** A wave of angry user reviews has hit it. */
+    var bombed: Boolean = false,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -394,6 +407,10 @@ class GamesStudio {
 
     /** When you last shopped each series' rights around. */
     val screenPitched: MutableMap<Int, Int> = mutableMapOf()
+
+    /** Collections being put together, and the games already in one. */
+    val collectionJobs = mutableListOf<CollectionJob>()
+    val collected: MutableSet<Int> = mutableSetOf()
     private var nextId = 1
 
     internal fun nextId(): Int = nextId++
@@ -724,7 +741,7 @@ class GamesStudio {
         }, if (dated) "${engine.name} is behind the times." else "${engine.name}, level ${engine.level}.")
         val onTrend = trend?.matches(c) == true
         if (onTrend) part("On trend", 0.4, "Everyone wants ${trend?.title?.lowercase()} games right now.")
-        val last = releases.firstOrNull()
+        val last = releases.firstOrNull { !it.isCollection }
         val repeated = c.sequelOf == null && c.remasterOf == null && last != null && last.concept.topic == c.topic && last.concept.genre == c.genre
         if (repeated) part("Retread", -0.8, "The same topic and genre as your last game, without calling it a sequel.")
         val original = c.sequelOf?.let { release(it) }
@@ -740,11 +757,15 @@ class GamesStudio {
             )
         }
         if (c.production != Production.STANDARD) part("Production", c.production.score, "${c.production.title}: ${c.production.blurb}")
+        if (p.uncut) {
+            val uncut = uncutPoints(c)
+            part("Uncut", uncut, if (uncut > 0) "Adults Only, and ${c.topic.title.lowercase()} is better for it." else "Adults Only, and it feels gratuitous.")
+        }
         c.hook?.let { h ->
             part(h.title, h.points(c), if (h.fits(c)) "${h.title} suits ${c.genreLower} games." else "${h.title} doesn't suit ${c.genreLower} games.")
         }
         part("Milestones", p.qualityBonus, p.choices.joinToString("; ").ifEmpty { "Decisions made along the way." })
-        val recent = releases.filter { it.developer == null }.take(3).map { it.score }
+        val recent = releases.filter { it.developer == null && !it.isCollection }.take(3).map { it.score }
         val before = SCORE_BASELINE + parts.sumOf { it.points }
         val stepBack = recent.isNotEmpty() && before < recent.average() - 1.5
         val record = releases.isNotEmpty() && before > topScore
@@ -780,7 +801,7 @@ class GamesStudio {
         )
     }
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1): LaneReport {
+    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1, kept: Double = 1.0): LaneReport {
         val p = projectOf(team) ?: throw invalid("No game in development.")
         if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
         val c = p.concept
@@ -848,7 +869,7 @@ class GamesStudio {
         val wishlistGross = p.wishlists * wishlistConversion(avg) * c.size.price * c.price.revenueFactor(avg) * pastScale(ctx.year.toDouble())
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia * seasonalLift * screen
+            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia * seasonalLift * screen * kept
         val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
         val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
 

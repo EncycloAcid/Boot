@@ -239,7 +239,7 @@ fun GameState.awardNominees(): List<ChartEntry> {
     val rivals = g.market.games.filter { GameClock.year(it.week) == year }.map {
         ChartEntry(it.title, it.studio, it.weeklySales, it.score, topic = it.topic, genre = it.genre)
     }
-    val mine = g.releases.filter { GameClock.year(it.week) == year && it.publisher == null }
+    val mine = g.releases.filter { GameClock.year(it.week) == year && it.publisher == null && !it.isCollection }
         .map {
             ChartEntry(
                 it.title, companyName, it.weeklySales, it.score, it.id,

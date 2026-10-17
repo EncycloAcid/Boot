@@ -392,6 +392,8 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is MilestoneReview -> describeMilestone(kind)
     is ExclusiveOffer -> describeExclusive(kind)
     is ScreenOffer -> describeScreen(kind)
+    is RatingDispute -> describeDispute(kind)
+    is ReviewBomb -> describeBomb(kind)
     is StudioUnrest -> describeUnrest(kind)
     is StreamerPreview, is FanCampaign, is PresenterInvite -> describeShowMoment(kind)
     is ShowResults -> describeShowResults(kind.report)
@@ -753,6 +755,8 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         is MilestoneReview -> resolveMilestone(kind, choice)
         is ExclusiveOffer -> resolveExclusive(kind, choice)
         is ScreenOffer -> resolveScreen(kind, choice)
+        is RatingDispute -> resolveDispute(kind, choice)
+        is ReviewBomb -> resolveBomb(kind, choice)
         is StudioUnrest -> resolveUnrest(kind, choice)
         is StreamerPreview, is FanCampaign, is PresenterInvite -> resolveShowMoment(kind, choice)
 

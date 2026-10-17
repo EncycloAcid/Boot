@@ -461,6 +461,7 @@ private fun ProjectCard(store: GameStore, state: GameState, p: GameProject, team
             Hint(listOfNotNull("${c.production.title} production".takeIf { c.production != com.boot.core.Production.STANDARD }, c.hook?.let { "${it.title} hook" }).joinToString(" · "))
         }
         if (p.choices.isNotEmpty()) Hint("Decided · " + p.choices.joinToString(" · "))
+        ShelfControls(store, state, p, team)
         val signed = p.exclusive
         if (signed != null) {
             val where = com.boot.core.exclusivePlatforms(c, signed.maker).joinToString(" and ") { it.title }

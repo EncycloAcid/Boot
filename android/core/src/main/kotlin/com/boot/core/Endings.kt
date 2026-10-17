@@ -53,6 +53,11 @@ class Stats {
     /** Films and shows of your series that came out, and the ones critics loved. */
     var adaptations = 0
     var adaptationHits = 0
+
+    /** Sales lost to pirates, review bombs weathered, and collections put out. */
+    var piracyLoss = 0.0
+    var reviewBombs = 0
+    var collections = 0
     var weeksInRed = 0
 
     /** Consecutive weeks every lane has been profitable over the trailing quarter. */

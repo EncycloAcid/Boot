@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.boot.game.audio.Sfx
 import com.boot.game.audio.verdictFor
 import androidx.compose.ui.window.DialogProperties
+import com.boot.core.isCollection
 import com.boot.core.Format
 import com.boot.core.GameRelease
 import com.boot.core.GameState
@@ -156,7 +157,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
     val g = state.games ?: return
     val r: GameRelease = g.release(releaseId) ?: return
     val colors = gameColors
-    val canSequel = Research.SEQUELS in state.researched && !g.busy && r.developer == null && r.publisher == null
+    val canSequel = Research.SEQUELS in state.researched && !g.busy && r.developer == null && r.publisher == null && !r.isCollection
     GameDialog(onDismissRequest = { store.openRelease = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = colors.grouped) {
             Column(Modifier.safeDrawingPadding()) {
@@ -209,10 +210,13 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                         )
                     }
                     LiveServiceSection(store, state, r)
-                    GroupedSection("Critics") {
-                        r.reviews.forEachIndexed { i, review ->
-                            if (i > 0) RowDivider()
-                            ReviewRow(review)
+                    ShelfSection(r)
+                    if (r.reviews.isNotEmpty()) {
+                        GroupedSection("Critics") {
+                            r.reviews.forEachIndexed { i, review ->
+                                if (i > 0) RowDivider()
+                                ReviewRow(review)
+                            }
                         }
                     }
                     AspectBreakdown(r.aspects)
@@ -237,7 +241,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                             store.designGame(seed)
                         }, Modifier.fillMaxWidth())
                     }
-                    if (r.developer == null && r.publisher == null && r.concept.remasterOf == null && Research.REMASTERS in state.researched) {
+                    if (r.developer == null && r.publisher == null && r.concept.remasterOf == null && !r.isCollection && Research.REMASTERS in state.researched) {
                         val blocker = state.remasterBlocker(r.id)
                         TonalButton("Remaster ${r.title}", {
                             val seed = store.state?.remasterConcept(r.id)
@@ -255,7 +259,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
 /** Keep a game alive after launch: patch what shipped broken, and sell more to the people who loved it. */
 @Composable
 private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
-    if (r.publisher != null || r.developer != null) return
+    if (r.publisher != null || r.developer != null || r.isCollection) return
     val patch = state.patchBlocker(r.id)
     val expansion = state.expansionBlocker(r.id)
     GroupedSection(

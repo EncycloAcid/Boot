@@ -91,7 +91,7 @@ fun ScoreSummary(r: GameRelease) {
             MetascoreBadge(r.metascore)
             Spacer(Modifier.size(6.dp))
             Text("Metascore", style = MaterialTheme.typography.labelMedium)
-            Text("${r.reviews.size} critics", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(if (r.reviews.isEmpty()) "${r.concept.collects.size} games" else "${r.reviews.size} critics", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             PlayerScoreBadge(r.userScore)

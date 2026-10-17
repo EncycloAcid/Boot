@@ -108,7 +108,7 @@ fun GameState.adaptableSeries(): List<Franchise> {
         return current.id
     }
     val bySeries = g.releases.groupBy { root(it) }
-    return g.releases.filter { it.concept.sequelOf == null && it.concept.remasterOf == null && it.developer == null && it.publisher == null }
+    return g.releases.filter { it.concept.sequelOf == null && it.concept.remasterOf == null && it.developer == null && it.publisher == null && !it.isCollection }
         .map { Franchise(it, bySeries[it.id].orEmpty().sortedBy { r -> r.id }.ifEmpty { listOf(it) }) }
         .filter { f -> f.averageScore >= 7.5 && f.entries.maxOf { it.score } >= 8 }
         .sortedByDescending { it.lifetime }

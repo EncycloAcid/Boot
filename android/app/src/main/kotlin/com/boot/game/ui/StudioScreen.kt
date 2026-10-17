@@ -103,6 +103,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             item { StudioOverview(state, g) }
             if (g.franchises.isNotEmpty()) item { FranchisesSection(store, state, g) }
             if (g.adaptations.isNotEmpty() || state.adaptableSeries().isNotEmpty()) item { ScreenSection(store, state, g) }
+            item { CollectionsSection(store, state, g) }
             if (g.releases.any { it.live?.closed == false }) item { LiveGamesSection(store, state, g) }
             if (Research.ESPORTS in state.researched) item { EsportsSection(store, state, g) }
             item { ReleasesSection(store, g) }
