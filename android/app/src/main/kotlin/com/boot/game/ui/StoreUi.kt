@@ -86,6 +86,11 @@ fun StoreControls(store: GameStore, state: GameState, p: GameProject, team: Int)
 /** Your own game store: build it, run it, sell it. */
 @Composable
 fun OwnStoreSection(store: GameStore, state: GameState, g: GamesStudio) {
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) { OwnStoreSections(store, state, g) }
+}
+
+@Composable
+private fun OwnStoreSections(store: GameStore, state: GameState, g: GamesStudio) {
     val colors = gameColors
     val s = g.store
     if (s == null) {

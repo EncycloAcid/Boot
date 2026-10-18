@@ -82,6 +82,12 @@ private fun Studio.blurb(): String {
 /** Studios you own, and the ones you could buy. Tap one to look it over. */
 @Composable
 fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
+    // Several sections in one list item: keep them apart like the rest of the page.
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) { StudiosSections(store, state, g) }
+}
+
+@Composable
+private fun StudiosSections(store: GameStore, state: GameState, g: GamesStudio) {
     var showAll by remember { mutableStateOf(false) }
     val colors = gameColors
     g.deal?.let { d ->

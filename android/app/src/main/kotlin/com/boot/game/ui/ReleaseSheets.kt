@@ -393,7 +393,7 @@ private fun PriceRow(store: GameStore, state: GameState, r: GameRelease) {
         Spacer(Modifier.width(8.dp))
         MenuButton("Sale…", SaleDepths, { d ->
             val o = state.saleOutlook(r, d)
-            "${Format.percent(d)} off · +${Format.percent(o.lift - 1)} while it runs, −${Format.percent(o.pull)} after"
+            "${Format.percent(d)} off · +${Format.percent(o.lift - 1)} now, −${Format.percent(o.pull)} later"
         }, enabled = sale == null) { d -> store.perform { runSale(r.id, d) } }
     }
 }
