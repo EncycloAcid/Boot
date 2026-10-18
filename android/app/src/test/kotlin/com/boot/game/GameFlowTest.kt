@@ -347,6 +347,8 @@ class GameFlowTest {
                     if (pendingPivot != null) stayFocused()
                     pilot.playWeek(this)
                 }
+                // An offer can land on the very last week.
+                if (pendingPivot != null) stayFocused()
                 while (events.isNotEmpty()) choose(events[0].choices.size - 1)
                 acknowledgeReview()
             }
@@ -396,6 +398,7 @@ class GameFlowTest {
                     if (g.franchises.isNotEmpty() && !g.busy) break
                     pilot.playWeek(this)
                 }
+                if (pendingPivot != null) stayFocused()
                 while (events.isNotEmpty()) choose(events[0].choices.size - 1)
                 acknowledgeReview()
             }
