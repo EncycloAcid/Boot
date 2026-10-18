@@ -1,5 +1,9 @@
 package com.boot.game.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.testTag
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,6 +45,30 @@ import androidx.compose.ui.unit.dp
 import com.boot.game.audio.Sfx
 import com.boot.game.audio.verdictFor
 import androidx.compose.ui.window.DialogProperties
+import com.boot.core.portOutlook
+import com.boot.core.PortQuality
+import com.boot.core.saleOutlook
+import com.boot.core.SaleDepths
+import com.boot.core.cutPrice
+import com.boot.core.priceCutBlocker
+import com.boot.core.onSale
+import com.boot.core.price
+import com.boot.core.PriceCuts
+import com.boot.core.ExpansionScope
+import com.boot.core.addStore
+import com.boot.core.addStoreBlocker
+import com.boot.core.storeName
+import com.boot.core.storesOf
+import com.boot.core.storesOpen
+import com.boot.core.Platform
+import com.boot.core.releaseModTools
+import com.boot.core.modToolsCost
+import com.boot.core.modToolsBlocker
+import com.boot.core.moddable
+import com.boot.core.releaseUpdate
+import com.boot.core.updateCost
+import com.boot.core.updateBlocker
+import com.boot.core.MAX_UPDATES
 import com.boot.core.isCollection
 import com.boot.core.Format
 import com.boot.core.GameRelease
@@ -256,7 +284,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
     }
 }
 
-/** Keep a game alive after launch: patch what shipped broken, and sell more to the people who loved it. */
+/** Keep a game alive after launch: patch it, update it, price it, port it, open it to modders, and sell more to the people who loved it. */
 @Composable
 private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
     if (r.publisher != null || r.developer != null || r.isCollection) return
@@ -264,6 +292,7 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
     val expansion = state.expansionBlocker(r.id)
     GroupedSection(
         "After launch",
+        Modifier.testTag("after-launch"),
         footer = if (r.expansions.isEmpty()) null else "Expansions: ${r.expansions.joinToString()}.",
     ) {
         ActionRow(
@@ -276,6 +305,18 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
             if (r.patched) "Done" else "Patch",
             enabled = patch == null,
         ) { store.perform { patchGame(r.id) } }
+        RowDivider()
+        val update = state.updateBlocker(r)
+        ActionRow(
+            "Free content update" + if (r.updates > 0) " (${r.updates} of $MAX_UPDATES)" else "",
+            update ?: "${Format.money(r.updateCost())}. New things to do: +25% sales, a better player score, and fans who stay. Up to $MAX_UPDATES, half a year apart.",
+            "Update",
+            enabled = update == null,
+        ) { store.perform { releaseUpdate(r.id) } }
+        if (r.live == null) {
+            RowDivider()
+            PriceRow(store, state, r)
+        }
         if (Research.ESPORTS in state.researched) {
             RowDivider()
             val league = r.league
@@ -292,43 +333,100 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
             }
         }
         RowDivider()
-        val targets = state.portTargets(r)
-        val porting = state.games?.ports?.firstOrNull { it.releaseId == r.id }
-        val (portCost, portWeeks) = state.portQuote(r)
-        ListRow(
-            "Port it",
-            subtitle = when {
-                porting != null -> "Coming to ${porting.platform.title} ${com.boot.core.GameClock.label(porting.doneWeek)}." +
-                    (if (r.exclusiveTo != null && state.week < r.exclusiveUntil) " A ${r.exclusiveTo} exclusive until then." else "")
-                r.exclusiveTo != null && r.exclusiveUntil == Int.MAX_VALUE && targets.isEmpty() -> "A ${r.exclusiveTo} exclusive, for good."
-                r.developer != null -> "Ports are for games you made."
-                targets.isEmpty() -> "It's on every platform it can go to."
-                else -> "${Format.money(portCost)} and ${Format.weeks(portWeeks)}. A new crowd buys it, if it's good." +
-                    (if (r.extraPlatforms.isNotEmpty()) " Already on ${r.extraPlatforms.joinToString { it.title }}." else "")
-            },
-        ) {
-            Spacer(Modifier.width(8.dp))
-            MenuButton("Port to…", targets, { "${it.title}${state.portBlocker(r, it)?.let { " · can't" } ?: ""}" }, enabled = porting == null && targets.any { state.portBlocker(r, it) == null }) { p ->
-                store.perform { portGame(r.id, p) }
+        PortRow(store, state, r)
+        if (r.moddable() || r.modTools) {
+            RowDivider()
+            val mods = state.modToolsBlocker(r)
+            ActionRow(
+                if (r.modTools) "Mod tools are out" else "Release mod tools",
+                if (r.modTools) "Modders keep it selling longer. Now and then a mod takes off." else mods ?: "${Format.money(state.modToolsCost(r))}. Players make more of it: sales tail off more slowly, and a hit mod can bring a new designer or a free update.",
+                if (r.modTools) "Done" else "Release",
+                enabled = !r.modTools && mods == null,
+            ) { store.perform { releaseModTools(r.id) } }
+        }
+        if (Platform.PC in r.concept.platforms) {
+            val addable = state.storesOpen().filter { it !in state.storesOf(r) }
+            if (addable.isNotEmpty()) {
+                RowDivider()
+                ListRow("Stores", subtitle = "On ${state.storesOf(r).joinToString { state.storeName(it) }}.") {
+                    Spacer(Modifier.width(8.dp))
+                    MenuButton("Add…", addable, { s -> state.storeName(s) + (state.addStoreBlocker(r, s)?.let { " · can't" } ?: " · ${Format.percent(s.cut)} cut") }, enabled = addable.any { state.addStoreBlocker(r, it) == null }) { s ->
+                        store.perform { addStore(r.id, s) }
+                    }
+                }
             }
         }
         RowDivider()
-        val sale = state.saleBlocker(r)
-        ActionRow(
-            "Put it on sale",
-            sale ?: "Half price for a week: more copies, a little more money, and new fans. Once a season.",
-            "Sale",
-            enabled = sale == null,
-        ) { store.perform { runSale(r.id) } }
-        RowDivider()
-        ActionRow(
-            "Make an expansion pack",
-            expansion ?: "New content the team builds like a small game. Owners of ${r.title} come back for it.",
-            "Start",
-            enabled = expansion == null,
+        ListRow(
+            "Make an expansion",
+            subtitle = expansion ?: "New content the team builds like a small game. Owners of ${r.title} come back for it.",
         ) {
-            store.perform { startExpansion(r.id) }
-            store.openRelease = null
+            Spacer(Modifier.width(8.dp))
+            MenuButton("Start…", ExpansionScope.entries, { "${it.title} · ${it.blurb}" }, enabled = expansion == null) { scope ->
+                store.perform { startExpansion(r.id, scope) }
+                store.openRelease = null
+            }
+        }
+    }
+}
+
+/** The price, a permanent cut, and sales. */
+@Composable
+private fun PriceRow(store: GameStore, state: GameState, r: GameRelease) {
+    val cuts = PriceCuts.filter { it > r.priceCut + 1e-9 }
+    ListRow(
+        "Price: ${Format.money(r.price)}" + if (r.priceCut > 0) " (${Format.percent(r.priceCut)} off for good)" else "",
+        subtitle = if (r.onSale(state.week)) "On sale at ${Format.percent(r.saleDepth)} off until ${com.boot.core.GameClock.label(r.saleUntil)}." else "Old games sell more cheap. Cut too soon and launch buyers feel cheated.",
+    ) {
+        Spacer(Modifier.width(8.dp))
+        MenuButton("Cut…", cuts, { "${Format.percent(it)} off · ${Format.money(r.concept.unitPrice * (1 - it))}" + (state.priceCutBlocker(r, it)?.let { " · can't" } ?: "") }, enabled = cuts.any { state.priceCutBlocker(r, it) == null }) { cut ->
+            store.perform { cutPrice(r.id, cut) }
+        }
+    }
+    RowDivider()
+    val sale = state.saleBlocker(r)
+    ListRow(
+        "Put it on sale",
+        subtitle = sale ?: "Two weeks off: more copies now, but some of them would have paid full price later, and the more you run sales the more players wait for them." +
+            if (r.saleFatigue > 0.2) " Players are already waiting for the next one." else "",
+    ) {
+        Spacer(Modifier.width(8.dp))
+        MenuButton("Sale…", SaleDepths, { d ->
+            val o = state.saleOutlook(r, d)
+            "${Format.percent(d)} off · +${Format.percent(o.lift - 1)} while it runs, −${Format.percent(o.pull)} after"
+        }, enabled = sale == null) { d -> store.perform { runSale(r.id, d) } }
+    }
+}
+
+/** Ports: where to, and how well. */
+@Composable
+private fun PortRow(store: GameStore, state: GameState, r: GameRelease) {
+    var quality by remember(r.id) { mutableStateOf(PortQuality.IN_HOUSE) }
+    val targets = state.portTargets(r)
+    val porting = state.games?.ports?.firstOrNull { it.releaseId == r.id }
+    val (portCost, portWeeks) = state.portQuote(r, quality)
+    ListRow(
+        "Port it",
+        subtitle = when {
+            porting != null -> "Coming to ${porting.platform.title} ${com.boot.core.GameClock.label(porting.doneWeek)} (${porting.quality.title.lowercase()})." +
+                (if (r.exclusiveTo != null && state.week < r.exclusiveUntil) " A ${r.exclusiveTo} exclusive until then." else "")
+            r.exclusiveTo != null && r.exclusiveUntil == Int.MAX_VALUE && targets.isEmpty() -> "A ${r.exclusiveTo} exclusive, for good."
+            targets.isEmpty() -> "It's on every platform it can go to."
+            else -> "${Format.money(portCost)} and ${Format.weeks(portWeeks)}. A big platform whose players like the genre sells best." +
+                (if (r.extraPlatforms.isNotEmpty()) " Already on ${r.extraPlatforms.joinToString { it.title }}." else "")
+        },
+    ) {
+        Spacer(Modifier.width(8.dp))
+        MenuButton("Port to…", targets, { p ->
+            "${p.title} · " + (state.portBlocker(r, p, quality)?.let { "can't" } ?: "sells ~${Format.percent(state.portOutlook(r, p, quality))} of a normal port")
+        }, enabled = porting == null && targets.any { state.portBlocker(r, it, quality) == null }) { p ->
+            store.perform { portGame(r.id, p, quality) }
+        }
+    }
+    if (porting == null && targets.isNotEmpty()) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Segmented(PortQuality.entries, quality, { it.title }) { quality = it }
+            Hint(quality.blurb)
         }
     }
 }

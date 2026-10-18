@@ -378,7 +378,7 @@ class GameFlowTest {
         val release = s.games!!.releases.first()
         compose.runOnIdle { store.openRelease = release.id }
         compose.waitForIdle()
-        compose.onNodeWithText("Make an expansion pack").performScrollTo()
+        compose.onNodeWithText("Make an expansion").performScrollTo()
         overlay("31-after-launch")
     }
 
