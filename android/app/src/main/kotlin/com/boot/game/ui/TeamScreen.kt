@@ -3,6 +3,7 @@ package com.boot.game.ui
 import androidx.compose.ui.text.style.TextOverflow
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -261,7 +262,7 @@ private fun EmployeeRow(
     onFire: () -> Unit,
     onTrain: (() -> Unit)?,
     onSpecialise: (() -> Unit)? = null,
-    note: String? = null,
+    note: Pair<String, Boolean>? = null,
 ) {
     val colors = gameColors
     var menu by remember { mutableStateOf(false) }
@@ -280,14 +281,19 @@ private fun EmployeeRow(
     ) {
         StaffPortrait(e, if (compact) 36.dp else 44.dp)
         Column(Modifier.weight(1f).padding(start = if (compact) 10.dp else 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(e.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            // Name and level first; the tags wrap onto the next line rather than squeezing the name.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(e.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Lv ${e.level}", style = MaterialTheme.typography.labelMedium, color = colors.milestone)
                 // The trait by name; long-press for what it does.
                 e.trait?.let { t -> Tip("${t.title}: ${t.detail}") { Pill(t.title, colors.milestone) } }
                 e.specialty?.let { s -> Tip("${s.person}: best at ${s.areas.joinToString(" and ") { it.lower }}") { SpecialtyPill(s) } }
             }
-            note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.milestone) }
+            note?.let { (text, good) -> Text(text, style = MaterialTheme.typography.bodySmall, color = if (good) colors.good else colors.bad) }
             if (compact) {
                 // Sideways: one line of details, the bars to the right.
                 Text("$role · $skills", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -1,5 +1,10 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -494,16 +499,28 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
     BoxWithConstraints(Modifier.fillMaxWidth()) {
     val segment = with(density) { ((maxWidth - 6.dp) / options.size.coerceAtLeast(1) - 16.dp).toPx() }
     val widest = options.maxOfOrNull { measurer.measure(label(it), base, maxLines = 1, softWrap = false).size.width } ?: 0
-    val scale = if (widest > 0 && segment > 0) (segment / widest).coerceIn(0.7f, 1f) else 1f
+    // When even a slightly smaller label won't fit, the options scroll sideways at full size instead.
+    val scrolls = widest > 0 && segment > 0 && widest * 0.85f > segment
+    val scale = if (!scrolls && widest > 0 && segment > 0) (segment / widest).coerceIn(0.85f, 1f) else 1f
     val shared = base.copy(fontSize = base.fontSize * scale)
+    val scroll = androidx.compose.foundation.rememberScrollState()
+    val starts = remember { mutableStateMapOf<Int, Int>() }
+    val index = options.indexOf(selected)
+    if (scrolls) {
+        // Keep the chosen option in view.
+        LaunchedEffect(index, starts[index]) {
+            starts[index]?.let { x -> scroll.animateScrollTo((x - with(density) { 24.dp.roundToPx() }).coerceAtLeast(0)) }
+        }
+    }
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(colors.fill)
+            .then(if (scrolls) Modifier.horizontalScroll(scroll) else Modifier)
             .padding(3.dp),
     ) {
-        options.forEach { option ->
+        options.forEachIndexed { i, option ->
             val on = option == selected
             // The chosen option sits on a raised pill: white on the light track, a lighter grey on the dark one.
             val raised = if (colors.card.luminance() < 0.5f) MaterialTheme.colorScheme.surfaceContainerHighest else colors.card
@@ -513,7 +530,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                 shape = RoundedCornerShape(13.dp),
                 shadowElevation = if (on) 1.dp else 0.dp,
                 modifier = Modifier
-                    .weight(1f)
+                    .then(if (scrolls) Modifier.onGloballyPositioned { starts[i] = it.positionInParent().x.toInt() } else Modifier.weight(1f))
                     .heightIn(min = if (compact) 38.dp else 40.dp)
                     .selectable(selected = on, role = Role.RadioButton) {
                         if (!on) {
@@ -522,7 +539,7 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
                         }
                     },
             ) {
-                Box(Modifier.padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.padding(horizontal = if (scrolls) 14.dp else 8.dp, vertical = if (compact) 7.dp else 9.dp), contentAlignment = Alignment.Center) {
                     Text(
                         label(option), style = shared.copy(fontWeight = if (on) FontWeight.SemiBold else FontWeight.Medium),
                         color = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,

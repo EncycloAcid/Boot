@@ -178,7 +178,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                         Column {
                             Text(r.title, style = MaterialTheme.typography.headlineMediumEmphasized)
                             Hint(
-                                "${r.concept.size.title} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} · " +
+                                (if (r.isCollection) "A collection of ${r.concept.collects.size} games · " else "${r.concept.size.title} ${r.concept.topic.title.lowercase()} ${r.concept.genreLower} · ") +
                                     r.concept.platforms.joinToString { it.title } + (r.publisher?.let { " · published by $it" } ?: "") +
                                     (r.developer?.let { " · made by $it, published by you" } ?: ""),
                             )

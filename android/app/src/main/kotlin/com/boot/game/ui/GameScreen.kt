@@ -516,7 +516,10 @@ private fun FloatingHud(
                     description = if (attention > 0) "Menu, $attention waiting" else "Menu",
                 ) {
                     HudIcon(HudGlyph.MENU, colors.other, 14.dp)
-                    Text("Menu", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    // With large text on a narrow screen the word would run into the bubbles; the icon is enough.
+                    if (!narrow || androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.15f) {
+                        Text("Menu", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
                 }
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {

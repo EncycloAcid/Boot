@@ -1311,7 +1311,7 @@ private fun CollectionCover(concept: GameConcept, width: Dp, modifier: Modifier,
                 )
             }
         }
-        Text(
+        if (width >= 56.dp) Text(
             if (label == "PACK") "DOUBLE PACK" else label, color = Color(0xFFFFD166), fontWeight = FontWeight.Bold,
             fontSize = (width.value * 0.075f).coerceAtLeast(7f).sp, letterSpacing = (width.value * 0.012f).sp, maxLines = 1,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = width * 0.05f),

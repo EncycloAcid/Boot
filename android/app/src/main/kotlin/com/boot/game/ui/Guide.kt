@@ -59,6 +59,28 @@ val guideTopics: List<GuideTopic> = listOf(
             "Paid playtests once per stage catch bugs and improve the build. The four-season market calendar boosts featured genres at launch, so shipping early or waiting is a real call.",
             "Custom engines pack researched features: graphic styles and tech tiers have hidden levels until a build finishes or a game ships. Mixing pixel art with realistic materials lowers the engine's level.",
             "Scores compare a game against your own best, so you have to keep getting better. Hype, fans and the platforms' players drive sales. Avoid launching next to a giant release.",
+            "A sequel wants a better engine than the game before it: fans notice when it's built on the same one. Building an engine takes the whole main team, so do it between games.",
+            "A platform's development licence is paid once, the first time you make a game for it, and then it's yours.",
+        ),
+        Lane.GAMES,
+    ),
+    GuideTopic(
+        "Your game team", "Specialists, who works on what, and who gets on",
+        listOf(
+            "Specialists are best at their own areas of the stage sliders: writers (story and dialogues), game designers (gameplay and levels), engine programmers (engine and AI), artists (world and graphics) and composers (sound). Bigger games need more of them. Hire them, or send a designer or engineer on a course from the Team tab.",
+            "The most advanced engine features, like motion capture or photoreal graphics, need the right specialist on the team.",
+            "On the Make page, put people on the areas that suit them, or leave them to go where they're needed. Leaving an area short, or crowding one that gets little effort, wastes them. Leads make their area better still.",
+            "Some pairs work well together and some clash. You find out as they work; move one of a clashing pair to another lane to split them up.",
+        ),
+        Lane.GAMES,
+    ),
+    GuideTopic(
+        "Shipping a game", "What happens when it goes out",
+        listOf(
+            "Popular games get pirated, more on computers and in some eras than others. Copy protection cuts the loss, but the heavy kinds annoy players and can set off a review bomb.",
+            "From 1994 games get age ratings from their audience. A mature game can go uncut as Adults Only: better for the darkest topics, but consoles and most shops won't carry it.",
+            "Research boxed editions and you can make your own boxes and collector's editions for games you publish yourself. Order too many and they go cheap; too few and buyers go without.",
+            "Older games in a series can be packaged into a collection. A hit series gets offers to become a film or a show: a good one sells the games, a bad one hurts the series.",
         ),
         Lane.GAMES,
     ),

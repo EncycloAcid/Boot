@@ -173,14 +173,15 @@ fun SpecialiseDialog(store: GameStore, state: GameState, e: Employee, onDismiss:
     )
 }
 
-/** How someone gets on with the people they've worked out they click (or clash) with. */
-fun GameState.chemistryNote(e: Employee): String? {
+/** How someone gets on with the people they've worked out they click (or clash) with, and whether it's mostly good. */
+fun GameState.chemistryNote(e: Employee): Pair<String, Boolean>? {
     val mine = teamPairs().filter { it.known && (it.a.id == e.id || it.b.id == e.id) }
     if (mine.isEmpty()) return null
-    return mine.joinToString(" · ") { pair ->
+    val text = mine.joinToString(" · ") { pair ->
         val other = if (pair.a.id == e.id) pair.b else pair.a
         (if (pair.chemistry == Chemistry.GOOD) "Clicks with " else "Clashes with ") + other.name.substringBefore(' ')
     }
+    return text to (mine.count { it.chemistry == Chemistry.GOOD } >= mine.count { it.chemistry == Chemistry.BAD })
 }
 
 /** An area's name mid-sentence: lower case, except for AI. */
