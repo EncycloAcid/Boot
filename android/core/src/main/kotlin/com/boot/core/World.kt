@@ -398,6 +398,12 @@ class World {
     /** The era's one-off moment has come round. */
     var momentDone = false
 
+    /** Decades looked back on, and where the current one began (-1 until the first week). */
+    val decades = mutableListOf<DecadeReview>()
+    var decadeStartWeek = -1
+    var decadeStartRevenue = 0.0
+    var decadeStartValue = 0.0
+
     private fun scaled(x: Double): Double = 1 + (x - 1) * eraIntensity
 
     /** Demand for a lane this week, from the era as strongly as it's felt. */

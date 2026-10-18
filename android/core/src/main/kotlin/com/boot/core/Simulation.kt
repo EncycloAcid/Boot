@@ -13,6 +13,7 @@ fun GameState.advance() {
 
     updateEra()
     eraWeek()
+    historyWeek()
     updateHistoricRivals()
     updateRivals()
     rivalWeek()

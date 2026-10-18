@@ -24,7 +24,9 @@ enum class StartPoint(val year: Int?, val title: String, val blurb: String) {
     HOME_COMPUTERS(1977, "1977: Home computers", "The Apple II has just come out. Computers are coming home, and so are games. Play through to today."),
     CONSOLE_WARS(1985, "1985: The console wars", "Games crashed, and a console from Kyoto is bringing them back. Play through to today."),
     THE_WEB(1995, "1995: The web", "Everyone wants a website and investors are throwing money at anything with .com in the name. Play through to today."),
+    MILLENNIUM(2000, "2000: After the bubble", "The dot-com bubble has burst, the PlayStation 2 is out, and the survivors are hiring cheap. Play through to today."),
     SMARTPHONES(2007, "2007: The smartphone", "A phone with no keyboard is about to change everything. Play through to today."),
+    INDIES(2012, "2012: Indies and free-to-play", "Steam, Kickstarter and the app stores let anyone sell a game, and free games are making fortunes. Play through to today."),
 }
 
 /** The era a start point opens in, or null for today. */

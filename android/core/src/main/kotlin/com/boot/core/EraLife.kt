@@ -173,7 +173,7 @@ internal fun GameState.eraTrend(): Trend? = when (world.era) {
 // The era's moment.
 
 /** What a moment's deals cost and pay: a few weeks of revenue, small for a small company. */
-private val GameState.momentStake: Double get() = max(5_000.0, trailingRevenue(null, 4) / 4)
+internal val GameState.momentStake: Double get() = max(5_000.0, trailingRevenue(null, 4) / 4)
 
 @Serializable @SerialName("eraMoment")
 data class EraMoment(val era: Era) : EventKind

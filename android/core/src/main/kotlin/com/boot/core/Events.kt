@@ -134,6 +134,7 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is Opportunity -> describeOpportunity(kind)
     is LaneDecision -> describeLane(kind)
     is EraMoment -> describeMoment(kind)
+    is HistoryChoice -> describeHistory(kind)
     is ScenarioOver -> describeScenario(kind)
     is MarketEvent -> describeMarket(kind)
     is EventKind.Poach -> {
@@ -422,6 +423,7 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         is Opportunity -> resolveOpportunity(kind, choice)
         is LaneDecision -> resolveLane(kind, choice)
         is EraMoment -> resolveMoment(kind, choice)
+        is HistoryChoice -> resolveHistory(kind, choice)
         is ScenarioOver -> resolveScenario(kind, choice)
         is MarketEvent -> resolveMarket(kind, choice)
         is EventKind.Poach -> {
