@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.29 (Android):** UI polish.
+
+- Switches with many options (like the Company tab's six pages) scroll sideways at full size instead of shrinking and cutting labels off; the chosen page stays in view.
+- On the Team tab a person's name always shows: their trait and specialty tags wrap onto the next line. Who someone clashes with shows in red, who they click with in green.
+- With large text on a narrow screen, the Menu button shows just its icon so it doesn't run into the stat bubbles.
+- Collections: small boxes show the fanned covers without a label over the score; the game report calls it "A collection of N games".
+- How to play has two new topics: Your game team (specialists, who works on what, chemistry) and Shipping a game (piracy, ratings, boxed editions, collections, film and TV).
+
 **New in 3.28 (Android):** more of Game Dev Tycoon's development game.
 
 - **Sequels want a newer engine.** A sequel built on the same engine as the last game loses a little in the reviews ("fans expected a step up"); one on a better engine gains a little.

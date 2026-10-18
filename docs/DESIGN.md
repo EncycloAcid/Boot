@@ -574,6 +574,10 @@ Licences: `GamesStudio.licences`; `licenceFees` charges only platforms not yet h
 
 Specialist features: `SPECIALIST_FEATURES` (motion capture, facial animation, neural NPCs, world streaming, 3D v4, photoreal, spatial audio) need a specialist of their area's specialty on the game team. `fitFeatures` steps a ladder feature down to the best allowed rung or drops it. `stagePlanBlocker` refuses them, and the feature picker greys them out ("needs an artist").
 
+## UI polish (3.29)
+
+`Segmented` measures its longest label: if it can't fit even at 85% size, the options get their natural widths in a horizontally scrolling row (14 dp padding), and the chosen one is scrolled into view; otherwise it scales labels down to no less than 85% as before. Team rows use a `FlowRow` for the name, level and tags. `chemistryNote` returns the text and whether it's mostly good. The HUD's Menu chip drops its word when the screen is under 420 dp and the font scale is 1.15 or more.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.
