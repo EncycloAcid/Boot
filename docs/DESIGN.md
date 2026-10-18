@@ -629,6 +629,16 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Mod tools** (PC, from 1993; sims, strategy, sandbox, RPGs, shooters or a mod-support hook): weekly decay ×1.008. From 8 weeks on, 0.6% a week a mod takes off: hire its maker (a skill 6–8 game designer), make it official (+30% sales, +0.2 player score), or let it be (+10%).
 - **More stores later**: adding a store scales the PC share of weekly sales by the new reach over the old and moves the share kept accordingly.
 
+## Music and game names (3.34)
+
+**Game names** (`Titles.kt`). Each topic belongs to one of six themes (fantasy, sci-fi, grim, light, sporty, modern), each with its own adjectives, places, word endings for made-up names (Emberfall, Pulsecore), sequel subtitles and expansion names. A title is built from the topic's nouns through the genre's templates. Given the year, about a third of names use that year's templates instead: arcade names before 1986 (Ember Attack, Signaltron), nineties ones to 1999 (Ember Quest, Ember Deluxe), subtitled ones to 2009 (Ember: Heart of Winter, Ember Online) and indie ones after (Emberfall, A Hollow Crown, Ember Survivors from 2020). Titles that repeat a word or run past 30 characters are drawn again, and no place name ends in a number, so a sequel number is never mistaken for part of a name. Sims use a short word for the topic (Pet Shop Tycoon, AI Simulator). Your own suggestions, rivals' games, subsidiaries' pitches and indie pitches all pass the year in.
+
+Sequels pick from the generic subtitles and the theme's own (weighted double). Sports, racing and esports series are named for the next season 60% of the time from 1990 (Kickoff 98, Kickoff 06). Expansions take the theme's names first (The Frozen Throne, Night Circuit), then the generic ones.
+
+**Music** (`audio/Music.kt`). Ten styles now (added lounge jazz, ambient, breakbeat and city pop), two modes more (lydian, and harmonic minor for trouble). Each era has two named tunes in two styles; they take turns, each playing about two and a half minutes (`plays` passes) before the other takes over, and "Next tune" in the sound settings moves on. While cash is below zero, one tense tune in the era's main style (harmonic minor, darker filter) plays instead.
+
+A tune is built in eight-bar sections: the first half states a verse (idea, answer, something new, idea again ending on the root), a long tune repeats it with the new part climbing higher; the second half does the same over new chords two degrees higher. Dance styles drop the kick and most of the bass for four bars at the start of the second half, with a riser into the drop. The last section of a long tune adds a harmony a third below on the long notes. Chords are voiced within an octave around the middle so they move by small steps. Some bass lines step into the next chord; jazz walks. Drums get a second, busier kit for the second half, ghost snares, a little give in every hit, one of three fills every eight bars (snare roll, toms, kick-snare-toms), and a crash at each new section. Every tune is levelled to the same loudness (RMS 0.16, peak at most 0.72).
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.
@@ -639,9 +649,9 @@ The title screen lists the slots with Continue and Delete (with a confirmation),
 
 There are no audio files. A small synthesiser in the Android app (`audio/Synth.kt`) draws everything from oscillators: anti-aliased square and saw waves, triangle, sine, two-operator FM and noise, with envelopes, a one-pole filter, synthesised drums, and echoes that wrap round so a loop has no seam.
 
-**Music.** Each era maps to one of six styles, and its tune is composed from a seed of its own, so the same era always plays the same tune and two eras in one style still differ. A track is two sections of 8 or 16 bars over two chord progressions picked for the mode (major, natural minor or dorian), with a bass line, a chord part and a melody built from two-bar motifs that land on chord tones on the strong beats, answer themselves over the next chords, and come home to the root.
+**Music.** Each era has two tunes in two of ten styles, composed from seeds of their own, so the same era always plays the same tunes and two eras in one style still differ. A tune is built in eight-bar sections over two chord progressions picked for the mode (major, natural minor, dorian, lydian, or harmonic minor when the money runs out), with a bass line, a chord part and a melody built from two-bar motifs that land on chord tones on the strong beats, answer themselves over the next chords, and come home to the root. See "Music and game names (3.34)" for the song form.
 
-| Style | Eras | Sound |
+| Style | Main tune for | Sound |
 |---|---|---|
 | Chiptune | Home computers, video game crash, retro revival | Pulse-wave lead, 16th-note arpeggios, triangle bass, 138 bpm |
 | 16-bit | Console wars, multimedia | FM lead and brass stabs, slap FM bass, dorian, 116 bpm |
@@ -649,8 +659,12 @@ There are no audio files. A small synthesiser in the Android app (`audio/Synth.k
 | Downbeat | Dot-com bust, crypto winter, privacy panic, chip shortage | Soft pads and electric piano, half-time drums, minor, 86 bpm |
 | Lo-fi | Bootstrap years, remote work, creator economy, smartphones, free-to-play | Swung electric piano with sevenths, tape wobble, crackle, 80 bpm |
 | Synthwave | VR hype, metaverse hangover, cloud gaming, super apps | Detuned saw pads and lead, echoing arpeggios, big snare, minor, 100 bpm |
+| Lounge jazz | (second tunes) Bootstrap years, dot-com bust, metaverse hangover, title | Walking bass, ride cymbal, Rhodes ninths, vibraphone, swung, 126 bpm |
+| Ambient | (second tunes) Video game crash, AI gold rush, VR hype, crypto winter | Slow lydian pads, drifting bells, soft kick, long echoes, 70 bpm |
+| Breakbeat | (second tunes) Multimedia, dot-com boom, privacy panic | Skipping break with ghost snares, detuned saw bass, off-beat stabs, 132 bpm |
+| City pop | (second tunes) Console wars, remote work, creator economy, super apps | Pushed electric piano, slap bass on the octave, string pad, 108 bpm |
 
-The calmer styles leave the first section to the band and bring the tune in for the second. A track renders in about half a second on a background thread and loops as a stream; switching eras fades one out and the next in.
+The calmer styles leave the first section to the band and bring the tune in after it. A tune renders in under a second on a background thread while the last one keeps playing, then they cross over.
 
 **Effects** come from comparing the game before and after each change (`audio/Cues.kt`), one sound at most, most important first: an ending sting, the launch fanfare, a new era, a bigger office, an achievement or goal, a decision waiting, the account going red, a game ready to ship, research done, a hire, and a coin for money moved by the player's own hand (never for the weekly ins and outs). Reviews ding one by one as they appear, pitched up a major scale with the score, then a cheer for an 8 or better or a sad trombone under 5. Buttons and tabs click quietly; a failed action buzzes.
 

@@ -104,9 +104,10 @@ fun BootApp(store: GameStore) {
         val sideways = isLandscape(maxWidth, maxHeight)
         val density = LocalDensity.current
         val scaled = if (sideways) Density(density.density * CompactScale, density.fontScale) else null
-        // Each era has its own tune; the title screen has one too.
+        // Each era has its own tunes; the title screen has some too. Running out of money darkens them.
         val era = store.state?.world?.era
-        LaunchedEffect(era) { store.sound.music(MusicTrack.forEra(era)) }
+        val trouble = store.state?.let { it.cash < 0 && it.ending == null } == true
+        LaunchedEffect(era, trouble) { store.sound.music(MusicTrack.playlist(era, trouble)) }
         CompositionLocalProvider(
             LocalCompact provides sideways,
             LocalSidewaysDensity provides scaled,

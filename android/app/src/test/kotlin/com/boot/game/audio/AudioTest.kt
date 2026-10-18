@@ -36,9 +36,14 @@ class AudioTest {
 
     @Test
     fun everyEraHasATuneThatLoops() {
-        val tracks = (Era.entries.map { MusicTrack.forEra(it) } + MusicTrack.TITLE).distinctBy { it.key }
+        val tracks = (Era.entries.flatMap { MusicTrack.playlist(it) } + MusicTrack.playlist(null) +
+            listOf(Era.BOOTSTRAP_YEARS, Era.HOME_COMPUTERS, Era.DOT_COM_BOOM).flatMap { MusicTrack.playlist(it, trouble = true) }).distinctBy { it.key }
+        // Every style gets heard somewhere.
+        assertEquals(MusicStyle.entries.toSet(), tracks.map { it.style }.toSet())
         for (track in tracks) {
+            val started = System.nanoTime()
             val pcm = track.render()
+            println("${track.key} (${track.style}) composed in ${(System.nanoTime() - started) / 1_000_000} ms")
             val style = track.style
             val expected = style.bars * 16 * (SAMPLE_RATE * 60 / style.bpm / 4)
             assertEquals("${track.key} length", expected, pcm.size)
@@ -68,6 +73,30 @@ class AudioTest {
         assertEquals(MusicStyle.LOFI, b.style)
         assertTrue(!a.contentEquals(b.render()))
         assertNotEquals(styleFor(Era.HOME_COMPUTERS), styleFor(Era.DOT_COM_BOOM))
+    }
+
+    @Test
+    fun erasTakeTurnsBetweenTwoNamedTunes() {
+        for (era in Era.entries) {
+            val list = MusicTrack.playlist(era)
+            assertEquals(2, list.size)
+            assertEquals(MusicTrack.forEra(era), list.first())
+            assertEquals(2, list.map { it.key }.toSet().size)
+            assertTrue(list.all { it.title.isNotBlank() && it.title != it.style.title })
+            // Each plays for a couple of minutes before the other takes over.
+            for (t in list) assertTrue("${t.key} plays long enough", t.plays * t.style.seconds in 120.0..240.0)
+        }
+        val names = Era.entries.flatMap { MusicTrack.playlist(it) }.map { it.title }
+        assertEquals("every tune has its own name", names.size, names.toSet().size)
+        // Trouble swaps in one darker tune in the era's own style.
+        val tense = MusicTrack.playlist(Era.BOOTSTRAP_YEARS, trouble = true).single()
+        assertTrue(tense.tense)
+        assertEquals(styleFor(Era.BOOTSTRAP_YEARS), tense.style)
+        assertTrue(!tense.render().contentEquals(MusicTrack.forEra(Era.BOOTSTRAP_YEARS).render()))
+        assertEquals(2, MusicTrack.playlist(null).size)
+        // The old eras get the new styles too.
+        assertEquals(MusicStyle.CITY_POP, stylesFor(Era.CONSOLE_WARS).second)
+        assertEquals(MusicStyle.JAZZ, stylesFor(Era.BOOTSTRAP_YEARS).second)
     }
 
     @Test

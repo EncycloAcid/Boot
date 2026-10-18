@@ -134,7 +134,7 @@ private fun GameState.newPitch(): IndiePitch {
     val share = rng.range(0.45, 0.65) - if ((lastScore ?: 0.0) >= 8) 0.1 else 0.0
     return IndiePitch(
         id = g.nextId(), developer = developerName(),
-        title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), g.releases.map { it.title }.toSet() + g.published.map { it.title }),
+        title = gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), g.releases.map { it.title }.toSet() + g.published.map { it.title }, calendarYear),
         topic = topic, genre = genre, size = size, platforms = platforms,
         funding = (rng.range(lo, hi) * (0.85 + 0.3 * talent) / 1_000).roundToInt() * 1_000.0,
         weeks = weeks, labelShare = (share * 100).roundToInt() / 100.0, lastScore = lastScore,

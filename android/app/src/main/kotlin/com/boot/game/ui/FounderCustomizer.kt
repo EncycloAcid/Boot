@@ -154,7 +154,7 @@ private fun TraitCard(title: String, detail: String, selected: Boolean, modifier
     val shape = RoundedCornerShape(14.dp)
     Column(
         modifier
-            .heightIn(min = 84.dp)
+            .heightIn(min = 56.dp)
             .clip(shape)
             .background(if (selected) scheme.primaryContainer.copy(alpha = 0.6f) else gameColors.card)
             .border(if (selected) 2.dp else 1.dp, if (selected) scheme.primary else gameColors.separator, shape)

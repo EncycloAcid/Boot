@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +54,20 @@ private fun VolumeRow(label: String, value: Float, onChange: (Float) -> Unit, on
     }
 }
 
+/** The tune that's on, and a button to move on to the era's other one. */
+@Composable
+private fun NowPlaying(store: GameStore) {
+    val track = store.sound.nowPlaying ?: return
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.testTag("now-playing")) {
+        Column(Modifier.weight(1f)) {
+            Text("Now playing", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("\u201C${track.title}\u201D", style = MaterialTheme.typography.bodyLarge)
+            Text(track.style.title + if (track.tense) " · tense" else "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (!track.tense) TextButton(onClick = { store.sound.skip() }) { Text("Next tune") }
+    }
+}
+
 /** Sound and music settings, from the menu. */
 @Composable
 fun SoundDialog(store: GameStore) {
@@ -62,7 +77,8 @@ fun SoundDialog(store: GameStore) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SoundSliders(store)
-                Hint("Every era has its own tune, composed by the game itself. Music stays quiet if another app is already playing some.")
+                NowPlaying(store)
+                Hint("Every era has two tunes of its own, composed by the game itself, and a darker one for when the money runs out. Music stays quiet if another app is already playing some.")
             }
         },
         confirmButton = { TextButton(onClick = { store.soundOpen = false }) { Text("Done") } },

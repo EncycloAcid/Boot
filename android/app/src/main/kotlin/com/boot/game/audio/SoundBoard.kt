@@ -9,6 +9,7 @@ import android.media.AudioTrack
 import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -67,7 +68,13 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
     // Music
 
     private var wanted: MusicTrack? = null
+    /** Read from the UI as well as the music lane. */
+    @Volatile private var playlist: List<MusicTrack> = emptyList()
     private var loop: MusicLoop? = null
+
+    /** The tune that's on, for the settings to show. */
+    var nowPlaying by mutableStateOf<MusicTrack?>(null)
+        private set
     private var foreground = true
 
     /** If another app was already playing music when ours would start, stay out of its way. */
@@ -75,10 +82,28 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
     private val rendered = ConcurrentHashMap<String, ShortArray>()
 
     /** Plays [track] from now on, fading from whatever was playing. */
-    fun music(track: MusicTrack) {
+    fun music(track: MusicTrack) = music(listOf(track))
+
+    /** Plays [tracks] in turn from now on, each a few times round, fading from whatever was playing. */
+    fun music(tracks: List<MusicTrack>) {
+        // Show it straight away, even where nothing can be heard.
+        if (tracks != playlist) nowPlaying = tracks.firstOrNull()
         scope.launch(musicLane) {
-            if (wanted == track) return@launch
-            wanted = track
+            if (tracks == playlist) return@launch
+            playlist = tracks
+            wanted = tracks.firstOrNull()
+            applyMusic()
+        }
+    }
+
+    /** Moves on to the next tune in the list, if [from] is still the one wanted. */
+    fun skip(from: MusicTrack? = nowPlaying) {
+        if (playlist.size < 2) return
+        val next = playlist[(playlist.indexOf(from).coerceAtLeast(0) + 1) % playlist.size]
+        nowPlaying = next
+        scope.launch(musicLane) {
+            if (wanted != from) return@launch
+            wanted = next
             applyMusic()
         }
     }
@@ -107,15 +132,18 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
             current.volume = gain(musicVolume)
             return
         }
-        current?.fadeOutAndStop()
+        // Compose the new tune while the old one keeps playing, then cross over.
         val pcm = rendered.getOrPut(track!!.key) {
-            // Keep the cache to the last couple of tracks; each is a few megabytes.
-            if (rendered.size >= 2) rendered.clear()
+            // Keep the cache to the last few tracks; each is a few megabytes.
+            if (rendered.size >= 3) rendered.clear()
             track.render()
         }
         // The world may have moved on while that was composing.
         if (wanted != track || !foreground) return
-        loop = runCatching { MusicLoop(track.key, pcm).also { it.start(gain(musicVolume)) } }.getOrNull()
+        current?.fadeOutAndStop()
+        loop = runCatching {
+            MusicLoop(track.key, pcm, track.plays) { skip(track) }.also { it.start(gain(musicVolume)) }
+        }.getOrNull()
     }
 
     // Effects
@@ -184,7 +212,8 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
     /** Sliders move in even steps to the ear, not to the meter. */
     private fun gain(v: Float) = v * v
 
-    private inner class MusicLoop(val key: String, private val pcm: ShortArray) {
+    /** Plays [pcm] round and round, and calls [done] once it has gone round [plays] times. */
+    private inner class MusicLoop(val key: String, private val pcm: ShortArray, private val plays: Int, private val done: () -> Unit) {
         private val track = buildTrack(
             AudioTrack.MODE_STREAM,
             maxOf(AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT) * 2, SAMPLE_RATE / 2),
@@ -215,11 +244,16 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
             track.play()
             writer = Thread({
                 var at = 0
+                var rounds = 0
                 val chunk = SAMPLE_RATE / 10
                 while (running) {
                     val wrote = track.write(pcm, at, minOf(chunk, pcm.size - at))
                     if (wrote < 0) break
-                    at = (at + wrote) % pcm.size
+                    at += wrote
+                    if (at >= pcm.size) {
+                        at = 0
+                        if (++rounds == plays) done()
+                    }
                 }
             }, "boot-music").apply {
                 isDaemon = true

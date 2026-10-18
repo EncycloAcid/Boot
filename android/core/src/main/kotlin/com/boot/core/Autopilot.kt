@@ -515,7 +515,7 @@ class Autopilot(
             Audience.EVERYONE
         }
         return GameConcept(
-            title = g.suggestTitle(s.rng, topic, genre), topic = topic, genre = genre, audience = audience, platforms = platforms,
+            title = g.suggestTitle(s.rng, topic, genre, s.calendarYear), topic = topic, genre = genre, audience = audience, platforms = platforms,
             size = size, engineId = g.engines.maxBy { it.level }.id,
             live = Research.LIVE_SERVICE in s.researched && size >= GameSize.LARGE,
         )

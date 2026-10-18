@@ -196,6 +196,31 @@ class Mix(val frames: Int, private val loop: Boolean = false, seed: Int = 1) {
         }
     }
 
+    /** A tom: a sine that bends down onto [hz], for fills. */
+    fun tom(start: Int, hz: Double, velocity: Double = 1.0) {
+        val total = (0.34 * SAMPLE_RATE).toInt()
+        var phase = 0.0
+        for (i in 0 until total) {
+            val t = i.toDouble() / SAMPLE_RATE
+            phase = (phase + hz * (1.0 + 0.6 * exp(-t * 18)) / SAMPLE_RATE) % 1.0
+            val click = if (t < 0.003) noise.nextDouble(-0.3, 0.3) else 0.0
+            add(start + i, (sin(2 * PI * phase) * exp(-t * 9) + click) * 0.55 * velocity)
+        }
+    }
+
+    /** A crash or ride: bright noise with a metallic ring, fading over [decay] seconds. */
+    fun cymbal(start: Int, velocity: Double = 1.0, decay: Double = 0.9) {
+        val total = (decay * 2.5 * SAMPLE_RATE).toInt()
+        var low = 0.0
+        for (i in 0 until total) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val n = noise.nextDouble(-1.0, 1.0)
+            low += 0.7 * (n - low)
+            val ring = 0.35 * (sin(2 * PI * 3_150.0 * t) + sin(2 * PI * 4_730.0 * t)) * exp(-t * 3 / decay)
+            add(start + i, ((n - low) + ring) * exp(-t / decay) * 0.16 * velocity)
+        }
+    }
+
     /** A falling or rising sweep of noise, for whooshes. */
     fun sweep(start: Int, length: Double, velocity: Double = 1.0, rising: Boolean = true) {
         val total = (length * SAMPLE_RATE).toInt()

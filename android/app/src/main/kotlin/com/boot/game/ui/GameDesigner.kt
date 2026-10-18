@@ -72,6 +72,7 @@ import com.boot.core.Genre
 import com.boot.core.Platform
 import com.boot.core.PriceTier
 import com.boot.core.Research
+import com.boot.core.calendarYear
 import com.boot.core.conceptBlocker
 import com.boot.core.estimatedWeeks
 import com.boot.core.gameTitle
@@ -108,9 +109,9 @@ fun GameDesigner(store: GameStore, state: GameState) {
     fun suggested(): String = if (remaster != null) {
         seed.title
     } else if (sequel != null) {
-        g.nextTitle(sequel, genre, reroll)
+        g.nextTitle(sequel, genre, reroll, state.calendarYear)
     } else {
-        gameTitle(topic, genre, salt + reroll, g.releases.map { it.title }.toSet())
+        gameTitle(topic, genre, salt + reroll, g.releases.map { it.title }.toSet(), state.calendarYear)
     }
     var title by remember { mutableStateOf(seed?.title ?: suggested()) }
     var genre2 by remember { mutableStateOf(seed?.genre2) }

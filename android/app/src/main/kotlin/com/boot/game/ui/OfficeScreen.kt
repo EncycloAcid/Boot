@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.boot.core.GameClock
 import com.boot.core.Campaign
 import com.boot.core.Format
@@ -293,15 +294,9 @@ private fun GlanceTile(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        Text(value, style = MaterialTheme.typography.titleMedium, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(
-            caption,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
+        // Shrink to fit rather than cut off: a narrow tile sideways still reads "Bootstrap Years" whole.
+        FitText(value, MaterialTheme.typography.titleMedium, color = color, textAlign = TextAlign.Center, min = 11.sp)
+        FitText(caption, MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, min = 8.sp)
     }
 }
 

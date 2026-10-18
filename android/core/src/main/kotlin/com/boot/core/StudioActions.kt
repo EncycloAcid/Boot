@@ -151,7 +151,7 @@ fun GameState.estimatedWeeks(c: GameConcept): Int = ceil(c.work / max(1.0, staff
 
 /** Public title invent for UI modules that cannot see the internal RNG. */
 fun GameState.suggestGameTitle(topic: Topic, genre: Genre): String =
-    studio().suggestTitle(rng, topic, genre)
+    studio().suggestTitle(rng, topic, genre, calendarYear)
 
 fun GameState.startGame(
     concept: GameConcept,
@@ -352,7 +352,7 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
     val g = studio()
     val d = g.dealOffers.firstOrNull { it.id == id } ?: throw invalid("That deal is off the table.")
     val concept = GameConcept(
-        title = g.suggestTitle(rng, d.topic, d.genre), topic = d.topic, genre = d.genre, platforms = listOf(d.platform), size = d.size,
+        title = g.suggestTitle(rng, d.topic, d.genre, calendarYear), topic = d.topic, genre = d.genre, platforms = listOf(d.platform), size = d.size,
         engineId = g.engines.maxBy { it.level }.id,
     )
     val wasKnown = d.topic in g.topics
@@ -430,7 +430,7 @@ fun GameState.sequelConcept(releaseId: Int, genre: Genre? = null): GameConcept {
     val latest = entries.last()
     val spinOff = genre != null && genre != latest.concept.genre
     return latest.concept.copy(
-        title = g.nextTitle(releaseId, genre), sequelOf = latest.id, engineId = g.engines.maxBy { it.level }.id,
+        title = g.nextTitle(releaseId, genre, year = calendarYear), sequelOf = latest.id, engineId = g.engines.maxBy { it.level }.id,
         genre = genre ?: latest.concept.genre, genre2 = if (spinOff) null else latest.concept.genre2,
         platforms = latest.concept.platforms.filter { availablePlatform(it) }.ifEmpty { listOf(Platform.PC) },
     )
@@ -568,7 +568,7 @@ fun GameState.startExpansion(id: Int, scope: ExpansionScope = ExpansionScope.EXP
     val g = studio()
     val r = g.release(id)!!
     val used = r.expansions.toSet()
-    val name = GameNames.expansions.filter { "${r.title}: $it" !in used }.let { rng.pick(it) }
+    val name = expansionTitles(r.concept.topic, r.id.toLong()).filter { "${r.title}: $it" !in used }.let { rng.pick(it) }
     val x = GameExpansion(r.id, "${r.title}: $name", work = r.concept.size.work * scope.work, weeklyBudget = r.concept.size.weeklyBudget * scope.budget, scope = scope)
     g.expansion = x
     addLog("Work starts on ${x.title}.", LogTone.NEUTRAL, Lane.GAMES)

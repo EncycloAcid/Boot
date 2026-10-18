@@ -510,7 +510,7 @@ class GamesStudio {
      * What to call the next game in [releaseId]'s series: a numbered sequel, or a spin-off when the
      * genre changes. Another [reroll] gives another way of numbering and subtitling it.
      */
-    fun nextTitle(releaseId: Int, genre: Genre? = null, reroll: Int = 0): String {
+    fun nextTitle(releaseId: Int, genre: Genre? = null, reroll: Int = 0, year: Int? = null): String {
         val r = release(releaseId) ?: return "Untitled"
         val entries = series(seriesRoot(r))
         val latest = entries.last()
@@ -520,7 +520,7 @@ class GamesStudio {
         val title = if (genre != null && genre != latest.concept.genre) {
             spinOffTitle(name, genre, reroll)
         } else {
-            sequelTitle(name, n, latest.concept.topic, latest.id.toLong() + reroll * 101L)
+            sequelTitle(name, n, latest.concept.topic, latest.id.toLong() + reroll * 101L, year)
         }
         return if (title in used) "$name $n" else title
     }
@@ -533,8 +533,8 @@ class GamesStudio {
             .sortedByDescending { it.lifetime }
 
     /** Suggest a name nobody has used, in the voice of the topic and genre. */
-    fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION): String =
-        gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title, project2?.title))
+    fun suggestTitle(rng: SeededRNG, topic: Topic = Topic.FANTASY, genre: Genre = Genre.ACTION, year: Int? = null): String =
+        gameTitle(topic, genre, rng.int(0, 1_000_000).toLong(), releases.map { it.title }.toSet() + listOfNotNull(project?.title, project2?.title), year)
 
     // Weekly simulation
 

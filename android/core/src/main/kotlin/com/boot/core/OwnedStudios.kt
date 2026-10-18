@@ -70,7 +70,7 @@ fun GameState.studioPitch(sub: Subsidiary): StudioGame {
     val series = studioFranchises(sub.name)
     // Once you've said what you want, that's what they pitch.
     val franchise = if (sub.pitchChosen) sub.pitchSeries?.takeIf { it in series } else if (series.isNotEmpty() && dice.chance(0.7)) dice.pick(series) else null
-    val name = gameTitle(topic, genre, dice.int(0, 1_000_000).toLong(), games?.market?.games?.map { it.title }?.toSet().orEmpty())
+    val name = gameTitle(topic, genre, dice.int(0, 1_000_000).toLong(), games?.market?.games?.map { it.title }?.toSet().orEmpty(), calendarYear)
     val title = if (franchise != null) "$franchise: $name" else name
     val (cost, weeks) = studioGameQuote(size)
     return StudioGame(title, topic, genre, size, StudioBudget.NORMAL, week, week + weeks, cost, franchise)

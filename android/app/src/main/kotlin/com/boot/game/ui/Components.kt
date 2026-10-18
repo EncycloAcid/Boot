@@ -522,26 +522,8 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
             .background(colors.fill)
             .then(
                 if (scrolls) {
-                    // Fade the options out at an edge that has more beyond it, so a cut-off label reads as "scroll".
                     Modifier
-                        .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            val w = 32.dp.toPx()
-                            if (scroll.value > 0) {
-                                drawRect(
-                                    Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = 0f, endX = w),
-                                    size = androidx.compose.ui.geometry.Size(w, size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
-                                )
-                            }
-                            if (scroll.value < scroll.maxValue) {
-                                drawRect(
-                                    Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - w, endX = size.width),
-                                    topLeft = androidx.compose.ui.geometry.Offset(size.width - w, 0f),
-                                    size = androidx.compose.ui.geometry.Size(w, size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
-                                )
-                            }
-                        }
+                        .fadeEdges({ scroll.value > 0 }, { scroll.value < scroll.maxValue })
                         .horizontalScroll(scroll)
                 } else {
                     Modifier
@@ -675,6 +657,30 @@ fun FitText(
         autoSize = TextAutoSize.StepBased(minFontSize = min, maxFontSize = style.fontSize, stepSize = 0.5.sp),
     )
 }
+
+/**
+ * Fades content out at an edge that has more beyond it, so a cut-off item reads as "scroll".
+ * [start] and [end] are read while drawing, so the fades follow the scroll without recomposing.
+ */
+fun Modifier.fadeEdges(start: () -> Boolean, end: () -> Boolean, width: Dp = 32.dp): Modifier = this
+    .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val w = width.toPx()
+        if (start()) {
+            drawRect(
+                Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = 0f, endX = w),
+                size = androidx.compose.ui.geometry.Size(w, size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+            )
+        }
+        if (end()) {
+            drawRect(
+                Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - w, endX = size.width),
+                topLeft = androidx.compose.ui.geometry.Offset(size.width - w, 0f),
+                size = androidx.compose.ui.geometry.Size(w, size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+            )
+        }
+    }
 
 /** A short explanation that appears on long press: for icons and numbers that don't say what they are. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

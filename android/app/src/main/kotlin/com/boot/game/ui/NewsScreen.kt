@@ -142,8 +142,11 @@ fun NewsScreen(store: GameStore, state: GameState) {
 /** A row of chips that scrolls edge to edge, past the screen's side margins. */
 @Composable
 private fun <T> ChipRow(options: List<T>, selected: T, label: (T) -> String, tag: String = "", onPick: (T) -> Unit) {
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
     LazyRow(
-        modifier = Modifier.bleed(16.dp).testTag(tag),
+        state = list,
+        // Fade at an edge with more chips beyond it.
+        modifier = Modifier.bleed(16.dp).fadeEdges({ list.canScrollBackward }, { list.canScrollForward }, 24.dp).testTag(tag),
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

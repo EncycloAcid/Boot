@@ -3,12 +3,13 @@ package com.boot.core
 import kotlin.random.Random
 
 /*
- * Game titles that sound like games: built from the topic's vocabulary and shaped by the genre
- * (RPGs get chronicles and legends, strategy games get commands and wars, sims get tycoons), and
- * sequels named the way real series name them.
+ * Game titles that sound like games: built from the topic's vocabulary, shaped by the genre
+ * (RPGs get chronicles and legends, strategy games get commands and wars, sims get tycoons) and
+ * by the year (arcade names in 1980, quests in the nineties, subtitles in the 2000s, one strange
+ * word for an indie in the 2010s), with sequels and expansions named the way real series name them.
  */
 
-private enum class Theme { FANTASY, SCIFI, GRIM, LIGHT }
+private enum class Theme { FANTASY, SCIFI, GRIM, LIGHT, SPORTY, MODERN }
 
 private val Topic.theme: Theme
     get() = when (this) {
@@ -19,23 +20,92 @@ private val Topic.theme: Theme
         Topic.MILITARY, Topic.SPY, Topic.WILD_WEST, Topic.POST_APOCALYPTIC, Topic.ZOMBIES, Topic.HORROR,
         Topic.DETECTIVE, Topic.MYSTERY, Topic.NINJA, Topic.HEIST, Topic.SURVIVAL, Topic.GANGSTERS, Topic.PRISON,
         Topic.GHOSTS, Topic.POLITICS -> Theme.GRIM
+        Topic.RACING, Topic.SPORTS, Topic.SKATEBOARDING, Topic.ESPORTS_SCENE, Topic.AVIATION -> Theme.SPORTY
+        Topic.BUSINESS, Topic.HOSPITAL, Topic.FASHION, Topic.SCHOOL, Topic.CITY, Topic.MUSIC, Topic.BALLET, Topic.TRAINS -> Theme.MODERN
         else -> Theme.LIGHT
     }
 
 private val Theme.adjectives: List<String>
     get() = when (this) {
-        Theme.FANTASY -> listOf("Shattered", "Forgotten", "Eternal", "Hollow", "Crimson", "Last", "Ancient", "Sunken", "Ashen", "Gilded")
-        Theme.SCIFI -> listOf("Stellar", "Void", "Neon", "Quantum", "Silent", "Zero", "Distant", "Broken", "Infinite", "Chrome")
-        Theme.GRIM -> listOf("Iron", "Black", "Last", "Silent", "Bitter", "Dead", "Cold", "Burning", "Red", "Grim")
-        Theme.LIGHT -> listOf("Tiny", "Happy", "Super", "Big", "Little", "Cozy", "Wild", "Grand", "Golden", "Lucky")
+        Theme.FANTASY -> listOf("Shattered", "Forgotten", "Eternal", "Hollow", "Crimson", "Last", "Ancient", "Sunken", "Ashen", "Gilded", "Wandering", "Silver")
+        Theme.SCIFI -> listOf("Stellar", "Void", "Neon", "Quantum", "Silent", "Zero", "Distant", "Broken", "Infinite", "Chrome", "Final", "Hidden")
+        Theme.GRIM -> listOf("Iron", "Black", "Last", "Silent", "Bitter", "Dead", "Cold", "Burning", "Red", "Grim", "Lost", "Hard")
+        Theme.LIGHT -> listOf("Tiny", "Happy", "Super", "Big", "Little", "Cozy", "Wild", "Grand", "Golden", "Lucky", "Sunny", "Merry")
+        Theme.SPORTY -> listOf("Turbo", "Extreme", "Pro", "Ultimate", "Max", "Street", "Total", "Rapid", "Hyper", "Wild")
+        Theme.MODERN -> listOf("Grand", "Golden", "Big", "Bright", "Prime", "Late Night", "Royal", "Rising", "Hidden", "Perfect")
     }
 
+/** Places stay free of trailing numbers, so a sequel's number is never mistaken for part of the name. */
 private val Theme.places: List<String>
     get() = when (this) {
-        Theme.FANTASY -> listOf("Eldermoor", "Vaelheim", "Thornwick", "Ashgard", "Duskhold", "Ironvale", "Mirewood", "Highspire")
-        Theme.SCIFI -> listOf("Kepler-9", "Titan Station", "Nova Prime", "Sector 7", "Orion Deep", "New Shanghai", "Helios")
-        Theme.GRIM -> listOf("Dust Creek", "Ravenport", "Blackwater", "Fort Hollow", "Coldharbor", "Ashfall", "Grey Ridge")
-        Theme.LIGHT -> listOf("Maple Bay", "Sunny Hills", "Coral Cove", "Starlight City", "Pine Valley", "Harbor Town")
+        Theme.FANTASY -> listOf("Eldermoor", "Vaelheim", "Thornwick", "Ashgard", "Duskhold", "Ironvale", "Mirewood", "Highspire", "Wyrmrest", "Saltmarsh")
+        Theme.SCIFI -> listOf("Kepler", "Titan Station", "Nova Prime", "Sector Zero", "Orion Deep", "New Shanghai", "Helios", "Europa", "Halcyon", "Proxima")
+        Theme.GRIM -> listOf("Dust Creek", "Ravenport", "Blackwater", "Fort Hollow", "Coldharbor", "Ashfall", "Grey Ridge", "Hollow Pines", "Salt Flats")
+        Theme.LIGHT -> listOf("Maple Bay", "Sunny Hills", "Coral Cove", "Starlight City", "Pine Valley", "Harbor Town", "Puddle Lane", "Honey Hollow")
+        Theme.SPORTY -> listOf("Neo Tokyo", "Riverside", "Bay City", "Monte Rosso", "Kingsway", "Sunset Strip", "Redwood Ridge")
+        Theme.MODERN -> listOf("Metro City", "Westbrook", "Silver Lake", "Ashford", "Kingsbridge", "Lakeview", "Union Square")
+    }
+
+/** Endings for made-up one-word titles: Emberfall, Runeborn, Pulsecore. */
+private val Theme.suffixes: List<String>
+    get() = when (this) {
+        Theme.FANTASY -> listOf("fall", "bound", "born", "guard", "song", "heart", "forge")
+        Theme.SCIFI -> listOf("fall", "core", "shift", "point", "drive")
+        Theme.GRIM -> listOf("fall", "burn", "shade", "watch")
+        Theme.LIGHT -> listOf("land", "ville", "topia")
+        Theme.SPORTY -> emptyList()
+        Theme.MODERN -> emptyList()
+    }
+
+/** What comes after the colon in a sequel. "@" is a place, "#" one of the topic's words. */
+private val Theme.subtitles: List<String>
+    get() = when (this) {
+        Theme.FANTASY -> listOf("The Ashen Crown", "Wrath of the Old Gods", "The Last Oath", "Embers of @", "Shadow of @", "The Sunken King", "Heart of Winter", "Rise of the #")
+        Theme.SCIFI -> listOf("Zero Hour", "Deep Signal", "Event Horizon", "The Long Dark", "First Contact", "Dead Orbit", "Escape from @", "Beyond @")
+        Theme.GRIM -> listOf("No Mercy", "Blood Debt", "Ashes to Ashes", "The Long Night", "Judgement Day", "Last Light", "Return to @", "The @ Files")
+        Theme.LIGHT -> listOf("Second Helpings", "All Together", "The Big Day", "Party Time", "Summer Holiday", "Back to @", "A New Friend", "Around the World")
+        Theme.SPORTY -> listOf("World Tour", "Championship Edition", "All-Stars", "Overdrive", "Unlimited", "Road to @", "Street Kings", "Legends")
+        Theme.MODERN -> listOf("Second Term", "The Big Leagues", "Under Pressure", "Rush Hour", "Behind Closed Doors", "Night Shift", "Return to @", "Grand Opening")
+    }
+
+private val Theme.expansions: List<String>
+    get() = when (this) {
+        Theme.FANTASY -> listOf("The Frozen Throne", "Lords of the Deep", "The Lost Isles", "Curse of @", "Heart of Thorns", "The Old Roads")
+        Theme.SCIFI -> listOf("Dark Matter", "Outer Rim", "Signal Lost", "The @ Incident", "Cold Storage", "Overclock")
+        Theme.GRIM -> listOf("Dead of Winter", "Nightshift", "Scorched Earth", "The @ Job", "Bad Blood", "Undertow")
+        Theme.LIGHT -> listOf("Summer Fun", "Winter Wonderland", "Island Getaway", "Seaside Days", "Spooky Season", "Festival Days")
+        Theme.SPORTY -> listOf("World Tour", "Legends Pack", "Night Circuit", "Pro Season", "Rivals", "Overtime")
+        Theme.MODERN -> listOf("After Hours", "Big City Lights", "Late Shift", "Boom Times", "Hostile Takeover", "The @ Years")
+    }
+
+/** The topic as one word for a sim's name: Cooking Tycoon, Hospital Simulator. */
+private val Topic.simWord: String
+    get() = when (this) {
+        Topic.ARTIFICIAL_INTELLIGENCE -> "AI"
+        Topic.ESPORTS_SCENE -> "Esports"
+        Topic.DESERT_ISLAND -> "Island"
+        Topic.POST_APOCALYPTIC -> "Wasteland"
+        Topic.MONSTER_TAMING -> "Monster"
+        Topic.CARD_BATTLES -> "Card"
+        Topic.SCI_FI -> "Starship"
+        Topic.TIME_TRAVEL -> "Time Machine"
+        Topic.WILD_WEST -> "Frontier"
+        Topic.SUPERHEROES -> "Hero"
+        Topic.DINOSAURS -> "Dino"
+        Topic.PETS -> "Pet Shop"
+        Topic.ROBOTS -> "Robot"
+        Topic.TRAINS -> "Train"
+        Topic.ZOMBIES -> "Zombie"
+        Topic.VAMPIRES -> "Vampire"
+        Topic.PIRATES -> "Pirate"
+        Topic.GHOSTS -> "Ghost"
+        Topic.ALIENS -> "Alien"
+        Topic.VIKINGS -> "Viking"
+        Topic.DRAGONS -> "Dragon"
+        Topic.WIZARDS -> "Wizard"
+        Topic.GANGSTERS -> "Gangster"
+        Topic.NINJA -> "Ninja"
+        else -> title.split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } }
     }
 
 private val Topic.nouns: List<String>
@@ -109,53 +179,138 @@ private val subtitles = listOf(
 private fun single(s: String) = ' ' !in s && '-' !in s
 
 private fun plural(s: String) = when {
-    s.endsWith("s") -> s
+    s.endsWith("s") || s.endsWith("x") -> s
     s.endsWith("y") && !s.endsWith("ey") -> s.dropLast(1) + "ies"
+    s.endsWith("ch") || s.endsWith("sh") -> s + "es"
     else -> s + "s"
 }
 
-private fun genreTemplates(genre: Genre, topic: Topic, r: Random): String {
-    val t = topic.theme
-    val n = topic.nouns.random(r)
-    val n2 = (topic.nouns - n).random(r)
-    val a = t.adjectives.random(r)
-    val p = t.places.random(r)
-    val options = when (genre) {
-        Genre.ACTION -> listOfNotNull(
-            "$a $n", "$n: $a $n2", "$n Protocol", "Operation $a $n", "$n Strike",
-            if (single(n) && !n.endsWith("fall")) "${n}fall" else null,
-        )
-        Genre.ADVENTURE -> listOf("The $a $n", "$n of $p", "Journey to $p", "Beyond $p", "Secrets of $p", "The $n of $p")
-        Genre.RPG -> listOfNotNull(
-            "$p: $a $n", "Chronicles of $p", "The $a $n", "Tales of $p", "Legend of the $a $n",
-            if (single(n)) "${n}bound" else null,
-        )
-        Genre.SIMULATION -> listOf("${topic.title} Tycoon", "${topic.title} Simulator", "$p ${topic.title} Story", "$a $n Life", "$n Manager")
-        Genre.STRATEGY -> listOfNotNull(
-            "$n Command", "$p Tactics", "$n Wars", "Total $n", "$a $n: Empire",
-            if (single(n)) "Age of ${plural(n)}" else null,
-        )
-        Genre.CASUAL -> listOfNotNull(
-            "$a $n", "$n Pop!", "$n Party", "$n Match", if (single(n)) "Tiny ${plural(n)}" else null, "$a ${plural(n)}",
-        )
-        Genre.PUZZLE -> listOfNotNull("$n Puzzle", "The $n Riddle", "$a $n Box", "$n Logic", if (single(n)) "${n}doku" else null, "Unlock $p")
-        Genre.PLATFORMER -> listOfNotNull("Super $n", "$n Jump", "$n Dash", "$a $n Land", "$n World", if (single(n)) "${n} Bros." else null)
-        Genre.SHOOTER -> listOf("$n Ops", "$a $n: Warfare", "$n Battlefront", "Call of $p", "$n Fire", "Squad $n")
-        Genre.FIGHTING -> listOf("$n Fighter", "$a $n Combat", "$n Kombat", "$n Clash", "Fist of $p", "$n Tournament")
-        Genre.RHYTHM -> listOf("$n Beat", "$n Hero", "$n Revolution", "Dance $n", "$a Rhythm", "$n Groove")
-        Genre.SANDBOX -> listOfNotNull("$n Craft", "$p Builder", "$a $n Sandbox", "Block $n", if (single(n)) "${n}topia" else null, "Make $p")
-    }
-    return options.random(r)
+private fun words(s: String) = s.lowercase().split(' ', '-').toSet()
+
+/** The look of a title in its day. */
+private enum class TitleAge { ARCADE, CLASSIC, MILLENNIUM, INDIE }
+
+private fun ageOf(year: Int) = when {
+    year < 1986 -> TitleAge.ARCADE
+    year < 2000 -> TitleAge.CLASSIC
+    year < 2010 -> TitleAge.MILLENNIUM
+    else -> TitleAge.INDIE
 }
 
-/** A title for a new game. The same salt always gives the same answer, so the UI can reroll cleanly. */
-fun gameTitle(topic: Topic, genre: Genre, salt: Long, used: Set<String> = emptySet()): String {
+/** Everything a template needs, picked once per try. */
+private class Parts(topic: Topic, r: Random) {
+    val theme = topic.theme
+    val n: String = topic.nouns.random(r)
+    val n2: String = (topic.nouns - n).random(r)
+    /** An adjective that doesn't repeat the noun: no "Neon Neon". */
+    val a: String = theme.adjectives.filter { (words(it) intersect words(n)).isEmpty() }.random(r)
+    val p: String = theme.places.random(r)
+    val sim: String = topic.simWord
+    val sub: String = fill(theme.subtitles.random(r), p, n)
+    /** A made-up word, when the noun takes one well: Emberfall, but not Signalline or Tidesbound. */
+    val coined: String? = theme.suffixes.shuffled(r).firstOrNull { s ->
+        single(n) && n.length <= 7 && !n.endsWith("s") && !n.endsWith(s) && n.last().lowercaseChar() != s.first()
+    }?.let { n + it }
+    val one: Boolean = single(n)
+}
+
+private fun fill(template: String, place: String, noun: String) = template.replace("@", place).replace("#", noun)
+
+private fun genreTemplates(genre: Genre, x: Parts): List<String?> = with(x) {
+    when (genre) {
+        Genre.ACTION -> listOf(
+            "$a $n", "$n: $sub", if (n != "Protocol") "$n Protocol" else null, "Operation $a $n", "$n Strike", coined,
+            "Rogue $n", "$n Unleashed",
+        )
+        Genre.ADVENTURE -> listOf(
+            "The $a $n", "$n of $p", "Journey to $p", "Beyond $p", "Secrets of $p", "The $n of $p", "Lost in $p",
+            if (one) "A $n's Tale" else null, coined,
+        )
+        Genre.RPG -> listOf(
+            "$p: $a $n", "Chronicles of $p", "The $a $n", "Tales of $p", "Legend of the $a $n", coined,
+            if (one) "$n Saga" else null, if (one) "$a ${plural(n)}" else null,
+            if (theme == Theme.FANTASY) "$n & $n2" else null,
+        )
+        Genre.SIMULATION -> listOf(
+            "$sim Tycoon", "$sim Simulator", if (theme == Theme.LIGHT || theme == Theme.MODERN) "$p $sim Story" else null,
+            "$n Life", "$n Manager", "$sim Inc.", "$p Days", "My $n", if (sim != "Business") "$sim Empire" else null,
+        )
+        Genre.STRATEGY -> listOf(
+            "$n Command", "$p Tactics", "$n Wars", "Total $n", "$n: Empires", if (one) "Age of ${plural(n)}" else null,
+            "$n Lords", "Rise of $p", "$p Conquest",
+        )
+        Genre.CASUAL -> listOf(
+            "$a $n", "$n Pop!", "$n Party", "$n Match", if (one) "Tiny ${plural(n)}" else null, if (one) "$a ${plural(n)}" else null,
+            if (one) "$n Saga" else null, "$n Blast", "$n Friends",
+        )
+        Genre.PUZZLE -> listOf(
+            "$n Puzzle", "The $n Riddle", "$a $n Box", "$n Logic", if (one) "${n}doku" else null, "Unlock $p", "The $n Room", "$n Link",
+        )
+        Genre.PLATFORMER -> listOf(
+            "Super $n", "$n Jump", "$n Dash", "$n Land", "$n World", if (one) "$n Bros." else null, "$a $n", "$n Kid", "$n Odyssey",
+        )
+        Genre.SHOOTER -> listOf(
+            "$n Ops", "$a $n: Warfare", "$n Battlefront", "Call of $p", "$n Fire", "Squad $n", "Siege of $p", "$a $n",
+        )
+        Genre.FIGHTING -> listOf(
+            "$n Fighter", "$a $n Combat", "$n Kombat", "$n Clash", "Fist of $p", "$n Tournament", "$a Fist", "$n Brawl",
+        )
+        Genre.RHYTHM -> listOf(
+            "$n Beat", "$n Hero", "$n Revolution", "Dance $n", "$a Rhythm", "$n Groove", "$n Band", "$n Fever",
+        )
+        Genre.SANDBOX -> listOf(
+            "$n Craft", "$p Builder", "Block $n", if (one) "${n}topia" else null, "Make $p", "$n Island", "$n Worlds", coined,
+        )
+    }
+}
+
+/** Names that date a game: the same idea is "Ember Attack" in 1981 and "Ember Survivors" in 2022. */
+private fun ageTemplates(age: TitleAge, year: Int, genre: Genre, x: Parts): List<String?> = with(x) {
+    when (age) {
+        TitleAge.ARCADE -> listOf(
+            "$n Attack", "Super $n", "Mega $n", "$n Blaster", if (one && n.length <= 6) "${n}tron" else null,
+            "$n Invaders", if (one && n.length <= 6 && !n.endsWith("s")) "$n Man" else null,
+            if (theme == Theme.SCIFI) "Space $n" else null, "$n Command",
+        )
+        TitleAge.CLASSIC -> listOf(
+            "$n Quest", "$n Deluxe", "Xtreme $n", "$n Turbo", "$n Gold", "Ultimate $n",
+            if (theme == Theme.FANTASY || theme == Theme.LIGHT) "Legend of $p" else null,
+            if (genre == Genre.PLATFORMER || genre == Genre.ACTION) "$n Kid" else null,
+        )
+        TitleAge.MILLENNIUM -> listOf(
+            "$n: $sub", "$n Online", "$n Evolution", "$n Unleashed", "$n Legends", "$n Revolution", "$a $n: $sub",
+        )
+        TitleAge.INDIE -> listOf(
+            coined, coined, if (one) n else null, "A $a $n",
+            if (genre in setOf(Genre.SIMULATION, Genre.SANDBOX, Genre.ACTION, Genre.CASUAL)) "$sim Simulator" else null,
+            if (theme == Theme.LIGHT || theme == Theme.MODERN) "Untitled $n Game" else null,
+            "The $n of $p",
+            if (year >= 2020) "$n Survivors" else null, if (year >= 2017 && genre == Genre.SHOOTER) "$n Royale" else null,
+        )
+    }
+}
+
+/**
+ * A title for a new game. The same salt always gives the same answer, so the UI can reroll cleanly.
+ * With a [year], it sounds like a game from then.
+ */
+fun gameTitle(topic: Topic, genre: Genre, salt: Long, used: Set<String> = emptySet(), year: Int? = null): String {
     val r = Random(salt * 31 + topic.ordinal * 7 + genre.ordinal)
     repeat(30) {
-        val t = genreTemplates(genre, topic, r)
-        if (t !in used) return t
+        val x = Parts(topic, r)
+        val dated = year?.let { ageTemplates(ageOf(it), it, genre, x).filterNotNull() }.orEmpty()
+        val options = genreTemplates(genre, x).filterNotNull()
+        // About a third of the time, the year has its say.
+        val t = if (dated.isNotEmpty() && r.nextDouble() < 0.35) dated.random(r) else options.random(r)
+        if (t !in used && t.length <= 30 && !repeats(t)) return t
     }
     return "${topic.nouns.random(r)} ${(used.size + 1)}"
+}
+
+/** "Cipher Cipher" and "Dust: Dust Storm" read like mistakes. */
+private fun repeats(title: String): Boolean {
+    val w = title.lowercase().split(' ', ':', '-', '&').filter { it.length > 2 }
+    return w.size != w.toSet().size
 }
 
 private val romans = listOf("", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV")
@@ -166,16 +321,33 @@ fun roman(n: Int): String = romans.getOrElse(n) { "$n" }
 fun seriesName(title: String): String =
     title.substringBefore(":").replace(Regex(" (\\d+|[IVX]+)$"), "").trim()
 
-/** What to call the [n]th game in a series, the way real series do it. */
-fun sequelTitle(series: String, n: Int, topic: Topic, salt: Long): String {
+/** Sports games are named for the season they come out before: Kickoff 98, Kickoff 06. */
+private val Topic.yearly: Boolean get() = this == Topic.SPORTS || this == Topic.RACING || this == Topic.ESPORTS_SCENE
+
+/**
+ * What to call the [n]th game in a series, the way real series do it: numbers, Roman numerals,
+ * subtitles in the voice of the topic, and, for sports games with a [year], the season.
+ */
+fun sequelTitle(series: String, n: Int, topic: Topic, salt: Long, year: Int? = null): String {
     val r = Random(salt * 17 + n)
-    val sub = (subtitles + listOf("Rise of the ${topic.nouns.random(r)}", "Return to ${topic.theme.places.random(r)}")).random(r)
+    if (year != null && topic.yearly && year >= 1990 && r.nextDouble() < 0.6) {
+        return "$series ${"%02d".format((year + 1) % 100)}"
+    }
+    val theme = topic.theme
+    val sub = fill((subtitles + theme.subtitles + theme.subtitles).random(r), theme.places.random(r), topic.nouns.random(r))
     return when (r.nextInt(if (n == 2) 4 else 3)) {
         0 -> "$series $n"
         1 -> "$series ${roman(n)}"
         2 -> "$series ${roman(n)}: $sub"
         else -> "$series: $sub"
     }
+}
+
+/** Names for an expansion of a game about [topic], in its voice first and then the usual ones. */
+fun expansionTitles(topic: Topic, salt: Long): List<String> {
+    val theme = topic.theme
+    val place = theme.places[Math.floorMod(salt, theme.places.size.toLong()).toInt()]
+    return theme.expansions.map { fill(it, place, topic.nouns.first()) } + GameNames.expansions
 }
 
 /** What to call a spin-off in another genre. [variant] picks another of the genre's usual names. */

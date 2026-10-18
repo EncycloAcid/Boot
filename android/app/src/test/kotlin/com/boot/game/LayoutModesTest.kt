@@ -153,6 +153,14 @@ class LayoutModesTest {
         compose.onNodeWithText("Sound and music").performClick()
         compose.waitForIdle()
         save("99c-sideways-sound", top = true)
+        // The era's tune is named, and the other one is a tap away.
+        val first = store.sound.nowPlaying!!
+        compose.onNodeWithText("\u201C${first.title}\u201D").assertExistsCompat()
+        compose.onNodeWithText("Next tune").performClick()
+        compose.waitForIdle()
+        val second = store.sound.nowPlaying!!
+        assertTrue(second.key != first.key)
+        compose.onNodeWithText("\u201C${second.title}\u201D").assertExistsCompat()
         compose.onNodeWithContentDescription("Music volume").performSemanticsAction(SemanticsActions.SetProgress) { it(0f) }
         compose.onNodeWithContentDescription("Effects volume").performSemanticsAction(SemanticsActions.SetProgress) { it(0.5f) }
         compose.waitForIdle()
