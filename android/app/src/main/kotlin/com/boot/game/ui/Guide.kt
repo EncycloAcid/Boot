@@ -173,7 +173,8 @@ val guideTopics: List<GuideTopic> = listOf(
         listOf(
             "Eras change demand for each business, salaries, GPU prices and how keen investors are. The era card on the Company tab says what's good and bad right now and what's coming.",
             "Each era has a challenge with a reward, and at its height a one-off decision you'll only get then. When it ends, the paper reviews how you did.",
-            "A run can start today or at one of tech's revolutions (1977, 1985, 1995 or 2007) and play through history to the present.",
+            "A run can start today or at one of tech's turning points (1977, 1985, 1995, 2000, 2007 or 2012) and play through history to the present.",
+            "History happens on its real dates: Doom, Steam, the financial crisis, lockdown. Each moves the market for a while, and some ask you to choose. As each decade ends the papers name its game of the decade.",
         ),
     ),
     GuideTopic(

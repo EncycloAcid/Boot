@@ -589,6 +589,15 @@ Buying used to be all or nothing. Now there's a middle step and more ways to pay
 - **Next series**: a studio you own can be told to make one of its series next, or something new; the choice lasts until it greenlights a game.
 - The holdings summary (paid, worth now, earned) covers both studios and stakes, and stakes count in the company's value and sale price.
 
+## History and decades (3.31)
+
+Runs set in the past used to follow history's eras but nothing happened on a given date. Now they do (`HistoryEvents.kt`):
+
+- **Dated events**: 24 real moments from 1978 to 2022, each on its real year and week. Each publishes a lead story, may shift demand for a lane for 6 months to 2 years (Pac-Man +8% games, the financial crisis −8% everywhere for 39 weeks, lockdown +20% games, ChatGPT +30% AI for two years), and may set the games trend for a year (Doom: shooters, WoW: RPGs, Minecraft: sandbox). Shifts only apply to lanes you run. Events are public knowledge: the era section lists what's coming.
+- **Choices**: five events ask something only that moment offers: shareware (Doom, +12% game sales for six months and fans, for a small cost), Steam (+8% for three years against −4% from shops for one), Kickstarter (fans fund a share of your next game and hype it), lockdown (save three months' rent for 8% less work, or keep the office open and lose morale), and ChatGPT (+5% demand everywhere for a year, at a reputation point).
+- **Decades in review**: on the first week of each decade the last one is reviewed: revenue, value at start and end, the best market game and your best. If yours scored 8+ and at least matched the best, it's the game of the decade: +4 reputation, +10% fans, and the Game of the Decade achievement. A modern run reviews the 2020s in 2030.
+- **Start points**: 2000 (the dot-com bust) and 2012 (free-to-play) join 1977, 1985, 1995 and 2007.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

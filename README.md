@@ -6,6 +6,14 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.31 (Android):** eras and decades with real history in them.
+
+- **History happens.** In a run that starts in the past, two dozen real moments arrive on their real dates: Space Invaders, the IBM PC, Doom, Windows 95, World of Warcraft, Steam, the financial crisis, Minecraft, Twitch, battle royale, lockdown, ChatGPT. Each makes the news and moves the market for a while, and what gamers want follows.
+- **Some ask you to choose.** Go shareware when Doom does. Put your games on Steam when it opens to other studios. Crowdfund your next game in the Kickstarter rush. Close the office in lockdown. Put AI in everything when ChatGPT lands.
+- **Decades in review.** As each decade ends, the papers look back: the game of the decade, your best, what you earned. Make the best game of a decade and it's crowned: reputation, fans and a new gold achievement, Game of the Decade.
+- **Two new starts:** 2000, after the dot-com bubble, and 2012, the year of indies and free-to-play.
+- On the Company page, the era section shows the history you've lived through, what's coming (and which moments will ask you to choose), and each decade's review.
+
 **New in 3.30 (Android):** better buying of studios.
 
 - **Stakes.** Buy 20% of a studio at a time, up to 40%, without taking it over. Your share of its profit comes home every week, its owners warm to a full offer, and what you hold comes off the price if you buy the rest. Sell it any time for a little under what it's worth.
