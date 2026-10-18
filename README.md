@@ -6,6 +6,15 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.30 (Android):** better buying of studios.
+
+- **Stakes.** Buy 20% of a studio at a time, up to 40%, without taking it over. Your share of its profit comes home every week, its owners warm to a full offer, and what you hold comes off the price if you buy the rest. Sell it any time for a little under what it's worth.
+- **Earn-outs.** Pay 70% now and 40% more in two years, but only if the studio stays happy, keeps its people and makes decent games. Owners like it less than cash. If they miss the targets, you keep the money and they're bitter about it.
+- **The giants buy too.** Now and then Tencent, Microsoft, Sony, Embracer or Savvy buys a studio and takes it off the market. If you held a stake, they buy you out at a premium. Years later they sometimes sell it on.
+- **You learn what they knew.** Buying a studio teaches you the topic and genre pairings of its recent games. Folding it in brings specialists who match what it made.
+- **Pick their next game.** A studio you own with its own series lets you choose which one it makes next, or something new.
+- **Your holdings.** The Market page sums up what you've paid for studios and stakes, what they're worth now and what they've earned.
+
 **New in 3.29 (Android):** UI polish.
 
 - Switches with many options (like the Company tab's six pages) scroll sideways at full size instead of shrinking and cutting labels off; the chosen page stays in view.

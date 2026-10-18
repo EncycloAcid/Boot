@@ -578,6 +578,17 @@ Specialist features: `SPECIALIST_FEATURES` (motion capture, facial animation, ne
 
 `Segmented` measures its longest label: if it can't fit even at 85% size, the options get their natural widths in a horizontally scrolling row (14 dp padding), and the chosen one is scrolled into view; otherwise it scales labels down to no less than 85% as before. Team rows use a `FlowRow` for the name, level and tags. `chemistryNote` returns the text and whether it's mostly good. The HUD's Menu chip drops its word when the screen is under 420 dp and the font scale is 1.15 or more.
 
+## Better buying (3.30)
+
+Buying used to be all or nothing. Now there's a middle step and more ways to pay (`Buying.kt`):
+
+- **Stakes**: 20% at a time, up to 40%, for 1.05 × that share of the studio's value. A stake earns its share of 6% of the studio's value a year, scaled by how its last year of games did (0.6–1.5). It adds half its size to the owners' odds of saying yes, and it is credited at the offer price when you buy the rest. Selling returns 95% of its value.
+- **Earn-outs**: 70% of the cash part now, 40% more after 104 weeks if morale ≥ 0.5, nobody left after the deal and their games average 6.5 or better. Owners' odds drop by 8 points. A missed earn-out costs morale and a point of reputation. You can't pay in shares and an earn-out at once.
+- **Rival buyers**: about 0.3% a week a giant buys a studio (never Nintendo, Valve or one you're negotiating with). It leaves the market; any stake is bought out at 1.2×. After five years there's a 1% weekly chance it's put back up for sale. Losing a bidding war also hands the studio to the winner.
+- **Learning**: buying a studio adds the topic/genre fits of its last eight games to your notebook. Folding a studio in gives its people specialties: designers from its main genre's key areas, engineers as engine programmers.
+- **Next series**: a studio you own can be told to make one of its series next, or something new; the choice lasts until it greenlights a game.
+- The holdings summary (paid, worth now, earned) covers both studios and stakes, and stakes count in the company's value and sale price.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.
