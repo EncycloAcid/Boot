@@ -15,6 +15,7 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 - **Expansions in three sizes.** Small DLC, an expansion, or a standalone that finds new players too.
 - **Mod tools.** Open a sim, strategy, sandbox, RPG or shooter to modders: sales tail off more slowly, and now and then a mod takes off. Hire its maker, make it official, or let it be.
 - **More stores later.** Put a released PC game on stores it wasn't on.
+- **Polish.** Sections that sat flush against each other (your holdings, the label, esports, loans, game focus, history) are spaced like the rest of the page; tab bars that scroll sideways fade at the edge to show there's more; weekly figures like "$160k/wk" no longer split across lines; the office card no longer leaves "· morale" alone on a line; a greyed-out store says why.
 
 **New in 3.32 (Android):** game stores.
 
