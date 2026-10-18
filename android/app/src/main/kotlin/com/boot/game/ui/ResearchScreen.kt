@@ -1,0 +1,197 @@
+package com.boot.game.ui
+
+import com.boot.core.calendarYear
+import com.boot.core.inSentence
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.boot.core.Format
+import com.boot.core.GameState
+import com.boot.core.Research
+import com.boot.core.Topic
+import com.boot.core.Genre
+import com.boot.core.genreBlocker
+import com.boot.core.researchGenre
+import com.boot.core.research
+import com.boot.core.researchBlocker
+import com.boot.core.researchPerWeek
+import com.boot.core.researchTopic
+import com.boot.game.GameStore
+import java.util.Locale
+
+private enum class ResearchPage(val title: String) { STUDIO("Studio"), ENGINE("Engine"), TOPICS("Genres"), COMPANY("Company") }
+
+/** Spend research points: game studio unlocks, engine features, topics, and upgrades for every lane. */
+@Composable
+fun ResearchScreen(store: GameStore, state: GameState) {
+    val studio = state.games != null
+    val pages = if (studio) ResearchPage.entries else listOf(ResearchPage.COMPANY)
+    var page by rememberSaveable { mutableStateOf(if (studio) ResearchPage.STUDIO else ResearchPage.COMPANY) }
+    val current = page.takeIf { it in pages } ?: pages.first()
+    ScreenColumn {
+        item { PointsHero(state) }
+        // What only this era offers: gone when it ends.
+        val eraOnly = state.world.era.research.filter { it !in state.researched && (it.kind != Research.Kind.ENGINE || state.games != null) }
+        if (eraOnly.isNotEmpty()) {
+            item {
+                ResearchList(
+                    store, state, "Only in ${state.world.era.inSentence}", eraOnly,
+                    footer = "These can only be researched while ${state.world.era.inSentence} lasts. Once you have them, they're yours for good.",
+                )
+            }
+        }
+        if (pages.size > 1) item { Segmented(pages, current, { it.title }) { page = it } }
+        when (current) {
+            ResearchPage.STUDIO -> item { ResearchList(store, state, "Game studio", Research.entries.filter { it.kind == Research.Kind.STUDIO }.visible(state)) }
+            ResearchPage.ENGINE -> {
+                item {
+                    ResearchList(
+                        store, state, "Engine features",
+                        Research.entries.filter { it.kind == Research.Kind.ENGINE }.visible(state),
+                        footer = "Features do nothing until you build them into an engine. Build engines in the Lanes tab under your game studio.",
+                    )
+                }
+            }
+            ResearchPage.TOPICS -> {
+                item { GenreList(store, state) }
+                item { TopicList(store, state) }
+            }
+            ResearchPage.COMPANY -> {
+                item { ResearchList(store, state, "Company", Research.entries.filter { it.kind == Research.Kind.COMPANY }.visible(state)) }
+                val pastEras = Research.entries.filter { it.kind == Research.Kind.ERA && it in state.researched }
+                if (pastEras.isNotEmpty()) item { ResearchList(store, state, "From past eras", pastEras) }
+                for (lane in state.lanes) {
+                    val items = Research.entries.filter { it.lane == lane }.visible(state)
+                    if (items.isNotEmpty()) item { ResearchList(store, state, lane.businessName, items) }
+                }
+            }
+        }
+    }
+}
+
+/** Era research only shows in its own section, or once you have it. */
+private fun List<Research>.visible(state: GameState): List<Research> = filter { it.era == null || it in state.researched }
+
+@Composable
+private fun PointsHero(state: GameState) {
+    GroupedSection(null, footer = "Points come from your researchers, from you, and from every week the team spends making games.") {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Research points", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${Format.count(state.researchPoints)} RP", style = MaterialTheme.typography.displaySmallEmphasized)
+            Text(
+                String.format(Locale.US, "+%.1f RP/wk · %d researched", state.researchPerWeek, state.researched.size),
+                style = MaterialTheme.typography.bodyMedium,
+                color = gameColors.milestone,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResearchList(store: GameStore, state: GameState, header: String, items: List<Research>, footer: String? = null) {
+    val colors = gameColors
+    GroupedSection(header, footer = footer) {
+        items.forEachIndexed { i, r ->
+            if (i > 0) RowDivider()
+            val done = r in state.researched
+            val blocker = state.researchBlocker(r)
+            val locked = r.requires?.let { it !in state.researched } == true
+            val cost = "${r.rp} RP" + if (r.cash > 0) " + ${Format.money(r.cash)}" else ""
+            ListRow(
+                r.title,
+                subtitle = r.detail + when {
+                    !done && r.year > state.calendarYear -> "\nNot invented until ${r.year}."
+                    locked -> "\nNeeds ${r.requires!!.title}."
+                    else -> ""
+                },
+                leading = {
+                    Icon(
+                        when {
+                            done -> Icons.Filled.CheckCircle
+                            locked -> Icons.Filled.Lock
+                            else -> Icons.Filled.Science
+                        },
+                        null,
+                        tint = when {
+                            done -> colors.good
+                            locked -> MaterialTheme.colorScheme.outline
+                            else -> MaterialTheme.colorScheme.tertiary
+                        },
+                        modifier = Modifier.size(26.dp),
+                    )
+                },
+            ) {
+                if (!done) {
+                    Spacer(Modifier.width(8.dp))
+                    TonalButton(cost, { store.perform { research(r) } }, enabled = blocker == null)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GenreList(store: GameStore, state: GameState) {
+    val g = state.games ?: return
+    val locked = Genre.entries.filter { it !in g.genres }
+    if (locked.isEmpty()) return
+    GroupedSection("Genres", footer = "You make ${g.genres.size} of ${Genre.entries.size} genres. Each new one opens up combos with every topic you know.") {
+        locked.forEachIndexed { i, gn ->
+            if (i > 0) RowDivider()
+            val blocker = state.genreBlocker(gn)
+            ListRow(gn.title, subtitle = if (blocker != null && blocker.startsWith("Nobody")) blocker else genreBlurb(gn)) {
+                TonalButton("${gn.researchCost} RP", { store.perform { researchGenre(gn) } }, enabled = blocker == null)
+            }
+        }
+    }
+}
+
+private fun genreBlurb(g: Genre): String = when (g) {
+    Genre.PUZZLE -> "Brain-teasers. Gameplay and level design are everything."
+    Genre.PLATFORMER -> "Run and jump. Tight controls and clever levels."
+    Genre.SHOOTER -> "Aim and fire. Tech-heavy: engine, AI and graphics."
+    Genre.FIGHTING -> "One on one. Engine, gameplay and AI decide it."
+    Genre.RHYTHM -> "Play to the beat. Sound matters more than anywhere."
+    Genre.SANDBOX -> "Build anything. Big worlds and systems."
+    else -> ""
+}
+
+@Composable
+private fun TopicList(store: GameStore, state: GameState) {
+    val g = state.games ?: return
+    val locked = Topic.entries.filter { it !in g.topics }
+    GroupedSection("Topics", footer = "You know ${g.topics.size} of ${Topic.entries.size} topics. New ones open fresh combos.") {
+        if (locked.isEmpty()) CardBlock { Hint("You've researched every topic.") }
+        locked.forEachIndexed { i, t ->
+            if (i > 0) RowDivider()
+            ListRow(t.title, subtitle = g.trend?.takeIf { it.topic == t }?.let { "Trending right now" }) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TonalButton("${t.researchCost} RP", { store.perform { researchTopic(t) } }, enabled = state.researchPoints >= t.researchCost)
+                }
+            }
+        }
+    }
+}

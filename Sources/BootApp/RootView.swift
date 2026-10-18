@@ -64,6 +64,7 @@ struct GameView: View {
                     Label("People", systemImage: "person.3").tag(Screen.staff)
                     Label("Combos", systemImage: "point.3.connected.trianglepath.dotted").tag(Screen.combos)
                     Label("Money & Board", systemImage: "banknote").tag(Screen.funding)
+                    Label("Strategy", systemImage: "globe").tag(Screen.strategy)
                     Label("News", systemImage: "newspaper").tag(Screen.news)
                 }
             }
@@ -127,6 +128,7 @@ struct GameView: View {
         case .staff: PeopleView(state: state)
         case .combos: CombosView(state: state)
         case .funding: FundingView(state: state)
+        case .strategy: StrategyView(state: state)
         case .news: NewsView(state: state)
         }
     }

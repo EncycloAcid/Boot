@@ -1,0 +1,438 @@
+package com.boot.game
+
+import com.boot.core.Format
+import com.boot.core.with
+import com.boot.core.runRecord
+import com.boot.core.encodeHall
+import com.boot.core.decodeHall
+import com.boot.core.LegacyPerk
+import com.boot.core.StartPoint
+import com.boot.core.Scenario
+import com.boot.core.scenario
+import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.boot.core.Difficulty
+import com.boot.core.GameException
+import com.boot.core.GameConcept
+import com.boot.core.GameState
+import com.boot.core.Lane
+import com.boot.core.advance
+import com.boot.core.Appearance
+import com.boot.core.FounderTrait
+import com.boot.core.introduceFounder
+import com.boot.game.audio.Sfx
+import com.boot.game.audio.SoundBoard
+import com.boot.game.audio.cueFor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
+import java.io.File
+import kotlin.random.Random
+
+enum class Tab { OFFICE, LANES, RESEARCH, TEAM, COMPANY, NEWS }
+
+/** The game studio's pages: what you're making, what you've made, the market, and the tech. */
+enum class StudioPage(val title: String) { MAKE("Make"), GAMES("Games"), MARKET("Market"), TECH("Tech") }
+
+/** How fast the calendar runs while playing: milliseconds per week. */
+enum class Speed(val label: String, val millis: Long) {
+    NORMAL("1×", 1_100),
+    FAST("2×", 500),
+    FASTEST("3×", 200),
+}
+
+/** Owns the running game, routes player actions into it, runs the clock, and autosaves. */
+/** How the game is laid out: sideways with the office filling the screen, or upright with the classic tabs. */
+enum class ScreenLayout(val title: String, val blurb: String) {
+    SIDEWAYS("Sideways", "Hold your phone sideways. The office fills the screen and everything opens in floating windows."),
+    VERTICAL("Upright", "Hold your phone upright with the classic layout: a page for each tab and the office on the home page."),
+}
+
+class GameStore(app: Application) : AndroidViewModel(app) {
+    private val files = app.filesDir
+
+    /** The save slot being played, or the one a new game will go into. Remembered between launches. */
+    var slot by mutableIntStateOf(app.getSharedPreferences("boot", android.content.Context.MODE_PRIVATE).getInt("slot", 1).coerceIn(1, SLOT_COUNT))
+        private set
+
+    /** Slot 1 keeps the original autosave's name, so games from before slots carry on in it. */
+    private fun saveFileFor(n: Int) = File(files, if (n == 1) "autosave.json" else "autosave-$n.json")
+
+    private val saveFile: File get() = saveFileFor(slot)
+
+    /** What's in each slot, for the title screen. */
+    var slots by mutableStateOf<List<SlotInfo?>>(emptyList())
+        private set
+    private val settings = app.getSharedPreferences("boot", android.content.Context.MODE_PRIVATE)
+
+    /** Music and sound effects, with their volume settings. */
+    val sound = SoundBoard(app, settings).also { it.prepare() }
+
+    /** The sound and music settings are open. */
+    var soundOpen by mutableStateOf(false)
+
+    /** Sideways or upright. Remembered between runs. */
+    var layout by mutableStateOf(
+        runCatching { ScreenLayout.valueOf(settings.getString("layout", null) ?: "") }.getOrDefault(ScreenLayout.SIDEWAYS),
+    )
+        private set
+
+    fun chooseLayout(l: ScreenLayout) {
+        layout = l
+        settings.edit().putString("layout", l.name).apply()
+        // Each layout has its own idea of where you are; start from the office.
+        tab = Tab.OFFICE
+        todayOpen = false
+    }
+    private val hallFile = File(app.filesDir, "hall.json")
+
+    /** Every run that has ended, kept across games. */
+    var hall by mutableStateOf(runCatching { decodeHall(hallFile.readText()) }.getOrDefault(emptyList()))
+        private set
+
+    /** Drop Hall of Fame history (tests use this so legacy perks don't leak between cases). */
+    fun clearHall() {
+        hall = emptyList()
+        runCatching { hallFile.delete() }
+    }
+
+    /** Replaced with a fresh copy after every action, so Compose always sees the change. */
+    var state by mutableStateOf<GameState?>(null)
+        private set
+
+    /** The encoding of [state], reused as the starting point of the next copy and as the save. */
+    private var json: String? = null
+
+    var error by mutableStateOf<String?>(null)
+
+    /** Why the clock stopped by itself, shown once. */
+    var notice by mutableStateOf<String?>(null)
+
+    var tab by mutableStateOf(Tab.OFFICE)
+
+    /** The Today briefing (lessons, inbox, goals) is open over the office. */
+    var todayOpen by mutableStateOf(false)
+    var lane by mutableStateOf<Lane?>(null)
+
+    /** Company tab page: 0 overview, 1 money, 2 markets, 3 strategy, 4 combos, 5 goals. */
+    var companyPage by mutableIntStateOf(0)
+    var studioPage by mutableStateOf(StudioPage.MAKE)
+
+    /** The newest story the player has seen, for the unread count. */
+    var newsSeen by mutableIntStateOf(0)
+
+    /** A "next step" the player waved away; it stays hidden until a different one comes up. */
+    var dismissedStep by mutableStateOf<String?>(null)
+
+    /** The game designer is open, optionally seeded (a sequel). */
+    var designing by mutableStateOf(false)
+    var draft by mutableStateOf<GameConcept?>(null)
+
+    /** The hardware Device Designer is open. */
+    var designingDevice by mutableStateOf(false)
+
+    /** A company on the stock market whose page is open. */
+    var openStock by mutableStateOf<String?>(null)
+
+    /** The campaign planner is open for this business. */
+    var campaignLane by mutableStateOf<Lane?>(null)
+
+    /** How to play is open. */
+    var guideOpen by mutableStateOf(false)
+
+    /** A released game whose report is open. */
+    var openRelease by mutableStateOf<Int?>(null)
+
+    /** The calendar runs by itself while this is on, like Game Dev Tycoon. */
+    var playing by mutableStateOf(false)
+        private set
+    var speed by mutableStateOf(Speed.NORMAL)
+
+    /** Latest JSON to write; an empty string means delete the save. Writes happen off the main thread, in order. */
+    private val pendingSave = MutableStateFlow<Pair<Int, String>?>(null)
+
+    init {
+        state = runCatching { GameState.decode(saveFile.readText()) }.getOrNull()?.takeUnless { it.isOver }
+        json = state?.encode()
+        newsSeen = state?.news?.lastOrNull()?.id ?: 0
+        slots = (1..SLOT_COUNT).map { readSlot(it) }
+        viewModelScope.launch(Dispatchers.IO) {
+            pendingSave.filterNotNull().collect { (n, text) -> write(n, text) }
+        }
+    }
+
+    // Save slots
+
+    /** A slot's summary: from what was stored with its last save, or read from the save itself. */
+    private fun readSlot(n: Int): SlotInfo? {
+        val file = saveFileFor(n)
+        if (!file.exists()) return null
+        settings.getString("slot.$n", null)?.let { SlotInfo.decode(n, it) }?.let { return it }
+        // A save from before slots: read it once to describe it.
+        return runCatching { SlotInfo.of(n, GameState.decode(file.readText()), file.lastModified()) }.getOrNull()
+    }
+
+    /** Writes the game in hand to its slot now, before moving to another. */
+    private fun flush() {
+        val text = json ?: return
+        if (state != null) write(slot, text)
+    }
+
+    /** Picks the slot a new game will go into, without loading anything. */
+    fun chooseSlot(n: Int) {
+        if (state != null) return
+        slot = n.coerceIn(1, SLOT_COUNT)
+        settings.edit().putInt("slot", slot).apply()
+    }
+
+    /** Carries on with the game in slot [n]. */
+    fun loadSlot(n: Int) {
+        flush()
+        val loaded = runCatching { GameState.decode(saveFileFor(n).readText()) }.getOrNull()
+        if (loaded == null) {
+            error = "That save couldn't be read."
+            return
+        }
+        slot = n
+        settings.edit().putInt("slot", slot).apply()
+        playing = false
+        state = loaded
+        json = loaded.encode()
+        newsSeen = loaded.news.lastOrNull()?.id ?: 0
+        tab = Tab.OFFICE
+        todayOpen = false
+        lane = loaded.startingLane
+    }
+
+    /** Saves and goes back to the title screen, leaving the run in its slot to come back to. */
+    fun leaveToTitle() {
+        flush()
+        playing = false
+        state = null
+        json = null
+        slots = (1..SLOT_COUNT).map { readSlot(it) }
+    }
+
+    /** Deletes the save in slot [n] for good. */
+    fun deleteSlot(n: Int) {
+        runCatching { saveFileFor(n).delete() }
+        settings.edit().remove("slot.$n").apply()
+        if (n == slot && state != null) {
+            state = null
+            json = null
+        }
+        slots = slots.mapIndexed { i, info -> if (i + 1 == n) null else info }
+    }
+
+    /** Nothing is waiting on the player: no decision, no unread reviews, no ending. */
+    val canAdvance: Boolean
+        get() = state?.let { !it.isOver && !it.needsDecision && it.games?.unseenReview == null } ?: false
+
+    /** A full-screen page that holds the clock while it's open. */
+    val holdsClock: Boolean get() = designing || designingDevice || openRelease != null || guideOpen || openStock != null || campaignLane != null ||
+        calendarTeam != null || founderOpen || dealStudio != null
+
+    /** The studio you're looking at buying, or running. */
+    var dealStudio by mutableStateOf<String?>(null)
+
+    /** Your level, skills and traits. */
+    var founderOpen by mutableStateOf(false)
+
+    /** The team whose game's release calendar is open. */
+    var calendarTeam by mutableStateOf<Int?>(null)
+
+    fun openCalendar(team: Int = 1) {
+        pause()
+        calendarTeam = team
+    }
+
+    fun newGame(
+        company: String,
+        founder: String,
+        lane: Lane,
+        seed: Long = Random.nextLong(),
+        difficulty: Difficulty = Difficulty.NORMAL,
+        start: StartPoint = StartPoint.TODAY,
+        sandbox: Boolean = false,
+        tutorial: Boolean = false,
+        trait: FounderTrait? = null,
+        look: Appearance? = null,
+    ) {
+        begin(
+            GameState.create(company, founder, lane, seed, difficulty, LegacyPerk.earned(hall), start, sandbox = sandbox, tutorial = tutorial)
+                .apply { introduceFounder(trait, look) },
+        )
+    }
+
+    /** Start one of the scenarios. */
+    fun newScenario(scenario: Scenario, company: String, founder: String, seed: Long = Random.nextLong(), trait: FounderTrait? = null, look: Appearance? = null) {
+        begin(GameState.scenario(scenario, company, founder, seed, LegacyPerk.earned(hall)).apply { introduceFounder(trait, look) })
+    }
+
+    private fun begin(s: GameState) {
+        val lane = s.startingLane
+        state = s
+        newsSeen = 0
+        playing = false
+        tab = Tab.OFFICE
+        todayOpen = false
+        this.lane = lane
+        save(s)
+    }
+
+    fun abandon() {
+        playing = false
+        state = null
+        json = null
+        pendingSave.value = slot to ""
+        settings.edit().remove("slot.$slot").apply()
+        slots = slots.mapIndexed { i, info -> if (i + 1 == slot) null else info }
+    }
+
+    /** Run an action against a copy of the game. On failure the game is left untouched and the reason is shown. */
+    fun perform(action: GameState.() -> Unit) = perform(ticking = false, action)
+
+    /** [ticking] is true when this is the clock moving rather than the player acting, for the sound it makes. */
+    private fun perform(ticking: Boolean, action: GameState.() -> Unit) {
+        val current = state ?: return
+        val next = GameState.decode(json ?: current.encode())
+        try {
+            next.action()
+        } catch (e: GameException) {
+            error = e.message
+            sound.play(Sfx.WARNING)
+            return
+        }
+        state = next
+        save(next)
+        cueFor(current, next, ticking)?.let(sound::play)
+    }
+
+    override fun onCleared() {
+        sound.release()
+    }
+
+    fun advance(weeks: Int) {
+        val done = state?.goalsDone?.size ?: 0
+        val had = state?.achievements?.keys.orEmpty()
+        perform(ticking = true) { this.advance(weeks) }
+        // Goals and achievements don't stop the clock; they just get a moment in the spotlight.
+        state?.goalsDone?.drop(done)?.lastOrNull()?.let { notice = "Goal reached: ${it.title}. ${it.reward.label}" }
+        state?.achievements?.keys?.firstOrNull { it !in had }?.let { notice = "Achievement unlocked: ${it.title}" }
+    }
+
+    fun play() {
+        if (canAdvance && !holdsClock) playing = true
+    }
+
+    fun pause() {
+        playing = false
+    }
+
+    fun togglePlay() = if (playing) pause() else play()
+
+    /**
+     * One beat of the clock: a week passes. Stops by itself when something needs the player:
+     * a decision, reviews, a game ready to ship, or the bank account going red.
+     */
+    fun tick() {
+        val before = state ?: return
+        if (!canAdvance || holdsClock) {
+            playing = false
+            return
+        }
+        val wasReady = before.games?.project?.isReady == true
+        val wasReady2 = before.games?.project2?.isReady == true
+        val wasSolvent = before.cash >= 0
+        val wasLevel = before.founder.level
+        advance(1)
+        val now = state ?: return
+        val project = now.games?.project
+        val reason = when {
+            !canAdvance -> ""
+            // A game with a date launches by itself, so the clock can keep running.
+            !wasReady && project?.isReady == true -> project.releaseWeek?.let { due ->
+                notice = "${project.title} is finished. It launches in ${Format.weeks(due - now.week)}, polishing until then."
+                null
+            } ?: "${project.title} is ready to ship. Release it, or keep polishing."
+            !wasReady2 && now.games?.project2?.isReady == true -> now.games?.project2?.releaseWeek?.let { due ->
+                notice = "Team 2's ${now.games?.project2?.title} is finished. It launches in ${Format.weeks(due - now.week)}."
+                null
+            } ?: "Team 2's ${now.games?.project2?.title} is ready to ship."
+            now.founder.level > wasLevel -> {
+                notice = "You reached level ${now.founder.level}. Spend your skill point under You on the Team tab."
+                null
+            }
+            wasSolvent && now.cash < 0 -> "You're overdrawn. ${now.difficulty.redWeeks} weeks in the red and it's over. A bank loan can buy time."
+            else -> null
+        }
+        if (reason != null) {
+            playing = false
+            if (reason.isNotEmpty()) notice = reason
+        }
+    }
+
+    /** Which team the designer is planning for. */
+    var designTeam by mutableIntStateOf(1)
+
+    fun designGame(seed: GameConcept? = null, team: Int = 1) {
+        pause()
+        draft = seed
+        designTeam = team
+        designing = true
+    }
+
+    fun designDevice() {
+        pause()
+        designingDevice = true
+    }
+
+    fun openLane(lane: Lane) {
+        this.lane = lane
+        tab = Tab.LANES
+    }
+
+    fun openStudio(page: StudioPage) {
+        studioPage = page
+        openLane(Lane.GAMES)
+    }
+
+    private fun save(s: GameState) {
+        // Sandbox runs stay out of the Hall of Fame.
+        s.runRecord()?.takeIf { !s.sandbox }?.let { record ->
+            if (record !in hall) {
+                hall = hall.with(record)
+                val text = encodeHall(hall)
+                runCatching { hallFile.writeText(text) }
+            }
+        }
+        val encoded = s.encode()
+        json = encoded
+        pendingSave.value = slot to encoded
+        // The slot's summary for the title screen, kept beside the save.
+        val info = SlotInfo.of(slot, s, System.currentTimeMillis())
+        settings.edit().putString("slot.$slot", info.encode()).apply()
+        if (slots.getOrNull(slot - 1) != info) slots = (1..SLOT_COUNT).map { if (it == slot) info else slots.getOrNull(it - 1) }
+    }
+
+    @Synchronized
+    private fun write(n: Int, json: String) {
+        // Autosave is best effort; the game keeps running.
+        val file = saveFileFor(n)
+        runCatching {
+            if (json.isEmpty()) {
+                file.delete()
+            } else {
+                val tmp = File(file.parentFile, file.name + ".tmp")
+                tmp.writeText(json)
+                tmp.renameTo(file)
+            }
+        }
+    }
+}
