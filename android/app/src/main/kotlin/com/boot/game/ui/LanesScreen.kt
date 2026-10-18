@@ -449,7 +449,7 @@ private fun LazyListScope.socialItems(store: GameStore, state: GameState) {
 
 private fun LazyListScope.hardwareItems(store: GameStore, state: GameState) {
     val h = state.hardware ?: return
-    item { DesignSection(store, state) }
+    item { Sections { DesignSection(store, state) } }
     item { FactorySection(store, state) }
     item {
         GroupedSection("On the market") {

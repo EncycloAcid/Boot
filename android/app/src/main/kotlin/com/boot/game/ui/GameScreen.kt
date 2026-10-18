@@ -865,7 +865,7 @@ private fun IdleSoftPanel(
                 "${state.staff.size}/${state.office.desks}\u00A0desks",
                 "crowded".takeIf { crowded },
                 avgMorale?.let { "morale\u00A0${String.format(Locale.US, "%.0f", it * 100)}%" },
-            ).joinToString(" · "),
+            ).joinToString("\u00A0· "),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
@@ -1256,19 +1256,28 @@ fun ScreenColumn(content: LazyListScope.() -> Unit) {
         inPanel -> 12.dp
         else -> 16.dp
     }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().then(if (inPanel) Modifier.background(gameColors.grouped.copy(alpha = 0.55f)) else Modifier),
-        contentPadding = PaddingValues(start = side, end = side, top = side, bottom = if (compact && inPanel) 12.dp else bottom),
-        verticalArrangement = Arrangement.spacedBy(
-            when {
-                compact -> 18.dp
-                inPanel -> 20.dp
-                else -> 28.dp
-            },
-        ),
-        content = content,
-    )
+    val gap = when {
+        compact -> 18.dp
+        inPanel -> 20.dp
+        else -> 28.dp
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSectionGap provides gap) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().then(if (inPanel) Modifier.background(gameColors.grouped.copy(alpha = 0.55f)) else Modifier),
+            contentPadding = PaddingValues(start = side, end = side, top = side, bottom = if (compact && inPanel) 12.dp else bottom),
+            verticalArrangement = Arrangement.spacedBy(gap),
+            content = content,
+        )
+    }
 }
+
+/** The gap between sections in the list they're in. */
+val LocalSectionGap = androidx.compose.runtime.compositionLocalOf { 20.dp }
+
+/** Several sections in one list item, spaced like the rest of the list. */
+@Composable
+fun Sections(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) =
+    androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(LocalSectionGap.current), content = content)
 
 /** A tab's own title, at the top of its scrolling content. Inside floating panels the window title already shows — keep only the useful subtitle. */
 @Composable

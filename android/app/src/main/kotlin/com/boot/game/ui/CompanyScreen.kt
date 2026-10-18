@@ -19,7 +19,7 @@ fun CompanyScreen(store: GameStore, state: GameState) {
             3 -> strategyItems(store, state)
             4 -> combosItems(store, state)
             else -> {
-                item { GoalsList(state) }
+                item { Sections { GoalsList(state) } }
                 item { AchievementsSection(state) }
             }
         }

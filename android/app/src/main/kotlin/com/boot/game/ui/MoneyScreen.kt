@@ -60,7 +60,7 @@ import com.boot.game.GameStore
 fun LazyListScope.moneyItems(store: GameStore, state: GameState) {
     run {
         item { OwnershipSection(store, state) }
-        item { LoanSection(store, state) }
+        item { Sections { LoanSection(store, state) } }
         item { BoardSection(state) }
         item { ExpansionSection(store, state) }
         item { ExitSection(store, state) }

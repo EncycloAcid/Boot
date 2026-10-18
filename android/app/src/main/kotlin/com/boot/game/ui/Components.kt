@@ -1,5 +1,8 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.LaunchedEffect
@@ -517,7 +520,33 @@ fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect:
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(colors.fill)
-            .then(if (scrolls) Modifier.horizontalScroll(scroll) else Modifier)
+            .then(
+                if (scrolls) {
+                    // Fade the options out at an edge that has more beyond it, so a cut-off label reads as "scroll".
+                    Modifier
+                        .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            val w = 32.dp.toPx()
+                            if (scroll.value > 0) {
+                                drawRect(
+                                    Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = 0f, endX = w),
+                                    size = androidx.compose.ui.geometry.Size(w, size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                                )
+                            }
+                            if (scroll.value < scroll.maxValue) {
+                                drawRect(
+                                    Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - w, endX = size.width),
+                                    topLeft = androidx.compose.ui.geometry.Offset(size.width - w, 0f),
+                                    size = androidx.compose.ui.geometry.Size(w, size.height), blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                                )
+                            }
+                        }
+                        .horizontalScroll(scroll)
+                } else {
+                    Modifier
+                },
+            )
             .padding(3.dp),
     ) {
         options.forEachIndexed { i, option ->
@@ -621,9 +650,10 @@ fun ConfirmDialog(title: String, text: String, confirm: String, onConfirm: () ->
     )
 }
 
-fun Double.perWeek() = "${Format.money(this)}/wk"
+/** A weekly figure that never splits across lines. */
+fun Double.perWeek() = "${Format.money(this)}/\u2060wk"
 
-fun Double.signedPerWeek() = "${Format.signedMoney(this)}/wk"
+fun Double.signedPerWeek() = "${Format.signedMoney(this)}/\u2060wk"
 
 /**
  * One line that shrinks to fit, down to [min], instead of cutting off. Labels in tight rows

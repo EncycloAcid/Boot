@@ -107,14 +107,14 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             if (g.adaptations.isNotEmpty() || state.adaptableSeries().isNotEmpty()) item { ScreenSection(store, state, g) }
             item { CollectionsSection(store, state, g) }
             if (g.releases.any { it.live?.closed == false }) item { LiveGamesSection(store, state, g) }
-            if (Research.ESPORTS in state.researched) item { EsportsSection(store, state, g) }
+            if (Research.ESPORTS in state.researched) item { Sections { EsportsSection(store, state, g) } }
             item { ReleasesSection(store, g) }
             if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
         }
         StudioPage.MARKET -> {
             item { ChartCard(state, limit = 10) { store.openRelease = it } }
             item { ComingSoonCard(state, limit = 8) }
-            if (Research.PUBLISHING in state.researched) item { LabelSection(store, state, g) }
+            if (Research.PUBLISHING in state.researched) item { Sections { LabelSection(store, state, g) } }
             item { StudiosSection(store, state, g) }
             if (g.store != null || state.calendarYear >= 2004) item { OwnStoreSection(store, state, g) }
         }
@@ -134,7 +134,7 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
     when {
         p != null -> {
             item { DevelopmentSection(store, state, p) }
-            item { FocusSection(store, g, p, state = state) }
+            item { Sections { FocusSection(store, g, p, state = state) } }
             item { TeamFitSection(store, state, p) }
             item { HypeSection(store, state, p) }
         }
@@ -218,7 +218,7 @@ private fun LazyListScope.secondTeamItems(store: GameStore, state: GameState, g:
     val p2 = g.project2
     if (p2 != null) {
         item { DevelopmentSection(store, state, p2, team = 2) }
-        item { FocusSection(store, g, p2, team = 2, state = state) }
+        item { Sections { FocusSection(store, g, p2, team = 2, state = state) } }
         item { HypeSection(store, state, p2, team = 2) }
     } else {
         item {

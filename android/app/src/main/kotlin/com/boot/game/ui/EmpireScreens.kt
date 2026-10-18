@@ -83,7 +83,7 @@ private fun Studio.blurb(): String {
 @Composable
 fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
     // Several sections in one list item: keep them apart like the rest of the page.
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) { StudiosSections(store, state, g) }
+    Sections { StudiosSections(store, state, g) }
 }
 
 @Composable

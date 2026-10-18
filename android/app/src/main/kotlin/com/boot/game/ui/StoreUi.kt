@@ -80,13 +80,15 @@ fun StoreControls(store: GameStore, state: GameState, p: GameProject, team: Int)
                 (state.epicGuarantee(p)?.let { " Epic pays ${Format.money(it)} at launch to have it alone; some players won't like it." } ?: ""),
             if (terms.lift < 0.7) gameColors.warn else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Say why a store is greyed out.
+        open.filter { it !in chosen }.mapNotNull { state.storeBlocker(p, it) }.distinct().forEach { Hint(it) }
     }
 }
 
 /** Your own game store: build it, run it, sell it. */
 @Composable
 fun OwnStoreSection(store: GameStore, state: GameState, g: GamesStudio) {
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) { OwnStoreSections(store, state, g) }
+    Sections { OwnStoreSections(store, state, g) }
 }
 
 @Composable
