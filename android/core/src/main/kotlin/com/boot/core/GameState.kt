@@ -327,7 +327,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     }
 
     /** What the businesses are worth, excluding cash in the bank. */
-    val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0) + subsidiaryValue + ownedCompaniesValue
+    val enterpriseValue: Double get() = lanes.sumOf { laneValue(it) } * (if (isEcosystem) 1.3 else 1.0) + subsidiaryValue + stakesValue + ownedCompaniesValue
 
     /** Enterprise value plus cash, less what you owe the bank. What a buyer or the market would pay. */
     val valuation: Double get() = max(0.0, enterpriseValue + max(0.0, cash) + portfolioValue - (loan?.balance ?: 0.0))

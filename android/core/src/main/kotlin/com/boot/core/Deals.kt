@@ -51,16 +51,18 @@ data class Deal(
     val inShares: Boolean,
     /** When the owners answer. */
     val answerWeek: Int,
+    /** Part paid later, if the studio hits its targets. */
+    val earnOut: Boolean = false,
 )
 
 @Serializable @SerialName("dealCounter")
-data class DealCounter(val studio: String, val price: Double, val inShares: Boolean) : EventKind
+data class DealCounter(val studio: String, val price: Double, val inShares: Boolean, val earnOut: Boolean = false) : EventKind
 
 @Serializable @SerialName("biddingWar")
-data class BiddingWar(val studio: String, val rival: String, val price: Double, val inShares: Boolean) : EventKind
+data class BiddingWar(val studio: String, val rival: String, val price: Double, val inShares: Boolean, val earnOut: Boolean = false) : EventKind
 
 @Serializable @SerialName("regulatorReview")
-data class RegulatorReview(val studio: String, val price: Double, val inShares: Boolean) : EventKind
+data class RegulatorReview(val studio: String, val price: Double, val inShares: Boolean, val earnOut: Boolean = false) : EventKind
 
 @Serializable @SerialName("integration")
 data class IntegrationChoice(val studio: String) : EventKind
@@ -125,38 +127,50 @@ fun GameState.dueDiligence(name: String) {
 fun GameState.offerPrice(s: Studio, premium: Double): Double = studioValue(s) * (1 + premium)
 
 /** The chance the owners say yes to a premium, as far as anyone can tell. */
-fun GameState.acceptOdds(s: Studio, premium: Double): Double {
+fun GameState.acceptOdds(s: Studio, premium: Double, earnOut: Boolean = false): Double {
     if (s.name in neverForSale) return 0.0
+    if (games?.rivalOwned?.containsKey(s.name) == true) return 0.0
     val (base, fair) = when (stanceOf(s)) {
         Stance.OPEN -> 0.75 to 0.1
         Stance.WARY -> 0.45 to 0.25
         Stance.CLOSED -> 0.15 to 0.5
     }
-    return (base + (premium - fair) * 2.0 + (reputation.score - 50) / 200).clamped(0.02, 0.95)
+    // A stake makes them friendlier; an earn-out, warier: they'd rather have the money now.
+    return (base + (premium - fair) * 2.0 + (reputation.score - 50) / 200 + stakeGoodwill(s) - (if (earnOut) 0.08 else 0.0)).clamped(0.02, 0.95)
 }
 
 /** Why you can't make this offer, or null if you can. */
-fun GameState.offerBlocker(s: Studio, premium: Double, inShares: Boolean): String? {
+fun GameState.offerBlocker(s: Studio, premium: Double, inShares: Boolean, earnOut: Boolean = false): String? {
     val g = games ?: return "You need a game studio to buy one."
     if (g.owns(s.name)) return "It's already yours."
+    g.rivalOwned[s.name]?.let { return "$it owns ${s.name} now." }
+    if (inShares && earnOut) return "Pick shares or an earn-out, not both."
     if (s.name in neverForSale) return "${s.name} isn't for sale at any price."
     if (!s.indie && listing == null && week < 52 * 3) return "The big publishers won't talk to a company this young."
     g.deal?.let { return "You're waiting to hear back from ${it.studio}." }
     g.cooloff[s.name]?.let { if (it > week) return "${s.name} won't take your calls until ${GameClock.label(it)}." }
     if (inShares && listing == null) return "Only a listed company can pay in shares."
-    val cash = offerPrice(s, premium) * (if (inShares) 0.5 else 1.0)
+    val cash = offerCash(s, premium, inShares, earnOut)
     if (this.cash < cash) return "That needs ${money(cash)} in cash. You have ${money(this.cash)}."
     return null
 }
 
+/** The cash an offer needs now: less what your stake already covers, and less again for shares or an earn-out. */
+fun GameState.offerCash(s: Studio, premium: Double, inShares: Boolean, earnOut: Boolean = false): Double =
+    offerPrice(s, premium) * (1 - stakeIn(s.name)) * when {
+        inShares -> 0.5
+        earnOut -> EARN_OUT_NOW
+        else -> 1.0
+    }
+
 /** Puts an offer on the table. The owners answer in two weeks. */
-fun GameState.makeOffer(name: String, premium: Double, inShares: Boolean = false) {
+fun GameState.makeOffer(name: String, premium: Double, inShares: Boolean = false, earnOut: Boolean = false) {
     requireLive()
     val g = games ?: throw notAvailable("You need a game studio first.")
     val s = studio(name) ?: throw invalid("No such studio.")
     val p = premium.clamped(MIN_PREMIUM, MAX_PREMIUM)
-    offerBlocker(s, p, inShares)?.let { throw notAvailable(it) }
-    g.deal = Deal(s.name, p, offerPrice(s, p), inShares, week + 2)
+    offerBlocker(s, p, inShares, earnOut)?.let { throw notAvailable(it) }
+    g.deal = Deal(s.name, p, offerPrice(s, p), inShares, week + 2, earnOut)
     stats.offers += 1
     addLog("You offered ${money(offerPrice(s, p))} for ${s.name}. They'll answer in two weeks.", LogTone.NEUTRAL, Lane.GAMES)
 }
@@ -175,19 +189,19 @@ internal fun GameState.dealWeek(g: GamesStudio) {
     if (week < d.answerWeek) return
     g.deal = null
     val s = studio(d.studio) ?: return
-    val odds = acceptOdds(s, d.premium)
+    val odds = acceptOdds(s, d.premium, d.earnOut)
     val roll = rng.unit()
     when {
         roll < odds -> {
             // A big studio for sale draws other buyers.
             if (!s.indie && rng.chance(0.3)) {
                 val rival = rng.pick(listOf("Tencent", "Sony", "Microsoft", "Embracer Group", "Savvy Games Group").filter { it != s.name })
-                enqueue(BiddingWar(s.name, rival, d.price * rng.range(1.08, 1.2), d.inShares))
+                enqueue(BiddingWar(s.name, rival, d.price * rng.range(1.08, 1.2), d.inShares, d.earnOut))
             } else {
-                close(s, d.price, d.inShares)
+                close(s, d.price, d.inShares, d.earnOut)
             }
         }
-        roll < odds + 0.25 -> enqueue(DealCounter(s.name, d.price * rng.range(1.1, 1.25), d.inShares))
+        roll < odds + 0.25 -> enqueue(DealCounter(s.name, d.price * rng.range(1.1, 1.25), d.inShares, d.earnOut))
         else -> {
             g.cooloff[s.name] = week + 26
             addLog("${s.name} turned down your offer. They won't hear another for six months.", LogTone.BAD, Lane.GAMES)
@@ -197,18 +211,25 @@ internal fun GameState.dealWeek(g: GamesStudio) {
 }
 
 /** Agreed: through the regulators if it's big enough, then it's yours. */
-private fun GameState.close(s: Studio, price: Double, inShares: Boolean) {
+private fun GameState.close(s: Studio, price: Double, inShares: Boolean, earnOut: Boolean = false) {
     if (price >= REGULATOR_THRESHOLD && !s.indie && rng.chance(0.4)) {
-        enqueue(RegulatorReview(s.name, price, inShares))
+        enqueue(RegulatorReview(s.name, price, inShares, earnOut))
         return
     }
-    complete(s, price, inShares)
+    complete(s, price, inShares, earnOut)
 }
 
 /** Pays, takes over, and asks how you'll run it. */
-private fun GameState.complete(s: Studio, price: Double, inShares: Boolean) {
+private fun GameState.complete(s: Studio, price: Double, inShares: Boolean, earnOut: Boolean = false) {
     val g = games ?: return
-    val cashPart = if (inShares) price * 0.5 else price
+    // What your stake already covers comes off the price.
+    val stake = stakeIn(s.name)
+    val rest = price * (1 - stake)
+    val cashPart = rest * when {
+        inShares -> 0.5
+        earnOut -> EARN_OUT_NOW
+        else -> 1.0
+    }
     if (cash < cashPart) {
         addLog("The ${s.name} deal fell through: you couldn't find ${money(cashPart)}.", LogTone.BAD, Lane.GAMES)
         return
@@ -216,13 +237,27 @@ private fun GameState.complete(s: Studio, price: Double, inShares: Boolean) {
     spend(cashPart, Lane.GAMES)
     if (inShares) {
         // New shares for the sellers: you own a little less of a bigger company.
-        val after = valuation + price * 0.5
-        venture.founderEquity = max(0.01, venture.founderEquity * (1 - price * 0.5 / max(after, 1.0)))
+        val after = valuation + rest * 0.5
+        venture.founderEquity = max(0.01, venture.founderEquity * (1 - rest * 0.5 / max(after, 1.0)))
     }
-    g.subsidiaries += Subsidiary(s.name, week, price, finding = findingAt(s))
+    val heldFor = g.stakePaid.remove(s.name) ?: 0.0
+    g.stakes.remove(s.name)
+    g.subsidiaries += Subsidiary(
+        s.name, week, (if (inShares) rest else cashPart) + heldFor, finding = findingAt(s),
+        earnOutDue = if (earnOut) rest * EARN_OUT_LATER else 0.0, earnOutWeek = if (earnOut) week + EARN_OUT_WEEKS else 0,
+    )
+    val learned = learnFrom(g, s)
+    if (learned > 0) addLog("${s.name}'s people showed you what they know: $learned topic and genre pairings you hadn't tried.", LogTone.GOOD, Lane.GAMES)
     stats.acquisitions += 1
     reputation.adjust(if (s.indie) 1.0 else 3.0)
-    addLog("You bought ${s.name} for ${money(price)}" + (if (inShares) ", half of it in shares" else "") + ".", LogTone.MILESTONE, Lane.GAMES)
+    addLog(
+        "You bought ${s.name} for ${money(price)}" + when {
+            inShares -> ", half of it in shares"
+            earnOut -> ": ${money(cashPart)} now, ${money(rest * EARN_OUT_LATER)} more in two years if it hits its targets"
+            else -> ""
+        } + (if (stake > 0) ", with your ${Format.percent(stake)} stake counted" else "") + ".",
+        LogTone.MILESTONE, Lane.GAMES,
+    )
     publish(
         NewsDesk.YOU, "Bloomberg", "$companyName buys ${s.name} for ${money(price)}",
         studioFranchises(s.name).take(2).joinToString().let { if (it.isEmpty()) "The deal closed this week." else "The maker of $it changes hands." },
@@ -233,17 +268,23 @@ private fun GameState.complete(s: Studio, price: Double, inShares: Boolean) {
     enqueue(IntegrationChoice(s.name))
 }
 
+private fun terms(inShares: Boolean, earnOut: Boolean) = when {
+    inShares -> ", half in shares."
+    earnOut -> ", part of it later if they hit their targets."
+    else -> "."
+}
+
 internal fun GameState.describeDeal(k: EventKind): Description? = when (k) {
     is DealCounter -> Description(
         "${k.studio} wants more",
         "The owners like you, but not the price. They'd sell for ${money(k.price)}.",
-        listOf(choice("Accept their price", money(k.price) + if (k.inShares) ", half in shares." else "."), choice("Walk away", "No deal, and no hard feelings.")),
+        listOf(choice("Accept their price", money(k.price) + terms(k.inShares, k.earnOut)), choice("Walk away", "No deal, and no hard feelings.")),
         Lane.GAMES,
     )
     is BiddingWar -> Description(
         "${k.rival} is bidding for ${k.studio}",
         "${k.studio} said yes, then ${k.rival} came in higher. To win it you'd have to pay ${money(k.price)}.",
-        listOf(choice("Outbid them", money(k.price) + if (k.inShares) ", half in shares." else "."), choice("Let them have it", "${k.rival} gets the studio.")),
+        listOf(choice("Outbid them", money(k.price) + terms(k.inShares, k.earnOut)), choice("Let them have it", "${k.rival} gets the studio.")),
         Lane.GAMES,
     )
     is RegulatorReview -> Description(
@@ -264,17 +305,26 @@ internal fun GameState.describeDeal(k: EventKind): Description? = when (k) {
 internal fun GameState.resolveDeal(k: EventKind, choice: Int) {
     val g = games ?: return
     when (k) {
-        is DealCounter -> if (choice == 0) studio(k.studio)?.let { close(it, k.price, k.inShares) } else addLog("You walked away from ${k.studio}.", LogTone.NEUTRAL, Lane.GAMES)
+        is DealCounter -> if (choice == 0) studio(k.studio)?.let { close(it, k.price, k.inShares, k.earnOut) } else addLog("You walked away from ${k.studio}.", LogTone.NEUTRAL, Lane.GAMES)
         is BiddingWar -> if (choice == 0) {
-            studio(k.studio)?.let { close(it, k.price, k.inShares) }
+            studio(k.studio)?.let { close(it, k.price, k.inShares, k.earnOut) }
         } else {
             addLog("${k.rival} bought ${k.studio}.", LogTone.NEUTRAL, Lane.GAMES)
             publish(NewsDesk.GAMES, "Bloomberg", "${k.rival} buys ${k.studio}", "It outbid $companyName.", lane = Lane.GAMES, tag = NewsTag.MONEY)
-            g.cooloff[k.studio] = week + 52
+            g.rivalOwned[k.studio] = k.rival
+            g.rivalOwnedWeek[k.studio] = week
+            // Your stake goes with it, at the price they paid.
+            g.stakes.remove(k.studio)?.let { share ->
+                g.stakePaid.remove(k.studio)
+                val payout = k.price * share
+                cash += payout
+                recordRevenue(payout, Lane.GAMES)
+                addLog("${k.rival} bought your ${Format.percent(share)} of ${k.studio} too: ${money(payout)}.", LogTone.NEUTRAL, Lane.GAMES)
+            }
         }
         is RegulatorReview -> if (choice == 0) {
             spend(k.price * 0.03, Lane.GAMES)
-            studio(k.studio)?.let { complete(it, k.price, k.inShares) }
+            studio(k.studio)?.let { complete(it, k.price, k.inShares, k.earnOut) }
         } else {
             addLog("You walked away from ${k.studio} rather than accept the regulators' terms.", LogTone.NEUTRAL, Lane.GAMES)
         }
@@ -305,10 +355,18 @@ private fun GameState.setPlan(sub: Subsidiary, plan: Plan) {
             // Their three best people, one of each kind where we can.
             val q = studio(sub.name)?.quality ?: 0.6
             val roles = listOf(Role.DESIGNER, Role.ENGINEER, if (sub.finding == Finding.TALENT_FLIGHT) Role.MARKETER else Role.RESEARCHER)
+            // The designer is a specialist in what their games need most; the engineer builds engines.
+            val genre = studio(sub.name)?.let { mainGenre(it) }
+            val key = genre?.let { gn -> FocusArea.entries.firstOrNull { gn.weight(it) == 2 } } ?: FocusArea.GAMEPLAY
             val joined = roles.map { role ->
                 val c = makeCandidate(role)
                 val skill = (6 + q * 4).toInt().coerceIn(6, 10)
-                hireDirect(c.copy(skill = skill, design = max(c.design, skill - 1), tech = max(c.tech, skill - 1), askingSalary = c.askingSalary * 1.2), Lane.GAMES)
+                val specialty = when (role) {
+                    Role.DESIGNER -> Specialty.of(key).takeIf { it != Specialty.ENGINE_PROGRAMMER } ?: Specialty.GAME_DESIGNER
+                    Role.ENGINEER -> Specialty.ENGINE_PROGRAMMER
+                    else -> null
+                }
+                hireDirect(c.copy(skill = skill, design = max(c.design, skill - 1), tech = max(c.tech, skill - 1), askingSalary = c.askingSalary * 1.2, specialty = specialty ?: c.specialty), Lane.GAMES)
             }
             addLog("${joined.joinToString { it.name }} joined your team from ${sub.name}.", LogTone.GOOD, Lane.GAMES)
         }

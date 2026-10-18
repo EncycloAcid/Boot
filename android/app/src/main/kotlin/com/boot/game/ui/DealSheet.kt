@@ -1,5 +1,6 @@
 package com.boot.game.ui
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.boot.core.setNextSeries
+import com.boot.core.EARN_OUT_LATER
+import com.boot.core.EARN_OUT_NOW
+import com.boot.core.offerCash
+import com.boot.core.MAX_STUDIO_STAKE
+import com.boot.core.STAKE_STEP
+import com.boot.core.stakeValue
+import com.boot.core.stakePrice
+import com.boot.core.stakeIn
+import com.boot.core.stakeBlocker
+import com.boot.core.sellStake
+import com.boot.core.buyStake
 import com.boot.core.Format
 import com.boot.core.GameClock
 import com.boot.core.GameState
@@ -158,12 +171,19 @@ private fun About(store: GameStore, state: GameState, s: Studio) {
     }
     if (g.subsidiaries.none { it.name == s.name }) {
         val stance = state.stanceOf(s)
+        val owner = g.rivalOwned[s.name]
         GroupedSection("The owners") {
             CardBlock {
-                Text(stance.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Hint(stance.detail)
+                if (owner != null) {
+                    Text("Owned by $owner", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Hint("They bought it ${GameClock.label(g.rivalOwnedWeek[s.name] ?: state.week)}. Giants sell studios on now and then.")
+                } else {
+                    Text(stance.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Hint(stance.detail)
+                }
             }
         }
+        if (owner == null) StakeSection(store, state, s)
     }
     val found = s.name in g.diligence || g.subsidiaries.any { it.name == s.name }
     GroupedSection("Due diligence", footer = if (found) null else "A look at the books, the team and what's in development. Whatever's there comes with the studio either way.") {
@@ -196,10 +216,14 @@ private fun Offer(store: GameStore, state: GameState, s: Studio) {
         return
     }
     var premium by remember(s.name) { mutableFloatStateOf(0.15f) }
-    var inShares by remember(s.name) { mutableStateOf(false) }
+    var payment by remember(s.name) { mutableStateOf(Payment.CASH) }
+    val inShares = payment == Payment.SHARES
+    val earnOut = payment == Payment.EARN_OUT
     val price = state.offerPrice(s, premium.toDouble())
-    val odds = state.acceptOdds(s, premium.toDouble())
-    val blocker = state.offerBlocker(s, premium.toDouble(), inShares)
+    val odds = state.acceptOdds(s, premium.toDouble(), earnOut)
+    val blocker = state.offerBlocker(s, premium.toDouble(), inShares, earnOut)
+    val now = state.offerCash(s, premium.toDouble(), inShares, earnOut)
+    val stake = state.stakeIn(s.name)
     GroupedSection("Your offer", footer = "They answer in two weeks: yes, a counter-offer, or no (and then they won't hear another for six months). A big studio can draw a rival bidder, and the biggest deals go before the regulators.") {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
@@ -207,7 +231,12 @@ private fun Offer(store: GameStore, state: GameState, s: Studio) {
                     Text(Format.money(price), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Hint(
                         (if (premium >= 0) "${(premium * 100).roundToInt()}% over" else "${(-premium * 100).roundToInt()}% under") + " what it's worth" +
-                            if (inShares) " · ${Format.money(price * 0.5)} in cash, the rest in shares" else "",
+                            (if (stake > 0) " · your ${Format.percent(stake)} stake covers ${Format.money(price * stake)}" else "") +
+                            when (payment) {
+                                Payment.SHARES -> " · ${Format.money(now)} in cash, the rest in shares"
+                                Payment.EARN_OUT -> " · ${Format.money(now)} now, ${Format.money(price * (1 - stake) * EARN_OUT_LATER)} in two years if they hit their targets"
+                                Payment.CASH -> if (stake > 0) " · ${Format.money(now)} in cash" else ""
+                            },
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -224,13 +253,21 @@ private fun Offer(store: GameStore, state: GameState, s: Studio) {
                 modifier = Modifier.semantics { contentDescription = "Premium" },
             )
         }
-        if (state.listing != null) {
-            RowDivider()
-            ToggleRow("Pay half in shares", inShares, "Half the cash. You own a little less of ${state.companyName}.") { inShares = it }
+        RowDivider()
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val options = Payment.entries.filter { it != Payment.SHARES || state.listing != null }
+            Segmented(options, payment, { it.title }) { payment = it }
+            Hint(
+                when (payment) {
+                    Payment.CASH -> "All of it now."
+                    Payment.SHARES -> "Half the cash. You own a little less of ${state.companyName}."
+                    Payment.EARN_OUT -> "${Format.percent(EARN_OUT_NOW)} now, and ${Format.percent(EARN_OUT_LATER)} more in two years if the studio's still happy, kept its people and made decent games. Owners would rather have the money now."
+                },
+            )
         }
     }
     if (blocker != null) Hint(blocker, colors.bad)
-    PrimaryButton("Offer ${Format.money(price)}", { store.perform { makeOffer(s.name, premium.toDouble(), inShares) } }, Modifier.fillMaxWidth(), enabled = blocker == null)
+    PrimaryButton("Offer ${Format.money(price)}", { store.perform { makeOffer(s.name, premium.toDouble(), inShares, earnOut) } }, Modifier.fillMaxWidth(), enabled = blocker == null)
 }
 
 /** A studio you own: how it's run, what it earns, and selling it on. */
@@ -244,6 +281,10 @@ private fun Running(store: GameStore, state: GameState, s: Studio) {
             if (sub.lifetimeProfit <= 0) StatTile("This week", "—", Modifier.weight(1f), "first payout next week")
             else StatTile("This week", sub.lastProfit.perWeek(), Modifier.weight(1f), tint = colors.good)
             StatTile("Since you bought it", Format.money(sub.lifetimeProfit), Modifier.weight(1f), "paid ${Format.money(sub.paid)}")
+        }
+        if (sub.earnOutDue > 0) {
+            RowDivider()
+            ValueRow("Still owed if they hit their targets", "${Format.money(sub.earnOutDue)} · ${GameClock.label(sub.earnOutWeek)}")
         }
     }
     GroupedSection(
@@ -336,6 +377,19 @@ private fun NextGame(store: GameStore, state: GameState, s: Studio, sub: com.boo
                 "${pitch.size.title} ${pitch.topic.title.lowercase()} ${pitch.genre.lower} game" +
                     (pitch.franchise?.let { " · the next $it" } ?: " · something new"),
             )
+            val series = studioFranchises(s.name)
+            if (series.isNotEmpty()) {
+                Text("What should they make?", style = MaterialTheme.typography.labelLarge)
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (listOf<String?>(null) + series).forEach { option ->
+                        androidx.compose.material3.FilterChip(
+                            selected = pitch.franchise == option,
+                            onClick = { store.perform { setNextSeries(s.name, option) } },
+                            label = { Text(option ?: "Something new") },
+                        )
+                    }
+                }
+            }
             Segmented(StudioBudget.entries, budget, { it.title }) { budget = it }
             PrimaryButton("Greenlight it · ${Format.money(pitch.cost * budget.cost)}", { store.perform { greenlight(s.name, budget) } }, Modifier.fillMaxWidth(), enabled = blocker == null)
         }
@@ -350,3 +404,34 @@ private fun NextGame(store: GameStore, state: GameState, s: Studio, sub: com.boo
         }
     }
 }
+
+/** A stake: a fifth of the studio at a time, up to two fifths, without a takeover. */
+@Composable
+private fun StakeSection(store: GameStore, state: GameState, s: Studio) {
+    val colors = gameColors
+    val held = state.stakeIn(s.name)
+    val blocker = state.stakeBlocker(s)
+    GroupedSection(
+        "A stake",
+        Modifier.testTag("stake"),
+        footer = "Buy ${Format.percent(STAKE_STEP)} at a time, up to ${Format.percent(MAX_STUDIO_STAKE)}. That share of their profit comes home every week, the owners warm to you, and what you hold comes off the price if you buy the rest. If someone else buys them, they buy you out.",
+    ) {
+        if (held > 0) {
+            ValueRow("You hold", Format.percent(held))
+            RowDivider()
+            ValueRow("Worth", Format.money(state.stakeValue(s)), colors.good)
+            RowDivider()
+        }
+        CardBlock {
+            PrimaryButton(
+                if (held > 0) "Buy another ${Format.percent(STAKE_STEP)} · ${Format.money(state.stakePrice(s))}" else "Buy ${Format.percent(STAKE_STEP)} · ${Format.money(state.stakePrice(s))}",
+                { store.perform { buyStake(s.name) } }, Modifier.fillMaxWidth(), enabled = blocker == null,
+            )
+            if (blocker != null) Hint(blocker)
+            if (held > 0) TonalButton("Sell your stake · ${Format.money(state.stakeValue(s) * 0.95)}", { store.perform { sellStake(s.name) } }, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** How an offer is paid. */
+private enum class Payment(val title: String) { CASH("Cash"), SHARES("Half shares"), EARN_OUT("Earn-out") }

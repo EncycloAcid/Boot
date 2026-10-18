@@ -58,6 +58,9 @@ class Stats {
     var piracyLoss = 0.0
     var reviewBombs = 0
     var collections = 0
+
+    /** Stakes bought in studios. */
+    var stakes = 0
     var weeksInRed = 0
 
     /** Consecutive weeks every lane has been profitable over the trailing quarter. */

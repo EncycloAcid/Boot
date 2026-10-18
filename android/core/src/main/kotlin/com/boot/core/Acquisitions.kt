@@ -63,7 +63,7 @@ fun studio(name: String): Studio? = Studios.firstOrNull { it.name == name }
 data class Subsidiary(
     val name: String,
     val boughtWeek: Int,
-    val paid: Double,
+    var paid: Double,
     var lastProfit: Double = 0.0,
     var lifetimeProfit: Double = 0.0,
     /** What was really going on there, found by due diligence or not. */
@@ -83,6 +83,12 @@ data class Subsidiary(
     /** When they last spoke up, and how many times senior people walked. */
     var unrestWeek: Int = -1_000,
     var talentLost: Int = 0,
+    /** What's still owed to the sellers if the studio hits its targets, and when. */
+    var earnOutDue: Double = 0.0,
+    var earnOutWeek: Int = 0,
+    /** The series you've asked them to make next (null: something new), once you've chosen. */
+    var pitchChosen: Boolean = false,
+    var pitchSeries: String? = null,
 )
 
 /** What buyers pay over a studio's value. */
@@ -105,13 +111,14 @@ fun GamesStudio.owns(name: String): Boolean = subsidiaries.any { it.name == name
 /** The studios you could buy, cheapest first. */
 fun GameState.studiosForSale(): List<Studio> {
     val g = games ?: return emptyList()
-    return Studios.filter { !g.owns(it.name) && studioActive(it.name, calendarYear) }.sortedBy { it.baseValue }
+    return Studios.filter { !g.owns(it.name) && it.name !in g.rivalOwned && studioActive(it.name, calendarYear) }.sortedBy { it.baseValue }
 }
 
 /** Why you can't buy [s] right now, or null if you can. */
 fun GameState.acquisitionBlocker(s: Studio): String? {
     val g = games ?: return "You need a game studio to buy one."
     if (g.owns(s.name)) return "It's already yours."
+    g.rivalOwned[s.name]?.let { return "$it owns ${s.name} now." }
     if (!s.indie && listing == null && week < 52 * 3) return "The big publishers won't talk to a company this young."
     val price = acquisitionPrice(s)
     if (cash < price) return "Costs ${money(price)}. You have ${money(cash)}."
@@ -124,7 +131,10 @@ fun GameState.acquire(name: String) {
     acquisitionBlocker(s)?.let { throw notAvailable(it) }
     val price = acquisitionPrice(s)
     spend(price, Lane.GAMES)
-    games!!.subsidiaries += Subsidiary(s.name, week, price, finding = findingAt(s))
+    val held = games!!.stakePaid.remove(s.name) ?: 0.0
+    games!!.stakes.remove(s.name)
+    games!!.subsidiaries += Subsidiary(s.name, week, price + held, finding = findingAt(s))
+    learnFrom(games!!, s)
     stats.acquisitions += 1
     reputation.adjust(if (s.indie) 1.0 else 3.0)
     addLog("You bought ${s.name} for ${money(price)}. Their games are yours now.", LogTone.MILESTONE, Lane.GAMES)

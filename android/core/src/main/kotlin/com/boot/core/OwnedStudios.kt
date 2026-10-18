@@ -68,7 +68,8 @@ fun GameState.studioPitch(sub: Subsidiary): StudioGame {
     val genre = dice.pick(Genre.entries)
     val topic = dice.pick(Topic.entries.filter { it.fit(genre) != Fit.BAD })
     val series = studioFranchises(sub.name)
-    val franchise = if (series.isNotEmpty() && dice.chance(0.7)) dice.pick(series) else null
+    // Once you've said what you want, that's what they pitch.
+    val franchise = if (sub.pitchChosen) sub.pitchSeries?.takeIf { it in series } else if (series.isNotEmpty() && dice.chance(0.7)) dice.pick(series) else null
     val name = gameTitle(topic, genre, dice.int(0, 1_000_000).toLong(), games?.market?.games?.map { it.title }?.toSet().orEmpty())
     val title = if (franchise != null) "$franchise: $name" else name
     val (cost, weeks) = studioGameQuote(size)
@@ -102,6 +103,7 @@ fun GameState.greenlight(name: String, budget: StudioBudget) {
     spend(cost, Lane.GAMES)
     val weeks = pitch.doneWeek - pitch.startWeek
     sub.project = pitch.copy(budget = budget, cost = cost, startWeek = week, doneWeek = week + weeks)
+    sub.pitchChosen = false
     sub.morale = (sub.morale + budget.morale + 0.03).coerceIn(0.0, 1.0)
     addLog("You greenlit ${pitch.title} at $name: ${money(cost)}, out in about ${Format.weeks(weeks)}.", LogTone.NEUTRAL, Lane.GAMES)
 }

@@ -403,6 +403,16 @@ class GamesStudio {
     /** Studios whose books you've been through. */
     val diligence = mutableSetOf<String>()
 
+    /** Stakes you hold in studios you don't own (share of each), what you paid, and what they've earned. */
+    val stakes: MutableMap<String, Double> = mutableMapOf()
+    val stakePaid: MutableMap<String, Double> = mutableMapOf()
+    var stakeEarned = 0.0
+    var lastStakeProfit = 0.0
+
+    /** Studios one of the giants bought, and when. */
+    val rivalOwned: MutableMap<String, String> = mutableMapOf()
+    val rivalOwnedWeek: MutableMap<String, Int> = mutableMapOf()
+
     /** Studios that won't hear another offer until a given week. */
     val cooloff = mutableMapOf<String, Int>()
 

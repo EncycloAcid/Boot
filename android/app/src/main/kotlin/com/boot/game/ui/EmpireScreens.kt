@@ -1,5 +1,7 @@
 package com.boot.game.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.boot.core.stakeValue
+import com.boot.core.studioHoldings
 import com.boot.core.stanceOf
 import com.boot.core.Stance
 import com.boot.core.Achievement
@@ -92,6 +96,31 @@ fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
             )
         }
     }
+    if (g.subsidiaries.isNotEmpty() || g.stakes.isNotEmpty()) {
+        val h = state.studioHoldings()
+        GroupedSection("Your holdings", Modifier.testTag("holdings")) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile("Paid", Format.money(h.paid), Modifier.weight(1f))
+                StatTile("Worth now", Format.money(h.worth), Modifier.weight(1f), tint = if (h.worth >= h.paid) colors.good else colors.bad)
+                StatTile("Earned", Format.money(h.earned), Modifier.weight(1f), tint = colors.good)
+            }
+        }
+    }
+    if (g.stakes.isNotEmpty()) {
+        GroupedSection("Your stakes · ${g.lastStakeProfit.perWeek()}", footer = "Your share of their profit comes home every week. Buy the rest from the studio's page.") {
+            g.stakes.entries.sortedByDescending { it.value }.forEachIndexed { i, (name, share) ->
+                if (i > 0) RowDivider(68.dp)
+                val s = com.boot.core.studio(name) ?: return@forEachIndexed
+                ListRow(
+                    state.studioName(name),
+                    subtitle = "${Format.percent(share)} · worth ${Format.money(state.stakeValue(s))}",
+                    leading = { StudioBadge(name) },
+                    chevron = true,
+                    onClick = { store.dealStudio = name },
+                )
+            }
+        }
+    }
     if (g.subsidiaries.isNotEmpty()) {
         GroupedSection("Your studios · ${g.subsidiaryProfit.perWeek()}", footer = "Each studio sends home about 6% of its value a year, more when it has hits out, and how you run it changes that. Their games don't compete with yours.") {
             g.subsidiaries.forEachIndexed { i, sub ->
@@ -116,7 +145,8 @@ fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
     GroupedSection(
         "Buy a studio",
         action = { PlainButton(if (showAll) "Fewer" else "All ${forSale.size}", { showAll = !showAll }) },
-        footer = "Tap a studio to look it over, check its books and make an offer. The big publishers only talk to companies three years old or public.",
+        footer = "Tap a studio to look it over, check its books, buy a stake or make an offer. The big publishers only talk to companies three years old or public." +
+            (if (g.rivalOwned.isNotEmpty()) " Off the market: ${g.rivalOwned.entries.take(3).joinToString { "${it.key} (${it.value})" }}." else ""),
     ) {
         shown.forEachIndexed { i, s ->
             if (i > 0) RowDivider(68.dp)

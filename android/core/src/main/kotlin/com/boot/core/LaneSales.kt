@@ -25,7 +25,7 @@ fun GameState.laneSalePrice(lane: Lane): Double {
     val profit = trailingProfit(lane, 13)
     // Buyers pay up for a business that makes money and haggle over one that doesn't.
     val mood = if (profit > 0) 1.15 else 0.8
-    val studios = if (lane == Lane.GAMES) subsidiaryValue * 0.9 else 0.0
+    val studios = if (lane == Lane.GAMES) (subsidiaryValue + stakesValue) * 0.9 else 0.0
     val price = laneValue(lane) * mood + studios
     return (max(scaled(25_000.0), price) / 1_000).roundToLong() * 1_000.0
 }
