@@ -181,14 +181,34 @@ internal fun GameState.resolveMilestone(k: MilestoneReview, choice: Int) {
 
 /** A port in progress. */
 @Serializable
-data class Port(val releaseId: Int, val platform: Platform, val doneWeek: Int)
+data class Port(val releaseId: Int, val platform: Platform, val doneWeek: Int, val quality: PortQuality = PortQuality.IN_HOUSE)
+
+/** How much care goes into a port. */
+@Serializable
+enum class PortQuality(val title: String, val cost: Double, val time: Double, val sales: Double, val userScore: Double, val blurb: String) {
+    OUTSOURCED("Outsourced", 0.6, 1.0, 0.85, -0.3, "Cheap, and players notice the rough edges."),
+    IN_HOUSE("In-house", 1.0, 1.0, 1.0, 0.0, "A solid port."),
+    ENHANCED("Enhanced", 1.8, 1.5, 1.15, 0.2, "Better than the original. Sells even years later."),
+}
 
 /** What porting a game costs, and how long it takes. */
-fun GameState.portQuote(r: GameRelease): Pair<Double, Int> = when (r.concept.size) {
-    GameSize.SMALL -> scaled(20_000.0) to 6
-    GameSize.MEDIUM -> scaled(60_000.0) to 8
-    GameSize.LARGE -> scaled(150_000.0) to 10
-    GameSize.AAA -> scaled(400_000.0) to 12
+fun GameState.portQuote(r: GameRelease, quality: PortQuality = PortQuality.IN_HOUSE): Pair<Double, Int> {
+    val (cost, weeks) = when (r.concept.size) {
+        GameSize.SMALL -> 20_000.0 to 6
+        GameSize.MEDIUM -> 60_000.0 to 8
+        GameSize.LARGE -> 150_000.0 to 10
+        GameSize.AAA -> 400_000.0 to 12
+    }
+    return scaled(cost * quality.cost) to (weeks * quality.time).toInt()
+}
+
+/** How a port to [platform] should sell against the game's launch: the platform's crowd, how the genre suits it, and the game's age. */
+fun GameState.portOutlook(r: GameRelease, platform: Platform, quality: PortQuality = PortQuality.IN_HOUSE): Double {
+    fun crowd(p: Platform) = platformPlayers(p) * p.spend
+    val home = r.concept.platforms.map { crowd(it) }.average().coerceAtLeast(5.0)
+    val size = (crowd(platform) / home).coerceIn(0.25, 2.0)
+    val old = week - r.week > 104 && quality != PortQuality.ENHANCED
+    return size * platform.fit(r.concept.genre).multiplier * quality.sales * (if (old) 0.6 else 1.0)
 }
 
 /** Platforms a game could be ported to. */
@@ -199,24 +219,24 @@ fun GameState.portTargets(r: GameRelease): List<Platform> =
     }
 
 /** Why a game can't be ported to [platform], or null if it can. */
-fun GameState.portBlocker(r: GameRelease, platform: Platform): String? {
+fun GameState.portBlocker(r: GameRelease, platform: Platform, quality: PortQuality = PortQuality.IN_HOUSE): String? {
     val g = games ?: return "You need a game studio."
     if (platform !in portTargets(r)) return "It's already on ${platform.title}, or it can't go there."
     if (g.ports.any { it.releaseId == r.id }) return "A port of ${r.title} is already under way."
     if (r.developer != null) return "Ports are for games you made."
-    val (cost, _) = portQuote(r)
+    val (cost, _) = portQuote(r, quality)
     if (cash < cost) return "A port costs ${money(cost)}."
     return null
 }
 
-fun GameState.portGame(releaseId: Int, platform: Platform) {
+fun GameState.portGame(releaseId: Int, platform: Platform, quality: PortQuality = PortQuality.IN_HOUSE) {
     requireLive()
     val g = games ?: throw notAvailable("You need a game studio.")
     val r = g.release(releaseId) ?: throw invalid("No such game.")
-    portBlocker(r, platform)?.let { throw notAvailable(it) }
-    val (cost, weeks) = portQuote(r)
+    portBlocker(r, platform, quality)?.let { throw notAvailable(it) }
+    val (cost, weeks) = portQuote(r, quality)
     spend(cost, Lane.GAMES)
-    g.ports += Port(r.id, platform, week + weeks)
+    g.ports += Port(r.id, platform, week + weeks, quality)
     addLog("${r.title} is being ported to ${platform.title}. It'll be out in ${Format.weeks(weeks)}.", LogTone.NEUTRAL, Lane.GAMES)
 }
 
@@ -227,36 +247,22 @@ internal fun GameState.portWeek(g: GamesStudio) {
         g.ports.remove(port)
         val r = g.release(port.releaseId) ?: continue
         r.extraPlatforms += port.platform
-        val burst = r.concept.size.launchSales * (r.score / 7).pow(3) * 0.3 * world.demand(Lane.GAMES) * pastScale(calendarYear.toDouble())
+        val outlook = portOutlook(r, port.platform, port.quality)
+        val burst = r.concept.size.launchSales * (r.score / 7).pow(3) * 0.3 * outlook * world.demand(Lane.GAMES) * pastScale(calendarYear.toDouble())
         r.weeklySales += burst
+        if (r.userScore > 0) r.userScore = (r.userScore + port.quality.userScore * 0.5).coerceIn(1.0, 10.0)
+        if (port.quality == PortQuality.OUTSOURCED) r.bugs += r.concept.size.work * 0.03
         stats.ports += 1
-        addLog("${r.title} is out on ${port.platform.title}.", LogTone.GOOD, Lane.GAMES)
+        addLog(
+            "${r.title} is out on ${port.platform.title}" + when (port.quality) {
+                PortQuality.OUTSOURCED -> ". Players say it's a rough port."
+                PortQuality.ENHANCED -> ", better than ever."
+                PortQuality.IN_HOUSE -> "."
+            },
+            if (port.quality == PortQuality.OUTSOURCED) LogTone.NEUTRAL else LogTone.GOOD, Lane.GAMES,
+        )
         publish(NewsDesk.YOU, "IGN", "${r.title} comes to ${port.platform.title}", "$companyName's game is out on a new platform.", LogTone.GOOD, Lane.GAMES, tag = NewsTag.NEWS, cover = r.newsCover())
     }
 }
 
-/** Weeks between sales of the same game. */
-const val SALE_GAP = 13
 
-/** Why a game can't go on sale, or null if it can. */
-fun GameState.saleBlocker(r: GameRelease): String? = when {
-    r.live != null -> "Live games make their money in the store, not on sale."
-    week - r.week < 8 -> "It's too new to discount."
-    r.weeklySales <= 0 -> "It isn't selling any more."
-    week - r.lastSaleWeek < SALE_GAP -> "It was on sale recently. Again from ${GameClock.label(r.lastSaleWeek + SALE_GAP)}."
-    else -> null
-}
-
-/** Half price for a week or two: a lot more copies, a little more money, and new fans. */
-fun GameState.runSale(releaseId: Int) {
-    requireLive()
-    val g = games ?: throw notAvailable("You need a game studio.")
-    val r = g.release(releaseId) ?: throw invalid("No such game.")
-    saleBlocker(r)?.let { throw notAvailable(it) }
-    r.lastSaleWeek = week
-    r.weeklySales *= 1.5
-    val buyers = r.weeklySales / (r.concept.unitPrice * 0.5)
-    g.fans += buyers * 0.05
-    stats.sales += 1
-    addLog("${r.title} is half price this week. Sales are up.", LogTone.GOOD, Lane.GAMES)
-}

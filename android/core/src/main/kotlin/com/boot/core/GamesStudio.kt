@@ -34,6 +34,14 @@ data class GameContract(
     val completion: Double get() = min(1.0, done / work)
 }
 
+/** How big an expansion is: what it takes, who buys it, and for how much. */
+@Serializable
+enum class ExpansionScope(val title: String, val work: Double, val budget: Double, val attach: Double, val price: Double, val blurb: String) {
+    DLC("Small DLC", 0.12, 0.4, 0.8, 0.2, "A few weeks' work: a new area, a new mode. Cheap, and plenty of owners buy it."),
+    EXPANSION("Expansion", 0.3, 0.5, 1.0, 0.4, "A proper chunk of new game for the people who loved it."),
+    STANDALONE("Standalone", 0.5, 0.7, 1.0, 0.6, "Big enough to stand alone: finds new players as well as old ones."),
+}
+
 /** New content for a released game. The whole team works on it, like a small game. */
 @Serializable
 data class GameExpansion(
@@ -43,6 +51,7 @@ data class GameExpansion(
     val weeklyBudget: Double,
     var done: Double = 0.0,
     var weeks: Int = 0,
+    val scope: ExpansionScope = ExpansionScope.EXPANSION,
 ) {
     val completion: Double get() = min(1.0, done / work)
 }
@@ -193,7 +202,7 @@ data class GameRelease(
     /** Average review, 1...10. */
     val score: Double,
     var weeklySales: Double,
-    val netShare: Double,
+    var netShare: Double,
     val design: Double,
     val tech: Double,
     var bugs: Double,
@@ -243,6 +252,22 @@ data class GameRelease(
     var pirated: Double = 0.0,
     /** Its age rating, once there were ratings. */
     var rating: AgeRating? = null,
+    /** A permanent price cut (0.25 = a quarter off), and the sale running now, if any. */
+    var priceCut: Double = 0.0,
+    var saleUntil: Int = -1,
+    var saleDepth: Double = 0.0,
+    var saleLift: Double = 1.0,
+    var salePull: Double = 0.0,
+    /** Players who've learned to wait for the next sale. */
+    var saleFatigue: Double = 0.0,
+    /** Free content updates so far. */
+    var updates: Int = 0,
+    var lastUpdateWeek: Int = -1000,
+    /** The player score at launch, to tell how far it's come. */
+    var firstUserScore: Double = 10.0,
+    /** Mod tools are out. */
+    var modTools: Boolean = false,
+    var modToolsWeek: Int = 0,
     /** The stores it was sold on, for a PC game you published. */
     var stores: List<Storefront> = emptyList(),
     /** A wave of angry user reviews has hit it. */
@@ -582,10 +607,16 @@ class GamesStudio {
                 expansion = null
                 release(x.releaseId)?.let { r ->
                     r.expansions += x.title
-                    val attach = (0.3 * (r.score / 8).pow(2)).clamped(0.05, 0.5)
+                    val attach = (0.3 * (r.score / 8).pow(2) * x.scope.attach).clamped(0.03, 0.6)
                     val buyers = r.unitsSold * attach
-                    r.weeklySales += buyers * r.concept.size.price * 0.4 * 0.3 * ctx.marketDemand
+                    r.weeklySales += buyers * r.concept.size.price * x.scope.price * 0.3 * ctx.marketDemand
                     fans += buyers * 0.1
+                    // A standalone expansion also finds players who never bought the original.
+                    if (x.scope == ExpansionScope.STANDALONE) {
+                        val fresh = r.concept.size.launchSales * (r.score / 7).pow(3) * 0.25 * ctx.marketDemand
+                        r.weeklySales += fresh
+                        fans += fresh / r.concept.unitPrice * 0.1
+                    }
                     report.log("${x.title} is out. About ${Format.count(buyers)} players came back for more.", LogTone.GOOD)
                 }
             }
@@ -609,12 +640,17 @@ class GamesStudio {
             }
             if (r.weeklySales <= 0) continue
             val age = ctx.week - r.week
-            report.revenue += r.weeklySales * r.netShare
-            r.lifetimeSales += r.weeklySales * r.netShare
-            r.unitsSold += r.weeklySales / r.concept.unitPrice
-            r.salesHistory += r.weeklySales
+            val onSale = r.onSale(ctx.week)
+            val gross = r.weeklySales * (if (onSale) r.saleLift else 1.0)
+            report.revenue += gross * r.netShare
+            r.lifetimeSales += gross * r.netShare
+            r.unitsSold += gross / (r.price * (if (onSale) 1 - r.saleDepth else 1.0))
+            r.salesHistory += gross
+            // A sale ends: some of the people who'd have paid full price later already bought it.
+            if (ctx.week == r.saleUntil) r.weeklySales *= 1 - r.salePull
+            r.saleFatigue *= 0.97
             if (r.salesHistory.size > 52) r.salesHistory.removeAt(0)
-            r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) * (if (r.patched) 1.01 else 1.0)
+            r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) * (if (r.patched) 1.01 else 1.0) * (if (r.modTools) 1.008 else 1.0)
             if (r.weeklySales < 40) {
                 r.weeklySales = 0.0
                 r.chartRank = 0
@@ -1040,7 +1076,7 @@ class GamesStudio {
             id = nextId(), title = p.title, concept = c, week = week, reviews = reviews, score = avg, weeklySales = gross,
             netShare = netShare, design = p.design, tech = p.tech, bugs = p.bugs, hype = p.hype, devCost = p.spent,
             report = lines, publisher = p.deal?.publisher,
-            userScore = verdict.userScore, userScoreSettled = false,
+            userScore = verdict.userScore, userScoreSettled = false, firstUserScore = verdict.userScore,
             aspects = verdict.aspects, pros = verdict.pros, cons = verdict.cons, playerQuotes = verdict.players,
             live = if (c.live) LiveService(livePlayers(gross / c.unitPrice), week) else null,
             breakdown = listOf(ScorePart("Baseline", SCORE_BASELINE, "Where every game starts.")) + parts,

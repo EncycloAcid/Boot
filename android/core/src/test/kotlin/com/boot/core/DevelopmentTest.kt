@@ -181,7 +181,8 @@ class DevelopmentTest {
         val before = r.weeklySales
         val fans = s.games!!.fans
         s.runSale(r.id)
-        assertEquals(before * 1.5, r.weeklySales, 1e-6)
+        assertEquals(before, r.weeklySales, 1e-6)
+        assertTrue(r.saleLift > 1.4 && r.onSale(s.week))
         assertTrue(s.games!!.fans > fans)
         assertNotNull(s.saleBlocker(r))
         assertFailsWith<GameException> { s.runSale(r.id) }

@@ -555,21 +555,21 @@ fun GameState.expansionBlocker(id: Int): String? {
     if (r.publisher != null) return "${r.publisher} owns that one."
     if (r.developer != null) return "${r.developer} owns that one."
     if (r.score < 6) return "Only games that scored 6 or more have an audience for more."
-    if (r.expansions.size >= 2) return "Two expansions is plenty. Make a sequel."
+    if (r.expansions.size >= 3) return "Three expansions is plenty. Make a sequel."
     if (week - r.week > 104) return "Players have moved on."
     if (g.busy) return "The team is busy."
     return null
 }
 
 /** Start an expansion pack for a released game. The team works on it until it's done. */
-fun GameState.startExpansion(id: Int) {
+fun GameState.startExpansion(id: Int, scope: ExpansionScope = ExpansionScope.EXPANSION) {
     requireLive()
     expansionBlocker(id)?.let { throw notAvailable(it) }
     val g = studio()
     val r = g.release(id)!!
     val used = r.expansions.toSet()
     val name = GameNames.expansions.filter { "${r.title}: $it" !in used }.let { rng.pick(it) }
-    val x = GameExpansion(r.id, "${r.title}: $name", work = r.concept.size.work * 0.3, weeklyBudget = r.concept.size.weeklyBudget * 0.5)
+    val x = GameExpansion(r.id, "${r.title}: $name", work = r.concept.size.work * scope.work, weeklyBudget = r.concept.size.weeklyBudget * scope.budget, scope = scope)
     g.expansion = x
     addLog("Work starts on ${x.title}.", LogTone.NEUTRAL, Lane.GAMES)
 }
