@@ -14,6 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.boot.core.collectorCost
+import com.boot.core.boxCost
+import com.boot.core.orderEditions
+import com.boot.core.collectorEstimate
+import com.boot.core.boxEstimate
+import com.boot.core.editionsBlocker
+import com.boot.core.Research
 import com.boot.core.AgeRating
 import com.boot.core.Audience
 import com.boot.core.Format
@@ -79,6 +86,7 @@ fun ShelfControls(store: GameStore, state: GameState, p: GameProject, team: Int)
             "${piracyEra(year)} · pirates would take about ${Format.percent(loss)} of its sales" +
                 if (p.protection != Protection.NONE) " · ${p.protection.blurb}" else "",
         )
+        EditionsControls(store, state, p, team)
         val rating = state.projectRating(team)
         if (rating != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -185,7 +193,7 @@ fun ShelfSection(r: GameRelease) {
         }
         return
     }
-    if (r.rating == null && r.protection == Protection.NONE && r.pirated < 1 && !r.bombed) return
+    if (r.rating == null && r.protection == Protection.NONE && r.pirated < 1 && !r.bombed && r.boxes == 0 && r.collectors == 0) return
     GroupedSection("On the shelf") {
         var first = true
         r.rating?.let {
@@ -194,6 +202,14 @@ fun ShelfSection(r: GameRelease) {
         }
         if (!first) RowDivider()
         ValueRow("Copy protection", r.protection.title)
+        if (r.boxes > 0) {
+            RowDivider()
+            ValueRow("Boxes sold", "${Format.count(r.boxesSold.toDouble())} of ${Format.count(r.boxes.toDouble())}")
+        }
+        if (r.collectors > 0) {
+            RowDivider()
+            ValueRow("Collector's editions sold", "${Format.count(r.collectorsSold.toDouble())} of ${Format.count(r.collectors.toDouble())}")
+        }
         if (r.pirated >= 1) {
             RowDivider()
             ValueRow("Pirated copies", "~${Format.count(r.pirated)}", gameColors.bad)
@@ -237,4 +253,39 @@ fun ReviewBombArt(state: GameState, kind: ReviewBomb): Boolean {
         }
     }
     return true
+}
+
+/** Boxes and collector's editions to order, for a game you publish yourself. */
+@Composable
+fun EditionsControls(store: GameStore, state: GameState, p: GameProject, team: Int) {
+    if (Research.BOXED_EDITIONS !in state.researched) return
+    val blocker = state.editionsBlocker(team)
+    if (blocker != null) {
+        Hint("Boxed editions: $blocker")
+        return
+    }
+    val estimate = state.boxEstimate(team)
+    fun round(n: Double, to: Int) = (kotlin.math.round(n / to) * to).toInt().coerceAtLeast(to)
+    val boxOptions = (listOf(0) + listOf(0.5, 0.8, 1.0, 1.3, 2.0).map { round(estimate * it, 1_000) }).distinct()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("Boxes", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        MenuButton(if (p.boxes == 0) "Distributor" else Format.count(p.boxes.toDouble()), boxOptions, { n ->
+            if (n == 0) "Leave it to a distributor" else "${Format.count(n.toDouble())} · ${Format.money(n * state.boxCost())}"
+        }) { n -> store.perform { orderEditions(team, n, p.collectors) } }
+    }
+    val fans = state.collectorEstimate(team)
+    if (fans >= 100) {
+        val options = (listOf(0) + listOf(0.5, 1.0, 2.0).map { round(fans * it, 100) }).distinct()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Collector's editions", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            MenuButton(if (p.collectors == 0) "None" else Format.count(p.collectors.toDouble()), options, { n ->
+                if (n == 0) "None" else "${Format.count(n.toDouble())} · ${Format.money(n * state.collectorCost())}"
+            }) { n -> store.perform { orderEditions(team, p.boxes, n) } }
+        }
+    }
+    Hint(
+        "Shops would take about ${Format.count(estimate.toDouble())} boxes over its life" +
+            (if (fans >= 100) ", and fans about ${Format.count(fans.toDouble())} collector's editions" else "") +
+            ". Your own boxes earn more than a distributor pays; too many and the rest go cheap, too few and buyers go without.",
+    )
 }

@@ -36,6 +36,10 @@ enum class Research(
     LOCALIZATION("Localization", "Translate your games for Europe and Japan: 6% more sales.", Kind.STUDIO, 25),
     PLAYTESTING("Playtesting lab", "Strangers play your builds and you watch: better games, every time.", Kind.STUDIO, 30),
     DIGITAL_STORES("Digital storefronts", "Sell direct to players' machines: 5% more sales.", Kind.STUDIO, 40, requires = MARKETING),
+    BOXED_EDITIONS(
+        "Boxed editions", "Make your own boxes, standard and collector's, for the games you publish yourself. Order well and they earn more; order badly and you're stuck with stock.",
+        Kind.STUDIO, 25, requires = MARKETING,
+    ),
     MEDIUM_GAMES("Medium games", "Bigger games, bigger launches.", Kind.STUDIO, 20),
     MULTI_GENRE("Multi-genre games", "Mix two genres in one game.", Kind.STUDIO, 35),
     MULTI_PLATFORM("Multi-platform releases", "Ship on up to three platforms at once.", Kind.STUDIO, 35),

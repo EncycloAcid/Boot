@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import com.boot.core.licenceBlocker
+import com.boot.core.buyLicence
 import com.boot.core.adaptableSeries
 import com.boot.core.planStage
 import com.boot.core.GameClock
@@ -117,7 +119,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
         }
         StudioPage.TECH -> {
             item { EnginesSection(store, state, g) }
-            item { PlatformsSection(state) }
+            item { PlatformsSection(store, state) }
             item { NotebookSection(g) }
         }
     }
@@ -132,7 +134,7 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
         p != null -> {
             item { DevelopmentSection(store, state, p) }
             item { FocusSection(store, g, p, state = state) }
-            item { TeamFitSection(state, p) }
+            item { TeamFitSection(store, state, p) }
             item { HypeSection(store, state, p) }
         }
         x != null -> item {
@@ -140,6 +142,15 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
                 CardBlock {
                     Text(x.title, style = MaterialTheme.typography.titleLargeEmphasized)
                     Meter("Progress", x.completion, gameColors.milestone, wavy = true, caption = Format.weeks(x.weeks) + " in")
+                }
+            }
+        }
+        g.engineBuild != null -> item {
+            val b = g.engineBuild!!
+            GroupedSection("Building an engine", footer = "An engine takes the whole main team. They can start a game once it's done.") {
+                CardBlock {
+                    Text(b.name, style = MaterialTheme.typography.titleLargeEmphasized)
+                    Meter("Effective level ${b.combo.level}", 0.5, gameColors.milestone, wavy = true, caption = "${Format.weeks(b.weeksLeft)} left")
                 }
             }
         }
@@ -702,14 +713,16 @@ private fun EnginesSection(store: GameStore, state: GameState, g: GamesStudio) {
 }
 
 @Composable
-private fun PlatformsSection(state: GameState) {
+private fun PlatformsSection(store: GameStore, state: GameState) {
+    val held = state.games?.licences.orEmpty()
     val onSale = state.platformsOnSale
     val total = onSale.sumOf { state.platformPlayers(it) * it.spend }.coerceAtLeast(1.0)
     val now = state.timelineWeek
     val upcoming = Platform.entries.filter { it.launch > now && it.launch <= now + 78 && it != Platform.OWN_CONSOLE }
     GroupedSection(
         "Platforms",
-        footer = upcoming.takeIf { it.isNotEmpty() }?.let { list -> "Coming soon: " + list.joinToString { it.title } + "." },
+        footer = "A platform's development licence is paid once and kept for good. " +
+            (upcoming.takeIf { it.isNotEmpty() }?.let { list -> "Coming soon: " + list.joinToString { it.title } + "." } ?: ""),
     ) {
         onSale.sortedByDescending { state.platformPlayers(it) * it.spend }.forEachIndexed { i, p ->
             if (i > 0) RowDivider()
@@ -718,10 +731,15 @@ private fun PlatformsSection(state: GameState) {
             ListRow(
                 p.title,
                 subtitle = "${p.makerIn(state.calendarYear)} · ${String.format(Locale.US, "%.0f", players)}M players" +
-                    (if (p.fee > 0) " · ${Format.money(p.fee)} licence" else " · no licence fee") +
+                    (if (p in held) " · licensed" else if (p.fee > 0) " · ${Format.money(p.fee)} licence" else " · no licence fee") +
                     (if (leaving) " · being retired" else ""),
                 value = Format.percent(players * p.spend / total),
                 valueDetail = "of sales",
+                trailing = if (p !in held && p.fee > 0) {
+                    { PlainButton("Buy licence", { store.perform { buyLicence(p) } }, enabled = state.licenceBlocker(p) == null) }
+                } else {
+                    null
+                },
             )
         }
     }

@@ -130,6 +130,11 @@ data class GameProject(
     var rated: Boolean = false,
     /** Areas that had enough specialists on them while their stage was worked. */
     val covered: MutableSet<FocusArea> = mutableSetOf(),
+    /** Who's on which area of each stage ("stage:id"); anyone not here goes where they're needed. */
+    val crew: MutableMap<String, FocusArea> = mutableMapOf(),
+    /** Standard boxes and collector's editions on order; none leaves it to a distributor. */
+    var boxes: Int = 0,
+    var collectors: Int = 0,
 ) {
     /** How much the leads add to this week's work. Worked out each week before the team gets going. */
     @kotlinx.serialization.Transient
@@ -238,6 +243,11 @@ data class GameRelease(
     var rating: AgeRating? = null,
     /** A wave of angry user reviews has hit it. */
     var bombed: Boolean = false,
+    /** Boxes and collector's editions you made, and how many sold. */
+    var boxes: Int = 0,
+    var boxesSold: Int = 0,
+    var collectors: Int = 0,
+    var collectorsSold: Int = 0,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -336,7 +346,7 @@ class GamesStudio {
     var expansion: GameExpansion? = null
 
     /** Something is keeping the team busy. */
-    val busy: Boolean get() = project != null || contract != null || expansion != null
+    val busy: Boolean get() = project != null || contract != null || expansion != null || engineBuild != null
     val contractOffers = mutableListOf<GameContract>()
     val dealOffers = mutableListOf<PublisherDeal>()
     val releases = mutableListOf<GameRelease>()
@@ -418,6 +428,9 @@ class GamesStudio {
     val collectionJobs = mutableListOf<CollectionJob>()
     val collected: MutableSet<Int> = mutableSetOf()
 
+    /** Platforms you hold a development licence for: paid once, kept for good. */
+    val licences: MutableSet<Platform> = mutableSetOf()
+
     /** Pairs of people who've found out how they get on ("id:id"). */
     val knownPairs: MutableSet<String> = mutableSetOf()
     private var nextId = 1
@@ -489,6 +502,8 @@ class GamesStudio {
         lastWork = 0.0
 
         engineBuild?.let { b ->
+            // Building an engine is the main team's work while it lasts.
+            if (project == null) lastWork = work
             val left = b.weeksLeft - 1
             if (left <= 0) {
                 val engine = Engine(nextId(), b.name, b.features, ctx.week)
@@ -756,6 +771,14 @@ class GamesStudio {
         val original = c.sequelOf?.let { release(it) }
         val rushedSequel = original != null && week - original.week < 52
         if (rushedSequel) part("Rushed sequel", -0.6, "Less than a year after ${original!!.title}.")
+        // Fans expect a sequel to look and play better than the last one.
+        if (original != null && c.remasterOf == null) {
+            val before = engine(original.concept.engineId)
+            when {
+                original.concept.engineId == c.engineId -> part("Same engine", -0.4, "Built on ${engine.name}, like ${original.title}. Fans expected a step up.")
+                engine.level > before.level -> part("Newer engine", 0.3, "${engine.name} is a step up from ${before.name}, which ${original.title} used.")
+            }
+        }
         part("Studio craft", ctx.mods.quality / 15, "Perfectionists, playtesting and the like.")
         val directionBonus = p.creativeFocus.qualityBonus / 15
         if (abs(directionBonus) >= 0.05) {

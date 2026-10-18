@@ -71,6 +71,7 @@ fun GameState.conceptBlocker(
         if (g.project != null) return "A game is already in development."
         if (g.contract != null) return "Finish the contract first."
         if (g.expansion != null) return "Finish the expansion first."
+        g.engineBuild?.let { return "The team is building ${it.name}." }
     }
     c.sequelOf?.let { g.release(it) }?.let { if (it.developer != null) return "${it.title} belongs to ${it.developer}." }
     if (c.topic !in g.topics) return "Research ${c.topic.title} first."
@@ -105,7 +106,7 @@ fun GameState.conceptBlocker(
         if (Research.LIVE_SERVICE !in researched) return "Research live service games first."
         if (c.size == GameSize.SMALL) return "Live games need to be medium or bigger."
     }
-    val fees = if (publisherPaysFees) 0.0 else c.platforms.sumOf { it.fee }
+    val fees = if (publisherPaysFees) 0.0 else licenceFees(c.platforms)
     val upfront = fees + c.size.weeklyBudget * 4
     if (cash < upfront) {
         return if (publisherPaysFees) {
@@ -115,6 +116,31 @@ fun GameState.conceptBlocker(
         }
     }
     return null
+}
+
+/** What the development licences for [platforms] cost: only the ones you don't hold yet. */
+fun GameState.licenceFees(platforms: List<Platform>): Double {
+    val held = games?.licences.orEmpty()
+    return platforms.filter { it !in held }.sumOf { it.fee }
+}
+
+/** Why you can't buy [p]'s development licence now, or null if you can. */
+fun GameState.licenceBlocker(p: Platform): String? {
+    val g = games ?: return "You don't make games."
+    if (p in g.licences) return "You already hold it."
+    if (p.fee <= 0) return "${p.title} doesn't charge for one."
+    if (!availablePlatform(p)) return "${p.title} isn't on sale."
+    if (cash < p.fee) return "It costs ${money(p.fee)}."
+    return null
+}
+
+/** Buy [p]'s development licence ahead of time. It's yours for good. */
+fun GameState.buyLicence(p: Platform) {
+    requireLive()
+    licenceBlocker(p)?.let { throw notAvailable(it) }
+    spend(p.fee, Lane.GAMES)
+    games!!.licences += p
+    addLog("You bought the ${p.title} development licence: ${money(p.fee)}, yours for good.", LogTone.NEUTRAL, Lane.GAMES)
 }
 
 /** Rough weeks to finish at the current team's pace. */
@@ -137,8 +163,9 @@ fun GameState.startGame(
 ) {
     val g = studio()
     conceptBlocker(concept, team = team)?.let { throw notAvailable(it) }
-    val fees = concept.platforms.sumOf { it.fee }
+    val fees = licenceFees(concept.platforms)
     if (fees > 0) spend(fees, Lane.GAMES)
+    g.licences += concept.platforms
     val original = concept.sequelOf?.let { g.release(it) }
     var hype = minOf(25.0, g.fans / 4_000)
     if (original != null) {
@@ -156,7 +183,7 @@ fun GameState.startGame(
         team,
         GameProject(
             concept, focus.map { it.toMutableList() }, week, hype = hype,
-            features = features?.filter { it in engine.features }?.toMutableSet(),
+            features = fitFeatures(features?.filter { it in engine.features }?.toSet(), engine)?.toMutableSet(),
             leads = leads.filterValues { id -> staff.any { it.id == id && it.lane == Lane.GAMES } }.toMutableMap(),
         ),
     )
@@ -290,6 +317,7 @@ fun GameState.launchGame(team: Int = 1) {
             (if (r.userScore > 0) " Players: ${String.format(java.util.Locale.US, "%.1f", r.userScore)}." else "")
         val quoted = r.reviews.maxByOrNull { if (r.score >= 6.5) it.exact else -it.exact }
         val tone = if (r.score >= 8) LogTone.GOOD else if (r.score < 5) LogTone.BAD else LogTone.NEUTRAL
+        afterEditions(p, r)
         feedOnLaunch(r)
         for (desk in listOf(NewsDesk.GAMES, NewsDesk.YOU)) {
             publish(
@@ -365,6 +393,7 @@ fun GameState.buildEngine(selected: List<Research>? = null) {
     val g = studio()
     if (Research.CUSTOM_ENGINES !in researched) throw notAvailable("Research custom engines first.")
     if (g.engineBuild != null) throw busy("An engine is already being built.")
+    if (g.project != null || g.contract != null || g.expansion != null) throw busy("The team's busy. Build an engine between games: it takes the whole main team.")
     val (features, cost, weeks) = engineQuote(selected)
     if (features.isEmpty()) throw notAvailable("Research some engine features first.")
     val best = g.engines.maxOfOrNull { it.level } ?: 0

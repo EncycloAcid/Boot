@@ -16,6 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.boot.core.assignCrew
+import com.boot.core.areaOf
+import com.boot.core.crewBoost
+import com.boot.core.worksOn
 import com.boot.core.Chemistry
 import com.boot.core.Employee
 import com.boot.core.FocusArea
@@ -45,9 +49,9 @@ fun SpecialtyPill(s: Specialty) = Pill(s.person, MaterialTheme.colorScheme.prima
 
 /** Specialists on each stage's areas, and the pairs on the team who work well or badly together. */
 @Composable
-fun TeamFitSection(state: GameState, p: GameProject) {
+fun TeamFitSection(store: GameStore, state: GameState, p: GameProject, team: Int = 1) {
     val colors = gameColors
-    val team = state.specialists()
+    val specialists = state.specialists()
     val need = specialistsNeeded(p.concept.size)
     val key = keyAreas(p.concept).toSet()
     val pairs = state.teamPairs()
@@ -63,11 +67,11 @@ fun TeamFitSection(state: GameState, p: GameProject) {
         FocusArea.STAGES.forEachIndexed { stage, title ->
             if (stage > 0) RowDivider()
             val areas = FocusArea.forStage(stage)
-            val boost = state.specialistBoost(p.concept, stage, p.focus[stage], team)
+            val boost = state.specialistBoost(p.concept, stage, p.focus[stage], specialists, p)
             ListRow(
                 title.substringAfter("· "),
                 subtitle = areas.joinToString("\n") { area ->
-                    val who = team.filter { it.specialty?.areas?.contains(area) == true }
+                    val who = specialists.filter { it.specialty?.areas?.contains(area) == true && worksOn(p, it, area) }
                     val names = if (who.isEmpty()) "no specialist" else who.joinToString { it.name.substringBefore(' ') } + if (who.size < need) " (needs $need)" else ""
                     (if (area in key) "★ " else "") + "${area.title}: $names"
                 },
@@ -94,6 +98,46 @@ fun TeamFitSection(state: GameState, p: GameProject) {
         )
         if (key.isNotEmpty()) {
             CardBlock { Hint("★ What ${p.concept.genreLower} games need most. Specialists there count in the reviews too.") }
+        }
+    }
+    if (!p.isReady) CrewSection(store, state, p, team)
+}
+
+/** Who works on which area of the current stage. */
+@Composable
+fun CrewSection(store: GameStore, state: GameState, p: GameProject, team: Int = 1) {
+    val stage = p.stage
+    val areas = FocusArea.forStage(stage)
+    val people = state.staff(com.boot.core.Lane.GAMES).filter { it.leaveUntil < state.week }
+    if (people.isEmpty()) return
+    val boost = state.crewBoost(p, stage)
+    GroupedSection(
+        "Who works on what · ${FocusArea.STAGES[stage].substringAfter("· ")}",
+        Modifier.testTag("crew"),
+        footer = "Put people on the areas that suit them: design for the design-heavy areas, tech for the rest, specialists on their own. " +
+            "Anyone left to \"where needed\" goes where the effort is. Leave an area short, or crowd one that gets little effort, and people are wasted.",
+    ) {
+        ValueRow(
+            "Effect on this stage",
+            String.format(Locale.US, "%+.0f%%", (boost - 1) * 100),
+            when {
+                boost > 1.001 -> gameColors.good
+                boost < 0.999 -> gameColors.bad
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+        people.forEach { e ->
+            RowDivider()
+            val area = p.areaOf(stage, e)
+            ListRow(
+                e.name,
+                subtitle = "Design ${e.design} · Tech ${e.tech}" + (e.specialty?.let { " · ${it.person.lowercase()}" } ?: ""),
+                trailing = {
+                    MenuButton(area?.title ?: "Where needed", listOf<FocusArea?>(null) + areas, { it?.title ?: "Where needed" }) { pick ->
+                        store.perform { assignCrew(team, stage, e.id, pick) }
+                    }
+                },
+            )
         }
     }
 }

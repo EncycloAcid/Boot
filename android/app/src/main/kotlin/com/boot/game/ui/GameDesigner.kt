@@ -57,6 +57,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.boot.core.fitFeatures
+import com.boot.core.licenceFees
 import com.boot.core.Audience
 import com.boot.core.FocusArea
 import com.boot.core.Format
@@ -121,7 +123,7 @@ fun GameDesigner(store: GameStore, state: GameState) {
     var production by remember { mutableStateOf(seed?.production ?: Production.STANDARD) }
     var hook by remember { mutableStateOf(seed?.hook) }
     val focus = remember { List(3) { mutableStateListOf(0.5, 0.5, 0.5) } }
-    var features by remember(engineId) { mutableStateOf(com.boot.core.defaultFeatures(g.engine(engineId))) }
+    var features by remember(engineId) { mutableStateOf(state.fitFeatures(com.boot.core.defaultFeatures(g.engine(engineId)), g.engine(engineId)) ?: emptySet()) }
     val leads = remember { androidx.compose.runtime.mutableStateMapOf<com.boot.core.FocusArea, Int>() }
 
     val concept = GameConcept(
@@ -389,7 +391,7 @@ private fun PlatformStep(
             ListRow(
                 p.title,
                 subtitle = "${String.format(Locale.US, "%.0f", state.platformPlayers(p))}M players · " +
-                    (if (p.fee > 0) "${Format.money(p.fee)} licence" else "no licence") +
+                    (if (p in g.licences) "licensed" else if (p.fee > 0) "${Format.money(p.fee)} licence" else "no licence") +
                     (fit?.let { " · ${genre.lower} fit: ${it.title.lowercase()}" } ?: "") +
                     (if (!p.suits(audience)) " · not for ${audience.phrase}" else ""),
                 leading = {
@@ -487,7 +489,7 @@ private fun SummaryStep(
 ) {
     val g = state.games!!
     val colors = gameColors
-    val fees = concept.platforms.sumOf { it.fee }
+    val fees = state.licenceFees(concept.platforms)
     val blocker = state.conceptBlocker(concept, team = team)
     Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         GameCover(concept, 104.dp, studio = state.companyName)

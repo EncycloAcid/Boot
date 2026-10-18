@@ -37,7 +37,9 @@ import com.boot.core.MilestoneReview
 import com.boot.core.Research
 import com.boot.core.calendarYear
 import com.boot.core.engineGroups
+import com.boot.core.featureBlocker
 import com.boot.core.featureCost
+import com.boot.core.needs
 import com.boot.core.leadCandidates
 import com.boot.core.leadFit
 import com.boot.core.planStage
@@ -73,10 +75,16 @@ fun FeaturePicker(state: GameState, concept: GameConcept, engine: Engine, stage:
                     label = { Text("None") },
                 )
                 for (r in have) {
+                    // The most advanced features need a specialist on the team.
+                    val missing = state.featureBlocker(r) != null
                     FilterChip(
-                        selected = pick == r, enabled = editable,
+                        selected = pick == r, enabled = editable && !missing,
                         onClick = { onChange(chosen.filter { it !in group.members }.toSet() + r) },
-                        label = { Text("${r.title} · ${Format.money(featureCost(r, concept.size, state.calendarYear))}") },
+                        label = {
+                            Text(
+                                "${r.title} · " + if (missing) "needs a ${r.needs()!!.person.lowercase()}" else Format.money(featureCost(r, concept.size, state.calendarYear)),
+                            )
+                        },
                     )
                 }
             }

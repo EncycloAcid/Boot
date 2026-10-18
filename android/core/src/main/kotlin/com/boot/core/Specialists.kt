@@ -50,17 +50,107 @@ fun specialistsNeeded(size: GameSize): Int = when (size) {
 /** The game team's specialists who are in this week. */
 fun GameState.specialists(): List<Employee> = staff(Lane.GAMES).filter { it.specialty != null && it.leaveUntil < week }
 
+/** Whether [e] works on [area]: they do if they're put on it, or if they've been left to go where they're needed. */
+fun worksOn(p: GameProject?, e: Employee, area: FocusArea): Boolean =
+    p == null || (p.crew[crewKey(area.stage, e.id)]?.let { it == area } ?: true)
+
 /** How well [area] is covered for a game of [size]: 0 (nobody) to 1 (enough people). */
-fun GameState.coverage(area: FocusArea, size: GameSize, team: List<Employee> = specialists()): Double {
-    val n = team.count { it.specialty?.areas?.contains(area) == true }
+fun GameState.coverage(area: FocusArea, size: GameSize, team: List<Employee> = specialists(), p: GameProject? = null): Double {
+    val n = team.count { it.specialty?.areas?.contains(area) == true && worksOn(p, it, area) }
     return min(1.0, n.toDouble() / specialistsNeeded(size))
 }
 
 /** How much more a stage gets done from its specialists, weighted by where the effort goes. */
-fun GameState.specialistBoost(concept: GameConcept, stage: Int, alloc: List<Double>, team: List<Employee> = specialists()): Double {
+fun GameState.specialistBoost(concept: GameConcept, stage: Int, alloc: List<Double>, team: List<Employee> = specialists(), p: GameProject? = null): Double {
     val areas = FocusArea.forStage(stage)
     val total = alloc.sum().takeIf { it > 0 } ?: return 1.0
-    return areas.indices.sumOf { i -> alloc[i] / total * (1 + SPECIALIST_BOOST * coverage(areas[i], concept.size, team)) }
+    return areas.indices.sumOf { i -> alloc[i] / total * (1 + SPECIALIST_BOOST * coverage(areas[i], concept.size, team, p)) }
+}
+
+// Putting people on areas
+
+/** The key for someone's area in a stage. */
+fun crewKey(stage: Int, id: Int): String = "$stage:$id"
+
+/** The area [e] is on in [stage] of [p], or null if they go where they're needed. */
+fun GameProject.areaOf(stage: Int, e: Employee): FocusArea? = crew[crewKey(stage, e.id)]
+
+/** How someone's talent suits [area]: design for the design-heavy areas, tech for the rest. */
+private fun talent(e: Employee, area: FocusArea): Double = (if (area.designShare >= 0.5) e.design else e.tech).toDouble()
+
+/**
+ * How much better (or worse) [stage] goes for who's on which area. People nobody placed spread
+ * themselves where the effort goes, as before. Putting the right people on an area makes it
+ * better; leaving an area short, or piling people where little effort goes, wastes them.
+ */
+fun GameState.crewBoost(p: GameProject, stage: Int): Double {
+    val people = staff(Lane.GAMES).filter { it.leaveUntil < week }
+    if (people.isEmpty()) return 1.0
+    val picks = people.mapNotNull { e -> p.areaOf(stage, e)?.let { e to it } }
+    if (picks.isEmpty()) return 1.0
+    val areas = FocusArea.forStage(stage)
+    val alloc = p.focus[stage]
+    val total = alloc.sum().takeIf { it > 0 } ?: return 1.0
+    val free = people.size - picks.size
+    var quality = 0.0
+    var mismatch = 0.0
+    areas.forEachIndexed { i, area ->
+        val share = alloc[i] / total
+        val mine = picks.filter { it.second == area }.map { it.first }
+        val everyone = people.map { talent(it, area) }.average().coerceAtLeast(1.0)
+        val fit = if (mine.isEmpty()) 1.0 else (mine.map { talent(it, area) }.average() / everyone).coerceIn(0.6, 1.6)
+        val placed = mine.size + free * share
+        quality += share * (if (placed <= 0) 0.6 else (mine.size * fit + free * share) / placed)
+        mismatch += kotlin.math.abs(placed / people.size - share)
+    }
+    // Mismatch runs 0 (people where the effort is) to 2 (all of them somewhere else).
+    return (quality * (1 - 0.25 * mismatch)).coerceIn(0.6, 1.4)
+}
+
+/** Why [employeeId] can't be put on [area] in [stage] of [team]'s game, or null if they can. */
+fun GameState.crewBlocker(team: Int, stage: Int, employeeId: Int, area: FocusArea?): String? {
+    val p = games?.projectOf(team) ?: return "No game in development."
+    if (p.isReady) return "It's content complete."
+    if (stage < p.stage || stage > 2) return "That stage is done."
+    if (area != null && area.stage != stage) return "${area.title} isn't in that stage."
+    if (staff.none { it.id == employeeId && it.lane == Lane.GAMES }) return "They're not on the game team."
+    return null
+}
+
+/** Put someone on an area of a stage, or (with null) let them go where they're needed. */
+fun GameState.assignCrew(team: Int, stage: Int, employeeId: Int, area: FocusArea?) {
+    requireLive()
+    crewBlocker(team, stage, employeeId, area)?.let { throw notAvailable(it) }
+    val p = games!!.projectOf(team)!!
+    if (area == null) p.crew.remove(crewKey(stage, employeeId)) else p.crew[crewKey(stage, employeeId)] = area
+}
+
+// Features that need a specialist
+
+/** Engine features too advanced to build in without the right specialist. */
+val SPECIALIST_FEATURES = setOf(
+    Research.MOTION_CAPTURE, Research.FACIAL_ANIMATION, Research.NEURAL_NPCS, Research.WORLD_STREAMING,
+    Research.GRAPHICS_3D_V4, Research.PHOTOREAL, Research.SPATIAL_AUDIO,
+)
+
+/** The specialist [r] needs, if any. */
+fun Research.needs(): Specialty? = if (this in SPECIALIST_FEATURES) FeatureGroup.of(this)?.area?.let { Specialty.of(it) } else null
+
+/** Why [r] can't go into a game, or null if it can. */
+fun GameState.featureBlocker(r: Research): String? {
+    val s = r.needs() ?: return null
+    return if (specialists().none { it.specialty == s }) "Needs a ${s.person.lowercase()} on the game team." else null
+}
+
+/** [features] with any the team can't do stepped down a rung, or left out. */
+fun GameState.fitFeatures(features: Set<Research>?, engine: Engine): Set<Research>? {
+    if (features == null) return null
+    return features.mapNotNull { r ->
+        if (featureBlocker(r) == null) return@mapNotNull r
+        val group = FeatureGroup.of(r) ?: return@mapNotNull null
+        if (!group.ladder) return@mapNotNull null
+        group.members.take(group.members.indexOf(r)).lastOrNull { it in engine.features && featureBlocker(it) == null }
+    }.toSet()
 }
 
 /** The areas [concept]'s genre cares most about. */
@@ -144,7 +234,7 @@ internal fun GameState.noteCoverage(g: GamesStudio, weekStart: Boolean = false) 
         if (weekStart) p.weekStartStage = p.stage
         if (weekStart && p.isReady) continue
         for (stage in from..to) for (area in FocusArea.forStage(stage)) {
-            if (coverage(area, p.concept.size, team) >= 1.0) p.covered += area
+            if (coverage(area, p.concept.size, team, p) >= 1.0) p.covered += area
         }
     }
 }

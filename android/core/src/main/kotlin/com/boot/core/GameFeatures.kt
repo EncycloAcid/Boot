@@ -145,6 +145,7 @@ fun GameState.stagePlanBlocker(team: Int, stage: Int, features: Set<Research>?, 
         }
         if (features.any { it !in engine.features }) return "${engine.name} doesn't have that."
         if (features.groupBy { FeatureGroup.of(it) }.any { (k, v) -> k == null || v.size > 1 }) return "Pick one from each group."
+        features.firstNotNullOfOrNull { r -> featureBlocker(r)?.let { "${r.title}: $it" } }?.let { return it }
     }
     val areas = FocusArea.forStage(stage)
     if (leads.isNotEmpty() && Research.LEAD_ROLES !in researched) return "Research lead roles first."
@@ -200,7 +201,8 @@ internal fun GameState.prepareLeads() {
         p.leadFactor = if (p.isReady) {
             1.0
         } else {
-            leadBoost(p.concept, leadsOf(p), p.stage, p.focus[p.stage]) * specialistBoost(p.concept, p.stage, p.focus[p.stage]) * chemistryFactor()
+            leadBoost(p.concept, leadsOf(p), p.stage, p.focus[p.stage]) * specialistBoost(p.concept, p.stage, p.focus[p.stage], p = p) *
+                chemistryFactor() * crewBoost(p, p.stage)
         }
     }
 }
