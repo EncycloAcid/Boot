@@ -222,6 +222,8 @@ private fun GameState.close(s: Studio, price: Double, inShares: Boolean, earnOut
 /** Pays, takes over, and asks how you'll run it. */
 private fun GameState.complete(s: Studio, price: Double, inShares: Boolean, earnOut: Boolean = false) {
     val g = games ?: return
+    g.rivalOwned.remove(s.name)
+    g.rivalOwnedWeek.remove(s.name)
     // What your stake already covers comes off the price.
     val stake = stakeIn(s.name)
     val rest = price * (1 - stake)
@@ -311,6 +313,7 @@ internal fun GameState.resolveDeal(k: EventKind, choice: Int) {
         } else {
             addLog("${k.rival} bought ${k.studio}.", LogTone.NEUTRAL, Lane.GAMES)
             publish(NewsDesk.GAMES, "Bloomberg", "${k.rival} buys ${k.studio}", "It outbid $companyName.", lane = Lane.GAMES, tag = NewsTag.MONEY)
+            g.cooloff[k.studio] = week + 52
             g.rivalOwned[k.studio] = k.rival
             g.rivalOwnedWeek[k.studio] = week
             // Your stake goes with it, at the price they paid.
