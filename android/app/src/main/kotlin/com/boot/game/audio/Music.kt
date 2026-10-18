@@ -41,16 +41,29 @@ data class MusicTrack(val key: String, val style: MusicStyle, val seed: Long) {
         /** The title screen's tune. */
         val TITLE = MusicTrack("title", MusicStyle.LOFI, 1977)
 
+        /** The takes a track has, and the order they play in: tune, new tune, tune, breakdown. */
+        const val TAKES = 3
+        val ORDER = intArrayOf(0, 1, 0, 2)
+
         fun forEra(era: Era?): MusicTrack = if (era == null) TITLE else MusicTrack(era.name, styleFor(era), 7_919L * (era.ordinal + 3))
     }
 
-    fun render(): ShortArray = Composer(style, Random(seed)).render()
+    fun render(): ShortArray = render(0)
+
+    /**
+     * One take of the tune. Every take shares the key, chords and tempo, so they follow each other
+     * without a seam, but take 1 has a fresh melody and take 2 is a breakdown with the drums
+     * pulled back. Played in turn they keep a long session from hearing the same loop over and over.
+     */
+    fun render(take: Int): ShortArray = Composer(style, Random(seed), take).render()
 }
 
 /** A note in 16th-note steps within a two-bar phrase: when, how long, and which scale degree. */
 private data class Step(val at: Int, val length: Int, val degree: Int)
 
-private class Composer(val style: MusicStyle, val rng: Random) {
+private class Composer(val style: MusicStyle, val rng: Random, val take: Int = 0) {
+    /** The breakdown take: no kick or snare, and the tune only in its second half. */
+    val breakdown = take == 2
     val mode = style.mode.steps
     /** The key's root for chords; bass sits an octave down and the tune an octave up. */
     val root = 52 + rng.nextInt(0, 8)
@@ -71,6 +84,9 @@ private class Composer(val style: MusicStyle, val rng: Random) {
         progressionA = shuffled[0]
         progressionB = shuffled[1]
     }
+
+    /** Melodies draw from their own dice, so each take can sing a different tune over the same chords. */
+    val tune: Random = if (take == 1) Random(rng.nextLong() xor 0x5EED) else rng
 
     /** MIDI note for a scale degree above [base]; degrees past 6 climb into the next octave. */
     fun pitch(degree: Int, base: Int = root): Double {
@@ -116,6 +132,10 @@ private class Composer(val style: MusicStyle, val rng: Random) {
                 chords.echo(beat * 0.75, 0.4, repeats = 2, wet = 0.25)
             }
         }
+        if (breakdown) {
+            lead.lowPass(0.5)
+            chords.echo(seconds(6.0), 0.4, repeats = 2, wet = 0.25)
+        }
         master.add(drums, if (style == MusicStyle.LOFI || style == MusicStyle.DOWNBEAT) 0.7 else 0.85)
         master.add(bass, 0.9)
         master.add(chords, 0.8)
@@ -149,6 +169,12 @@ private class Composer(val style: MusicStyle, val rng: Random) {
         for (bar in 0 until style.bars) {
             // A fill to round off every eight bars.
             val fill = bar % 8 == 7 && style in setOf(MusicStyle.CHIPTUNE, MusicStyle.FM, MusicStyle.SYNTHWAVE, MusicStyle.HOUSE)
+            if (breakdown) {
+                // Just a soft pulse, so the band can breathe before the tune comes back.
+                if (bar >= half) for (s in kick) mix.kick(frameAt(bar, s), 0.5, chip)
+                for (s in hat) mix.hat(frameAt(bar, s), if (s % 4 == 0) 0.4 else 0.22)
+                continue
+            }
             for (s in kick) mix.kick(frameAt(bar, s), if (style == MusicStyle.LOFI) 0.8 else 1.0, chip)
             for (s in snare) mix.snare(frameAt(bar, s), if (style == MusicStyle.DOWNBEAT) 0.7 else 0.9, tail)
             if (fill) for (s in listOf(13, 14, 15)) mix.snare(frameAt(bar, s), 0.45 + 0.15 * (s - 13), tail * 0.6)
@@ -260,16 +286,16 @@ private class Composer(val style: MusicStyle, val rng: Random) {
 
     /** A two-bar idea starting from [start], fitted to the chords at [bar]. */
     private fun motif(bar: Int, start: Int): List<Step> {
-        val rhythm = rhythms[rng.nextInt(rhythms.size)]
+        val rhythm = rhythms[tune.nextInt(rhythms.size)]
         var degree = start
         return rhythm.map { (at, length) ->
             val chord = chordAt(bar + at / 16)
             if (at % 8 == 0) {
                 // On the strong beats, land on a chord tone near where the tune already is.
                 val tones = (-1..2).flatMap { o -> chordTones(chord, false).map { it + 7 * o } }.filter { it in 3..13 }
-                degree = tones.minByOrNull { kotlin.math.abs(it - degree) + rng.nextDouble() * 1.5 } ?: degree
+                degree = tones.minByOrNull { kotlin.math.abs(it - degree) + tune.nextDouble() * 1.5 } ?: degree
             } else {
-                degree = (degree + listOf(-2, -1, -1, 1, 1, 2).random(rng)).coerceIn(3, 13)
+                degree = (degree + listOf(-2, -1, -1, 1, 1, 2).random(tune)).coerceIn(3, 13)
             }
             Step(at, length, degree)
         }
@@ -300,7 +326,7 @@ private class Composer(val style: MusicStyle, val rng: Random) {
             val phrases = mutableListOf<Pair<Int, List<Step>>>()
             var b = sectionStart
             while (b < sectionEnd) {
-                val m = motif(b, 7 + rng.nextInt(-1, 3))
+                val m = motif(b, 7 + tune.nextInt(-1, 3))
                 val n = motif(b + 4, 9)
                 phrases += b to m
                 phrases += (b + 2) to answer(m, b, b + 2)
@@ -308,7 +334,7 @@ private class Composer(val style: MusicStyle, val rng: Random) {
                 phrases += (b + 6) to answer(m, b, b + 6).let { last -> last.dropLast(1) + last.last().copy(degree = 7) }
                 b += 8
             }
-            val silent = quietFirst && sectionStart == 0
+            val silent = (quietFirst || breakdown) && sectionStart == 0
             if (!silent) {
                 for ((at, steps) in phrases) {
                     for (s in steps) {

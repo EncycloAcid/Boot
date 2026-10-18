@@ -62,7 +62,12 @@ fun SoundDialog(store: GameStore) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SoundSliders(store)
-                Hint("Every era has its own tune, composed by the game itself. Music stays quiet if another app is already playing some.")
+                val sound = store.sound
+                val muted = sound.musicVolume <= 0f && sound.effectsVolume <= 0f
+                TextButton(onClick = { if (muted) sound.unmute() else sound.mute() }) {
+                    Text(if (muted) "Unmute" else "Mute all")
+                }
+                Hint("Every era has its own tune, composed by the game itself, with a few variations that take turns so it doesn't wear thin. Tunes crossfade when the era changes. Music stays quiet if another app is already playing some.")
             }
         },
         confirmButton = { TextButton(onClick = { store.soundOpen = false }) { Text("Done") } },
