@@ -107,7 +107,7 @@ fun StudiosSection(store: GameStore, state: GameState, g: GamesStudio) {
         }
     }
     if (g.stakes.isNotEmpty()) {
-        GroupedSection("Your stakes · ${g.lastStakeProfit.perWeek()}", footer = "Your share of their profit comes home every week. Buy the rest from the studio's page.") {
+        GroupedSection("Your stakes · ${g.lastStakeProfit.perWeek()}", Modifier.testTag("stakes"), footer = "Your share of their profit comes home every week. Buy the rest from the studio's page.") {
             g.stakes.entries.sortedByDescending { it.value }.forEachIndexed { i, (name, share) ->
                 if (i > 0) RowDivider(68.dp)
                 val s = com.boot.core.studio(name) ?: return@forEachIndexed
