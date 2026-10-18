@@ -311,7 +311,12 @@ class GameFlowTest {
         assertNotNull(state.crossover(Combo.GAMES_SOCIAL))
 
         // Settle whatever else is queued so the tabs are visible.
-        compose.runOnIdle { store.perform { while (events.isNotEmpty()) choose(0) } }
+        compose.runOnIdle {
+            store.perform {
+                while (events.isNotEmpty()) choose(0)
+                acknowledgeReview()
+            }
+        }
         tab("Company")
         screen("25-company-overview")
         compose.onNodeWithText("Combos").performClick()
