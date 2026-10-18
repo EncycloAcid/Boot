@@ -617,6 +617,18 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
   - Value is 6 years of weekly profit plus $1.50 a player.
   - With giveaways the store loses money for a year or two, then clears about $0.25–0.5M a week by year four.
 
+## The long tail (3.33)
+
+`AfterLaunch.kt`, plus ports in `Development.kt` and expansion sizes in `GamesStudio.kt`. A game's weekly sales figure is its revenue at full price; price changes act on it through price elasticity, which grows with age (1.1 under 26 weeks, 1.3 under 52, 1.5 after).
+
+- **Price cuts** (25/50/75%, only ever down, not in the first 4 weeks): weekly sales × (new/old price)^(1 − elasticity). Under 12 weeks old: −0.2 player score and −0.02 fan trust.
+- **Sales** (25/50/75% for 2 weeks, 13 weeks apart): revenue × lift while it runs, where lift = 1 + ((1 − d)^−0.6 − 1)/(1 + fatigue). When it ends, weekly sales × (1 − pull), pull = d × 0.35 (under 26 weeks), 0.18 (under 52), 0.06 after. Fatigue grows by 0.6 × d per sale and decays 3% a week. Units are counted at the price actually paid.
+- **Content updates**: up to 3, 26 weeks apart, within 3 years, for 8 weeks of the size's budget. +25% weekly sales, +0.3 player score (capped at the critics' score + 1.5), +10% live players, fans +1% of copies sold.
+- **Ports**: sales = the old burst × platform crowd (players × spend, against the original platforms', clamped 0.25–2) × genre fit × quality (outsourced 0.85, enhanced 1.15) × 0.6 if older than two years and not enhanced. Outsourced costs 0.6×, adds bugs and −0.15 player score; enhanced costs 1.8×, takes 1.5× as long, +0.1 player score.
+- **Expansions**: small DLC (12% of the game's work, attach ×0.8, 20% price), expansion (30%, ×1, 40%), standalone (50%, ×1, 60%, plus a quarter of a launch's sales from new players). Up to three per game.
+- **Mod tools** (PC, from 1993; sims, strategy, sandbox, RPGs, shooters or a mod-support hook): weekly decay ×1.008. From 8 weeks on, 0.6% a week a mod takes off: hire its maker (a skill 6–8 game designer), make it official (+30% sales, +0.2 player score), or let it be (+10%).
+- **More stores later**: adding a store scales the PC share of weekly sales by the new reach over the old and moves the share kept accordingly.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

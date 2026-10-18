@@ -6,6 +6,16 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.33 (Android):** a game's long tail.
+
+- **Price.** Cut a released game's price for good (25, 50 or 75% off). Old games sell more cheap; cut in the first few weeks and launch buyers feel cheated.
+- **Sales that cost something.** Pick 25, 50 or 75% off for two weeks. More copies sell now, but some of them would have paid full price later (a lot of them, for a young game), and every sale teaches players to wait for the next. The menu shows both sides before you choose. (Sales used to be free money.)
+- **Free content updates.** Up to three over a game's life, half a year apart: +25% sales, a better player score, and fans who stay. A game that climbs far enough makes the news as one of the most improved.
+- **Ports that depend on where.** A port sells by the size of the platform's crowd and how its players feel about the genre. Choose outsourced (cheap, rough), in-house, or enhanced (dear, better than the original, sells even years later).
+- **Expansions in three sizes.** Small DLC, an expansion, or a standalone that finds new players too.
+- **Mod tools.** Open a sim, strategy, sandbox, RPG or shooter to modders: sales tail off more slowly, and now and then a mod takes off. Hire its maker, make it official, or let it be.
+- **More stores later.** Put a released PC game on stores it wasn't on.
+
 **New in 3.32 (Android):** game stores.
 
 - **Pick where a PC game is sold.** Shops, Steam (from 2005), GOG (2008), itch.io (2013), the Epic Games Store (2018) or your own store. Each takes its own cut and reaches its own share of PC players. The usual stores change nothing; leave Steam out and most PC buyers never see it, add the smaller stores and you find a few more. Epic pays a guarantee to have a game on its store alone (some players grumble). GOG only takes games without copy protection.
