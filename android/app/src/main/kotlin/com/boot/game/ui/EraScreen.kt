@@ -27,6 +27,9 @@ import com.boot.core.GameState
 import com.boot.core.Lane
 import com.boot.core.MODERN_YEAR
 import com.boot.core.historyAhead
+import com.boot.core.historyComing
+import com.boot.core.historySoFar
+import androidx.compose.ui.platform.testTag
 import com.boot.core.inSentence
 import com.boot.core.challengeProgress
 import com.boot.core.research
@@ -205,6 +208,58 @@ fun EraTimeline(state: GameState) {
                     leading = { Text(era.emoji, style = MaterialTheme.typography.titleLarge) },
                 )
             }
+        }
+    }
+}
+
+/** History as it happened: what's been and what's coming. Only in a run that started in the past. */
+@Composable
+fun HistorySection(state: GameState) {
+    val past = state.historySoFar().take(4)
+    val coming = state.historyComing().take(4)
+    if (past.isEmpty() && coming.isEmpty()) return
+    val colors = gameColors
+    GroupedSection(
+        "History",
+        Modifier.testTag("history"),
+        footer = "You know what's coming. When it happens the market feels it: demand shifts for a while, gamers want something new, and now and then you'll have a call to make.",
+    ) {
+        past.forEachIndexed { i, (week, e) ->
+            if (i > 0) RowDivider()
+            ListRow(e.headline, subtitle = "${GameClock.label(week)} · ${e.body}")
+        }
+        if (past.isNotEmpty() && coming.isNotEmpty()) RowDivider()
+        coming.forEachIndexed { i, (week, e) ->
+            if (i > 0) RowDivider()
+            val soon = week - state.week <= 52
+            ListRow(
+                e.headline,
+                subtitle = if (soon) "${GameClock.label(week)} · coming up" else "${e.year}",
+                trailing = { if (e.choice) Pill("A choice", colors.milestone) else if (soon) Pill("Soon", MaterialTheme.colorScheme.primary) },
+            )
+        }
+    }
+}
+
+/** The decades you've lived through, each with its game of the decade. */
+@Composable
+fun DecadesSection(state: GameState) {
+    val decades = state.world.decades
+    if (decades.isEmpty()) return
+    val colors = gameColors
+    GroupedSection("Decades", Modifier.testTag("decades"), footer = "As each decade ends the papers pick its best game. Make it, and the decade is yours.") {
+        decades.asReversed().forEachIndexed { i, d ->
+            if (i > 0) RowDivider()
+            val top = if (d.crowned) d.yourBest else d.topGame
+            ListRow(
+                d.title,
+                subtitle = listOfNotNull(
+                    top?.let { "Game of the decade: $it" + if (d.crowned) "" else " (${d.topStudio})" },
+                    d.yourBest?.takeIf { !d.crowned }?.let { "Your best: $it (${String.format(java.util.Locale.US, "%.1f", d.yourBestScore)})" },
+                    "Earned ${Format.money(d.revenue)} · worth ${Format.money(d.valueStart)} → ${Format.money(d.valueEnd)}",
+                ).joinToString("\n"),
+                trailing = { if (d.crowned) Pill("Yours", colors.good) },
+            )
         }
     }
 }

@@ -215,6 +215,8 @@ private fun EraSection(state: GameState) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         EraCard(state)
         EraEffects(state)
+        HistorySection(state)
+        DecadesSection(state)
         EraTimeline(state)
     }
 }

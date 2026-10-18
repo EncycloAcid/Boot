@@ -637,6 +637,11 @@ private fun GameState.land(c: Consequence) {
 
 /** For tests and tools: put things in front of the player directly. */
 object Sandbox {
+    /** Moves the clock to the week before [week], so the next week played is [week]. */
+    fun jumpTo(s: GameState, week: Int) {
+        s.week = week - 1
+    }
+
     fun offer(s: GameState, kind: EventKind, weeks: Int) = s.offer(kind, weeks)
 
     /** Adds someone straight to the team. */
