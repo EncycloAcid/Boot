@@ -6,6 +6,15 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.28 (Android):** more of Game Dev Tycoon's development game.
+
+- **Sequels want a newer engine.** A sequel built on the same engine as the last game loses a little in the reviews ("fans expected a step up"); one on a better engine gains a little.
+- **Who works on what.** On the Make page, put each person on an area of the current stage, or leave them to go where they're needed. The right people on the right areas make the stage better. Leaving an area short, or crowding one that gets little effort, wastes people. Specialists only count on the areas they're working on.
+- **Building an engine takes the team.** An engine build is now the main team's project: no game, contract or expansion until it's done. A second team can still make games.
+- **Boxed and collector's editions.** Research boxed editions and, for games you publish yourself, order your own boxes and collector's editions on the game's card. Boxes you sell earn more than a distributor pays. Order too many and the rest go to the bargain bin; too few and buyers go without (once downloads exist, some of them buy it that way). Collector's editions sell to your fans at a premium. Leave it to a distributor and nothing changes.
+- **Platform licences are bought once.** A platform's development licence is paid the first time you make a game for it, then it's yours. You can also buy one ahead of time from the Platforms list.
+- **Some features need a specialist.** The most advanced engine features (motion capture, facial animation, neural NPCs, world streaming, the top graphics tiers, spatial audio) need the right specialist on the game team. Without one, the graphics step down a tier and the rest are left out.
+
 **New in 3.27 (Android):** specialists and team chemistry.
 
 Staffing a game is now a puzzle, not just a headcount.

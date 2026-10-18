@@ -560,6 +560,20 @@ Hires: about 55% of designers and engineers come with a specialty (engineers mos
 
 Chemistry: each pair has a fixed roll (SplitMix64 of seed and ids). It's good at 12% (+10% with a mentor, +8% with a team player) and bad at 8% (+10% with a diva, +20% for a perfectionist with a hustler; never with a team player; always for two divas). `chemistryFactor` = 1 + (0.04 × good − 0.06 × bad) × min(1, 8 / team size), clamped 0.8–1.2, over the first 40 people on the game team. Clashing pairs lose 0.004 morale a week each. While there's a project, one unknown non-neutral pair a week may come to light (10%) and goes in `GamesStudio.knownPairs`.
 
+## Game Dev Tycoon gaps (3.28)
+
+Sequel engines: in `draftScore`, a sequel (not a remaster) on the same engine id as the game it follows gets −0.4 ("Same engine"); on an engine of a higher level, +0.3 ("Newer engine").
+
+Crew: `GameProject.crew` maps "stage:id" to an area. `crewBoost(p, stage)` is 1 with no picks. Otherwise, for each area, fit = (average design or tech of the people on it) / (that average across the game team), clamped 0.6–1.6. The area's quality blends placed people at their fit with unplaced people (spread by effort share) at 1, or is 0.6 if nobody is there. The result is Σ share × quality × (1 − 0.25 × Σ|people share − effort share|), clamped 0.6–1.4, multiplied into `leadFactor`. `worksOn` limits specialist coverage to the areas people are on.
+
+Engine builds: `GamesStudio.busy` includes `engineBuild`, team 1 can't start anything while one runs, and `buildEngine` needs team 1 free. The weeks are unchanged; research points still accrue from the team's work.
+
+Boxed editions (Editions.kt, `BOXED_EDITIONS`, self-published, not live, not browser- or phone-only): `physicalShare(year)` is 0.95 before 1998, 0.8 before 2008, 0.55 before 2013, 0.35 before 2018, then 0.2. Lifetime demand ≈ launch-week copies × 5 × share. Sold boxes add 25% of price × net share; unsold ones clear at 15% of price. Unmet demand × (1 − `downloadInstead`) comes off weekly sales (floor 0.3). Collector's demand = fans × 0.03 × (0.5 + hype/100) × (score/7)²; each sells at 2.5× price (you keep 80%), unsold ones clear at 25%, and sales add fans. Costs are 4 and 28 per unit (scaled for the year), paid at launch. With no order, a distributor handles boxes and nothing changes.
+
+Licences: `GamesStudio.licences`; `licenceFees` charges only platforms not yet held; `startGame` adds the concept's platforms; `buyLicence` buys one ahead of time.
+
+Specialist features: `SPECIALIST_FEATURES` (motion capture, facial animation, neural NPCs, world streaming, 3D v4, photoreal, spatial audio) need a specialist of their area's specialty on the game team. `fitFeatures` steps a ladder feature down to the best allowed rung or drops it. `stagePlanBlocker` refuses them, and the feature picker greys them out ("needs an artist").
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.
