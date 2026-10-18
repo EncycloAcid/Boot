@@ -261,6 +261,7 @@ private fun GameState.studioWeek() {
     dealWeek(g)
     milestoneWeek(g)
     exclusiveWeek(g)
+    storeWeek(g)
     screenWeek(g)
     ratingsWeek(g)
     bombWeek(g)

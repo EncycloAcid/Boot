@@ -110,6 +110,7 @@ class Stats {
     var inboxAnswered = 0
     var eraChallengesWon = 0
     var gamesOfTheDecade = 0
+    var storePeakUsers = 0.0
     val erasSeen = mutableListOf(Era.BOOTSTRAP_YEARS)
 }
 

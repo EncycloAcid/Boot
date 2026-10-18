@@ -135,6 +135,8 @@ data class GameProject(
     /** Standard boxes and collector's editions on order; none leaves it to a distributor. */
     var boxes: Int = 0,
     var collectors: Int = 0,
+    /** The stores it'll be sold on; null for the usual ones. */
+    var stores: Set<Storefront>? = null,
 ) {
     /** How much the leads add to this week's work. Worked out each week before the team gets going. */
     @kotlinx.serialization.Transient
@@ -241,6 +243,8 @@ data class GameRelease(
     var pirated: Double = 0.0,
     /** Its age rating, once there were ratings. */
     var rating: AgeRating? = null,
+    /** The stores it was sold on, for a PC game you published. */
+    var stores: List<Storefront> = emptyList(),
     /** A wave of angry user reviews has hit it. */
     var bombed: Boolean = false,
     /** Boxes and collector's editions you made, and how many sold. */
@@ -396,6 +400,9 @@ class GamesStudio {
 
     /** Studios you've bought. */
     val subsidiaries = mutableListOf<Subsidiary>()
+
+    /** Your own game store, if you've built one. */
+    var store: OwnStore? = null
 
     /** An offer for a studio, waiting on an answer. */
     var deal: Deal? = null
@@ -848,7 +855,7 @@ class GamesStudio {
         )
     }
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1, kept: Double = 1.0): LaneReport {
+    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1, kept: Double = 1.0, pcKeep: Double = 0.7): LaneReport {
         val p = projectOf(team) ?: throw invalid("No game in development.")
         if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
         val c = p.concept
@@ -917,8 +924,13 @@ class GamesStudio {
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
             (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia * seasonalLift * screen * kept
-        val ownShare = c.platforms.count { it == Platform.OWN_CONSOLE }.toDouble() / c.platforms.size
-        val netShare = (0.7 + 0.3 * ownShare) * (p.deal?.share ?: 1.0)
+        val netShare = c.platforms.sumOf {
+            when (it) {
+                Platform.OWN_CONSOLE -> 1.0
+                Platform.PC -> pcKeep
+                else -> 0.7
+            }
+        } / c.platforms.size * (p.deal?.share ?: 1.0)
 
         // The game report: what this release taught you.
         val lines = mutableListOf<String>()

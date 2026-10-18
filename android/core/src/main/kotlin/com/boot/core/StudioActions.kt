@@ -292,10 +292,12 @@ fun GameState.launchGame(team: Int = 1) {
     // Pirates take a share of a popular game; many shops won't stock an Adults Only one.
     val piracy = piracyLoss(p.concept, p.protection, popularity(gameForecast(team)?.expectedScore ?: 6.0, p.hype))
     val shelf = if (rated && p.uncut) adultsOnlyShelf(calendarYear) else 1.0
-    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team, kept = (1 - piracy) * shelf)
+    val (storeLift, pcKeep) = storeLaunchTerms(p)
+    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team, kept = (1 - piracy) * shelf * storeLift, pcKeep = pcKeep)
     g.releases.firstOrNull()?.let { r ->
         r.rating = if (rated) ratingFor(r.concept.audience, p.uncut) else null
         afterPiracy(p, r, 1 - piracy, shelf)
+        afterStores(p, r)
     }
     if (exclusive != null) g.releases.firstOrNull()?.let { afterExclusiveLaunch(exclusive, held, it) }
     g.releases.firstOrNull()?.let { r ->
