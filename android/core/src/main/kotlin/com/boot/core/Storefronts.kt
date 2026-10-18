@@ -221,7 +221,7 @@ fun GameState.exclusiveTargets(): List<Announcement> {
     val s = g.store ?: return emptyList()
     return g.market.upcoming.filter { a ->
         val studio = canonicalStudio(a.studio)
-        a.week - week >= 4 && studio !in setOf("Nintendo", "Valve", "PlayStation Studios") && !g.owns(studio) &&
+        a.week - week >= 4 && studio !in setOf("Nintendo", "Valve", "PlayStation Studios", "Xbox Game Studios") && !g.owns(studio) &&
             s.exclusives.none { it.title == a.title }
     }
 }

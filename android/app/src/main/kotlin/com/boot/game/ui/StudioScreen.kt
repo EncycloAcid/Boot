@@ -116,6 +116,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             item { ComingSoonCard(state, limit = 8) }
             if (Research.PUBLISHING in state.researched) item { LabelSection(store, state, g) }
             item { StudiosSection(store, state, g) }
+            if (g.store != null || state.calendarYear >= 2004) item { OwnStoreSection(store, state, g) }
         }
         StudioPage.TECH -> {
             item { EnginesSection(store, state, g) }

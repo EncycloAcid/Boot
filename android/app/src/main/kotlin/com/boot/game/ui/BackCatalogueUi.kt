@@ -86,6 +86,7 @@ fun ShelfControls(store: GameStore, state: GameState, p: GameProject, team: Int)
             "${piracyEra(year)} · pirates would take about ${Format.percent(loss)} of its sales" +
                 if (p.protection != Protection.NONE) " · ${p.protection.blurb}" else "",
         )
+        StoreControls(store, state, p, team)
         EditionsControls(store, state, p, team)
         val rating = state.projectRating(team)
         if (rating != null) {
