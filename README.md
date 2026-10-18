@@ -6,6 +6,16 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.32 (Android):** game stores.
+
+- **Pick where a PC game is sold.** Shops, Steam (from 2005), GOG (2008), itch.io (2013), the Epic Games Store (2018) or your own store. Each takes its own cut and reaches its own share of PC players. The usual stores change nothing; leave Steam out and most PC buyers never see it, add the smaller stores and you find a few more. Epic pays a guarantee to have a game on its store alone (some players grumble). GOG only takes games without copy protection.
+- **Build your own Steam rival.** From 2004, with digital storefronts researched: $3M and half a year to build. Then:
+  - set its cut (30%, 20%, 12% or 8%): a lower cut brings studios, their games bring players, a higher one earns more per sale;
+  - give games away every week to pull players in fast, at a price;
+  - pay studios for timed exclusives on their upcoming games: when they come out, their players sign up;
+  - sell your own PC games there and keep every penny. Sold only there, their buyers sign up too.
+- Grow big enough and Valve answers with a huge Steam sale. Sell the store any time. Its value counts in your company's worth, and a new achievement waits at 10 million players.
+
 **New in 3.31 (Android):** eras and decades with real history in them.
 
 - **History happens.** In a run that starts in the past, two dozen real moments arrive on their real dates: Space Invaders, the IBM PC, Doom, Windows 95, World of Warcraft, Steam, the financial crisis, Minecraft, Twitch, battle royale, lockdown, ChatGPT. Each makes the news and moves the market for a while, and what gamers want follows.

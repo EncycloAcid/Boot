@@ -598,6 +598,25 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Decades in review**: on the first week of each decade the last one is reviewed: revenue, value at start and end, the best market game and your best. If yours scored 8+ and at least matched the best, it's the game of the decade: +4 reputation, +10% fans, and the Game of the Decade achievement. A modern run reviews the 2020s in 2030.
 - **Start points**: 2000 (the dot-com bust) and 2012 (free-to-play) join 1977, 1985, 1995 and 2007.
 
+## Game stores (3.32)
+
+`Storefronts.kt`. Two parts: where your PC games are sold, and a store of your own.
+
+- **Storefronts**: shops (cut 30%, reach = the boxed share of the year), Steam (2005; 30%; reach 45%, then 75% from 2010), GOG (2008; 30%; 6%, 15% for remasters; no DRM), itch.io (2013; 10%; 3%), Epic (2018; 12%; 15%, then 20% from 2021), your store (0%; reach = its players ÷ PC players, at most 90%). Reach combines as 1 − Π(1 − r). A game's PC sales are scaled by its reach against the year's usual stores (shops before 2013, Steam from 2005), so the default changes nothing. The share kept on PC is the reach-weighted (1 − cut); other platforms keep 70%, your own console 100%. Only the PC share of a game's platforms is affected. A publisher's game is sold where the publisher decides.
+- **Epic exclusives**: from 2019, a game sold on Epic alone gets a guarantee of 1.2× its size's launch sales, for a point of reputation.
+- **Your store**: $3M and 26 weeks to build (from 2004, with Digital storefronts). It opens with 0.3M players plus half your fans. Weekly:
+  - players grow with PC players × 0.06% × catalogue appeal × cut appeal × the room left (to 90% of PC);
+  - giveaways add 0.12% of PC players for $120k plus 1.2¢ a player;
+  - 0.4% of players leave each week.
+  - The catalogue grows by 2 + 60 × share × cut appeal², where cut appeal = 1 + (30% − cut) × 6.
+  - Sales are players × 50¢ × catalogue/(catalogue + 1,000); you keep the cut.
+  - Running costs are 2¢ a player.
+  - Exclusives cost 1× a game's size launch sales (2.5× for the biggest launches, which need 5% of PC players first) and add up to 6% of PC players when the game launches.
+  - Your own PC game sold only there signs up 70% of its PC buyers; alongside Steam, 15%.
+  - At 12% of PC players, Valve answers and organic growth halves for 26 weeks.
+  - Value is 6 years of weekly profit plus $1.50 a player.
+  - With giveaways the store loses money for a year or two, then clears about $0.25–0.5M a week by year four.
+
 ## Save slots
 
 The Android app keeps three save slots. Slot 1 is the original `autosave.json`, so a game from before slots carries on in it; slots 2 and 3 are `autosave-2.json` and `autosave-3.json`. Every change autosaves to the slot in play, in the background, and a one-line summary (company, date, cash, valuation, mode, when it was saved, whether it's finished) is stored beside it in preferences so the title screen can list the slots without decoding each game; a save from before slots is read once to describe it. Moving between slots writes the game in hand first, so a background write can never land in the wrong slot.

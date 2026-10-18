@@ -80,6 +80,8 @@ val guideTopics: List<GuideTopic> = listOf(
             "Popular games get pirated, more on computers and in some eras than others. Copy protection cuts the loss, but the heavy kinds annoy players and can set off a review bomb.",
             "From 1994 games get age ratings from their audience. A mature game can go uncut as Adults Only: better for the darkest topics, but consoles and most shops won't carry it.",
             "Research boxed editions and you can make your own boxes and collector's editions for games you publish yourself. Order too many and they go cheap; too few and buyers go without.",
+            "A PC game picks its stores: shops, Steam, GOG, itch.io, Epic, or your own. Each takes its own cut and reaches its own share of players. Leave Steam out and most PC players won't find it; Epic pays well to have a game alone. GOG only sells games without DRM.",
+            "From 2004, with digital storefronts researched, you can build a store of your own on the Market page. Set its cut, give games away, pay for exclusives, and take a cut of every other studio's sales.",
             "Older games in a series can be packaged into a collection. A hit series gets offers to become a film or a show: a good one sells the games, a bad one hurts the series.",
         ),
         Lane.GAMES,
