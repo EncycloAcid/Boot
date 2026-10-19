@@ -116,6 +116,7 @@ class LongTailTest {
         assertNull(s.modToolsBlocker(r))
         s.releaseModTools(r.id)
         assertTrue(r.modTools)
+        assertTrue(r.hasModScene || s.modEraStrength() <= 0)
         Sandbox.enqueue(s, ModHit(r.id, "${r.title}: Reforged", "Ada Lin"))
         val team = s.staff.size
         assertEquals(ModHit(r.id, "${r.title}: Reforged", "Ada Lin"), GameState.decode(s.encode()).events.first { it.kind is ModHit }.kind)

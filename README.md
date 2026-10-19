@@ -6,11 +6,19 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
-**New in 3.34 (Android):** music and game names.
+**New in 3.34.4 (Android):** mod / community scene on the long tail.
+
+- **Workshop culture after launch.** On PC (stronger in later decades), a mod scene can form around a title — with tools you ship, or organically around a beloved game.
+- **Levers.** Support docs, official mod kit, partner a big mod team, crack down / ban, or leave it alone. Clean broken mods off the storefront when they show up.
+- **Payoff or pain.** Healthy scenes slow the sales fade, grow sticky fans, and can win Mod of the Year news. Toxic or abandoned scenes bring crises, review-adjacent noise, and brand risk if you clamp too hard — or if you ignore junk on your store.
+
+**New in 3.34 / 3.34.1 (Android):** music and game names (finished).
 
 - **Game names from their time.** Suggested names, rivals' games and pitches sound like the year they come out: Ember Attack in 1981, Ember Quest in 1994, Ember: Heart of Winter in 2005, Emberfall or Ember Survivors in 2022. Every topic has a theme (fantasy, sci-fi, grim, cosy, sporty, modern) with its own words, places and made-up names, and no more "Neon Neon" or "Desert island Tycoon".
 - **Sequels and expansions in the right voice.** Fantasy sequels get fantasy subtitles, sci-fi ones sci-fi; sports series are named for the season (Kickoff 98, Kickoff 06). Expansions sound like the game they expand.
 - **Two tunes for every era**, each with a name ("Garage Days" and "Ramen Profitable" for the bootstrap years), taking turns every couple of minutes. Four new styles: lounge jazz, ambient, breakbeat and city pop.
+- **Takes that rotate.** Within a tune, a fresh melody and a soft breakdown take turns with the main loop so long sessions don't wear thin.
+- **True crossfades** when the era or named tune changes, and **Mute all** in sound settings (remembers your levels).
 - **Tunes built like songs.** A tune states its idea, repeats it climbing higher, then moves to new chords; dance tunes drop out and build back in; the last part adds a harmony. Smoother chords, walking jazz bass, drum fills, crashes and ghost notes. Every tune plays at the same loudness.
 - **Music for hard times.** When the money runs out, a darker tune plays until it comes back.
 - **Now playing.** The sound settings show the tune that's on, with a button to move to the era's other one.
