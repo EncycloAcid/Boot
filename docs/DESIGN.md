@@ -639,6 +639,7 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Poach resist** uses `effectiveLoyalty` (Loyal trait = 1). Soft poach and talent raids prefer stars under pressure. Counter-offer uses `poachRetainCost`; letting go hurts remaining stars’ loyalty. `poachMarketStar` adds a signing bonus on top of the usual hire fee.
 - **Hits** on ship credit the games team (`creditCareerOnShip`). Specialising adds the specialty person title to the arc.
 - **UI:** Team row shows chapter pill, career line, wanted-by, loyalty bar; person card shows titles, hits, pressure, loyalty. News/feed beats stay secondary.
+- **Temps extension:** `Employee.contractUntil` (−1 = permanent), `temps()` / `permanents()`, Team **Temps & contractors** section + Temp pill. Industry Pressure pack can fill contracts without restyling Team.
 
 ## Critic personalities (3.34.2 → 3.34.5 stack)
 

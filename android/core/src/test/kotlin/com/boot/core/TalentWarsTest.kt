@@ -135,6 +135,20 @@ class TalentWarsTest {
     }
 
     @Test
+    fun contractUntilDefaultsAndTempsHook() {
+        val s = game(Lane.WEBSITES)
+        val e = s.hireDirect(s.makeCandidate(Role.ENGINEER), Lane.WEBSITES)
+        assertTrue(s.temps().isEmpty())
+        assertEquals(listOf(e), s.permanents())
+        e.contractUntil = s.week + 8
+        assertEquals(listOf(e), s.temps())
+        assertTrue(s.permanents().isEmpty())
+        assertTrue(e.isTemp(s.week))
+        val loaded = GameState.decode(s.encode()).staff.single()
+        assertEquals(e.contractUntil, loaded.contractUntil)
+    }
+
+    @Test
     fun careerFieldsSurviveEncodeDecode() {
         val s = game()
         val e = s.hireDirect(

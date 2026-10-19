@@ -118,6 +118,11 @@ data class Employee(
     var offerPressure: Double = 0.0,
     /** Hired as a star / notable — identity beyond a random desk fill. */
     val notable: Boolean = false,
+    /**
+     * Contract / temp labour end week. −1 = permanent staff (default for old saves).
+     * Industry Pressure pack fills this for temps / contractors; Team UI already surfaces it.
+     */
+    var contractUntil: Int = -1,
 ) {
     internal val moraleFactor: Double get() = 0.5 + 0.5 * morale
 
@@ -125,6 +130,9 @@ data class Employee(
     val xpToNext: Double get() = 30.0 + 15.0 * level
 
     val maxLevel: Boolean get() = level >= MAX_LEVEL
+
+    /** On a fixed-term contract that hasn't expired relative to [week]. */
+    fun isTemp(week: Int): Boolean = contractUntil >= week
 
     companion object {
         const val MAX_LEVEL = 10

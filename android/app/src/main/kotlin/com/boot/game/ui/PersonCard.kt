@@ -89,6 +89,15 @@ internal fun PersonCard(state: GameState, key: Int, onManage: (() -> Unit)?, onC
 @Composable
 private fun EmployeeDetails(state: GameState, e: Employee) {
     val colors = gameColors
+    if (e.isTemp(state.week)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill("Temp", colors.warn)
+            Text(
+                "Contract ends in ${Format.weeks(e.contractUntil - state.week)}.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Pill(e.chapter.title, if (e.isStar) colors.warn else colors.milestone)
         Text(e.chapter.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

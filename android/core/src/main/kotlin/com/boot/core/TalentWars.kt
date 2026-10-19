@@ -51,6 +51,18 @@ fun GameState.stars(lane: Lane? = null): List<Employee> =
     staff.filter { it.isStar && it.leaveUntil < week && (lane == null || it.lane == lane) }
         .sortedWith(compareByDescending<Employee> { it.reputation }.thenByDescending { it.skill })
 
+/**
+ * Fixed-term / contract labour on the team. Empty until Industry Pressure (or similar)
+ * sets [Employee.contractUntil]. Team screen lists these above permanent staff when present.
+ */
+fun GameState.temps(lane: Lane? = null): List<Employee> =
+    staff.filter { it.isTemp(week) && (lane == null || it.lane == lane) }
+        .sortedBy { it.contractUntil }
+
+/** Permanent staff — everyone not on an active contract. */
+fun GameState.permanents(lane: Lane? = null): List<Employee> =
+    staff.filter { !it.isTemp(week) && (lane == null || it.lane == lane) }
+
 /** Market candidates rivals would fight over. */
 fun GameState.marketStars(): List<Candidate> =
     candidates.filter { it.notable || it.skill >= 8 || it.reputation >= 0.4 }
