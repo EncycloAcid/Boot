@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,9 +82,18 @@ import com.boot.core.endContractBlocker
 import com.boot.game.GameStore
 import java.util.Locale
 
+/** Portrait Team: People / Hire / Place — stars, temps, and contracts no longer pile onto one scroll. */
+private enum class TeamPage(val title: String) {
+    PEOPLE("People"),
+    HIRE("Hire"),
+    PLACE("Place"),
+}
+
 @Composable
 fun TeamScreen(store: GameStore, state: GameState) {
     val temps = state.temps()
+    val portrait = LocalPortrait.current
+    var page by rememberSaveable { mutableStateOf(TeamPage.PEOPLE) }
     ScreenColumn {
         item {
             val morale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
@@ -94,15 +104,26 @@ fun TeamScreen(store: GameStore, state: GameState) {
                 "${state.staff.size + 1} people$tempBit · ${state.payroll.perWeek()} payroll$moraleBit",
             )
         }
-        item { ContractLabourSection(store, state) }
-        if (temps.isNotEmpty()) item { TempSection(store, state, temps) }
-        item { TeamSection(store, state) }
-        if (state.stories.isNotEmpty()) item { StoriesSection(state) }
-        item { HiringSection(store, state) }
-        item { OfficeSection(store, state) }
-        item { PerksSection(store, state) }
-        item { FounderSection(store, state) }
-        if (state.lanes.size > 1) item { AttentionSection(store, state) }
+        if (portrait) {
+            item {
+                Segmented(TeamPage.entries.toList(), page, { it.title }) { page = it }
+            }
+        }
+        if (!portrait || page == TeamPage.PEOPLE) {
+            item { TeamSection(store, state) }
+            if (state.stories.isNotEmpty()) item { StoriesSection(state) }
+        }
+        if (!portrait || page == TeamPage.HIRE) {
+            item { ContractLabourSection(store, state) }
+            if (temps.isNotEmpty()) item { TempSection(store, state, temps) }
+            item { HiringSection(store, state) }
+        }
+        if (!portrait || page == TeamPage.PLACE) {
+            item { OfficeSection(store, state) }
+            item { PerksSection(store, state) }
+            item { FounderSection(store, state) }
+            if (state.lanes.size > 1) item { AttentionSection(store, state) }
+        }
     }
 }
 

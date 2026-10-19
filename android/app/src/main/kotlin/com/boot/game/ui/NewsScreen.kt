@@ -78,17 +78,19 @@ fun NewsScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { Masthead(state) }
         item {
-            ChipRow(
-                Page.entries.filter {
-                    when (it) {
-                        Page.GAMES, Page.SOCIAL, Page.PRESS -> state.games != null
-                        else -> true
-                    }
-                },
-                page,
-                { if (it == Page.SOCIAL) state.feedName else it.title },
-                tag = "desks",
-            ) { page = it }
+            val desks = Page.entries.filter {
+                when (it) {
+                    Page.GAMES, Page.SOCIAL, Page.PRESS -> state.games != null
+                    else -> true
+                }
+            }
+            val label = { p: Page -> if (p == Page.SOCIAL) state.feedName else p.title }
+            // Portrait: one scrolling segmented control instead of a chip wall under the masthead.
+            if (LocalPortrait.current) {
+                Segmented(desks, page, label) { page = it }
+            } else {
+                ChipRow(desks, page, label, tag = "desks") { page = it }
+            }
         }
         when (page) {
             Page.FRONT -> {
