@@ -226,6 +226,29 @@ internal fun GameState.feedOnChart(title: String) {
     say(rng, Poster.PRESS, listOf("{t} goes to No. 1.", "{t} tops the charts in its launch week."), title, LogTone.GOOD, 1.0)
 }
 
+/** Mod / community scene beats on the feed. */
+internal fun GameState.feedOnMod(title: String, kind: String) {
+    val rng = flavour("mod feed $title $kind $week")
+    when (kind) {
+        "form" -> say(rng, Poster.FAN, listOf("People are already modding {t}", "The {t} workshop is waking up {tag}", "Unofficial {t} patches already? Love this community"), title, LogTone.GOOD, 0.9)
+        "support" -> say(rng, Poster.PLAYER, listOf("{s} actually posted mod docs for {t}", "Modding {t} just got easier", "Shout out {s} for the {t} samples"), title, LogTone.GOOD, 0.8)
+        "kit" -> {
+            say(rng, Poster.PRESS, listOf("{s} ships an official mod kit for {t}.", "{t} opens up properly to creators."), title, LogTone.GOOD, 1.2)
+            say(rng, Poster.FAN, listOf("OFFICIAL {t} KIT {tag}", "Total conversion season for {t} starts now"), title, LogTone.GOOD, 1.1)
+        }
+        "clamp" -> {
+            say(rng, Poster.PLAYER, listOf("{s} just banned a pile of {t} mods", "Workshop purge on {t}. Gross.", "So much for the {t} community"), title, LogTone.BAD, 1.2)
+            say(rng, Poster.MEME, listOf("{s} discovering modders have feelings", "Another day of the {t} mod ban"), title, LogTone.BAD, 1.0)
+        }
+        "partner" -> say(rng, Poster.FAN, listOf("{s} partnered with a big {t} mod team — W", "Semi-official {t} mods? Take my money", "The {t} scene just leveled up"), title, LogTone.GOOD, 1.0)
+        "moty" -> {
+            say(rng, Poster.PRESS, listOf("{t} takes Mod of the Year.", "The {t} workshop is the story of the year."), title, LogTone.GOOD, 1.5)
+            say(rng, Poster.STREAMER, listOf("Playing the Mod of the Year build of {t} all week {tag}", "{t} mods ate my schedule"), title, LogTone.GOOD, 1.3)
+        }
+        else -> say(rng, Poster.PLAYER, listOf("Still installing {t} mods", "{t} workshop hits different"), title, LogTone.NEUTRAL, 0.6)
+    }
+}
+
 /** Rivalry story beats on the feed: heat, copycat, flop, or poach. */
 internal fun GameState.feedOnRivalBeat(studio: String, kind: String, about: String?) {
     val rng = flavour("rival $studio $kind ${about ?: ""} $week")
@@ -274,6 +297,18 @@ internal fun GameState.feedWeek() {
                 if (r.score >= 7) listOf("Still playing {t}. Can't stop.", "Hot take: {t} is underrated", "Just finished {t}. What a ride", "{t} patch when? Not complaining, just want more", "Anyone else replaying {t}?")
                 else listOf("Gave {t} another chance. Still no.", "{t} is better after the patch, I'll admit", "Uninstalled {t}"),
                 r.title, if (r.score >= 7) LogTone.GOOD else LogTone.BAD, 0.6,
+            )
+        }
+    }
+    // Workshop chatter for titles with a mod scene.
+    g.releases.firstOrNull { it.hasModScene && it.modBuzz >= 0.3 && week - it.week in 8..200 }?.let { r ->
+        if (rng.chance(0.2 + r.modBuzz * 0.25)) {
+            val tone = if (r.modHealth >= 0.45) LogTone.GOOD else LogTone.BAD
+            say(
+                rng, if (rng.chance(0.35)) Poster.FAN else Poster.PLAYER,
+                if (r.modHealth >= 0.45) listOf("New {t} total conversion dropped {tag}", "The {t} workshop is stacked this week", "Installing another {t} fix pack", "{t} modders are carrying")
+                else listOf("{t} workshop is a mess right now", "Half the {t} mods are broken", "Toxicity in the {t} mod discord is unreal"),
+                r.title, tone, 0.7 + r.modBuzz * 0.5,
             )
         }
     }
