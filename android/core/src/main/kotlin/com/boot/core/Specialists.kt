@@ -294,6 +294,7 @@ fun GameState.specialise(employeeId: Int, specialty: Specialty) {
     e.specialty = specialty
     e.specializedWeek = week
     e.leaveUntil = week + SPECIALISE_WEEKS
+    noteSpecialistTitle(e)
     addLog("${e.name} is off on a ${specialty.title.lowercase()} course: back in ${Format.weeks(SPECIALISE_WEEKS)} as a ${specialty.person.lowercase()}.", LogTone.NEUTRAL, e.lane)
 }
 

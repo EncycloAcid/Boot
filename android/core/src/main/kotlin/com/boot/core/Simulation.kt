@@ -73,6 +73,7 @@ fun GameState.advance() {
 
     updateFounder()
     updateStaff(fx)
+    talentWeek()
     reputation.weeklyDrift()
     if (week % 4 == 0) refreshTalentPool()
     candidates = candidates.filterNot { it.contestedBy != null && it.expiresWeek < week }
@@ -134,6 +135,9 @@ internal fun GameState.handle(incidents: List<Incident>, lane: Lane?) {
                     stats.releases += 1
                     stats.releasesThisQuarter += 1
                     founderXp(10.0)
+                    if (lane == Lane.GAMES) {
+                        games?.releases?.firstOrNull()?.let { creditCareerOnShip(it.title, it.score) }
+                    }
                 }
                 StatKey.SOLD_OUT -> stats.soldOuts += 1
                 StatKey.OVERSTOCK -> stats.overstocks += 1
@@ -244,21 +248,8 @@ private fun GameState.updateRivals() {
             publish(NewsDesk.INDUSTRY, techOutlet(r.lane, rng), headline, if (r.lane in lanes) "A rival in your market." else "", lane = r.lane)
         }
 
-        // Rivals compete for the same talent.
-        val best = staff.filter { it.lane == r.lane && it.skill >= 6 && it.trait != Trait.LOYAL }.maxByOrNull { it.skill }
-        val poachChance = r.aggression * 0.006 * (if (Research.STOCK_OPTIONS in researched) 0.4 else 1.0)
-        if (best != null && rng.chance(poachChance)) {
-            enqueue(EventKind.Poach(best.id, r.name))
-            if (r.lane == Lane.GAMES) {
-                publish(
-                    NewsDesk.INDUSTRY, techOutlet(Lane.GAMES, rng),
-                    "${r.name} tries to poach ${best.name}",
-                    "A talent raid aimed at $companyName.",
-                    LogTone.BAD, Lane.GAMES, tag = NewsTag.NEWS,
-                )
-                feedOnRivalBeat(r.name, "poach", best.name)
-            }
-        }
+        // Rivals compete for the same talent — stars under pressure first; loyalty resists.
+        tryRivalPoach(r)
     }
 }
 
@@ -287,6 +278,7 @@ private fun GameState.studioWeek() {
     screenWeek(g)
     ratingsWeek(g)
     bombWeek(g)
+    criticStandingWeek(g)
     collectionWeek(g)
     teamWeek(g)
     portWeek(g)

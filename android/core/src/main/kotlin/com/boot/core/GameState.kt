@@ -533,13 +533,14 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
         // Talents scatter a little around what the role suggests.
         fun jitter(v: Int) = (v + rng.int(-1, 1)).clamped(1, 10)
         val id = nextId()
-        return Candidate(
+        val raw = Candidate(
             id = id, specialty = specialtyFor(id, r), name = "${rng.pick(Names.first)} ${rng.pick(Names.last)}", role = r,
             skill = skill, askingSalary = salary.roundToInt().toDouble(), contestedBy = contested, expiresWeek = expires,
             design = jitter(roleDesign(r, skill)), tech = jitter(roleTech(r, skill)), research = jitter(roleResearch(r, skill)),
             // Most people have something about them; a few are just easy to work with.
             trait = if (rng.chance(0.7)) rng.pick(Trait.entries) else null,
         )
+        return seedCareer(raw, star)
     }
 
     private fun pickRole(): Role {
@@ -568,6 +569,8 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             id = c.id, name = c.name, role = c.role, skill = c.skill, salary = c.askingSalary,
             morale = 0.75, lane = lane ?: bestLane(c.role), hiredWeek = week,
             design = c.design, tech = c.tech, research = c.research, trait = c.trait, specialty = c.specialty,
+            reputation = c.reputation, loyalty = c.loyalty, chapter = c.chapter,
+            pastTitles = c.pastTitles, pastHits = c.pastHits, notable = c.notable,
         )
         staff = staff + e
         stats.peakHeadcount = max(stats.peakHeadcount, staff.size)

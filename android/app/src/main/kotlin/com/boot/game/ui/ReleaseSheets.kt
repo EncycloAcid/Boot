@@ -64,6 +64,24 @@ import com.boot.core.Platform
 import com.boot.core.releaseModTools
 import com.boot.core.modToolsCost
 import com.boot.core.modToolsBlocker
+import com.boot.core.ModPolicy
+import com.boot.core.hasModScene
+import com.boot.core.modDocsBlocker
+import com.boot.core.modDocsCost
+import com.boot.core.supportModDocs
+import com.boot.core.modKitBlocker
+import com.boot.core.modKitCost
+import com.boot.core.releaseOfficialModKit
+import com.boot.core.clampMods
+import com.boot.core.clampModsBlocker
+import com.boot.core.partnerModTeam
+import com.boot.core.partnerModBlocker
+import com.boot.core.partnerModCost
+import com.boot.core.ignoreModScene
+import com.boot.core.ignoreModSceneBlocker
+import com.boot.core.fixBrokenMods
+import com.boot.core.fixBrokenModsBlocker
+import com.boot.core.modEraStrength
 import com.boot.core.moddable
 import com.boot.core.releaseUpdate
 import com.boot.core.updateCost
@@ -73,6 +91,7 @@ import com.boot.core.isCollection
 import com.boot.core.Format
 import com.boot.core.GameRelease
 import com.boot.core.GameState
+import com.boot.core.GamesStudio
 import com.boot.core.Research
 import com.boot.core.Review
 import com.boot.core.acknowledgeReview
@@ -138,7 +157,7 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
                     r.reviews.forEachIndexed { i, review ->
                         if (i > 0) RowDivider()
                         // The last critic's ding is followed by a cheer or a groan for the whole game.
-                        RevealedReview(review, i, verdict = if (i == r.reviews.lastIndex) verdictFor(r.score) else null)
+                        RevealedReview(review, i, verdict = if (i == r.reviews.lastIndex) verdictFor(r.score) else null, studio = state.games)
                     }
                 }
                 ProsCons(r.pros, r.cons)
@@ -157,7 +176,7 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
 
 /** One outlet's score, springing in a beat after the one before. */
 @Composable
-private fun RevealedReview(review: Review, index: Int, verdict: Sfx? = null) {
+private fun RevealedReview(review: Review, index: Int, verdict: Sfx? = null, studio: GamesStudio? = null) {
     val reveal = remember { Animatable(0f) }
     val spec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
     val sound = LocalSound.current
@@ -176,6 +195,7 @@ private fun RevealedReview(review: Review, index: Int, verdict: Sfx? = null) {
         Modifier
             .alpha(reveal.value.coerceIn(0f, 1f))
             .scale(0.92f + 0.08f * reveal.value),
+        studio = studio,
     )
 }
 
@@ -243,7 +263,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                         GroupedSection("Critics") {
                             r.reviews.forEachIndexed { i, review ->
                                 if (i > 0) RowDivider()
-                                ReviewRow(review)
+                                ReviewRow(review, studio = g)
                             }
                         }
                     }
@@ -334,15 +354,9 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
         }
         RowDivider()
         PortRow(store, state, r)
-        if (r.moddable() || r.modTools) {
+        if (r.moddable() || r.modTools || r.hasModScene) {
             RowDivider()
-            val mods = state.modToolsBlocker(r)
-            ActionRow(
-                if (r.modTools) "Mod tools are out" else "Release mod tools",
-                if (r.modTools) "Modders keep it selling longer. Now and then a mod takes off." else mods ?: "${Format.money(state.modToolsCost(r))}. Players make more of it: sales tail off more slowly, and a hit mod can bring a new designer or a free update.",
-                if (r.modTools) "Done" else "Release",
-                enabled = !r.modTools && mods == null,
-            ) { store.perform { releaseModTools(r.id) } }
+            ModCommunityRow(store, state, r)
         }
         if (Platform.PC in r.concept.platforms) {
             val addable = state.storesOpen().filter { it !in state.storesOf(r) }
@@ -395,6 +409,94 @@ private fun PriceRow(store: GameStore, state: GameState, r: GameRelease) {
             val o = state.saleOutlook(r, d)
             "${Format.percent(d)} off · +${Format.percent(o.lift - 1)} now, −${Format.percent(o.pull)} later"
         }, enabled = sale == null) { d -> store.perform { runSale(r.id, d) } }
+    }
+}
+
+/** Mod tools, workshop culture, and how you treat the community. */
+@Composable
+private fun ModCommunityRow(store: GameStore, state: GameState, r: GameRelease) {
+    val era = state.modEraStrength()
+    val mods = state.modToolsBlocker(r)
+    ActionRow(
+        if (r.modTools) "Mod tools are out" else "Release mod tools",
+        if (r.modTools) {
+            "Modders keep it selling longer. A scene can form; hit mods and Mod of the Year can follow."
+        } else {
+            mods ?: "${Format.money(state.modToolsCost(r))}. Players make more of it: sales tail off more slowly, and a community can form."
+        },
+        if (r.modTools) "Done" else "Release",
+        enabled = !r.modTools && mods == null,
+    ) { store.perform { releaseModTools(r.id) } }
+    if (era <= 0 && !r.hasModScene) {
+        Hint("Mod culture hasn't started yet — wait for the mid-nineties on PC.")
+        return
+    }
+    if (r.hasModScene) {
+        RowDivider()
+        val policy = r.modPolicy.title
+        val partner = r.modPartner?.let { " · partner $it" } ?: ""
+        val kit = if (r.modKit) " · official kit" else ""
+        val broken = if (r.brokenMods) " · broken mods on shelf" else ""
+        ValueRow(
+            "Mod scene",
+            String.format(Locale.US, "buzz %.0f%% · health %.0f%%", r.modBuzz * 100, r.modHealth * 100),
+        )
+        Hint("$policy$kit$partner$broken. Healthy buzz slows the sales fade; toxic scenes nibble the player score.")
+        RowDivider()
+        val docs = state.modDocsBlocker(r)
+        ActionRow(
+            "Support tools & docs",
+            docs ?: "${Format.money(state.modDocsCost(r))}. ${ModPolicy.SUPPORT.blurb}",
+            "Support",
+            enabled = docs == null,
+        ) { store.perform { supportModDocs(r.id) } }
+        RowDivider()
+        val kitBlock = state.modKitBlocker(r)
+        ActionRow(
+            if (r.modKit) "Official mod kit is out" else "Official mod kit",
+            if (r.modKit) "Workshops are using your SDK." else kitBlock ?: "${Format.money(state.modKitCost(r))}. ${ModPolicy.OFFICIAL.blurb}",
+            if (r.modKit) "Done" else "Ship kit",
+            enabled = !r.modKit && kitBlock == null,
+        ) { store.perform { releaseOfficialModKit(r.id) } }
+        RowDivider()
+        val partnerBlock = state.partnerModBlocker(r)
+        ActionRow(
+            if (r.modPartner != null) "Partnered with ${r.modPartner}" else "Partner a big mod team",
+            if (r.modPartner != null) "Sticky fans and a healthier scene." else partnerBlock ?: "${Format.money(state.partnerModCost(r))}. ${ModPolicy.PARTNER.blurb}",
+            if (r.modPartner != null) "Done" else "Partner",
+            enabled = r.modPartner == null && partnerBlock == null,
+        ) { store.perform { partnerModTeam(r.id) } }
+        RowDivider()
+        val clamp = state.clampModsBlocker(r)
+        ActionRow(
+            "Crack down / ban",
+            clamp ?: ModPolicy.CLAMP.blurb,
+            "Clamp",
+            enabled = clamp == null,
+        ) { store.perform { clampMods(r.id) } }
+        RowDivider()
+        val ignore = state.ignoreModSceneBlocker(r)
+        ActionRow(
+            "Leave the scene alone",
+            ignore ?: ModPolicy.IGNORE.blurb,
+            "Ignore",
+            enabled = ignore == null,
+        ) { store.perform { ignoreModScene(r.id) } }
+        if (r.brokenMods) {
+            RowDivider()
+            val fix = state.fixBrokenModsBlocker(r)
+            ActionRow(
+                "Fix broken storefront mods",
+                fix ?: "Pull the junk before it leaks into reviews.",
+                "Clean up",
+                enabled = fix == null,
+            ) { store.perform { fixBrokenMods(r.id) } }
+        }
+    } else if (r.modTools || r.moddable()) {
+        Hint(
+            if (r.modTools) "A community scene can form once tools have been out a few weeks."
+            else "On PC in later decades, a scene can form on its own around a beloved title — or after you ship tools.",
+        )
     }
 }
 

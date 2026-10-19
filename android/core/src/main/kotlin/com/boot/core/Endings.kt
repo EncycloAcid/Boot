@@ -59,6 +59,10 @@ class Stats {
     var reviewBombs = 0
     var collections = 0
 
+    /** Mod / community scenes that formed, and Mod of the Year headlines. */
+    var modScenes = 0
+    var modOfYear = 0
+
     /** Stakes bought in studios. */
     var stakes = 0
     var weeksInRed = 0

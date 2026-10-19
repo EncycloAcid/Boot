@@ -48,17 +48,25 @@ import com.boot.core.Perk
 import com.boot.core.Research
 import com.boot.core.assign
 import com.boot.core.buyPerk
+import com.boot.core.careerLine
+import com.boot.core.effectiveLoyalty
 import com.boot.core.fire
 import com.boot.core.freeDesks
 import com.boot.core.hire
+import com.boot.core.isStar
 import com.boot.core.moveOffice
+import com.boot.core.offerLine
 import com.boot.core.perkBlocker
 import com.boot.core.perkSlots
 import com.boot.core.perkUpkeep
+import com.boot.core.poachMarketBlocker
+import com.boot.core.poachMarketStar
+import com.boot.core.permanents
 import com.boot.core.removePerk
 import com.boot.core.setCrunch
 import com.boot.core.setFocus
 import com.boot.core.setFreelancing
+import com.boot.core.temps
 import com.boot.core.train
 import com.boot.core.trainingBlocker
 import com.boot.core.trainingCost
@@ -67,15 +75,19 @@ import java.util.Locale
 
 @Composable
 fun TeamScreen(store: GameStore, state: GameState) {
+    val temps = state.temps()
     ScreenColumn {
         item {
             val morale = state.staff.takeIf { it.isNotEmpty() }?.map { it.morale }?.average()
             val moraleBit = morale?.let { " · morale ${String.format(java.util.Locale.US, "%.0f", it * 100)}%" }.orEmpty()
+            val tempBit = if (temps.isNotEmpty()) " · ${temps.size} temp" else ""
             ScreenHeader(
                 "Team",
-                "${state.staff.size + 1} people · ${state.payroll.perWeek()} payroll$moraleBit",
+                "${state.staff.size + 1} people$tempBit · ${state.payroll.perWeek()} payroll$moraleBit",
             )
         }
+        // Extension point: Industry Pressure pack fills temps via Employee.contractUntil.
+        if (temps.isNotEmpty()) item { TempSection(store, state, temps) }
         item { TeamSection(store, state) }
         if (state.stories.isNotEmpty()) item { StoriesSection(state) }
         item { HiringSection(store, state) }
@@ -83,6 +95,37 @@ fun TeamScreen(store: GameStore, state: GameState) {
         item { PerksSection(store, state) }
         item { FounderSection(store, state) }
         if (state.lanes.size > 1) item { AttentionSection(store, state) }
+    }
+}
+
+/** Contract / temp labour — shown when anyone has an active [Employee.contractUntil]. */
+@Composable
+private fun TempSection(store: GameStore, state: GameState, temps: List<Employee>) {
+    var firing by remember { mutableStateOf<Employee?>(null) }
+    GroupedSection(
+        "Temps & contractors",
+        footer = "Fixed-term people. Industry events can hire and expire them; they still take a desk.",
+    ) {
+        temps.forEachIndexed { i, e ->
+            if (i > 0) RowDivider(if (LocalCompact.current) 58.dp else 78.dp)
+            EmployeeRow(
+                e, state.lanes, week = state.week,
+                onAssign = { lane -> store.perform { assign(e.id, lane) } },
+                onFire = { firing = e },
+                onTrain = null,
+                pressure = e.offerLine(),
+            )
+        }
+    }
+    firing?.let { e ->
+        ConfirmDialog(
+            title = "End ${e.name}'s contract?",
+            text = "Uses the usual let-go path for now (${Format.money(e.salary * 4)}). Industry Pressure can specialise temp exits.",
+            confirm = "End contract",
+            destructive = true,
+            onConfirm = { store.perform { fire(e.id) } },
+            onDismiss = { firing = null },
+        )
     }
 }
 
@@ -185,19 +228,33 @@ private fun HiringSection(store: GameStore, state: GameState) {
     GroupedSection(
         "Hiring",
         footer = (if (state.freeDesks <= 0) "No free desks. Move to a bigger office to hire. " else "") +
-            "Rivals compete for the same people. Contested candidates vanish fast. Recruiting costs two weeks' salary.",
+            "Rivals compete for the same people. Contested candidates vanish fast. Recruiting costs two weeks' salary. " +
+            "Stars show a career chapter — poach them with a signing bonus when contested.",
     ) {
         val joiner = if (LocalCompact.current) " · " else "\n"
         state.candidates.forEachIndexed { i, c ->
             if (i > 0) RowDivider(68.dp)
+            val star = c.notable || c.skill >= 8 || c.reputation >= 0.4
+            val arc = if (star) {
+                val hits = if (c.pastHits.isNotEmpty()) " · ${c.pastHits.take(2).joinToString(", ")}" else ""
+                "\n${c.chapter.title}$hits"
+            } else ""
             ListRow(
                 c.name,
                 subtitle = "${c.role.title}${c.specialty?.let { " · " + it.person.lowercase() } ?: ""} · skill ${c.skill} · ${c.askingSalary.perWeek()}${joiner}Design ${c.design} · Tech ${c.tech} · Research ${c.research}" +
                     (c.trait?.let { "\n${it.title}: ${it.detail.replaceFirstChar { ch -> ch.lowercase() }}" } ?: "") +
+                    arc +
                     (c.contestedBy?.let { "\n$it is circling" } ?: ""),
-                leading = { CandidatePortrait(c.id, 44.dp, ring = if (c.contestedBy != null) gameColors.warn else null) },
+                leading = { CandidatePortrait(c.id, 44.dp, ring = if (c.contestedBy != null || star) gameColors.warn else null) },
             ) {
-                if (state.lanes.size == 1) {
+                val canPoach = star && state.poachMarketBlocker(c.id) == null
+                if (canPoach) {
+                    if (state.lanes.size == 1) {
+                        TonalButton("Poach", { store.perform { poachMarketStar(c.id, state.lanes.first()) } })
+                    } else {
+                        MenuButton("Poach…", state.lanes, { "Into ${it.businessName}" }) { lane -> store.perform { poachMarketStar(c.id, lane) } }
+                    }
+                } else if (state.lanes.size == 1) {
                     TonalButton("Hire", { store.perform { hire(c.id, state.lanes.first()) } })
                 } else {
                     MenuButton("Hire…", state.lanes, { "Into ${it.businessName}" }) { lane -> store.perform { hire(c.id, lane) } }
@@ -213,20 +270,22 @@ private fun TeamSection(store: GameStore, state: GameState) {
     var training by remember { mutableStateOf<Employee?>(null) }
     var specialising by remember { mutableStateOf<Employee?>(null) }
     val canTrain = Research.TRAINING in state.researched
+    val permanents = state.permanents()
     GroupedSection(
         "Staff",
         footer = if (canTrain) "Tap the three dots beside someone to move them to another lane, send them on a course or let them go." else "Tap the three dots beside someone to move them to another lane. Research a training program to raise people's skills.",
     ) {
-        if (state.staff.isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
-        state.staff.forEachIndexed { i, e ->
+        if (permanents.isEmpty() && state.temps().isEmpty()) CardBlock { Hint("It's just you in the apartment.") }
+        permanents.forEachIndexed { i, e ->
             if (i > 0) RowDivider(if (LocalCompact.current) 58.dp else 78.dp)
             EmployeeRow(
-                e, state.lanes,
+                e, state.lanes, week = state.week,
                 onAssign = { lane -> store.perform { assign(e.id, lane) } },
                 onFire = { firing = e },
                 onTrain = if (canTrain) ({ training = e }) else null,
                 onSpecialise = if (state.games != null && (e.role == Role.DESIGNER || e.role == Role.ENGINEER)) ({ specialising = e }) else null,
                 note = state.chemistryNote(e),
+                pressure = e.offerLine(),
             )
         }
     }
@@ -258,21 +317,26 @@ private fun TeamSection(store: GameStore, state: GameState) {
 private fun EmployeeRow(
     e: Employee,
     lanes: List<Lane>,
+    week: Int,
     onAssign: (Lane?) -> Unit,
     onFire: () -> Unit,
     onTrain: (() -> Unit)?,
     onSpecialise: (() -> Unit)? = null,
     note: Pair<String, Boolean>? = null,
+    pressure: String? = null,
 ) {
     val colors = gameColors
     var menu by remember { mutableStateOf(false) }
     val compact = LocalCompact.current
+    val temp = e.isTemp(week)
     val role = "${e.role.title} · skill\u00A0${e.skill} · ${e.salary.perWeek()}" +
         // Only worth saying which lane when there's more than one, or none.
-        (if (lanes.size > 1 || e.lane == null) " · ${e.lane?.short ?: "Unassigned"}" else "")
+        (if (lanes.size > 1 || e.lane == null) " · ${e.lane?.short ?: "Unassigned"}" else "") +
+        (if (temp) " · contract ${Format.weeks(e.contractUntil - week)}" else "")
     val skills = "Design\u00A0${e.design} · Tech\u00A0${e.tech} · Research\u00A0${e.research}"
     val bars: @Composable () -> Unit = {
         MiniBar("Morale", e.morale, if (e.morale < 0.35) colors.bad else colors.good)
+        MiniBar("Loyalty", e.effectiveLoyalty, if (e.effectiveLoyalty < 0.35) colors.bad else colors.good)
         MiniBar(if (e.maxLevel) "Max level" else "XP", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone)
     }
     Row(
@@ -289,10 +353,14 @@ private fun EmployeeRow(
             ) {
                 Text(e.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("Lv ${e.level}", style = MaterialTheme.typography.labelMedium, color = colors.milestone)
+                if (temp) Tip("Contract ends in ${Format.weeks(e.contractUntil - week)}") { Pill("Temp", colors.warn) }
+                Tip(e.chapter.detail) { Pill(e.chapter.title, if (e.isStar) colors.warn else colors.milestone) }
                 // The trait by name; long-press for what it does.
                 e.trait?.let { t -> Tip("${t.title}: ${t.detail}") { Pill(t.title, colors.milestone) } }
                 e.specialty?.let { s -> Tip("${s.person}: best at ${s.areas.joinToString(" and ") { it.lower }}") { SpecialtyPill(s) } }
             }
+            Text(e.careerLine(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            pressure?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.warn) }
             note?.let { (text, good) -> Text(text, style = MaterialTheme.typography.bodySmall, color = if (good) colors.good else colors.bad) }
             if (compact) {
                 // Sideways: one line of details, the bars to the right.

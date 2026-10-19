@@ -268,6 +268,22 @@ data class GameRelease(
     /** Mod tools are out. */
     var modTools: Boolean = false,
     var modToolsWeek: Int = 0,
+    /**
+     * The mod / community scene around this title (0 = none yet). Old saves default to zero so
+     * they load clean; scenes form after launch on PC in later decades.
+     */
+    var modBuzz: Double = 0.0,
+    var modHealth: Double = 0.7,
+    var modPolicy: ModPolicy = ModPolicy.IGNORE,
+    /** Week the scene formed, or -1 if none (0 is a valid calendar week). */
+    var modSceneWeek: Int = -1,
+    /** Official kit beyond bare tools, and any partnered mod team. */
+    var modKit: Boolean = false,
+    var modPartner: String? = null,
+    var modDocsWeek: Int = -1000,
+    var modClampWeek: Int = -1000,
+    /** Broken community content is showing up on a storefront you control or list on. */
+    var brokenMods: Boolean = false,
     /** The stores it was sold on, for a PC game you published. */
     var stores: List<Storefront> = emptyList(),
     /** A wave of angry user reviews has hit it. */
@@ -412,6 +428,11 @@ class GamesStudio {
 
     /** A review the player hasn't looked at yet. */
     var unseenReview: Int? = null
+
+    /**
+     * Lasting press relationships (grudges / pets). Empty on old saves; filled as reviews land.
+     */
+    val criticStanding: MutableList<CriticStanding> = mutableListOf()
 
     /** Work done on games or contracts last week, for research. */
     var lastWork = 0.0
@@ -650,7 +671,7 @@ class GamesStudio {
             if (ctx.week == r.saleUntil) r.weeklySales *= 1 - r.salePull
             r.saleFatigue *= 0.97
             if (r.salesHistory.size > 52) r.salesHistory.removeAt(0)
-            r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) * (if (r.patched) 1.01 else 1.0) * (if (r.modTools) 1.008 else 1.0)
+            r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) * (if (r.patched) 1.01 else 1.0) * (1.0 + r.modSalesLift())
             if (r.weeklySales < 40) {
                 r.weeklySales = 0.0
                 r.chartRank = 0
@@ -891,7 +912,17 @@ class GamesStudio {
         )
     }
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1, kept: Double = 1.0, pcKeep: Double = 0.7): LaneReport {
+    internal fun launch(
+        ctx: LaneContext,
+        rng: SeededRNG,
+        reach: Double,
+        audienceSuited: Boolean,
+        clash: Clash? = null,
+        team: Int = 1,
+        kept: Double = 1.0,
+        pcKeep: Double = 0.7,
+        company: String = "",
+    ): LaneReport {
         val p = projectOf(team) ?: throw invalid("No game in development.")
         if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
         val c = p.concept
@@ -926,6 +957,7 @@ class GamesStudio {
                 worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
                 wrongCrowd = audienceFit == Fit.BAD || !audienceSuited, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
                 year = ctx.year, production = c.production, bare = bareAreas(c, p.features, engine),
+                company = company, publisher = p.deal?.publisher, criticFavor = favorMap(),
             ),
             rng,
         )

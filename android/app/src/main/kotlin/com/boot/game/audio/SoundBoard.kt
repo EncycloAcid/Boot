@@ -65,6 +65,19 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
         settings.edit().putFloat("effects", effectsVolume).apply()
     }
 
+    /** Silences everything, remembering the levels for [unmute]. */
+    fun mute() {
+        if (musicVolume > 0f) settings.edit().putFloat("musicBeforeMute", musicVolume).apply()
+        if (effectsVolume > 0f) settings.edit().putFloat("effectsBeforeMute", effectsVolume).apply()
+        setMusic(0f)
+        setEffects(0f)
+    }
+
+    fun unmute() {
+        setMusic(settings.getFloat("musicBeforeMute", 0.55f))
+        setEffects(settings.getFloat("effectsBeforeMute", 0.8f))
+    }
+
     // Music
 
     private var wanted: MusicTrack? = null
@@ -79,7 +92,7 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
 
     /** If another app was already playing music when ours would start, stay out of its way. */
     private var otherMusic = false
-    private val rendered = ConcurrentHashMap<String, ShortArray>()
+    private val rendered = ConcurrentHashMap<String, Array<ShortArray?>>()
 
     /** Plays [track] from now on, fading from whatever was playing. */
     fun music(track: MusicTrack) = music(listOf(track))
@@ -124,26 +137,38 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
         val audible = track != null && foreground && musicVolume > 0f && !otherMusic
         val current = loop
         if (!audible) {
-            current?.fadeOutAndStop()
             loop = null
+            current?.fadeOutAndStop()
             return
         }
         if (current != null && current.key == track!!.key) {
             current.volume = gain(musicVolume)
             return
         }
-        // Compose the new tune while the old one keeps playing, then cross over.
-        val pcm = rendered.getOrPut(track!!.key) {
-            // Keep the cache to the last few tracks; each is a few megabytes.
-            if (rendered.size >= 3) rendered.clear()
-            track.render()
-        }
+        // Compose the new tune first, while the old one keeps playing, so there's no gap.
+        val first = takes(track!!)[0] ?: return
         // The world may have moved on while that was composing.
         if (wanted != track || !foreground) return
-        current?.fadeOutAndStop()
-        loop = runCatching {
-            MusicLoop(track.key, pcm, track.plays) { skip(track) }.also { it.start(gain(musicVolume)) }
-        }.getOrNull()
+        val next = runCatching {
+            MusicLoop(track.key, first, track.plays) { skip(track) }.also { it.start(gain(musicVolume)) }
+        }.getOrNull() ?: return
+        loop = next
+        // A true crossfade: the old tune bows out while the new one swells in.
+        current?.let { old -> scope.launch { old.fadeOutAndStop(1800) } }
+        // The other takes are composed in the background and join the rotation once they're ready.
+        scope.launch {
+            for (take in 1 until MusicTrack.TAKES) {
+                if (wanted != track) return@launch
+                val pcm = takes(track).let { slots -> slots[take] ?: track.render(take).also { slots[take] = it } }
+                next.ready(take, pcm)
+            }
+        }
+    }
+
+    /** The cached takes of a track; slot 0 is always filled. Keeps only the last couple of tracks. */
+    private fun takes(track: MusicTrack): Array<ShortArray?> = rendered.getOrPut(track.key) {
+        if (rendered.size >= 3) rendered.clear()
+        arrayOfNulls<ShortArray>(MusicTrack.TAKES).also { it[0] = track.render(0) }
     }
 
     // Effects
@@ -212,8 +237,18 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
     /** Sliders move in even steps to the ear, not to the meter. */
     private fun gain(v: Float) = v * v
 
-    /** Plays [pcm] round and round, and calls [done] once it has gone round [plays] times. */
-    private inner class MusicLoop(val key: String, private val pcm: ShortArray, private val plays: Int, private val done: () -> Unit) {
+    /**
+     * Plays takes of a tune in [MusicTrack.ORDER], and calls [done] once it has gone round
+     * [plays] times (so the era's other named tune can take over).
+     */
+    private inner class MusicLoop(val key: String, first: ShortArray, private val plays: Int, private val done: () -> Unit) {
+        /** Each take as it becomes ready; the loop skips any not yet composed. */
+        private val takes = arrayOfNulls<ShortArray>(MusicTrack.TAKES).also { it[0] = first }
+
+        fun ready(take: Int, pcm: ShortArray) {
+            takes[take] = pcm
+        }
+
         private val track = buildTrack(
             AudioTrack.MODE_STREAM,
             maxOf(AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT) * 2, SAMPLE_RATE / 2),
@@ -245,6 +280,8 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
             writer = Thread({
                 var at = 0
                 var rounds = 0
+                var turn = 0
+                var pcm = takes[0]!!
                 val chunk = SAMPLE_RATE / 10
                 while (running) {
                     val wrote = track.write(pcm, at, minOf(chunk, pcm.size - at))
@@ -252,6 +289,8 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
                     at += wrote
                     if (at >= pcm.size) {
                         at = 0
+                        turn = (turn + 1) % MusicTrack.ORDER.size
+                        pcm = takes[MusicTrack.ORDER[turn]] ?: takes[0]!!
                         if (++rounds == plays) done()
                     }
                 }
@@ -259,7 +298,7 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
                 isDaemon = true
                 start()
             }
-            fade(target, 1500)
+            fade(target, 2000)
         }
 
         private fun fade(to: Float, millis: Long): Job {
@@ -274,8 +313,8 @@ class SoundBoard(context: Context, private val settings: SharedPreferences) : So
             }.also { fader = it }
         }
 
-        suspend fun fadeOutAndStop() {
-            fade(0f, 700).join()
+        suspend fun fadeOutAndStop(millis: Long = 900) {
+            fade(0f, millis).join()
             stopNow()
         }
 
