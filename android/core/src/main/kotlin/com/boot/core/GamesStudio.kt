@@ -413,6 +413,11 @@ class GamesStudio {
     /** A review the player hasn't looked at yet. */
     var unseenReview: Int? = null
 
+    /**
+     * Lasting press relationships (grudges / pets). Empty on old saves; filled as reviews land.
+     */
+    val criticStanding: MutableList<CriticStanding> = mutableListOf()
+
     /** Work done on games or contracts last week, for research. */
     var lastWork = 0.0
 
@@ -891,7 +896,17 @@ class GamesStudio {
         )
     }
 
-    internal fun launch(ctx: LaneContext, rng: SeededRNG, reach: Double, audienceSuited: Boolean, clash: Clash? = null, team: Int = 1, kept: Double = 1.0, pcKeep: Double = 0.7): LaneReport {
+    internal fun launch(
+        ctx: LaneContext,
+        rng: SeededRNG,
+        reach: Double,
+        audienceSuited: Boolean,
+        clash: Clash? = null,
+        team: Int = 1,
+        kept: Double = 1.0,
+        pcKeep: Double = 0.7,
+        company: String = "",
+    ): LaneReport {
         val p = projectOf(team) ?: throw invalid("No game in development.")
         if (!p.isReady) throw invalid("${p.title} isn't content complete yet.")
         val c = p.concept
@@ -926,6 +941,7 @@ class GamesStudio {
                 worthySequel = original != null && original.score >= 7 && !rushedSequel, stepBack = stepBack, record = record,
                 wrongCrowd = audienceFit == Fit.BAD || !audienceSuited, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
                 year = ctx.year, production = c.production, bare = bareAreas(c, p.features, engine),
+                company = company, publisher = p.deal?.publisher, criticFavor = favorMap(),
             ),
             rng,
         )

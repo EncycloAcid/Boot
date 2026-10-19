@@ -6,6 +6,8 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.34.2 (Android):** critic personalities — named outlets with grudges and pets.
+
 **New in 3.34 / 3.34.1 (Android):** music and game names (finished).
 
 - **Game names from their time.** Suggested names, rivals' games and pitches sound like the year they come out: Ember Attack in 1981, Ember Quest in 1994, Ember: Heart of Winter in 2005, Emberfall or Ember Survivors in 2022. Every topic has a theme (fantasy, sci-fi, grim, cosy, sporty, modern) with its own words, places and made-up names, and no more "Neon Neon" or "Desert island Tycoon".
