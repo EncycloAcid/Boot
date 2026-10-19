@@ -32,6 +32,7 @@ import com.boot.core.counterCost
 import com.boot.core.dropRetainer
 import com.boot.core.experimentBlocker
 import com.boot.core.experimentCost
+import com.boot.core.gameRivals
 import com.boot.core.keynoteCost
 import com.boot.core.pressuresOn
 import com.boot.core.reserveCompute
@@ -43,7 +44,9 @@ import com.boot.core.setDevicePrice
 import com.boot.core.setPremium
 import com.boot.core.stance
 import com.boot.core.startExperiment
+import com.boot.core.studioName
 import com.boot.game.GameStore
+import com.boot.game.StudioPage
 
 /*
  * The 3.0 screens: the inbox on the office, a rivals card on every business, and the new levers
@@ -104,18 +107,29 @@ fun RivalSection(store: GameStore, state: GameState, lane: Lane) {
     }
     val pressures = state.pressuresOn(lane)
     val quiet = r.quietUntil > state.week
+    val display = if (lane == Lane.GAMES) state.studioName(r.name) else r.name
     GroupedSection(
         "Your rival",
-        footer = if (quiet) "${r.name} pulled back after you beat them. They'll be back ${GameClock.label(r.quietUntil)}." else
-            "The more of their market you take, the angrier they get. Your moves hit them, and make them angrier still.",
+        footer = if (quiet) "$display pulled back after you beat them. They'll be back ${GameClock.label(r.quietUntil)}." else
+            "The more of their market you take, the angrier they get." +
+                if (lane == Lane.GAMES) " Open Rivals for every studio of the era." else " Your moves hit them, and make them angrier still.",
+        action = if (lane == Lane.GAMES) {
+            { PlainButton("All rivals", { store.openStudio(StudioPage.RIVALS) }) }
+        } else null,
     ) {
         CardBlock(spacing = 10.dp) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CompanyLogo(r.name, size = 36.dp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(r.name, style = MaterialTheme.typography.titleMedium)
-                    Hint(if (quiet) "Out of the market for now" else r.stance.detail)
+                    Text(display, style = MaterialTheme.typography.titleMedium)
+                    Hint(
+                        when {
+                            quiet -> "Out of the market for now"
+                            r.blurb.isNotEmpty() -> r.blurb
+                            else -> r.stance.detail
+                        },
+                    )
                 }
                 Pill(if (quiet) "Beaten" else r.stance.title, if (quiet) colors.good else stanceColor)
             }
@@ -146,6 +160,15 @@ fun RivalSection(store: GameStore, state: GameState, lane: Lane) {
                     enabled = blocker == null,
                 ) { store.perform { counter(r.name, m) } }
             }
+        }
+        if (lane == Lane.GAMES && state.gameRivals.size > 1) {
+            RowDivider()
+            ListRow(
+                "${state.gameRivals.size} studios active this year",
+                subtitle = "Nintendo, Sega, EA, Capcom and the rest — era-gated.",
+                chevron = true,
+                onClick = { store.openStudio(StudioPage.RIVALS) },
+            )
         }
     }
 }

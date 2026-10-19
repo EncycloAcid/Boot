@@ -118,6 +118,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             item { StudiosSection(store, state, g) }
             if (g.store != null || state.calendarYear >= 2004) item { OwnStoreSection(store, state, g) }
         }
+        StudioPage.RIVALS -> rivalsItems(store, state)
         StudioPage.TECH -> {
             item { EnginesSection(store, state, g) }
             item { PlatformsSection(store, state) }

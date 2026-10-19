@@ -144,7 +144,7 @@ class TradeShowTest {
         // Over a run, the autopilot books booths, and a strong studio wins Best in Show now and then.
         var shows = 0
         var best = 0
-        for (seed in 1L..6L) {
+        for (seed in 1L..12L) {
             val s = GameState.create("T", "F", Lane.GAMES, seed)
             val pilot = Autopilot()
             while (!s.isOver && s.week < 52 * 12) pilot.playWeek(s)

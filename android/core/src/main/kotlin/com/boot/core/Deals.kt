@@ -267,6 +267,7 @@ private fun GameState.complete(s: Studio, price: Double, inShares: Boolean, earn
         quote = "We've admired ${s.name} for years. Nothing changes for their players.", quoteBy = founder.name,
     )
     feedOnDeal(s.name)
+    absorbRivalNamed(s.name)
     enqueue(IntegrationChoice(s.name))
 }
 

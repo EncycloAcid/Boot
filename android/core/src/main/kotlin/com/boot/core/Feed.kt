@@ -226,6 +226,28 @@ internal fun GameState.feedOnChart(title: String) {
     say(rng, Poster.PRESS, listOf("{t} goes to No. 1.", "{t} tops the charts in its launch week."), title, LogTone.GOOD, 1.0)
 }
 
+/** Rivalry story beats on the feed: heat, copycat, flop, or poach. */
+internal fun GameState.feedOnRivalBeat(studio: String, kind: String, about: String?) {
+    val rng = flavour("rival $studio $kind ${about ?: ""} $week")
+    when (kind) {
+        "heat" -> {
+            say(rng, Poster.PRESS, listOf("$studio and $companyName are properly at war now.", "Industry watchers: the $studio vs $companyName rivalry just got personal."), about, LogTone.BAD, 1.2)
+            say(rng, Poster.FAN, listOf("Popcorn ready. $studio vs $companyName.", "This rivalry is better than most games."), about, LogTone.NEUTRAL, 0.9)
+        }
+        "copy" -> {
+            say(rng, Poster.PLAYER, listOf("$studio saw what worked and made {t}. Classic.", "Is {t} just a clone of what $companyName did?", "$studio copying homework and still shipping."), about, LogTone.BAD, 1.1)
+            say(rng, Poster.RIVAL, listOf("Inspiration, not imitation. Our {t} stands on its own.", "We ship what players want. Coincidence."), about, LogTone.NEUTRAL, 0.8)
+        }
+        "flop" -> {
+            say(rng, Poster.MEME, listOf("$studio's {t}: how it started vs how it's going", "Nobody:\n$studio: ship {t} anyway"), about, LogTone.GOOD, 1.2)
+            say(rng, Poster.PRESS, listOf("{t} is a rare miss for $studio.", "$studio stumbles with {t}."), about, LogTone.NEUTRAL, 1.0)
+        }
+        "poach" -> {
+            say(rng, Poster.INSIDER, listOf("$studio is circling $companyName talent again.", "Heard $studio made an offer. Names withheld."), about, LogTone.BAD, 1.0)
+        }
+    }
+}
+
 /** Week to week: chatter about what you're making and what's out. */
 internal fun GameState.feedWeek() {
     val g = games ?: return

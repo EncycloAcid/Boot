@@ -38,7 +38,9 @@ import kotlin.random.Random
 enum class Tab { OFFICE, LANES, RESEARCH, TEAM, COMPANY, NEWS }
 
 /** The game studio's pages: what you're making, what you've made, the market, and the tech. */
-enum class StudioPage(val title: String) { MAKE("Make"), GAMES("Games"), MARKET("Market"), TECH("Tech") }
+enum class StudioPage(val title: String) {
+    MAKE("Make"), GAMES("Games"), MARKET("Market"), RIVALS("Rivals"), TECH("Tech"),
+}
 
 /** How fast the calendar runs while playing: milliseconds per week. */
 enum class Speed(val label: String, val millis: Long) {
@@ -120,7 +122,7 @@ class GameStore(app: Application) : AndroidViewModel(app) {
     var todayOpen by mutableStateOf(false)
     var lane by mutableStateOf<Lane?>(null)
 
-    /** Company tab page: 0 overview, 1 money, 2 markets, 3 strategy, 4 combos, 5 goals. */
+    /** Company tab page: 0 overview, 1 money, 2 markets, 3 strategy, 4 combos, 5 rivals, 6 goals. */
     var companyPage by mutableIntStateOf(0)
     var studioPage by mutableStateOf(StudioPage.MAKE)
 
