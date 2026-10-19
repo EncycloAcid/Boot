@@ -629,7 +629,6 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Mod tools** (PC, from 1993; sims, strategy, sandbox, RPGs, shooters or a mod-support hook): weekly decay ×1.008. From 8 weeks on, 0.6% a week a mod takes off: hire its maker (a skill 6–8 game designer), make it official (+30% sales, +0.2 player score), or let it be (+10%).
 - **More stores later**: adding a store scales the PC share of weekly sales by the new reach over the old and moves the share kept accordingly.
 
-<<<<<<< HEAD
 ## Talent wars (3.34.3)
 
 `TalentWars.kt`, extending `Employee` / `Candidate`, hire, soft `EventKind.Poach`, `CounterMove.POACH_STAR`, `TALENT_RAID`, specialists and Team / person-card UI.
@@ -640,15 +639,14 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Poach resist** uses `effectiveLoyalty` (Loyal trait = 1). Soft poach and talent raids prefer stars under pressure. Counter-offer uses `poachRetainCost`; letting go hurts remaining stars’ loyalty. `poachMarketStar` adds a signing bonus on top of the usual hire fee.
 - **Hits** on ship credit the games team (`creditCareerOnShip`). Specialising adds the specialty person title to the arc.
 - **UI:** Team row shows chapter pill, career line, wanted-by, loyalty bar; person card shows titles, hits, pressure, loyalty. News/feed beats stay secondary.
-=======
+
 ## Critic personalities (3.34.2)
 
 Named review outlets (IGN, GameSpot, Eurogamer, Edge, PC Gamer, Game Informer, and era magazines) carry **personalities**: favoured / disliked genres, publisher pets and grudges, and harshness. Scores still flow through `writeReviews` / `bias()` — publisher lean and lasting **favor** nudge the classic outlet taste. Ship their wheelhouse and they can become a **pet** (warmer future scores, soft news); snub their taste, ship hated genres, or take a public spat and they hold a **grudge** (cooler scores, spicy headlines). Standing lives on `GamesStudio.criticStanding` with defaults so old saves load. News → Press lists the era's desks; review rows show Pet/Grudge chips.
->>>>>>> pr-23
 
 ## Music and game names (3.34)
 
-Finished in **3.34.1** (era names landed with 3.34.0 WIP; soundtrack takes / true crossfades / mute complete the band). **3.34.3** stacks talent wars on that tip.
+Finished in **3.34.1** (era names landed with 3.34.0 WIP; soundtrack takes / true crossfades / mute complete the band). **3.34.3+** stacks talent wars and critic personalities on that tip.
 
 **Game names** (`Titles.kt`). Each topic belongs to one of six themes (fantasy, sci-fi, grim, light, sporty, modern), each with its own adjectives, places, word endings for made-up names (Emberfall, Pulsecore), sequel subtitles and expansion names. A title is built from the topic's nouns through the genre's templates. Given the year, about a third of names use that year's templates instead: arcade names before 1986 (Ember Attack, Signaltron), nineties ones to 1999 (Ember Quest, Ember Deluxe), subtitled ones to 2009 (Ember: Heart of Winter, Ember Online) and indie ones after (Emberfall, A Hollow Crown, Ember Survivors from 2020). Titles that repeat a word or run past 30 characters are drawn again, and no place name ends in a number, so a sequel number is never mistaken for part of a name. Sims use a short word for the topic (Pet Shop Tycoon, AI Simulator). Your own suggestions, rivals' games, subsidiaries' pitches and indie pitches all pass the year in.
 
