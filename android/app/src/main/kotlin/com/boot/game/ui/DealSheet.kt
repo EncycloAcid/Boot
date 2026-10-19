@@ -86,6 +86,10 @@ import com.boot.core.greenlightBlocker
 import com.boot.core.moraleTarget
 import com.boot.core.studioGameProgress
 import com.boot.core.studioPitch
+import com.boot.core.CoDevKind
+import com.boot.core.defaultCoDevSplit
+import com.boot.core.proposeCoDev
+import com.boot.core.proposeCoDevBlocker
 import com.boot.game.GameStore
 import kotlin.math.roundToInt
 
@@ -310,6 +314,7 @@ private fun Running(store: GameStore, state: GameState, s: Studio) {
         }
     }
     NextGame(store, state, s, sub)
+    CoDevFromSubsidiary(store, state, s)
     val canChange = state.week - sub.planWeek >= 52
     GroupedSection("How you run it", footer = if (canChange) "You can change this once a year." else "You can change this in ${GameClock.label(sub.planWeek + 52)}.") {
         Plan.entries.forEachIndexed { i, p ->
@@ -335,6 +340,35 @@ private fun Running(store: GameStore, state: GameState, s: Studio) {
             },
             onDismiss = { selling = false },
         )
+    }
+}
+
+/** Invite an owned studio onto your large/AAA project as a co-dev partner. */
+@Composable
+private fun CoDevFromSubsidiary(store: GameStore, state: GameState, s: Studio) {
+    val team = listOf(1, 2).firstOrNull { t -> state.proposeCoDevBlocker(t, s.name) == null }
+    val split = defaultCoDevSplit(CoDevKind.SUBSIDIARY)
+    val block = when {
+        team == null -> state.games?.project?.let { state.proposeCoDevBlocker(1, s.name) }
+            ?: "Start a large or AAA project to bring them on as co-dev."
+        else -> null
+    }
+    GroupedSection(
+        "Co-dev on your project",
+        footer = "Different from greenlighting their own game — they join your mega-project. Shared cost, credit, and royalties.",
+    ) {
+        ActionRow(
+            title = "Propose co-dev with ${s.name}",
+            detail = block
+                ?: "Default split ${Format.percent(split.cost)} cost · ${Format.percent(split.work)} work · ${Format.percent(split.royalty)} royalties.",
+            action = "Propose",
+            enabled = block == null && team != null,
+        ) {
+            val t = team ?: return@ActionRow
+            store.perform {
+                proposeCoDev(t, s.name, split.cost, split.work, split.credit, split.royalty)
+            }
+        }
     }
 }
 
