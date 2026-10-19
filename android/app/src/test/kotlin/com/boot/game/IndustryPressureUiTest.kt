@@ -18,10 +18,10 @@ import com.boot.core.Genre
 import com.boot.core.Lane
 import com.boot.core.Platform
 import com.boot.core.Sandbox
-import com.boot.core.Topic
-import com.boot.core.hireTemps
 import com.boot.core.TempKind
+import com.boot.core.Topic
 import com.boot.core.freeDesks
+import com.boot.core.hireTemps
 import com.boot.core.moveOffice
 import com.boot.game.ui.BootApp
 import com.boot.game.ui.BootTheme
@@ -35,7 +35,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
-/** Team contract labour + release streamer + platform politics levers are visible. */
+/** Team contract labour + studio platform politics levers are visible. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class IndustryPressureUiTest {
@@ -88,6 +88,7 @@ class IndustryPressureUiTest {
                     ),
                 )
             }
+            store.todayOpen = false
         }
         compose.waitForIdle()
         // Team: contract labour + temps
@@ -99,11 +100,13 @@ class IndustryPressureUiTest {
         assertTrue(compose.onAllNodesWithText("Temp", substring = true).fetchSemanticsNodes().isNotEmpty())
         save("industry-pressure-team")
 
-        // Studio platforms: featuring / logo
-        tap("Studio")
+        // Studio Tech page: featuring / logo
+        compose.runOnIdle { store.openStudio(StudioPage.TECH) }
         compose.waitForIdle()
-        scrollTo("Logo on the box")
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Logo on the box", substring = true))
+        compose.waitForIdle()
         assertTrue(compose.onAllNodesWithText("Store featuring", substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(compose.onAllNodesWithText("Logo on the box", substring = true).fetchSemanticsNodes().isNotEmpty())
         save("industry-pressure-platforms")
     }
 }
