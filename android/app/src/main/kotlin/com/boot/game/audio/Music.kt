@@ -9,7 +9,9 @@ import kotlin.random.Random
  * The soundtrack. Every era gets two tunes of its own, composed from a seed in styles that suit
  * its time: chiptune for the home computers, FM synths and city pop for the console wars, house
  * and breakbeat for the boom years, lo-fi and lounge jazz for the bootstrap years and so on. The
- * two take turns. When the money runs out, a darker tune takes over until it comes back.
+ * two take turns. Each tune also has a few takes (fresh melody, then a softer breakdown) that
+ * rotate so a long session doesn't hear the same loop over and over. When the money runs out, a
+ * darker tune takes over until it comes back.
  *
  * A tune is built like a song: an idea stated, repeated with a lift, then a second section with
  * new chords and a higher tune, sometimes with a breakdown, and a harmony line to finish. It loops
@@ -112,6 +114,10 @@ data class MusicTrack(
         val TITLE = MusicTrack("title", MusicStyle.LOFI, 1977, "Boot Up")
         val TITLE_B = MusicTrack("title-b", MusicStyle.JAZZ, 1984, "Lobby Music")
 
+        /** Takes of one tune, and the order they play: main, new melody, main, soft breakdown. */
+        const val TAKES = 3
+        val ORDER = intArrayOf(0, 1, 0, 2)
+
         private fun seed(era: Era) = 7_919L * (era.ordinal + 3)
 
         /** The era's main tune. */
@@ -132,7 +138,14 @@ data class MusicTrack(
     /** How many times round before the next tune takes over: about two and a half minutes. */
     val plays: Int get() = maxOf(2, ceil(150.0 / style.seconds).toInt())
 
-    fun render(): ShortArray = Composer(style, Random(seed), tense).render()
+    fun render(): ShortArray = render(0)
+
+    /**
+     * One take of the tune. Every take shares the key, chords and tempo, so they follow each other
+     * without a seam, but take 1 has a fresh melody and take 2 is a soft breakdown. Played in turn
+     * they keep a long session from hearing the same loop over and over.
+     */
+    fun render(take: Int): ShortArray = Composer(style, Random(seed), tense, take).render()
 }
 
 /** A note in 16th-note steps within a two-bar phrase: when, how long, and which scale degree. */
@@ -141,9 +154,13 @@ private data class Step(val at: Int, val length: Int, val degree: Int)
 /** Kick, snare, closed hat, open hat and ghost snares, as 16-step patterns. */
 private class Kit(val kick: String, val snare: String, val hat: String, val open: String = "", val ghost: String = "")
 
-private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolean) {
+private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolean, val take: Int = 0) {
     val scale = if (tense) Mode.HARMONIC else style.mode
     val mode = scale.steps
+    /** Soft take: drums pulled back, tune only in the second half. */
+    val softTake = take == 2
+    /** Melodies draw from their own dice, so each take can sing a different tune over the same chords. */
+    val tune: Random = if (take == 1) Random(rng.nextLong() xor 0x5EED) else rng
     /** The key's root for chords; bass sits an octave down and the tune an octave up. */
     val root = 52 + rng.nextInt(0, 8)
     val stepFrames = SAMPLE_RATE * 60 / style.bpm / 4
@@ -238,8 +255,12 @@ private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolea
                 chords.echo(seconds(2.0), 0.25, repeats = 1, wet = 0.15)
             }
         }
+        if (softTake) {
+            lead.lowPass(0.5)
+            chords.echo(seconds(6.0), 0.4, repeats = 2, wet = 0.25)
+        }
         val soft = style in setOf(MusicStyle.LOFI, MusicStyle.DOWNBEAT, MusicStyle.JAZZ, MusicStyle.AMBIENT)
-        master.add(drums, if (soft) 0.7 else 0.85)
+        master.add(drums, if (soft || softTake) 0.7 else 0.85)
         master.add(bass, 0.9)
         master.add(chords, 0.8)
         master.add(lead, 0.9)
@@ -251,7 +272,7 @@ private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolea
             MusicStyle.DOWNBEAT -> master.lowPass(0.6)
             MusicStyle.JAZZ -> master.lowPass(0.7)
             MusicStyle.AMBIENT -> master.lowPass(0.5)
-            else -> if (tense) master.lowPass(0.75)
+            else -> if (tense || softTake) master.lowPass(0.75)
         }
         return master.toPcm(level(master))
     }
@@ -335,6 +356,12 @@ private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolea
         val tomBase = 98.0 + rng.nextDouble() * 20
         for (bar in 0 until style.bars) {
             val kit = kits[if (bar >= half) 1 else 0]
+            if (softTake) {
+                // Just a soft pulse, so the band can breathe before the next take.
+                if (bar >= half) for (s in pattern(kit.kick)) mix.kick(frameAt(bar, s), human(0.5), chip)
+                for (s in pattern(kit.hat)) mix.hat(frameAt(bar, s), human(if (s % 4 == 0) 0.4 else 0.22))
+                continue
+            }
             val breakdown = inBreakdown(bar)
             val fill = fills && bar % 8 == 7
             val end = if (fill) 12 else 16
@@ -576,21 +603,21 @@ private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolea
 
     /** A two-bar idea starting from [start], fitted to the chords at [bar], reaching no higher than [top]. */
     private fun motif(bar: Int, start: Int, top: Int = 13): List<Step> {
-        val rhythm = rhythms[rng.nextInt(rhythms.size)]
+        val rhythm = rhythms[tune.nextInt(rhythms.size)]
         var degree = start
         // A tune keeps going the way it was heading for a while, and turns back at the edges.
-        var direction = if (rng.nextBoolean()) 1 else -1
+        var direction = if (tune.nextBoolean()) 1 else -1
         return rhythm.map { (at, length) ->
             val chord = chordAt(bar + at / 16)
             if (at % 8 == 0) {
                 // On the strong beats, land on a chord tone near where the tune already is.
                 val tones = (-1..2).flatMap { o -> chordTones(chord, false).map { it + 7 * o } }.filter { it in 3..top }
-                degree = tones.minByOrNull { abs(it - degree) + rng.nextDouble() * 1.5 } ?: degree
+                degree = tones.minByOrNull { abs(it - degree) + tune.nextDouble() * 1.5 } ?: degree
             } else {
                 if (degree >= top - 1) direction = -1
                 if (degree <= 4) direction = 1
-                if (rng.nextDouble() < 0.25) direction = -direction
-                degree = (degree + direction * listOf(1, 1, 1, 2).random(rng)).coerceIn(3, top)
+                if (tune.nextDouble() < 0.25) direction = -direction
+                degree = (degree + direction * listOf(1, 1, 1, 2).random(tune)).coerceIn(3, top)
             }
             Step(at, length, degree)
         }
@@ -611,7 +638,7 @@ private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolea
      * climbs higher. [lift] raises the whole half, so the second half of the song soars.
      */
     private fun verse(start: Int, lift: Int): Pair<List<Pair<Int, List<Step>>>, List<Pair<Int, List<Step>>>> {
-        val m = motif(start, 7 + lift + rng.nextInt(-1, 3), 13 + lift)
+        val m = motif(start, 7 + lift + tune.nextInt(-1, 3), 13 + lift)
         val n = motif(start + 4, 9 + lift, 13 + lift)
         val climb = motif(start + 4, 11 + lift, 15)
         val first = listOf(
@@ -639,8 +666,8 @@ private class Composer(val style: MusicStyle, val rng: Random, val tense: Boolea
         }
         // A softer voice for the harmony line a third below.
         val harmony = inst.copy(gain = inst.gain * 0.55, vibrato = 0.0)
-        // Calmer styles leave the opening section to the band and bring the tune in after it.
-        val quietFirst = style in setOf(MusicStyle.HOUSE, MusicStyle.DOWNBEAT, MusicStyle.LOFI, MusicStyle.AMBIENT, MusicStyle.BREAKBEAT)
+        // Calmer styles (and the soft take) leave the opening section to the band and bring the tune in after it.
+        val quietFirst = softTake || style in setOf(MusicStyle.HOUSE, MusicStyle.DOWNBEAT, MusicStyle.LOFI, MusicStyle.AMBIENT, MusicStyle.BREAKBEAT)
         val a = verse(0, 0)
         val b = verse(half, 2)
         for (section in 0 until sections) {
