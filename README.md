@@ -6,6 +6,8 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.34.7 (Android):** legacy / trust pack on the talent-wars tip — antique IP archaeology, transparency meter, activist board after IPO, accessibility & localisation bets, tech demo flexes, and a company museum wing.
+
 **New in 3.34.5 (Android):** stacked tip — talent wars + critic personalities + mod scene.
 
 **New in 3.34.4 (Android):** mod / community scene on the long tail.

@@ -108,7 +108,11 @@ private fun BoardSection(state: GameState) {
     val b = state.venture.board
     GroupedSection(
         "Board",
-        footer = if (b == null) "No board. Nobody can overrule you." else "Below 40% they start overruling you. At zero they replace you.",
+        footer = when {
+            b == null -> "No board. Nobody can overrule you."
+            state.listing != null -> "Public company: miss targets and activist investors push live ops or selling a lane. Comply or fight — fighting hits the stock harder."
+            else -> "Below 40% they start overruling you. At zero they replace you."
+        },
     ) {
         if (b == null) {
             ValueRow("Board seats", "None")
@@ -124,6 +128,11 @@ private fun BoardSection(state: GameState) {
             ValueRow("Grace quarters left", "${b.graceQuarters}")
             RowDivider()
             ValueRow("Demands met / defied", "${b.demandsMet} / ${b.demandsDefied}")
+            if (state.listing != null) {
+                RowDivider()
+                ValueRow("Activist pressure", "Live ops · sell a lane", colors.warn)
+                Hint("After IPO, low confidence brings activist demands. Fighting them hurts confidence and ${state.listing!!.ticker}.")
+            }
         }
     }
 }

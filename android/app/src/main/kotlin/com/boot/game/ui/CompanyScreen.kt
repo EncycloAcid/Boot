@@ -5,10 +5,10 @@ import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.game.GameStore
 
-/** The company as a whole: overview, money, markets, strategy, combos, rivals, and goals. */
+/** The company as a whole: overview, money, markets, strategy, combos, rivals, museum, and goals. */
 @Composable
 fun CompanyScreen(store: GameStore, state: GameState) {
-    val pages = listOf("Overview", "Money", "Markets", "Strategy", "Combos", "Rivals", "Goals")
+    val pages = listOf("Overview", "Money", "Markets", "Strategy", "Combos", "Rivals", "Museum", "Goals")
     ScreenColumn {
         item { ScreenHeader("Company", "You own ${Format.percent(state.venture.founderEquity)} of ${state.companyName}") }
         item { Segmented(pages.indices.toList(), store.companyPage, { pages[it] }) { store.companyPage = it } }
@@ -19,6 +19,7 @@ fun CompanyScreen(store: GameStore, state: GameState) {
             3 -> strategyItems(store, state)
             4 -> combosItems(store, state)
             5 -> rivalsItems(store, state)
+            6 -> museumItems(state)
             else -> {
                 item { Sections { GoalsList(state) } }
                 item { AchievementsSection(state) }

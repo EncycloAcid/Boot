@@ -102,6 +102,7 @@ class Reputation {
             nextScarId += 1
         }
         adjust(-severity * 18)
+        // Museum timeline is on GameState — callers also use museumOnScar when they have state.
     }
 
     internal fun weeklyDrift() {
