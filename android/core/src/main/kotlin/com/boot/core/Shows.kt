@@ -161,6 +161,27 @@ internal val GameProject.revealBoost: Double
         else -> 0.55
     }
 
+/** What a show-floor tech demo flex costs — more than a trailer, bigger hype spike. */
+fun GameState.techDemoCost(p: GameProject): Double = trailerCost(p) * 1.75
+
+/**
+ * E3/show-style tech demo: spikes hype and wishlists, but records a [GameProject.techDemoPromise]
+ * that backlash if the shipped game undersells the flash.
+ */
+internal fun GameState.techDemoFlex(p: GameProject, stage: String, appeal: Double): Double {
+    val base = 22.0
+    val hype = reveal(p, stage, base, appeal, extra = 1.45)
+    p.techDemos += 1
+    p.techDemoPromise = max(p.techDemoPromise, p.hype * 0.55 + 18.0)
+    stats.techDemos += 1
+    feedOnTechDemo(p.title, stage)
+    addLog(
+        "${p.title} tech demo at $stage wowed the floor. Hype surges — ship short of that promise and reviews will bite.",
+        LogTone.GOOD, Lane.GAMES,
+    )
+    return hype
+}
+
 /** What making a trailer costs, by the size of the game. */
 fun GameState.trailerCost(p: GameProject): Double = scaled(
     when (p.concept.size) {
@@ -349,6 +370,7 @@ internal fun GameState.describeShows(kind: EventKind): Description? {
                     if (p.reveals == 0) "It would be the game's first trailer: the announcement." else "Fans have seen it before, so a new trailer adds a little less.",
                 listOfNotNull(
                     choice("Show a trailer", "${money(trailerCost(p))} for the trailer. Hype and fans on ${kind.maker}'s consoles."),
+                    choice("Tech demo flex", "${money(techDemoCost(p))}. Floor-wowing demo — huge hype, overpromise risk if the game undersells it."),
                     if (p.exclusiveWith == null) choice("Take their marketing deal", "They pay ${money(marketingDeal(p))} and give it more stage time. Fans on other platforms grumble.") else null,
                     if (p.isReady) choice("Shadow-drop it", "Release it live during the show, with a burst of hype.") else null,
                     choice("Not this time", "Keep it under wraps."),
@@ -364,6 +386,7 @@ internal fun GameState.describeShows(kind: EventKind): Description? {
                     if (p.reveals == 0) "${p.title} hasn't been announced yet: this would be its reveal." else "${p.title} has had ${p.reveals} trailer${if (p.reveals == 1) "" else "s"} already.",
                 listOfNotNull(
                     choice("World premiere", "${money(kind.fee + trailerCost(p))} for the slot and the trailer. Big hype for ${p.title}."),
+                    choice("Tech demo premiere", "${money(kind.fee + techDemoCost(p))}. Show-stopping demo — spikes hype, raises the bar for launch."),
                     if (p.isReady) choice("Shadow-drop it", "${money(kind.fee)}. Release it live on stage.") else null,
                     choice("Skip it", "Save the money."),
                 ),
@@ -399,6 +422,12 @@ internal fun GameState.resolveShows(kind: EventKind, choice: Int) {
                     spend(trailerCost(p), Lane.GAMES)
                     onStage(p, stage, appealOf(kind.team), 2_000_000.0) { reveal(p, stage, 14.0, appealOf(kind.team)) }
                 }
+                "Tech demo flex" -> {
+                    spend(techDemoCost(p), Lane.GAMES)
+                    onStage(p, stage, appealOf(kind.team), 3_500_000.0, listOf("A tech demo that had the floor cheering.")) {
+                        techDemoFlex(p, stage, appealOf(kind.team))
+                    }
+                }
                 "Take their marketing deal" -> {
                     cash += marketingDeal(p)
                     recordRevenue(marketingDeal(p), Lane.GAMES)
@@ -423,6 +452,13 @@ internal fun GameState.resolveShows(kind: EventKind, choice: Int) {
                     stats.premieres += 1
                     onStage(p, kind.show, appealOf(kind.team), 6_000_000.0, listOf("${p.title} had a world premiere.")) {
                         reveal(p, kind.show, 22.0, appealOf(kind.team))
+                    }
+                }
+                "Tech demo premiere" -> {
+                    spend(kind.fee + techDemoCost(p), Lane.GAMES)
+                    stats.premieres += 1
+                    onStage(p, kind.show, appealOf(kind.team), 7_500_000.0, listOf("${p.title}'s tech demo premiere stole the show.")) {
+                        techDemoFlex(p, kind.show, appealOf(kind.team))
                     }
                 }
                 "Shadow-drop it" -> {

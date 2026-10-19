@@ -232,6 +232,13 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     var feed: List<Post> = emptyList()
         internal set
 
+    /**
+     * Museum / legacy timeline for this run: hits, flops, scars, triumphs.
+     * Old saves: empty. Shown on Company → Museum; not a new sim lane.
+     */
+    var museum: List<LegacyBeat> = emptyList()
+        internal set
+
     /** The staff stories under way, and the last few that ended. */
     var stories: List<StaffStory> = emptyList()
         internal set

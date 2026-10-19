@@ -593,12 +593,21 @@ data class GameConcept(
     val hook: Hook? = null,
     /** For a collection: the titles of the games it brings together. */
     val collects: List<String> = emptyList(),
+    /** Dormant brand id when this is an antique IP remake/reboot. Old saves: null. */
+    val antiqueIp: String? = null,
+    /** Remake vs reboot when [antiqueIp] is set. */
+    val ipPath: IpPath? = null,
 ) {
     /** What a copy sells for. */
     val unitPrice: Double get() = size.price * price.multiplier
 
-    /** Work points to finish: a remaster starts from a finished game. */
-    val work: Double get() = size.work * (if (remasterOf != null) REMASTER_WORK else 1.0) * production.work * (if (hook != null) HOOK_WORK else 1.0)
+    /** Work points to finish: remasters and antique remakes take less; reboots near full. */
+    val work: Double
+        get() {
+            val antique = antiqueWork(ipPath)
+            val remaster = if (remasterOf != null) REMASTER_WORK else 1.0
+            return size.work * remaster * antique * production.work * (if (hook != null) HOOK_WORK else 1.0)
+        }
 
     val genreTitle: String get() = if (genre2 == null) genre.title else "${genre.title}-${genre2.title}"
     val genreLower: String get() = if (genre2 == null) genre.lower else "${genre.lower}-${genre2.lower}"

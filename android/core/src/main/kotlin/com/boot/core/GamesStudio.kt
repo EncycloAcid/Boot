@@ -151,6 +151,19 @@ data class GameProject(
      * Old saves default −1 so they load; Industry Pressure seeds this when a project starts.
      */
     var certClearWeek: Int = -1,
+    /** Accessibility pass invested during development. Old saves: false. */
+    var accessibilityBet: Boolean = false,
+    /** Regions localised during development. Old saves: empty. */
+    val localisationRegions: MutableSet<Region> = mutableSetOf(),
+    /** Roadmap was dumped publicly — overpromise risk if the game undersells. */
+    var roadmapOvershared: Boolean = false,
+    /**
+     * Hype "promised" by tech demos / roadmap dumps. Reviews punish if the score undersells it.
+     * Old saves: 0.
+     */
+    var techDemoPromise: Double = 0.0,
+    /** Tech demos shown at shows for this project. */
+    var techDemos: Int = 0,
 ) {
     /** How much the leads add to this week's work. Worked out each week before the team gets going. */
     @kotlinx.serialization.Transient
@@ -303,6 +316,12 @@ data class GameRelease(
      * Old saves default 0.
      */
     var industryLift: Double = 0.0,
+    /** Shipped with an accessibility pass. Old saves: false. */
+    var accessibility: Boolean = false,
+    /** Regions this release was localised for. Old saves: empty. */
+    var localisedRegions: List<Region> = emptyList(),
+    /** Tech-demo promise carried from development (for post-mortems). Old saves: 0. */
+    var techDemoPromise: Double = 0.0,
 ) {
     /** 0...100, for the rest of the company's bookkeeping. */
     val review: Int get() = (score * 10).roundToInt()
@@ -409,6 +428,15 @@ class GamesStudio {
 
     /** 0.3...1.2. Flops knock it down and only hits bring it back. The fanbase never forgets. */
     var fanTrust = 1.0
+    /**
+     * Community trust from open development vs radio silence, 0…1. Old saves default mid (0.5).
+     * Dev diaries, silence in crises, and roadmap dumps move it.
+     */
+    var transparency: Double = 0.5
+    var lastDiaryWeek: Int = -1_000
+    var lastSilentWeek: Int = -1_000
+    var diariesPublished: Int = 0
+    var roadmapOvershareWeek: Int = -1_000
     var hits = 0
     var flops = 0
     val topics: MutableList<Topic> = Topic.entries.filter { it.starter }.toMutableList()
@@ -456,6 +484,9 @@ class GamesStudio {
 
     /** Studios you've bought. */
     val subsidiaries = mutableListOf<Subsidiary>()
+
+    /** Dormant brands / antique IPs you've acquired. Old saves: empty. */
+    val ownedIps = mutableListOf<OwnedIp>()
 
     /** Your own game store, if you've built one. */
     var store: OwnStore? = null
@@ -682,7 +713,9 @@ class GamesStudio {
             r.saleFatigue *= 0.97
             if (r.salesHistory.size > 52) r.salesHistory.removeAt(0)
             r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) *
-                (if (r.patched) 1.01 else 1.0) * (1.0 + r.modSalesLift()) * (1.0 + r.industryLift)
+                (if (r.patched) 1.01 else 1.0) * (1.0 + r.modSalesLift()) * (1.0 + r.industryLift) *
+                r.accessLocalLift() *
+                (if (r.concept.antiqueIp != null) 1.0 + (dormantIp(r.concept.antiqueIp)?.qualityMemory ?: 0.0) * 0.04 else 1.0)
             if (r.weeklySales < 40) {
                 r.weeklySales = 0.0
                 r.chartRank = 0
@@ -969,6 +1002,7 @@ class GamesStudio {
                 wrongCrowd = audienceFit == Fit.BAD || !audienceSuited, awkwardPlatform = c.platforms.firstOrNull { it.fit(c.genre) == Fit.BAD }, price = c.price,
                 year = ctx.year, production = c.production, bare = bareAreas(c, p.features, engine),
                 company = company, publisher = p.deal?.publisher, criticFavor = favorMap(),
+                techDemoPromise = p.techDemoPromise,
             ),
             rng,
         )
@@ -995,14 +1029,22 @@ class GamesStudio {
         // A remaster sells to the people who remember the original, and fewer of them than a new game finds.
         val remastered = c.remasterOf?.let { release(it) }
         val nostalgia = remastered?.let { remasterLift(it.score) } ?: 1.0
+        // Antique IP remakes/reboots: nostalgia from the dormant brand's memory.
+        val antiqueNostalgia = c.antiqueIp?.let { id ->
+            dormantIp(id)?.let { 0.85 + it.qualityMemory * 0.25 } ?: 1.0
+        } ?: 1.0
+        val accessLift = (if (p.accessibilityBet) 1.04 else 1.0) *
+            (1.0 + 0.025 * p.localisationRegions.size.coerceAtMost(4))
         val season = GameSeason.forWeek(week)
         val window = LaunchWindow.at(week)
         val seasonalLift = season.launchMultiplier(c.genre) * (window?.lift ?: 1.0)
         // Wishlists turn into sales on the day, more of them the better the reviews.
-        val wishlistGross = p.wishlists * wishlistConversion(avg) * c.size.price * c.price.revenueFactor(avg) * pastScale(ctx.year.toDouble())
+        val wishlistGross = p.wishlists * wishlistConversion(avg) * (0.92 + transparency * 0.16) *
+            c.size.price * c.price.revenueFactor(avg) * pastScale(ctx.year.toDouble())
         val gross = c.size.launchSales * (avg / 7).pow(3) * fanLift * fanTrust * ctx.reception * ctx.marketDemand *
             ctx.marketingBoost * (1 + p.hype / 80) * reachMult * (if (onTrend) 1.12 else 1.0) * sequelLift *
-            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) * nostalgia * seasonalLift * screen * kept
+            (clash?.penalty ?: 1.0) * c.price.revenueFactor(avg) * (if (c.live) 0.85 else 1.0) *
+            nostalgia * antiqueNostalgia * accessLift * seasonalLift * screen * kept
         val netShare = c.platforms.sumOf {
             when (it) {
                 Platform.OWN_CONSOLE -> 1.0
@@ -1124,7 +1166,22 @@ class GamesStudio {
             live = if (c.live) LiveService(livePlayers(gross / c.unitPrice), week) else null,
             breakdown = listOf(ScorePart("Baseline", SCORE_BASELINE, "Where every game starts.")) + parts,
             wishlists = p.wishlists,
+            accessibility = p.accessibilityBet,
+            localisedRegions = p.localisationRegions.toList(),
+            techDemoPromise = p.techDemoPromise,
         )
+        if (p.techDemoPromise > 20 && avg < 7.0) {
+            lines += "The tech demo promised more than the game delivered. Players felt overpromised."
+            fanTrust = max(0.3, fanTrust - 0.06)
+        }
+        if (c.antiqueIp != null) {
+            val brand = dormantIp(c.antiqueIp)?.brand ?: "the brand"
+            lines += "A ${c.ipPath?.title?.lowercase() ?: "revival"} of $brand: nostalgia brought people in, and meme risk came with it."
+        }
+        if (p.accessibilityBet) lines += "The accessibility pass earned quiet goodwill and a longer tail."
+        if (p.localisationRegions.isNotEmpty()) {
+            lines += "Localisation for ${p.localisationRegions.joinToString { it.short }} opened regional markets."
+        }
         // The wishlist buyers come once, on the day; the weekly sales that tail off come from everyone else.
         report.revenue += wishlistGross * netShare
         if (c.live) {

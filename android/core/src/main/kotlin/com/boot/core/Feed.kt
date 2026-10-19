@@ -322,6 +322,55 @@ internal fun GameState.feedOnRivalBeat(studio: String, kind: String, about: Stri
     }
 }
 
+/** Antique IP buy / remake / reboot / meme / hit beats. */
+internal fun GameState.feedOnAntique(brand: String, kind: String) {
+    val rng = flavour("antique $brand $kind $week")
+    when (kind) {
+        "buy" -> say(rng, Poster.PRESS, listOf("$companyName just bought the $brand rights.", "Who's reviving $brand? Apparently $companyName."), brand, LogTone.GOOD, 1.1)
+        "remake" -> {
+            say(rng, Poster.FAN, listOf("$brand remake?????? TAKE MY MONEY", "Please don't mess up $brand", "{tag} $brand remake announced"), brand, LogTone.GOOD, 1.2)
+            say(rng, Poster.MEME, listOf("Day 1 $brand remake discourse", "Nostalgia bait detected: $brand"), brand, LogTone.NEUTRAL, 1.0)
+        }
+        "reboot" -> {
+            say(rng, Poster.FAN, listOf("$brand reboot. Bold.", "If they reboot $brand wrong I'm riotting", "New $brand era let's go"), brand, LogTone.NEUTRAL, 1.2)
+            say(rng, Poster.MEME, listOf("$brand reboot already has a meme page", "Ah yes, the cursed $brand reboot cycle"), brand, LogTone.BAD, 1.1)
+        }
+        "meme" -> say(rng, Poster.MEME, listOf("$brand will never recover from this", "The $brand revival is a whole genre of meme now", "Clip it: $brand flop compilation"), brand, LogTone.BAD, 1.4)
+        "hit" -> say(rng, Poster.PRESS, listOf("$brand is back — and it works.", "$companyName actually revived $brand properly."), brand, LogTone.GOOD, 1.3)
+    }
+}
+
+/** Dev diary / silence / roadmap transparency beats. */
+internal fun GameState.feedOnTransparency(title: String?, kind: String) {
+    val rng = flavour("transparency $kind ${title ?: ""} $week")
+    when (kind) {
+        "diary" -> say(rng, Poster.FAN, listOf("{s} posted a {t} diary — love to see it", "Open development for {t}? Based", "More studios should diary like {s}"), title, LogTone.GOOD, 0.9)
+        "roadmap" -> {
+            say(rng, Poster.PLAYER, listOf("{s} dumped the whole {t} roadmap lol", "That's… a lot of promises for {t}", "Wishlisted {t} after that roadmap. Nervous."), title, LogTone.NEUTRAL, 1.2)
+            say(rng, Poster.MEME, listOf("Roadmap so long it needs a sequel", "{t} roadmap: how it started vs how it'll end"), title, LogTone.NEUTRAL, 1.0)
+        }
+        "silence_crisis" -> say(rng, Poster.PLAYER, listOf("{s} radio silence during THIS? Cowardly", "Say something. Anything.", "Transparency metre in the toilet"), null, LogTone.BAD, 1.1)
+        "silence" -> say(rng, Poster.INSIDER, listOf("{s} has gone quiet again.", "No updates from {s}. Classic."), null, LogTone.NEUTRAL, 0.6)
+    }
+}
+
+/** Accessibility / localisation goodwill beats. */
+internal fun GameState.feedOnAccessLocal(title: String, kind: String) {
+    val rng = flavour("access $kind $title $week")
+    when (kind) {
+        "access" -> say(rng, Poster.PRESS, listOf("{s} putting real money into {t} accessibility.", "{t} accessibility pass — quiet but important."), title, LogTone.GOOD, 0.9)
+        "local" -> say(rng, Poster.FAN, listOf("{t} getting proper localisation? Finally", "New language support for {t} — welcome", "{s} investing in regional {t} markets"), title, LogTone.GOOD, 0.85)
+    }
+}
+
+/** Tech demo flex on the feed. */
+internal fun GameState.feedOnTechDemo(title: String, stage: String) {
+    val rng = flavour("techdemo $title $stage $week")
+    say(rng, Poster.STREAMER, listOf("That {t} tech demo at $stage was INSANE", "Rewatching the {t} demo. Graphics how?"), title, LogTone.GOOD, 1.4)
+    say(rng, Poster.PLAYER, listOf("If {t} looks like that demo I'm sold", "Demo looked CGI. Hope it's real-time.", "Wishlisted {t} purely off the tech demo"), title, LogTone.NEUTRAL, 1.2)
+    say(rng, Poster.MEME, listOf("Tech demo ≠ final game challenge (impossible)", "{t} demo: how it started"), title, LogTone.NEUTRAL, 1.0)
+}
+
 /** A star enters a new career chapter — secondary to the Team card, but worth a feed beat. */
 internal fun GameState.feedOnCareerChapter(name: String, chapter: CareerChapter) {
     val rng = flavour("career $name ${chapter.name} $week")

@@ -96,6 +96,7 @@ import com.boot.core.gameTeam
 import com.boot.core.teamSize
 import com.boot.core.setTeamSplit
 import com.boot.core.takeGameContract
+import com.boot.core.transparencyLabel
 import com.boot.game.GameStore
 import com.boot.game.StudioPage
 import java.util.Locale
@@ -131,7 +132,9 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             item { ChartCard(state, limit = 10) { store.openRelease = it } }
             item { ComingSoonCard(state, limit = 8) }
             if (Research.PUBLISHING in state.researched) item { Sections { LabelSection(store, state, g) } }
+            item { TransparencySection(store, state, g) }
             item { StudiosSection(store, state, g) }
+            item { AntiqueIpSection(store, state, g) }
             if (g.store != null || state.calendarYear >= 2004) item { OwnStoreSection(store, state, g) }
         }
         StudioPage.RIVALS -> rivalsItems(store, state)
@@ -151,6 +154,8 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
     when {
         p != null -> {
             item { DevelopmentSection(store, state, p) }
+            item { TransparencySection(store, state, g, team = 1) }
+            item { AccessLocalSection(store, state, p, team = 1) }
             item { Sections { FocusSection(store, g, p, state = state) } }
             item { TeamFitSection(store, state, p) }
             item { HypeSection(store, state, p) }
@@ -210,6 +215,21 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
                 StatTile("Fans", Format.count(g.fans), Modifier.weight(1f), "trust ${String.format(Locale.US, "%.2f", g.fanTrust)}")
                 StatTile("Best review", if (g.topScore > 0) String.format(Locale.US, "%.1f", g.topScore) else "—", Modifier.weight(1f), if (g.releases.size == 1) "1 game" else "${g.releases.size} games")
                 StatTile("Research", "${Format.count(state.researchPoints)}", Modifier.weight(1f), "RP to spend")
+            }
+            Spacer(Modifier.size(12.dp))
+            TileRow {
+                StatTile(
+                    "Transparency",
+                    Format.percent(g.transparency),
+                    Modifier.weight(1f),
+                    g.transparencyLabel(),
+                )
+                StatTile(
+                    "IP vault",
+                    "${g.ownedIps.size}",
+                    Modifier.weight(1f),
+                    if (g.ownedIps.isEmpty()) "buy dormant brands" else "antique brands",
+                )
             }
             val season = GameSeason.forWeek(state.week)
             Spacer(Modifier.size(12.dp))
