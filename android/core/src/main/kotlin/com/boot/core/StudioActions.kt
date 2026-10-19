@@ -293,7 +293,10 @@ fun GameState.launchGame(team: Int = 1) {
     val piracy = piracyLoss(p.concept, p.protection, popularity(gameForecast(team)?.expectedScore ?: 6.0, p.hype))
     val shelf = if (rated && p.uncut) adultsOnlyShelf(calendarYear) else 1.0
     val (storeLift, pcKeep) = storeLaunchTerms(p)
-    val report = g.launch(context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team, kept = (1 - piracy) * shelf * storeLift, pcKeep = pcKeep)
+    val report = g.launch(
+        context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team,
+        kept = (1 - piracy) * shelf * storeLift, pcKeep = pcKeep, company = companyName,
+    )
     g.releases.firstOrNull()?.let { r ->
         r.rating = if (rated) ratingFor(r.concept.audience, p.uncut) else null
         afterPiracy(p, r, 1 - piracy, shelf)
@@ -301,6 +304,7 @@ fun GameState.launchGame(team: Int = 1) {
     }
     if (exclusive != null) g.releases.firstOrNull()?.let { afterExclusiveLaunch(exclusive, held, it) }
     g.releases.firstOrNull()?.let { r ->
+        applyCriticRelations(r)
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)
         val outlet = rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon"))
         val words = flavour("${r.title} headline")

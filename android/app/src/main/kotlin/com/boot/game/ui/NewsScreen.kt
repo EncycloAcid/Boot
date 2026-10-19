@@ -54,11 +54,19 @@ import com.boot.core.Lane
 import com.boot.core.LogTone
 import com.boot.core.NewsDesk
 import com.boot.core.NewsStory
+import com.boot.core.calendarYear
+import com.boot.core.criticProfile
+import com.boot.core.criticsIn
 import com.boot.core.rankings
+import com.boot.core.standingOf
+import com.boot.core.storyLine
 import com.boot.game.GameStore
 
-/** What the paper shows: the front page, one desk, or your own company's log. */
-private enum class Page(val title: String) { FRONT("Front page"), SOCIAL("Social"), YOU("Your company"), INDUSTRY("Industry"), GAMES("Games"), MARKETS("Markets"), LOG("Log") }
+/** What the paper shows: the front page, one desk, the press roster, or your own company's log. */
+private enum class Page(val title: String) {
+    FRONT("Front page"), SOCIAL("Social"), YOU("Your company"), INDUSTRY("Industry"), GAMES("Games"),
+    PRESS("Press"), MARKETS("Markets"), LOG("Log"),
+}
 
 @Composable
 fun NewsScreen(store: GameStore, state: GameState) {
@@ -70,7 +78,17 @@ fun NewsScreen(store: GameStore, state: GameState) {
     ScreenColumn {
         item { Masthead(state) }
         item {
-            ChipRow(Page.entries.filter { (it != Page.GAMES && it != Page.SOCIAL) || state.games != null }, page, { if (it == Page.SOCIAL) state.feedName else it.title }, tag = "desks") { page = it }
+            ChipRow(
+                Page.entries.filter {
+                    when (it) {
+                        Page.GAMES, Page.SOCIAL, Page.PRESS -> state.games != null
+                        else -> true
+                    }
+                },
+                page,
+                { if (it == Page.SOCIAL) state.feedName else it.title },
+                tag = "desks",
+            ) { page = it }
         }
         when (page) {
             Page.FRONT -> {
@@ -116,6 +134,7 @@ fun NewsScreen(store: GameStore, state: GameState) {
             Page.YOU -> desk(state, stories.filter { it.desk == NewsDesk.YOU }, "Nobody's written about you yet. Ship something, raise money, make a splash.")
             Page.INDUSTRY -> desk(state, stories.filter { it.desk == NewsDesk.INDUSTRY }, "The era's trends, rivals' launches and the rumours.")
             Page.GAMES -> desk(state, stories.filter { it.desk == NewsDesk.GAMES }, "Big releases, reviews, esports and the awards.")
+            Page.PRESS -> item { PressRoster(state) }
             Page.MARKETS -> {
                 item { MarketsBoard(state) }
                 desk(state, stories.filter { it.desk == NewsDesk.MARKETS }, "Every quarter: who's worth what.")
@@ -462,5 +481,72 @@ private fun ago(state: GameState, week: Int): String {
         n == 1 -> "1w"
         n < 52 -> "${n}w"
         else -> "${n / 52}y"
+    }
+}
+
+/** Named outlets of the era: taste, publisher lean, and lasting grudges or pets. */
+@Composable
+private fun PressRoster(state: GameState) {
+    val g = state.games
+    val profiles = criticsIn(state.calendarYear)
+    GroupedSection(
+        "Critics",
+        Modifier.testTag("press-roster"),
+        footer = "Each desk has tastes. Ship their genres and they warm up; snub them or ship what they hate and they hold a grudge — lasting score nudges and spicy headlines.",
+    ) {
+        if (profiles.isEmpty()) {
+            CardBlock { Hint("No games press this early. Magazines arrive with the hobby.") }
+        } else {
+            profiles.forEachIndexed { i, profile ->
+                if (i > 0) RowDivider(68.dp)
+                val standing = g?.standingOf(profile.outlet)
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CompanyLogo(profile.outlet.title, size = 40.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(profile.outlet.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            standing?.takeIf { it.status.isNotEmpty() || kotlin.math.abs(it.favor) >= 0.2 }?.let {
+                                Pill(
+                                    it.label(),
+                                    when {
+                                        it.isPet -> gameColors.good
+                                        it.isGrudge -> gameColors.bad
+                                        it.favor >= 0.2 -> gameColors.milestone
+                                        else -> gameColors.warn
+                                    },
+                                )
+                            }
+                            if (profile.harsh) Pill("Harsh", gameColors.warn)
+                            else if (profile.soft) Pill("Generous", gameColors.milestone)
+                        }
+                        Text(
+                            standing?.storyLine(profile) ?: profile.blurb,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        val genres = profile.genres.take(3).joinToString { it.title }
+                        val pubs = (profile.publisherPets.take(2) + profile.publisherGrudges.take(1).map { "not $it" })
+                            .joinToString()
+                        Text(
+                            buildString {
+                                if (genres.isNotEmpty()) append("Favours $genres")
+                                if (pubs.isNotEmpty()) {
+                                    if (isNotEmpty()) append(" · ")
+                                    append(pubs)
+                                }
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
     }
 }

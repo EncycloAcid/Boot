@@ -226,6 +226,29 @@ internal fun GameState.feedOnChart(title: String) {
     say(rng, Poster.PRESS, listOf("{t} goes to No. 1.", "{t} tops the charts in its launch week."), title, LogTone.GOOD, 1.0)
 }
 
+/** Critic personality beats: grudge, pet, spat, or rave. */
+internal fun GameState.feedOnCriticBeat(outlet: String, kind: String, about: String?) {
+    val rng = flavour("critic $outlet $kind ${about ?: ""} $week")
+    when (kind) {
+        "grudge" -> {
+            say(rng, Poster.PRESS, listOf("$outlet has soured on $companyName.", "Industry chatter: $outlet vs $companyName is getting personal."), about, LogTone.BAD, 1.2)
+            say(rng, Poster.FAN, listOf("$outlet really doesn't like $companyName anymore", "Drama at $outlet over {t}"), about, LogTone.BAD, 0.9)
+        }
+        "pet" -> {
+            say(rng, Poster.PRESS, listOf("$outlet is openly rooting for $companyName.", "$outlet's desk can't stop talking about $companyName."), about, LogTone.GOOD, 1.1)
+            say(rng, Poster.FAN, listOf("$outlet loves {t}. Same", "$companyName and $outlet sitting in a tree"), about, LogTone.GOOD, 0.9)
+        }
+        "spat" -> {
+            say(rng, Poster.PLAYER, listOf("$outlet went scorched earth on {t}", "Did $outlet even play {t}? That score is personal"), about, LogTone.BAD, 1.1)
+            say(rng, Poster.PRESS, listOf("$outlet's {t} review is making the rounds.", "A notably cold take on {t} from $outlet."), about, LogTone.NEUTRAL, 1.0)
+        }
+        "rave" -> {
+            say(rng, Poster.PRESS, listOf("$outlet crowns {t}.", "{t} is $outlet's game of the moment."), about, LogTone.GOOD, 1.1)
+            say(rng, Poster.FAN, listOf("$outlet gets it. {t} rules", "Pull quote from $outlet on {t} goes hard"), about, LogTone.GOOD, 0.9)
+        }
+    }
+}
+
 /** Rivalry story beats on the feed: heat, copycat, flop, or poach. */
 internal fun GameState.feedOnRivalBeat(studio: String, kind: String, about: String?) {
     val rng = flavour("rival $studio $kind ${about ?: ""} $week")
