@@ -32,8 +32,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.boot.core.GameRelease
+import com.boot.core.GamesStudio
 import com.boot.core.Review
 import com.boot.core.ReviewAspect
+import com.boot.core.criticProfile
+import com.boot.core.standingOf
 import java.util.Locale
 
 /** Aggregator colors: green for generally favorable, yellow for mixed, red for unfavorable. */
@@ -143,7 +146,9 @@ fun OutletScore(review: Review) {
 
 /** One outlet: name, score, and the line people will quote. */
 @Composable
-fun ReviewRow(review: Review, modifier: Modifier = Modifier) {
+fun ReviewRow(review: Review, modifier: Modifier = Modifier, studio: GamesStudio? = null) {
+    val standing = studio?.standingOf(review.outlet)
+    val profile = criticProfile(review.outlet)
     Row(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         CompanyLogo(review.outlet.title, size = 32.dp)
         Spacer(Modifier.width(12.dp))
@@ -151,12 +156,26 @@ fun ReviewRow(review: Review, modifier: Modifier = Modifier) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(review.outlet.title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 review.badge?.let { Pill(it, gameColors.milestone) }
+                standing?.takeIf { it.isPet || it.isGrudge }?.let {
+                    Pill(if (it.isPet) "Pet" else "Grudge", if (it.isPet) gameColors.good else gameColors.bad)
+                }
             }
             // The pull quote, then the verdict.
             if (review.headline.isNotEmpty()) {
                 Text(review.headline, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold)
             }
             Text("“${review.comment}”", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (standing?.isPet == true || standing?.isGrudge == true || profile.genres.isNotEmpty()) {
+                Text(
+                    when {
+                        standing?.isPet == true -> "A pet desk — softer on your wheelhouse."
+                        standing?.isGrudge == true -> "Holding a grudge — expect the cold take."
+                        else -> "Favours ${profile.genres.take(2).joinToString(" · ") { it.title }}"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         OutletScore(review)

@@ -73,6 +73,7 @@ import com.boot.core.isCollection
 import com.boot.core.Format
 import com.boot.core.GameRelease
 import com.boot.core.GameState
+import com.boot.core.GamesStudio
 import com.boot.core.Research
 import com.boot.core.Review
 import com.boot.core.acknowledgeReview
@@ -138,7 +139,7 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
                     r.reviews.forEachIndexed { i, review ->
                         if (i > 0) RowDivider()
                         // The last critic's ding is followed by a cheer or a groan for the whole game.
-                        RevealedReview(review, i, verdict = if (i == r.reviews.lastIndex) verdictFor(r.score) else null)
+                        RevealedReview(review, i, verdict = if (i == r.reviews.lastIndex) verdictFor(r.score) else null, studio = state.games)
                     }
                 }
                 ProsCons(r.pros, r.cons)
@@ -157,7 +158,7 @@ fun ReviewSheet(store: GameStore, state: GameState, releaseId: Int) {
 
 /** One outlet's score, springing in a beat after the one before. */
 @Composable
-private fun RevealedReview(review: Review, index: Int, verdict: Sfx? = null) {
+private fun RevealedReview(review: Review, index: Int, verdict: Sfx? = null, studio: GamesStudio? = null) {
     val reveal = remember { Animatable(0f) }
     val spec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
     val sound = LocalSound.current
@@ -176,6 +177,7 @@ private fun RevealedReview(review: Review, index: Int, verdict: Sfx? = null) {
         Modifier
             .alpha(reveal.value.coerceIn(0f, 1f))
             .scale(0.92f + 0.08f * reveal.value),
+        studio = studio,
     )
 }
 
@@ -243,7 +245,7 @@ fun ReleaseSheet(store: GameStore, state: GameState, releaseId: Int) {
                         GroupedSection("Critics") {
                             r.reviews.forEachIndexed { i, review ->
                                 if (i > 0) RowDivider()
-                                ReviewRow(review)
+                                ReviewRow(review, studio = g)
                             }
                         }
                     }

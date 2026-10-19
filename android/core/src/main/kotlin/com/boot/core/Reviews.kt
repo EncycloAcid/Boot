@@ -156,6 +156,12 @@ internal data class ReviewInputs(
     val production: Production = Production.STANDARD,
     /** Areas that matter to the genre that got none of the engine's features. */
     val bare: List<FocusArea> = emptyList(),
+    /** Player company name — for publisher-bias matching. Defaults keep old call sites working. */
+    val company: String = "",
+    /** Publisher on the box, if any. */
+    val publisher: String? = null,
+    /** Lasting critic favor per outlet (−1…1). Empty = no grudges/pets yet. */
+    val criticFavor: Map<Outlet, Double> = emptyMap(),
 )
 
 internal data class ReviewResult(
@@ -402,10 +408,10 @@ private fun <T> List<T>.shuffledWith(rng: SeededRNG): List<T> {
     return out
 }
 
-/** Each outlet's taste. */
+/** Each outlet's taste, plus publisher lean and lasting grudges/pets. */
 private fun bias(outlet: Outlet, i: ReviewInputs, aspects: Map<ReviewAspect, Double>): Double {
     val c = i.concept
-    return when (outlet) {
+    val classic = when (outlet) {
         // Generous, and loves a big, hyped release.
         Outlet.IGN -> 0.25 + (if (c.size >= GameSize.LARGE) 0.2 else 0.0) + i.hype / 400
         // Plays it straight, but bugs cost you.
@@ -433,6 +439,9 @@ private fun bias(outlet: Outlet, i: ReviewInputs, aspects: Map<ReviewAspect, Dou
         // Four reviewers who rarely agree; action fans at heart.
         Outlet.EGM -> if (c.genre == Genre.ACTION) 0.25 else 0.0
     }
+    val profile = criticProfile(outlet)
+    return classic + profile.genreLean(c.genre) + profile.publisherBias(i.company, i.publisher) +
+        standingBias(i.criticFavor[outlet] ?: 0.0)
 }
 
 private fun genreTopicPraise(genre: Genre, topic: Topic): String = when (genre) {

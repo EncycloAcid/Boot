@@ -235,7 +235,7 @@ private fun GameState.publish(s: SignedGame) {
             engineLevel = (engineStandard(week) - 2 + 3 * p.talent).toInt(), engineStandard = engineStandard(week),
             hype = s.hype, fanTrust = 1.0, onTrend = onTrend, repeated = false, rushedSequel = false, worthySequel = false,
             stepBack = false, record = false, wrongCrowd = false, awkwardPlatform = p.platforms.firstOrNull { it.fit(p.genre) == Fit.BAD },
-            year = ctx.year,
+            year = ctx.year, company = companyName, publisher = companyName, criticFavor = g.favorMap(),
         ),
         rng,
     )
@@ -267,6 +267,7 @@ private fun GameState.publish(s: SignedGame) {
         cons = verdict.cons, developer = p.developer,
     )
     g.published.add(0, release)
+    applyCriticRelations(release)
     val text = String.format(java.util.Locale.US, "%.1f", avg)
     when {
         avg >= 8 -> {
