@@ -295,12 +295,9 @@ private fun GameState.decideBid(b: TakeoverBid, rng: SeededRNG) {
     }
     addLog("${b.name} is yours, for ${money(b.cost)}.", LogTone.MILESTONE)
     publish(NewsDesk.YOU, businessOutlet(), "$companyName takes over ${b.name}", "Shareholders accepted ${money(b.cost)}.", LogTone.GOOD, lead = true)
-    world.rivals.firstOrNull { it.name == b.name }?.let { r ->
+    world.rivals.firstOrNull { it.name == b.name || canonicalStudio(it.name) == canonicalStudio(b.name) }?.let { r ->
         // Your rival is part of you now.
-        r.strength = 0.05
-        r.heat = 0.0
-        r.quietUntil = Int.MAX_VALUE / 2
-        stats.rivalsBeaten += 1
+        absorbRivalState(r)
         addLog("${r.name} won't be fighting you in ${r.lane.industry} any more.", LogTone.MILESTONE, r.lane)
     }
 }

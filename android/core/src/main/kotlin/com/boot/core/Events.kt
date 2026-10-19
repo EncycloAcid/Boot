@@ -155,11 +155,14 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
         }
     }
     is EventKind.Buyout -> Description(
-        "${kind.bidder} wants to buy you",
-        "${money(kind.price)} for the whole company. Your stake would be worth ${money(kind.price * venture.founderEquity)}.",
+        if (stats.weeksInRed >= 2) "${kind.bidder} offers to buy you out" else "${kind.bidder} wants to buy you",
+        buildString {
+            append("${money(kind.price)} for the whole company. Your stake would be worth ${money(kind.price * venture.founderEquity)}.")
+            if (stats.weeksInRed >= 2) append(" You're deep in the red — this is a lifeline, not a demand. Decline and keep playing.")
+        },
         listOf(
-            choice("Sell", "Take the money. The game ends here."),
-            choice("Not for sale", if (venture.board == null) "Keep building." else "The board won't love it."),
+            choice("Sell", "Take the money. The run ends as a sale in the Hall of Fame."),
+            choice("Not for sale", if (stats.weeksInRed >= 2) "Keep fighting. The bank is still watching." else if (venture.board == null) "Keep building." else "The board won't love it."),
         ),
     )
     is EventKind.BoardDemandEvent -> Description(

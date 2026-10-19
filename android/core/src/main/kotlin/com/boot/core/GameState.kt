@@ -78,6 +78,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             s.difficulty = difficulty
             s.cash = if (sandbox) SANDBOX_CASH else difficulty.startingCash
             s.world.rivals += World.makeRivals().onEach { it.strength = (it.strength + difficulty.rivalStrength).clamped(0.05, 1.0) }
+            s.ensureGameRivalRoster()
             s.world.eraLength = s.rng.int(70, 110)
             year?.let { s.world.startAt(it); s.adoptHistory() }
             s.announceEraResearch()
@@ -104,6 +105,7 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
             GameClock.startYear = startYear
             for (r in world.rivals) World.renamed[r.name]?.let { r.name = it }
             migrateTycoonDepth()
+            ensureGameRivalRoster()
         }
     }
 
@@ -126,6 +128,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
 
     /** Sandbox: no bankruptcy, no Hall of Fame. */
     var sandbox = false
+
+    /** Last week a distress buyout was offered while deep in the red (-1 = never). Old saves default fine. */
+    var lastDistressOfferWeek: Int = -1_000
 
     /** Brand awareness and ad campaigns, for every business. */
     var marketing = Marketing()

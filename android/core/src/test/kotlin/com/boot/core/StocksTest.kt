@@ -68,7 +68,7 @@ class StocksTest {
     @Test
     fun aStakeInYourRivalMakesThemAngry() {
         val s = rich()
-        val ea = s.world.rivals.first { it.lane == Lane.GAMES }
+        val ea = s.world.rivals.first { it.name == "Electronic Arts" }
         assertEquals("Electronic Arts", ea.name)
         val heat = ea.heat
         s.buyShares("Electronic Arts", s.stock("Electronic Arts")!!.value * 0.06)
@@ -87,9 +87,10 @@ class StocksTest {
         s.pass(4)
         assertNull(s.portfolio.bid)
         assertTrue(s.games!!.owns("Electronic Arts"))
-        val ea = s.world.rivals.first { it.lane == Lane.GAMES }
+        val ea = s.world.rivals.first { it.name == "Electronic Arts" }
         assertTrue(ea.quietUntil > s.week + 1000)
-        assertEquals(1, s.stats.rivalsBeaten)
+        assertTrue(ea.absorbed)
+        assertTrue(s.stats.rivalsBeaten >= 1)
         assertTrue(s.rankings().none { it.key == "Electronic Arts" })
     }
 

@@ -352,6 +352,23 @@ data class Rival(
     var counterReadyWeek: Int = 0,
     /** Beaten back: they make no moves until this week. */
     var quietUntil: Int = 0,
+    /** Favoured genres (games roster rivals). Empty = no preference. Defaults keep old saves loading. */
+    val genres: List<Genre> = emptyList(),
+    /** 0...1 how well their games usually land. */
+    var reputation: Double = 0.5,
+    /** Short story of who they are. */
+    val blurb: String = "",
+    val founded: Int = 0,
+    /** Historical close year, if any. */
+    val closedYear: Int? = null,
+    /** Real-world games-studio rival from the era roster (not the one-per-lane placeholder). */
+    val roster: Boolean = false,
+    /** Closed historically but stayed alive this run. */
+    var survived: Boolean = false,
+    /** Bought by the player; no longer competes. */
+    var absorbed: Boolean = false,
+    /** Highest heat seen, for "rivalry heating up" story beats. */
+    var peakHeat: Double = 0.0,
 )
 
 /** Where an era is in its life: arriving, at its height, or fading. */
@@ -414,12 +431,15 @@ class World {
     val hardwareCost: Double get() = scaled(era.hardwareCost)
     val rivals = mutableListOf<Rival>()
 
+    /** Era headline Games rival (from [rivalIn]); preferred by [rival]. Old saves default null. */
+    var gamesHeadline: String? = null
+
     /** Rivals' campaigns against you, and yours against them. */
     val pressures = mutableListOf<Pressure>()
 
     companion object {
+        /** One rival per non-games lane. Games rivals come from [ensureGameRivalRoster]. */
         internal fun makeRivals() = listOf(
-            Rival(1, "Electronic Arts", Lane.GAMES, strength = 0.5, aggression = 0.5),
             Rival(2, "Squarespace", Lane.WEBSITES, strength = 0.4, aggression = 0.3),
             Rival(3, "Google", Lane.APPS, strength = 0.5, aggression = 0.4),
             Rival(4, "Meta", Lane.SOCIAL, strength = 0.6, aggression = 0.5),
@@ -430,7 +450,11 @@ class World {
 
         /** The other big names in each lane, for the news. The main rival is one of them. */
         fun peers(lane: Lane): List<String> = when (lane) {
-            Lane.GAMES -> listOf("Electronic Arts", "Ubisoft", "Activision Blizzard", "Take-Two", "Nintendo", "Sony Interactive")
+            Lane.GAMES -> listOf(
+                "Electronic Arts", "Ubisoft", "Activision Blizzard", "Take-Two", "Nintendo", "Sony Interactive",
+                "Sega", "Capcom", "Square Enix", "Valve", "Epic Games", "Rockstar Games", "Bethesda Softworks",
+                "CD Projekt Red", "Bandai Namco",
+            )
             Lane.WEBSITES -> listOf("Squarespace", "Wix", "Webflow", "WordPress.com", "Shopify")
             Lane.APPS -> listOf("Google", "Duolingo", "Spotify", "Calm", "Strava", "Notion")
             Lane.SOCIAL -> listOf("Meta", "TikTok", "X", "Snap", "Reddit", "Discord")
@@ -452,10 +476,23 @@ class World {
 
     /** Demand multiplier from rival competition in a lane. */
     fun competition(lane: Lane): Double {
-        val s = rivals.filter { it.lane == lane }.maxOfOrNull { it.strength } ?: 0.0
+        val s = rivals.filter { it.lane == lane && !it.absorbed }.maxOfOrNull { it.strength } ?: 0.0
         return 1 - 0.2 * s
     }
 
-    fun rival(lane: Lane): Rival? = rivals.firstOrNull { it.lane == lane }
+    /** The lane's headline rival: era giant for Games, otherwise hottest active studio. */
+    fun rival(lane: Lane): Rival? {
+        if (lane == Lane.GAMES) {
+            val h = gamesHeadline
+            if (h != null) {
+                rivals.firstOrNull {
+                    it.lane == Lane.GAMES && !it.absorbed &&
+                        (it.name == h || canonicalStudio(it.name) == canonicalStudio(h))
+                }?.let { return it }
+            }
+        }
+        return rivals.filter { it.lane == lane && !it.absorbed }.maxByOrNull { it.heat * 2 + it.strength }
+            ?: rivals.firstOrNull { it.lane == lane }
+    }
 
 }

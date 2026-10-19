@@ -217,7 +217,18 @@ private fun GameState.startNextEra() {
 }
 
 private fun GameState.updateRivals() {
-    for (r in world.rivals) {
+    val active = world.rivals.filter { !it.absorbed && it.quietUntil <= week }
+    val headlineKey = world.gamesHeadline?.let { canonicalStudio(it) }
+    for (r in active) {
+        // Games roster only when you make games; non-headline roster drifts on private dice.
+        if (r.roster && Lane.GAMES !in lanes) continue
+        val isExtra = r.roster && headlineKey != null && canonicalStudio(r.name) != headlineKey
+        if (isExtra) {
+            val dice = flavour("rival-tick ${r.id}")
+            val target = (0.5 * world.demand(r.lane)).clamped(0.2, 0.9)
+            r.strength = (r.strength + (target - r.strength) * 0.02 + dice.normal(sd = 0.01)).clamped(0.05, 1.0)
+            continue
+        }
         val target = (0.5 * world.demand(r.lane)).clamped(0.2, 0.9)
         r.strength = (r.strength + (target - r.strength) * 0.02 + rng.normal(sd = 0.01)).clamped(0.05, 1.0)
 
@@ -235,8 +246,18 @@ private fun GameState.updateRivals() {
 
         // Rivals compete for the same talent.
         val best = staff.filter { it.lane == r.lane && it.skill >= 6 && it.trait != Trait.LOYAL }.maxByOrNull { it.skill }
-        if (best != null && rng.chance(r.aggression * 0.006 * (if (Research.STOCK_OPTIONS in researched) 0.4 else 1.0))) {
+        val poachChance = r.aggression * 0.006 * (if (Research.STOCK_OPTIONS in researched) 0.4 else 1.0)
+        if (best != null && rng.chance(poachChance)) {
             enqueue(EventKind.Poach(best.id, r.name))
+            if (r.lane == Lane.GAMES) {
+                publish(
+                    NewsDesk.INDUSTRY, techOutlet(Lane.GAMES, rng),
+                    "${r.name} tries to poach ${best.name}",
+                    "A talent raid aimed at $companyName.",
+                    LogTone.BAD, Lane.GAMES, tag = NewsTag.NEWS,
+                )
+                feedOnRivalBeat(r.name, "poach", best.name)
+            }
         }
     }
 }
@@ -526,6 +547,7 @@ private fun GameState.checkEndings() {
     if (cash < 0 && !sandbox) {
         stats.weeksInRed += 1
         if (stats.weeksInRed == 1) addLog("You're overdrawn. ${difficulty.redWeeks} weeks in the red and it's over.", LogTone.BAD)
+        maybeDistressBuyout()
         if (stats.weeksInRed >= difficulty.redWeeks) {
             end(EndingKind.BANKRUPT)
             return

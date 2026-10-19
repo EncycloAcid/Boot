@@ -178,13 +178,17 @@ internal fun GameState.historicalEraAfter(now: Boolean = false): Pair<Era, Int>?
 
 /** Give the world the rivals of the start year. */
 internal fun GameState.adoptHistory() {
-    for (r in world.rivals) r.name = rivalIn(r.lane, calendarYear)
+    for (r in world.rivals.filter { !it.roster && it.lane != Lane.GAMES }) {
+        r.name = rivalIn(r.lane, calendarYear)
+    }
+    ensureGameRivalRoster()
 }
 
-/** As the years pass, the giants change: a lane's main rival hands over to the next one. */
+/** As the years pass, non-games giants hand over; games rivals sync to the real-world roster. */
 internal fun GameState.updateHistoricRivals() {
+    if (week % 52 == 0) ensureGameRivalRoster()
     if (!isDecades || week % 52 != 0) return
-    for (r in world.rivals) {
+    for (r in world.rivals.filter { !it.roster && it.lane != Lane.GAMES }) {
         val now = rivalIn(r.lane, calendarYear)
         if (now == r.name) continue
         val was = r.name
@@ -229,11 +233,13 @@ internal val StudioYears = mapOf(
     "Annapurna Interactive" to 2016, "Devolver Digital" to 2009, "Remedy Entertainment" to 1995, "Larian Studios" to 1996,
     "Atari" to 1972, "Sierra On-Line" to 1979, "Infocom" to 1979, "Origin Systems" to 1983, "Westwood Studios" to 1985,
     "LucasArts" to 1982, "Sega" to 1960, "Konami" to 1969, "id Software" to 1991,
+    "Bethesda Softworks" to 1986, "Take-Two Interactive" to 1993, "Acclaim" to 1987, "Midway" to 1988,
 )
 
 /** Studios that closed. */
 internal val StudioClosed = mapOf(
     "Atari" to 2013, "Sierra On-Line" to 2008, "Infocom" to 1989, "Origin Systems" to 2004, "Westwood Studios" to 2003, "LucasArts" to 2013,
+    "Acclaim" to 2004, "Midway" to 2009,
 )
 
 /** Was [studio] making games in [year]? */
@@ -257,7 +263,9 @@ fun rivalIn(lane: Lane, year: Int): String =
 
 /** When the big names in each lane were founded, for the news. */
 internal val PeerYears = mapOf(
-    "Electronic Arts" to 1982, "Ubisoft" to 1986, "Activision Blizzard" to 1979, "Take-Two" to 1993, "Nintendo" to 1889, "Sony Interactive" to 1993,
+    "Electronic Arts" to 1982, "Ubisoft" to 1986, "Activision Blizzard" to 1979, "Take-Two" to 1993, "Take-Two Interactive" to 1993,
+    "Nintendo" to 1889, "Sony Interactive" to 1993, "Bethesda Softworks" to 1986, "Acclaim" to 1987, "Midway" to 1988,
+    "Rockstar Games" to 1998, "Capcom" to 1979, "Square Enix" to 1986, "Epic Games" to 1991, "CD Projekt Red" to 2002,
     "Squarespace" to 2003, "Wix" to 2006, "Webflow" to 2013, "WordPress.com" to 2005, "Shopify" to 2006,
     "Google" to 1998, "Duolingo" to 2011, "Spotify" to 2006, "Calm" to 2012, "Strava" to 2009, "Notion" to 2016,
     "Meta" to 2004, "TikTok" to 2016, "X" to 2006, "Snap" to 2011, "Reddit" to 2005, "Discord" to 2015,
@@ -462,6 +470,8 @@ internal fun canonicalStudio(name: String): String = when (name) {
     "Sony Computer Entertainment" -> "PlayStation Studios"
     "Microsoft Game Studios" -> "Xbox Game Studios"
     "Epic MegaGames" -> "Epic Games"
+    "Take-Two" -> "Take-Two Interactive"
+    "Bethesda" -> "Bethesda Softworks"
     else -> name
 }
 

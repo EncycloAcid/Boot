@@ -54,6 +54,10 @@ val Studios = listOf(
     Studio("Origin Systems", 0.75, 2e9),
     Studio("Westwood Studios", 0.8, 2e9),
     Studio("LucasArts", 0.8, 3e9),
+    Studio("Bethesda Softworks", 0.7, 8e9),
+    Studio("Take-Two Interactive", 0.65, 20e9),
+    Studio("Acclaim", 0.4, 1.2e9),
+    Studio("Midway", 0.55, 1.5e9),
 )
 
 fun studio(name: String): Studio? = Studios.firstOrNull { it.name == name }
@@ -135,6 +139,7 @@ fun GameState.acquire(name: String) {
     games!!.stakes.remove(s.name)
     games!!.subsidiaries += Subsidiary(s.name, week, price + held, finding = findingAt(s))
     learnFrom(games!!, s)
+    absorbRivalNamed(s.name)
     stats.acquisitions += 1
     reputation.adjust(if (s.indie) 1.0 else 3.0)
     addLog("You bought ${s.name} for ${money(price)}. Their games are yours now.", LogTone.MILESTONE, Lane.GAMES)

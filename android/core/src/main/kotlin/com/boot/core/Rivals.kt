@@ -106,6 +106,8 @@ internal fun GameState.rivalWeek() {
         if (p.lane in lanes) addLog(if (p.mine) "${p.title}: that's done." else "${p.title} is over.", LogTone.NEUTRAL, p.lane)
     }
     for (r in world.rivals) {
+        if (r.absorbed) continue
+        if (r.roster && Lane.GAMES !in lanes) continue
         if (r.lane !in lanes) {
             r.heat *= 0.98
             continue
@@ -123,6 +125,11 @@ internal fun GameState.rivalWeek() {
         }
         if (week < 30 || r.quietUntil > week || week - r.lastMoveWeek < MOVE_COOLDOWN) continue
         if (events.any { it.kind is RivalEvent } || !hasProduct(r.lane)) continue
+        // Only the era headline Games rival makes RivalMoves (extras compete via releases / news).
+        if (r.roster) {
+            val h = world.gamesHeadline
+            if (h != null && r.name != h && canonicalStudio(r.name) != canonicalStudio(h)) continue
+        }
         val chance = 0.004 + 0.04 * r.heat * (0.5 + r.aggression) * (0.5 + r.strength)
         if (!rng.chance(chance)) continue
         val move = pickMove(r)
@@ -457,7 +464,311 @@ fun GameState.counter(rivalName: String, move: CounterMove) {
 }
 
 /** Rivals in your markets, the angriest first. */
-val GameState.yourRivals: List<Rival> get() = world.rivals.filter { it.lane in lanes }.sortedByDescending { it.heat }
+val GameState.yourRivals: List<Rival>
+    get() = world.rivals.filter { it.lane in lanes && !it.absorbed }.sortedByDescending { it.heat }
+
+/** Real-world games studios currently competing with you. */
+val GameState.gameRivals: List<Rival>
+    get() = world.rivals.filter { it.lane == Lane.GAMES && it.roster && !it.absorbed }
+        .sortedWith(compareByDescending<Rival> { it.heat }.thenByDescending { it.strength })
 
 /** What's squeezing or lifting a lane right now. */
 fun GameState.pressuresOn(lane: Lane): List<Pressure> = world.pressures.filter { it.lane == lane }
+
+/*
+ * Real-world games rivals: era-gated studios with personalities. They appear only in the decades
+ * they were really active, compete in favoured genres, fade when history closed them (unless they
+ * survive this run or you buy them), and drive news / feed story beats when they clash with you.
+ */
+
+/** Static personality for a real games publisher. Names match [Studios] / [CompanyMarks] for logos. */
+data class RivalProfile(
+    val name: String,
+    val founded: Int,
+    val closed: Int? = null,
+    val aggression: Double,
+    val strength: Double,
+    val reputation: Double,
+    val genres: List<Genre>,
+    val blurb: String,
+)
+
+/** The cast of real studios that fight you in Games. */
+val RealWorldRivalProfiles: List<RivalProfile> = listOf(
+    RivalProfile("Atari", 1972, 2013, 0.55, 0.55, 0.45, listOf(Genre.ACTION, Genre.CASUAL), "Home of the arcade boom — and the crash."),
+    RivalProfile("Nintendo", 1889, null, 0.35, 0.7, 0.9, listOf(Genre.PLATFORMER, Genre.ACTION, Genre.CASUAL), "Cautious, beloved, and very hard to knock off the throne."),
+    RivalProfile("Sega", 1960, null, 0.7, 0.55, 0.65, listOf(Genre.ACTION, Genre.PLATFORMER, Genre.SIMULATION), "Flashy, aggressive, forever chasing the next console war."),
+    RivalProfile("Activision Blizzard", 1979, null, 0.75, 0.65, 0.7, listOf(Genre.SHOOTER, Genre.ACTION, Genre.CASUAL), "Blockbuster sequels and franchise machines."),
+    RivalProfile("Electronic Arts", 1982, null, 0.5, 0.5, 0.55, listOf(Genre.SIMULATION, Genre.ACTION, Genre.CASUAL), "Sports, shooters, and a reputation for milking hits."),
+    RivalProfile("Ubisoft", 1986, null, 0.55, 0.5, 0.55, listOf(Genre.ACTION, Genre.ADVENTURE, Genre.RPG), "Open-world factories and annualised brands."),
+    RivalProfile("Capcom", 1979, null, 0.5, 0.55, 0.8, listOf(Genre.ACTION, Genre.FIGHTING, Genre.ADVENTURE), "Arcade craft and beloved series they remake forever."),
+    RivalProfile("Square Enix", 1986, null, 0.4, 0.5, 0.75, listOf(Genre.RPG, Genre.ADVENTURE), "JRPG prestige — beautiful, ambitious, sometimes late."),
+    RivalProfile("Konami", 1969, null, 0.45, 0.45, 0.6, listOf(Genre.ACTION, Genre.ADVENTURE, Genre.CASUAL), "From Metal Gear prestige to pachinko jokes."),
+    RivalProfile("Bandai Namco", 1955, null, 0.4, 0.5, 0.65, listOf(Genre.FIGHTING, Genre.RPG, Genre.ACTION), "Anime licences and arcade DNA."),
+    RivalProfile("Sierra On-Line", 1979, 2008, 0.45, 0.5, 0.7, listOf(Genre.ADVENTURE, Genre.RPG), "Adventure-game royalty of the PC golden age."),
+    RivalProfile("LucasArts", 1982, 2013, 0.35, 0.55, 0.85, listOf(Genre.ADVENTURE, Genre.ACTION), "Witty adventures and Star Wars games."),
+    RivalProfile("Acclaim", 1987, 2004, 0.8, 0.45, 0.35, listOf(Genre.ACTION, Genre.CASUAL, Genre.SIMULATION), "Volume shipper — hits and shovelware alike."),
+    RivalProfile("Midway", 1988, 2009, 0.65, 0.5, 0.6, listOf(Genre.FIGHTING, Genre.ACTION, Genre.SIMULATION), "Arcade brawlers and Mortal Kombat blood."),
+    RivalProfile("Valve", 1996, null, 0.25, 0.7, 0.9, listOf(Genre.SHOOTER, Genre.STRATEGY, Genre.ACTION), "Rare releases, huge influence, never for sale."),
+    RivalProfile("Epic Games", 1991, null, 0.65, 0.55, 0.7, listOf(Genre.SHOOTER, Genre.ACTION, Genre.SANDBOX), "Engine kings turned battle-royale giants."),
+    RivalProfile("Rockstar Games", 1998, null, 0.55, 0.75, 0.95, listOf(Genre.ACTION, Genre.ADVENTURE, Genre.SANDBOX), "Event releases that own the culture for a year."),
+    RivalProfile("Bethesda Softworks", 1986, null, 0.5, 0.55, 0.75, listOf(Genre.RPG, Genre.ADVENTURE, Genre.SANDBOX), "Vast RPGs, mods, and the occasional rough launch."),
+    RivalProfile("CD Projekt Red", 2002, null, 0.4, 0.5, 0.8, listOf(Genre.RPG, Genre.ADVENTURE), "Player-friendly RPGs — and one very public stumble."),
+    RivalProfile("Take-Two Interactive", 1993, null, 0.55, 0.55, 0.7, listOf(Genre.ACTION, Genre.STRATEGY, Genre.SIMULATION), "Publisher of Rockstar and 2K brands."),
+)
+
+private val neverBuyOutright = setOf("Nintendo", "Valve")
+
+/** Is this publisher still shipping in [year] for this run (history, survival, or your ownership)? */
+fun GameState.publisherActive(name: String, year: Int = calendarYear): Boolean {
+    val key = canonicalStudio(name)
+    if (games?.owns(key) == true || games?.owns(name) == true) return true
+    val rival = world.rivals.firstOrNull { it.roster && canonicalStudio(it.name) == key }
+    if (rival?.absorbed == true) return false
+    if (rival?.survived == true) return true
+    return studioActive(key, year) || studioActive(name, year)
+}
+
+/** Ensure the era-correct games roster exists (new games and old saves). */
+internal fun GameState.ensureGameRivalRoster() {
+    val year = calendarYear
+    val existing = world.rivals.filter { it.roster }.associateBy { canonicalStudio(it.name) }.toMutableMap()
+    // Drop the legacy single Games placeholder if a roster is (or will be) present.
+    world.rivals.removeAll { it.lane == Lane.GAMES && !it.roster }
+    var nextId = (world.rivals.maxOfOrNull { it.id } ?: 10) + 1
+    for (p in RealWorldRivalProfiles) {
+        val key = canonicalStudio(p.name)
+        val owned = games?.owns(p.name) == true
+        var r = existing[key]
+        if (r == null) {
+            // Appear once founded; closed studios only if they survived or you're early enough.
+            val historicallyOpen = year >= p.founded && (p.closed == null || year < p.closed)
+            val surviveRoll = SeededRNG.fromSeed(seed * 1_009 + p.name.hashCode()).chance(0.12)
+            if (!historicallyOpen && !(p.closed != null && year >= p.closed && surviveRoll && !owned)) continue
+            r = Rival(
+                id = nextId++,
+                name = p.name,
+                lane = Lane.GAMES,
+                strength = (p.strength + difficulty.rivalStrength).clamped(0.05, 1.0),
+                aggression = p.aggression,
+                genres = p.genres,
+                reputation = p.reputation,
+                blurb = p.blurb,
+                founded = p.founded,
+                closedYear = p.closed,
+                roster = true,
+                survived = !historicallyOpen && surviveRoll,
+            )
+            world.rivals += r
+            existing[key] = r
+            if (r.survived && Lane.GAMES in lanes) {
+                publish(
+                    NewsDesk.INDUSTRY, techOutlet(Lane.GAMES, rng),
+                    "${p.name} refuses to die",
+                    "Against the odds, ${p.name} is still making games in $year.",
+                    LogTone.NEUTRAL, Lane.GAMES, tag = NewsTag.NEWS,
+                )
+            }
+        } else {
+            // Backfill personality on old roster rows that somehow lack it.
+            if (r.blurb.isEmpty() && p.blurb.isNotEmpty()) {
+                // blurb/genres/founded are val — only mutable fields can update on existing.
+            }
+            if (owned && !r.absorbed) absorbRivalState(r)
+            else if (p.closed != null && year >= p.closed && !r.survived && !owned && !r.absorbed &&
+                r.quietUntil < Int.MAX_VALUE / 4
+            ) {
+                // Only announce the fade once (when they first leave the market).
+                fadeRival(r, historic = week > 0)
+            } else if (year < p.founded && !r.absorbed) {
+                r.quietUntil = max(r.quietUntil, week + 52)
+            }
+        }
+    }
+    // Era headline giant is the "main" Games rival for UI / news, matching [rivalIn].
+    world.gamesHeadline = rivalIn(Lane.GAMES, year)
+}
+
+private fun GameState.fadeRival(r: Rival, historic: Boolean) {
+    if (r.absorbed) return
+    r.strength = max(0.05, r.strength * 0.4)
+    r.heat = 0.0
+    r.quietUntil = Int.MAX_VALUE / 2
+    if (historic && Lane.GAMES in lanes && week > 0) {
+        publish(
+            NewsDesk.INDUSTRY, techOutlet(Lane.GAMES, rng),
+            "${r.name} fades from the industry",
+            "The studio that once defined ${r.genres.firstOrNull()?.lower ?: "games"} is gone — unless someone buys what's left.",
+            LogTone.NEUTRAL, Lane.GAMES, tag = NewsTag.NEWS,
+        )
+        addLog("${r.name} has left the stage.", LogTone.NEUTRAL, Lane.GAMES)
+    }
+}
+
+/** Mark a rival as absorbed into your empire. */
+internal fun GameState.absorbRivalState(r: Rival) {
+    r.absorbed = true
+    r.strength = 0.05
+    r.heat = 0.0
+    r.quietUntil = Int.MAX_VALUE / 2
+    stats.rivalsBeaten += 1
+}
+
+/** Quiet / absorb the rival matching [studio] after you buy them. */
+internal fun GameState.absorbRivalNamed(studio: String) {
+    val key = canonicalStudio(studio)
+    world.rivals.filter { it.lane == Lane.GAMES && (canonicalStudio(it.name) == key || it.name == studio) }
+        .forEach { absorbRivalState(it) }
+}
+
+/** Story beats when a rival ships something that touches you. */
+internal fun GameState.rivalReleaseBeat(studio: String, title: String, genre: Genre, score: Double, size: GameSize) {
+    val r = world.rivals.firstOrNull {
+        it.roster && !it.absorbed && (canonicalStudio(it.name) == canonicalStudio(studio) || it.name == studio)
+    } ?: return
+    if (Lane.GAMES !in lanes) return
+    val mine = games?.releases.orEmpty()
+    val myGenreHit = mine.filter { week - it.week <= 78 && it.score >= 7.5 && it.concept.genre == genre }
+        .maxByOrNull { it.score }
+    val recentMine = mine.filter { week - it.week <= 52 }
+    val sameGenreFight = recentMine.any { it.concept.genre == genre || it.concept.genre2 == genre }
+
+    when {
+        score < 5.0 && size >= GameSize.LARGE -> {
+            publish(
+                NewsDesk.GAMES, techOutlet(Lane.GAMES, rng),
+                "${r.name}'s $title is a costly flop",
+                "Critics panned the ${genre.lower} release. Rivals smell blood.",
+                LogTone.GOOD, Lane.GAMES, tag = NewsTag.REVIEW,
+            )
+            feedOnRivalBeat(r.name, "flop", title)
+            r.strength = max(0.05, r.strength - 0.04)
+            r.reputation = max(0.15, r.reputation - 0.04)
+        }
+        myGenreHit != null && score >= 7.0 -> {
+            publish(
+                NewsDesk.INDUSTRY, techOutlet(Lane.GAMES, rng),
+                "${r.name} answers ${myGenreHit.title} with $title",
+                "A ${genre.lower} counter-punch aimed squarely at $companyName's hit.",
+                LogTone.BAD, Lane.GAMES, tag = NewsTag.NEWS, lead = score >= 8.5,
+            )
+            feedOnRivalBeat(r.name, "copy", title)
+            r.heat = min(1.0, r.heat + 0.12)
+        }
+        sameGenreFight && score >= 7.5 -> {
+            publish(
+                NewsDesk.INDUSTRY, techOutlet(Lane.GAMES, rng),
+                "Rivalry heats up: ${r.name} vs $companyName",
+                "Both are fighting for the same ${genre.lower} audience this year.",
+                LogTone.BAD, Lane.GAMES, tag = NewsTag.NEWS,
+            )
+            feedOnRivalBeat(r.name, "heat", title)
+            r.heat = min(1.0, r.heat + 0.08)
+        }
+    }
+    if (r.heat > r.peakHeat + 0.25) {
+        r.peakHeat = r.heat
+        if (r.heat >= 0.55) {
+            publish(
+                NewsDesk.INDUSTRY, techOutlet(Lane.GAMES, rng),
+                "${r.name} has $companyName in its sights",
+                r.blurb.ifBlank { "The rivalry is no longer polite." },
+                LogTone.BAD, Lane.GAMES, tag = NewsTag.NEWS,
+            )
+            feedOnRivalBeat(r.name, "heat", null)
+        }
+    }
+}
+
+/** Prefer the player's genre and each studio's personality when rivals ship. */
+internal fun GameState.pickRivalGenre(studio: Studio, rng: SeededRNG): Genre {
+    val open = Genre.entries.filter { !isDecades || calendarYear >= it.year }.ifEmpty { Genre.entries.toList() }
+    val profile = RealWorldRivalProfiles.firstOrNull { it.name == studio.name || canonicalStudio(it.name) == canonicalStudio(studio.name) }
+    val playerGenres = games?.releases?.takeLast(5)?.map { it.concept.genre }.orEmpty().filter { it in open }
+    val favoured = profile?.genres.orEmpty().filter { it in open }
+    val pool = mutableListOf<Genre>()
+    repeat(3) { favoured.forEach { pool += it } }
+    repeat(2) { playerGenres.forEach { pool += it } }
+    if (pool.isEmpty()) return rng.pick(open)
+    return rng.pick(pool)
+}
+
+/** Late-game buyout of a struggling rival — absorbs studio + franchises via existing M&A. */
+fun GameState.strugglingRivalPrice(r: Rival): Double {
+    val s = studio(canonicalStudio(r.name)) ?: studio(r.name) ?: return 0.0
+    val distress = (0.45 + r.strength * 0.4).coerceIn(0.4, 0.85)
+    return studioValue(s) * distress
+}
+
+fun GameState.strugglingRivalBlocker(r: Rival): String? {
+    if (!r.roster || r.lane != Lane.GAMES) return "Only games studios can be bought this way."
+    if (r.absorbed) return "You already absorbed ${r.name}."
+    val key = canonicalStudio(r.name)
+    if (key in neverBuyOutright || r.name in neverBuyOutright) return "${r.name} isn't for sale."
+    val g = games ?: return "You need a game studio first."
+    if (g.owns(r.name) || g.owns(key)) return "It's already yours."
+    g.rivalOwned[key]?.let { return "$it owns ${r.name} now." }
+    if (week < 52 * 5) return "Buyouts of rivals open in year 6."
+    val struggling = r.strength < 0.28 || r.quietUntil > week || r.reputation < 0.35
+    if (!struggling) return "${r.name} isn't struggling enough to sell cheap."
+    if (!r.survived && r.closedYear != null && calendarYear >= r.closedYear && r.quietUntil <= week) {
+        // Faded: still buyable as remnants.
+    }
+    val price = strugglingRivalPrice(r)
+    if (cash < price) return "Costs ${money(price)}. You have ${money(cash)}."
+    if (listing == null && week < 52 * 3) return "The sellers won't talk to a company this young."
+    return null
+}
+
+/** Buy a struggling rival outright and absorb them. */
+fun GameState.buyStrugglingRival(name: String) {
+    requireLive()
+    val r = world.rivals.firstOrNull { it.name == name || canonicalStudio(it.name) == canonicalStudio(name) }
+        ?: throw invalid("No such rival.")
+    strugglingRivalBlocker(r)?.let { throw notAvailable(it) }
+    val s = studio(canonicalStudio(r.name)) ?: studio(r.name) ?: throw invalid("No such studio.")
+    val price = strugglingRivalPrice(r)
+    spend(price, Lane.GAMES)
+    val g = games!!
+    g.rivalOwned.remove(s.name)
+    g.rivalOwnedWeek.remove(s.name)
+    val held = g.stakePaid.remove(s.name) ?: 0.0
+    g.stakes.remove(s.name)
+    g.subsidiaries += Subsidiary(s.name, week, price + held, finding = findingAt(s), morale = 0.45)
+    learnFrom(g, s)
+    absorbRivalState(r)
+    stats.acquisitions += 1
+    reputation.adjust(2.0)
+    addLog("You bought struggling ${s.name} for ${money(price)} and absorbed its studio and franchises.", LogTone.MILESTONE, Lane.GAMES)
+    publish(
+        NewsDesk.YOU, "Bloomberg", "$companyName scoops up struggling ${s.name}",
+        studioFranchises(s.name).take(2).joinToString().let { if (it.isEmpty()) "A distress sale." else "Home of $it, now under $companyName." },
+        LogTone.GOOD, Lane.GAMES, lead = true, tag = NewsTag.MONEY,
+    )
+    feedOnDeal(s.name)
+    enqueue(IntegrationChoice(s.name))
+}
+
+/** Rare: a rival offers to buy you out while you're deep in the red. Never forced. */
+internal fun GameState.maybeDistressBuyout() {
+    if (sandbox || ending != null) return
+    if (Lane.GAMES !in lanes) return
+    if (stats.weeksInRed < 2) return
+    if (stats.weeksInRed >= difficulty.redWeeks) return
+    if (week - lastDistressOfferWeek < 36) return
+    if (needsDecision || events.any { it.kind is EventKind.Buyout }) return
+    // ~2.5% each week while struggling — rare, never forced.
+    if (!rng.chance(0.025)) return
+    val bidder = gameRivals.filter { it.quietUntil <= week && it.strength >= 0.35 }
+        .maxByOrNull { it.strength * (0.5 + it.aggression) }
+        ?: world.rivals.filter { !it.absorbed && it.quietUntil <= week }.maxByOrNull { it.strength }
+        ?: return
+    val scores = games?.releases?.map { it.score }.orEmpty()
+    val avg = if (scores.isEmpty()) 5.0 else scores.average()
+    // Offer scales with how good past games were.
+    val mult = (0.35 + (avg / 10.0) * 1.0).coerceIn(0.3, 1.35)
+    val price = max(25_000.0, Math.round(valuation * mult / 1_000.0) * 1_000.0)
+    lastDistressOfferWeek = week
+    enqueue(EventKind.Buyout(bidder.name, price))
+    addLog("${bidder.name} floated a buyout while you're in the red. You can take it or keep fighting.", LogTone.NEUTRAL)
+}
