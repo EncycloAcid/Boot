@@ -29,6 +29,7 @@ fun GameState.advance() {
         val report = when (lane) {
             Lane.GAMES -> {
                 prepareLeads()
+                refreshIndustryLifts()
                 games!!.tick(ctx, rng)
             }
             Lane.WEBSITES -> web!!.tick(ctx, rng)
@@ -74,6 +75,9 @@ fun GameState.advance() {
     updateFounder()
     updateStaff(fx)
     talentWeek()
+    contractLabourWeek()
+    streamingWeek()
+    platformPoliticsWeek()
     reputation.weeklyDrift()
     if (week % 4 == 0) refreshTalentPool()
     candidates = candidates.filterNot { it.contestedBy != null && it.expiresWeek < week }
@@ -355,8 +359,8 @@ private fun GameState.rollSmallEvents() {
     }
     games?.let { g ->
         val hot = g.releases.filter { it.weeklySales > 0 && it.score >= 6.5 }
-        // Streamers came along with YouTube and Twitch.
-        if (hot.isNotEmpty() && calendarYear >= 2007 && rng.chance(0.01)) {
+        // Streamers came along with YouTube and Twitch (denser rolls live in streamingWeek).
+        if (hot.isNotEmpty() && streamEraStrength() > 0 && rng.chance(0.006 * streamEraStrength())) {
             enqueue(EventKind.Streamer(rng.pick(hot).id, rng.pick(listOf("xXPixelQueenXx", "Big Dave Plays", "Mira Streams", "TheLagWizard", "Cozy Kat"))))
         }
         val p = g.project

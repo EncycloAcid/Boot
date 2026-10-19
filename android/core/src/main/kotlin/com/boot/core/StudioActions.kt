@@ -179,18 +179,18 @@ fun GameState.startGame(
         g.promisedSequel = null
     }
     val engine = g.engine(concept.engineId)
-    g.setProject(
-        team,
-        GameProject(
-            concept, focus.map { it.toMutableList() }, week, hype = hype,
-            features = fitFeatures(features?.filter { it in engine.features }?.toSet(), engine)?.toMutableSet(),
-            leads = leads.filterValues { id -> staff.any { it.id == id && it.lane == Lane.GAMES } }.toMutableMap(),
-        ),
+    val project = GameProject(
+        concept, focus.map { it.toMutableList() }, week, hype = hype,
+        features = fitFeatures(features?.filter { it in engine.features }?.toSet(), engine)?.toMutableSet(),
+        leads = leads.filterValues { id -> staff.any { it.id == id && it.lane == Lane.GAMES } }.toMutableMap(),
     )
+    g.setProject(team, project)
+    seedCertSchedule(project)
+    val certBit = project.certClearWeek.takeIf { it > week }?.let { " Cert clears ${GameClock.label(it)}." }.orEmpty()
     addLog(
         (if (team == 2) "Team 2 started " else "Started ") + "${concept.title}: ${Format.a(concept.size.lower)} ${concept.topic.title.lowercase()} " +
             "${concept.genreLower} game for ${concept.platforms.joinToString { it.title }}." +
-            (if (fees > 0) " Licence fees: ${money(fees)}." else ""),
+            (if (fees > 0) " Licence fees: ${money(fees)}." else "") + certBit,
         LogTone.NEUTRAL, Lane.GAMES,
     )
 }
@@ -277,6 +277,7 @@ fun GameState.gameForecast(team: Int = 1): LaunchForecast? {
 fun GameState.launchGame(team: Int = 1) {
     val g = studio()
     val signed = g.projectOf(team) ?: throw invalid("No game in development.")
+    launchCertBlocker(team)?.let { throw notAvailable(it) }
     // An exclusive ships only on its maker's platforms.
     val exclusive = signed.exclusive
     val held = exclusive?.let { e -> signed.concept.platforms.filter { it.maker != e.maker } }.orEmpty()
@@ -293,9 +294,11 @@ fun GameState.launchGame(team: Int = 1) {
     val piracy = piracyLoss(p.concept, p.protection, popularity(gameForecast(team)?.expectedScore ?: 6.0, p.hype))
     val shelf = if (rated && p.uncut) adultsOnlyShelf(calendarYear) else 1.0
     val (storeLift, pcKeep) = storeLaunchTerms(p)
+    val politicsLift = 1.0 + platformPoliticsSalesLift(p.concept.platforms, p.stores)
+    val politicsKeep = platformPoliticsKeep(p.concept.platforms, p.stores)
     val report = g.launch(
         context(Lane.GAMES), rng, reach(p.concept.platforms), suited, g.clashFor(p.concept, week), team,
-        kept = (1 - piracy) * shelf * storeLift, pcKeep = pcKeep, company = companyName,
+        kept = (1 - piracy) * shelf * storeLift * politicsLift * politicsKeep, pcKeep = pcKeep * politicsKeep, company = companyName,
     )
     g.releases.firstOrNull()?.let { r ->
         r.rating = if (rated) ratingFor(r.concept.audience, p.uncut) else null
@@ -368,7 +371,9 @@ fun GameState.acceptDeal(id: Int, focus: List<MutableList<Double>> = evenFocus()
         throw notAvailable(blocker)
     }
     g.dealOffers.remove(d)
-    g.project = GameProject(concept, focus.map { it.toMutableList() }, week, hype = 20.0, deal = d)
+    val project = GameProject(concept, focus.map { it.toMutableList() }, week, hype = 20.0, deal = d)
+    g.project = project
+    seedCertSchedule(project)
     cash += d.advance * 0.5
     recordRevenue(d.advance * 0.5, Lane.GAMES)
     addLog(

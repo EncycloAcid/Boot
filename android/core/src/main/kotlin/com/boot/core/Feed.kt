@@ -272,6 +272,27 @@ internal fun GameState.feedOnMod(title: String, kind: String) {
     }
 }
 
+/** Industry pressure beats: temps, streamers, platform politics. */
+internal fun GameState.feedOnIndustry(kind: String, about: String?, title: String? = null) {
+    val rng = flavour("industry $kind ${about ?: ""} ${title ?: ""} $week")
+    when (kind) {
+        "temp_hire" -> say(rng, Poster.INSIDER, listOf("$companyName just brought in a wave of contractors", "Crunch contractors spotted at $companyName"), about, LogTone.NEUTRAL, 0.7)
+        "temp_fair" -> say(rng, Poster.PLAYER, listOf("At least $companyName paid out the contractors", "Rare W: fair contract end"), about, LogTone.GOOD, 0.6)
+        "temp_quiet", "temp_cut" -> say(rng, Poster.PLAYER, listOf("$companyName treating contractors like furniture again", "Another contractor story out of $companyName"), about, LogTone.BAD, 0.9)
+        "temp_expire" -> {}
+        "temp_scandal" -> {
+            say(rng, Poster.PRESS, listOf("Contract labour backlash hits $companyName.", "Industry press digs into $companyName's temp pipeline."), about, LogTone.BAD, 1.3)
+            say(rng, Poster.MEME, listOf("$companyName discovering labour law", "Temp-to-scandal speedrun"), about, LogTone.BAD, 1.0)
+        }
+        "stream_court" -> say(rng, Poster.STREAMER, listOf("Keys for {t} landed — going live soon {tag}", "Chat voted yes on {t}. See you tonight"), title, LogTone.GOOD, 1.1)
+        "stream_snub" -> say(rng, Poster.STREAMER, listOf("Not touching {t} after that pitch", "Chat said skip {t} and chat was right"), title, LogTone.BAD, 1.0)
+        "cert_chase" -> say(rng, Poster.INSIDER, listOf("$companyName is burning favors to clear cert on {t}", "Cert office: {t} got pulled forward"), title, LogTone.NEUTRAL, 0.8)
+        "featuring" -> say(rng, Poster.PRESS, listOf("$companyName buys a storefront slot at $about.", "Discovery deal: $about featuring $companyName."), null, LogTone.GOOD, 1.0)
+        "logo_deal" -> say(rng, Poster.PRESS, listOf("$companyName puts the $about logo on the box.", "First-party-friendly deal: $companyName × $about."), null, LogTone.GOOD, 1.2)
+        else -> {}
+    }
+}
+
 /** Rivalry story beats on the feed: heat, copycat, flop, or poach. */
 internal fun GameState.feedOnRivalBeat(studio: String, kind: String, about: String?) {
     val rng = flavour("rival $studio $kind ${about ?: ""} $week")

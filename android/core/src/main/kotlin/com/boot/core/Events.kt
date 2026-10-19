@@ -137,6 +137,8 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is HistoryChoice -> describeHistory(kind)
     is ModHit -> describeModHit(kind)
     is ModCrisis -> describeModCrisis(kind)
+    is StreamerEmbargo -> describeStreamerEmbargo(kind)
+    is StreamerNoise -> describeStreamerNoise(kind)
     is ScenarioOver -> describeScenario(kind)
     is MarketEvent -> describeMarket(kind)
     is EventKind.Poach -> {
@@ -439,6 +441,8 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         is HistoryChoice -> resolveHistory(kind, choice)
         is ModHit -> resolveModHit(kind, choice)
         is ModCrisis -> resolveModCrisis(kind, choice)
+        is StreamerEmbargo -> resolveStreamerEmbargo(kind, choice)
+        is StreamerNoise -> resolveStreamerNoise(kind, choice)
         is ScenarioOver -> resolveScenario(kind, choice)
         is MarketEvent -> resolveMarket(kind, choice)
         is EventKind.Poach -> {

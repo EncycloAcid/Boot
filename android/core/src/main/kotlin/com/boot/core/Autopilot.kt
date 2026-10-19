@@ -122,6 +122,8 @@ class Autopilot(
             EventKind.GameAwards -> if (s.cash > 200_000) 0 else 1
             is EventKind.RaiseRequest -> if (s.runwayWeeks > 26) 0 else 1
             is EventKind.Streamer -> if (s.cash > 50_000) 0 else 1
+            is StreamerEmbargo -> if (cashy) 0 else 1
+            is StreamerNoise -> if (cashy) 0 else 1
             EventKind.LeakedBuild -> 0
             EventKind.GameJam -> if (s.cash > 100_000) 0 else 1
             is EventKind.TaxCredit -> 0
@@ -404,7 +406,10 @@ class Autopilot(
         for (r in g.liveGames) if (s.seasonBlocker(r.id) == null && s.cash > r.seasonCost() * 4) attempt { s.launchSeason(r.id) }
         // The second team makes smaller games alongside the main one.
         g.project2?.let { p2 ->
-            if (p2.isReady && (p2.bugs < p2.work * 0.08 || p2.weeksInDev > p2.work / 2 + 30)) attempt { s.launchGame(2) }
+            if (p2.isReady && (p2.bugs < p2.work * 0.08 || p2.weeksInDev > p2.work / 2 + 30)) {
+                if (s.launchCertBlocker(2) != null) attempt { s.chaseCert(2) }
+                attempt { s.launchGame(2) }
+            }
         }
         if (Research.SECOND_TEAM in s.researched && g.project2 == null && s.gameTeam >= 16 && s.runwayWeeks > 26) {
             if (g.team2Share != 0.3) attempt { s.setTeamSplit(0.3) }
@@ -451,7 +456,10 @@ class Autopilot(
                     (polished && inSeason) ||
                     (polished && (forecast?.polishPastSweetSpot == true || p.bugs < p.work * 0.04))
                 )
-            if (shouldShip) attempt { s.launchGame() }
+            if (shouldShip) {
+                if (s.launchCertBlocker(1) != null) attempt { s.chaseCert(1) }
+                attempt { s.launchGame() }
+            }
             return
         }
         // License every engine but the newest.

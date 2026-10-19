@@ -93,8 +93,16 @@ internal fun GameState.releaseDayWeek(g: GamesStudio) {
         val due = p.releaseWeek ?: continue
         if (week < due) continue
         if (p.isReady) {
-            addLog("Launch day for ${p.title}.", LogTone.MILESTONE, Lane.GAMES)
-            launchGame(team)
+            val cert = launchCertBlocker(team)
+            if (cert != null) {
+                // Slip a week rather than crash the calendar — chase cert or wait it out.
+                p.releaseWeek = week + 1
+                p.delays += 1
+                addLog("Launch day for ${p.title} slipped: $cert", LogTone.BAD, Lane.GAMES)
+            } else {
+                addLog("Launch day for ${p.title}.", LogTone.MILESTONE, Lane.GAMES)
+                launchGame(team)
+            }
         } else {
             enqueue(ReleaseSlip(team))
         }

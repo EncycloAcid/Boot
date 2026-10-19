@@ -135,6 +135,12 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
     /** Brand awareness and ad campaigns, for every business. */
     var marketing = Marketing()
 
+    /**
+     * Contract labour / streaming / platform-holder politics (3.34.6).
+     * Defaults empty so older saves load clean.
+     */
+    var industry = IndustryBook()
+
     /** Regional offices, alliances, and Venture Arm holdings. */
     var strategy = StrategyBook()
 
