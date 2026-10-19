@@ -100,6 +100,21 @@ class AudioTest {
     }
 
     @Test
+    fun takesShareLengthButVaryMelodyAndSoftness() {
+        val track = MusicTrack.forEra(Era.CONSOLE_WARS)
+        val main = track.render(0)
+        val alt = track.render(1)
+        val soft = track.render(2)
+        assertEquals(main.size, alt.size)
+        assertEquals(main.size, soft.size)
+        assertTrue("same seed take 0 is stable", main.contentEquals(track.render(0)))
+        assertTrue("fresh-melody take differs", !main.contentEquals(alt))
+        assertTrue("soft take differs", !main.contentEquals(soft))
+        assertEquals(3, MusicTrack.TAKES)
+        assertTrue(MusicTrack.ORDER.contentEquals(intArrayOf(0, 1, 0, 2)))
+    }
+
+    @Test
     fun effectsAreShortAndEndQuietly() {
         for (sfx in Sfx.entries) {
             val pcm = sfx.render()
