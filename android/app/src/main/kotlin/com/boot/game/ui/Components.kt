@@ -114,6 +114,46 @@ private val CompactCardShape = RoundedCornerShape(16.dp)
 val LocalCompact = compositionLocalOf { false }
 
 /**
+ * True when the phone is held upright (taller than wide). Portrait screens use progressive
+ * disclosure — tabs and collapsed lists — so one viewport is not a wall of panels. Landscape /
+ * sideways stays denser.
+ */
+val LocalPortrait = compositionLocalOf { false }
+
+/**
+ * A tappable reveal for secondary chrome on portrait: title + optional summary when closed,
+ * full [content] when open. Features stay reachable; they are not deleted.
+ */
+@Composable
+fun ExpandableBlock(
+    title: String,
+    summary: String? = null,
+    initiallyExpanded: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    var open by remember(title) { mutableStateOf(initiallyExpanded) }
+    GroupedSection(null) {
+        ListRow(
+            title,
+            subtitle = if (open) null else summary,
+            chevron = true,
+            onClick = { open = !open },
+            trailing = {
+                Text(
+                    if (open) "Less" else "More",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            },
+        )
+        if (open) {
+            RowDivider()
+            Column(Modifier.padding(bottom = 4.dp), content = content)
+        }
+    }
+}
+
+/**
  * The smaller sideways scale, when it applies. Dialogs and sheets open in windows of their own,
  * which start back at the system scale; [Scaled] puts them on the same one as the game.
  */

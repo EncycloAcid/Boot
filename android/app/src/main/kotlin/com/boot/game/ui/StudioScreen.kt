@@ -3,6 +3,7 @@ package com.boot.game.ui
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -136,15 +137,7 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             item { ReleasesSection(store, g) }
             if (g.market.awards.isNotEmpty()) item { AwardsCard(state) }
         }
-        StudioPage.MARKET -> {
-            item { ChartCard(state, limit = 10) { store.openRelease = it } }
-            item { ComingSoonCard(state, limit = 8) }
-            if (Research.PUBLISHING in state.researched) item { Sections { LabelSection(store, state, g) } }
-            item { TransparencySection(store, state, g) }
-            item { StudiosSection(store, state, g) }
-            item { AntiqueIpSection(store, state, g) }
-            if (g.store != null || state.calendarYear >= 2004) item { OwnStoreSection(store, state, g) }
-        }
+        StudioPage.MARKET -> marketItems(store, state, g)
         StudioPage.RIVALS -> rivalsItems(store, state)
         StudioPage.TECH -> {
             item { EnginesSection(store, state, g) }
@@ -152,6 +145,21 @@ fun LazyListScope.studioItems(store: GameStore, state: GameState) {
             item { NotebookSection(g) }
         }
     }
+}
+
+/** Secondary Make panels on portrait — one tab at a time so Dev isn't buried under a wall of chrome. */
+private enum class MakeExtra(val title: String) {
+    FOCUS("Focus"),
+    FIT("Fit"),
+    HYPE("Hype"),
+    TRUST("Trust"),
+}
+
+/** Market studio slices on portrait. */
+private enum class MarketExtra(val title: String) {
+    CHART("Chart"),
+    TRUST("Trust"),
+    DEALS("Deals"),
 }
 
 /** What the teams are making now, and what they could start. */
@@ -162,11 +170,7 @@ private fun LazyListScope.makeItems(store: GameStore, state: GameState, g: Games
     when {
         p != null -> {
             item { DevelopmentSection(store, state, p) }
-            item { TransparencySection(store, state, g, team = 1) }
-            item { AccessLocalSection(store, state, p, team = 1) }
-            item { Sections { FocusSection(store, g, p, state = state) } }
-            item { TeamFitSection(store, state, p) }
-            item { HypeSection(store, state, p) }
+            item { MakeSecondaryPanels(store, state, g, p, team = 1) }
         }
         x != null -> item {
             GroupedSection("Expansion pack", footer = "When it's done, owners of the original come back and buy it. Sales of the original pick up too.") {
@@ -258,13 +262,77 @@ private fun StudioOverview(state: GameState, g: GamesStudio) {
 
 // Development
 
+private fun LazyListScope.marketItems(store: GameStore, state: GameState, g: GamesStudio) {
+    item { MarketPanels(store, state, g) }
+}
+
+@Composable
+private fun MarketPanels(store: GameStore, state: GameState, g: GamesStudio) {
+    if (LocalPortrait.current) {
+        var tab by rememberSaveable { mutableStateOf(MarketExtra.CHART) }
+        Sections {
+            Segmented(MarketExtra.entries.toList(), tab, { it.title }) { tab = it }
+            when (tab) {
+                MarketExtra.CHART -> {
+                    ChartCard(state, limit = 10) { store.openRelease = it }
+                    ComingSoonCard(state, limit = 8)
+                }
+                MarketExtra.TRUST -> TransparencySection(store, state, g)
+                MarketExtra.DEALS -> {
+                    if (Research.PUBLISHING in state.researched) LabelSection(store, state, g)
+                    StudiosSection(store, state, g)
+                    AntiqueIpSection(store, state, g)
+                    if (g.store != null || state.calendarYear >= 2004) OwnStoreSection(store, state, g)
+                }
+            }
+        }
+    } else {
+        Sections {
+            ChartCard(state, limit = 10) { store.openRelease = it }
+            ComingSoonCard(state, limit = 8)
+            if (Research.PUBLISHING in state.researched) LabelSection(store, state, g)
+            TransparencySection(store, state, g)
+            StudiosSection(store, state, g)
+            AntiqueIpSection(store, state, g)
+            if (g.store != null || state.calendarYear >= 2004) OwnStoreSection(store, state, g)
+        }
+    }
+}
+
+/** Focus / Fit / Hype / Trust — stacked sideways, tabbed upright. */
+@Composable
+private fun MakeSecondaryPanels(store: GameStore, state: GameState, g: GamesStudio, p: GameProject, team: Int) {
+    if (LocalPortrait.current) {
+        var tab by rememberSaveable(team) { mutableStateOf(MakeExtra.FOCUS) }
+        Sections {
+            Segmented(MakeExtra.entries.toList(), tab, { it.title }) { tab = it }
+            when (tab) {
+                MakeExtra.FOCUS -> FocusSection(store, g, p, team = team, state = state)
+                MakeExtra.FIT -> TeamFitSection(store, state, p, team = team)
+                MakeExtra.HYPE -> HypeSection(store, state, p, team = team)
+                MakeExtra.TRUST -> {
+                    TransparencySection(store, state, g, team = team)
+                    AccessLocalSection(store, state, p, team = team)
+                }
+            }
+        }
+    } else {
+        Sections {
+            TransparencySection(store, state, g, team = team)
+            AccessLocalSection(store, state, p, team = team)
+            FocusSection(store, g, p, team = team, state = state)
+            TeamFitSection(store, state, p, team = team)
+            HypeSection(store, state, p, team = team)
+        }
+    }
+}
+
 /** The second team: its game, or an invitation to start one, and how the staff split. */
 private fun LazyListScope.secondTeamItems(store: GameStore, state: GameState, g: GamesStudio) {
     val p2 = g.project2
     if (p2 != null) {
         item { DevelopmentSection(store, state, p2, team = 2) }
-        item { Sections { FocusSection(store, g, p2, team = 2, state = state) } }
-        item { HypeSection(store, state, p2, team = 2) }
+        item { MakeSecondaryPanels(store, state, g, p2, team = 2) }
     } else {
         item {
             GroupedSection("Team 2") {
@@ -524,6 +592,17 @@ private fun CoDevSection(store: GameStore, state: GameState, p: GameProject, tea
     RowDivider()
     Text("Co-dev partners", style = MaterialTheme.typography.titleSmall)
     Hint("Split a large / AAA project: cost, workload, credit, royalties. Hits boost both brands; delays and flops hit both.")
+    // Portrait: hide the partner list behind More — active / pending co-dev stays visible above.
+    val portrait = LocalPortrait.current
+    var showPartners by remember(team, candidates.size, portrait) { mutableStateOf(!portrait) }
+    if (portrait && !showPartners) {
+        TonalButton(
+            "${candidates.size} partner${if (candidates.size == 1) "" else "s"}…",
+            { showPartners = true },
+            Modifier.fillMaxWidth(),
+        )
+        return
+    }
     candidates.forEach { c ->
         val split = defaultCoDevSplit(c.kind)
         val block = state.proposeCoDevBlocker(team, c.name, split.cost, split.work, split.credit, split.royalty)
@@ -538,6 +617,9 @@ private fun CoDevSection(store: GameStore, state: GameState, p: GameProject, tea
                 proposeCoDev(team, c.name, split.cost, split.work, split.credit, split.royalty)
             }
         }
+    }
+    if (portrait && showPartners) {
+        PlainButton("Hide partners", { showPartners = false }, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

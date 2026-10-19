@@ -32,6 +32,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +70,13 @@ import com.boot.game.StudioPage
 import com.boot.game.Tab
 import java.util.Locale
 
+/** Portrait Today: one job at a time — Now / Market / Pulse. Landscape keeps the dense stack. */
+private enum class TodayPage(val title: String) {
+    NOW("Now"),
+    MARKET("Market"),
+    PULSE("Pulse"),
+}
+
 /**
  * Today briefing: everything that used to sit under the office card. The isometric office is now
  * the full-bleed stage behind floating windows — this panel keeps every home-screen feature.
@@ -73,8 +84,15 @@ import java.util.Locale
 @Composable
 fun OfficeScreen(store: GameStore, state: GameState) {
     val inPanel = LocalInFloatingPanel.current
+    val portrait = LocalPortrait.current
+    var page by rememberSaveable { mutableStateOf(TodayPage.NOW) }
     ScreenColumn {
-        if (inPanel) {
+        if (portrait) {
+            item {
+                Segmented(TodayPage.entries.toList(), page, { it.title }) { page = it }
+            }
+        }
+        if (inPanel && (!portrait || page == TodayPage.NOW)) {
             // Sideways: the office is the stage behind this window, so lead with the numbers.
             item { VitalsGlance(store, state) }
             item {
@@ -94,44 +112,56 @@ fun OfficeScreen(store: GameStore, state: GameState) {
                 }
             }
         }
-        // The tutorial leads, so its button is on screen without scrolling.
-        if (state.tutorial != null) item { LessonCard(store, state) }
-        // Upright: the office itself sits at the top of the home page, under the lesson.
-        if (!inPanel) item { OfficeCard(store, state) }
-        if (state.scenario != null) item { ScenarioCard(state) }
-        // While the tutorial runs, the next step only speaks up about money.
-        if (nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true) {
-            item { NextStepCard(store, state) }
-        }
-        if (state.inbox.isNotEmpty()) item { InboxSection(store, state) }
-        if (Lane.GAMES in state.lanes) item { StudioNow(store, state) }
-        val others = state.lanes.filter { it != Lane.GAMES }
-        if (others.isNotEmpty()) item { LanesNow(store, state, others) }
-        item {
-            GoalsCard(state) {
-                store.companyPage = 7
-                store.tab = Tab.COMPANY
+        if (!portrait || page == TodayPage.NOW) {
+            // The tutorial leads, so its button is on screen without scrolling.
+            if (state.tutorial != null) item { LessonCard(store, state) }
+            // Upright: the office itself sits at the top of the home page, under the lesson.
+            if (!inPanel) item { OfficeCard(store, state) }
+            if (state.scenario != null) item { ScenarioCard(state) }
+            // While the tutorial runs, the next step only speaks up about money.
+            if (nextStep(state)?.let { it.key != store.dismissedStep && (state.tutorial == null || it.key in urgentSteps) } == true) {
+                item { NextStepCard(store, state) }
             }
-        }
-        if (state.achievements.isNotEmpty()) {
+            if (state.inbox.isNotEmpty()) item { InboxSection(store, state) }
+            if (Lane.GAMES in state.lanes) item { StudioNow(store, state) }
+            val others = state.lanes.filter { it != Lane.GAMES }
+            if (others.isNotEmpty()) item { LanesNow(store, state, others) }
             item {
-                RecentAchievements(state) {
+                GoalsCard(state) {
                     store.companyPage = 7
                     store.tab = Tab.COMPANY
                 }
             }
         }
-        if (state.games != null) {
-            item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openStudio(StudioPage.MARKET) }) }) { store.openRelease = it } }
-            item { ComingSoonCard(state, limit = 3) }
+        if (!portrait || page == TodayPage.MARKET) {
+            if (state.games != null) {
+                item { ChartCard(state, limit = 5, action = { PlainButton("Full chart", { store.openStudio(StudioPage.MARKET) }) }) { store.openRelease = it } }
+                item { ComingSoonCard(state, limit = 3) }
+            } else if (portrait) {
+                item {
+                    GroupedSection(null) {
+                        CardBlock { Hint("Charts and coming soon appear once the games lane is open.") }
+                    }
+                }
+            }
         }
-        item { HeadlinesCard(store, state) }
-        item { Shortcuts(store, state) }
-        item {
-            GroupedSection("Latest", action = { PlainButton("All news", { store.tab = Tab.NEWS }) }) {
-                state.log.takeLast(4).asReversed().forEachIndexed { i, entry ->
-                    if (i > 0) RowDivider(36.dp)
-                    LogRow(entry)
+        if (!portrait || page == TodayPage.PULSE) {
+            if (state.achievements.isNotEmpty()) {
+                item {
+                    RecentAchievements(state) {
+                        store.companyPage = 7
+                        store.tab = Tab.COMPANY
+                    }
+                }
+            }
+            item { HeadlinesCard(store, state) }
+            item { Shortcuts(store, state) }
+            item {
+                GroupedSection("Latest", action = { PlainButton("All news", { store.tab = Tab.NEWS }) }) {
+                    state.log.takeLast(4).asReversed().forEachIndexed { i, entry ->
+                        if (i > 0) RowDivider(36.dp)
+                        LogRow(entry)
+                    }
                 }
             }
         }

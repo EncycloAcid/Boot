@@ -110,6 +110,7 @@ fun BootApp(store: GameStore) {
         LaunchedEffect(era, trouble) { store.sound.music(MusicTrack.playlist(era, trouble)) }
         CompositionLocalProvider(
             LocalCompact provides sideways,
+            LocalPortrait provides (maxHeight > maxWidth),
             LocalSidewaysDensity provides scaled,
             LocalDensity provides (scaled ?: density),
             LocalSound provides store.sound,
