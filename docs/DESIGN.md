@@ -629,6 +629,15 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Mod tools** (PC, from 1993; sims, strategy, sandbox, RPGs, shooters or a mod-support hook): weekly decay ×1.008 until a scene forms. From 8 weeks on, hit mods can take off: hire its maker (a skill 6–8 game designer), make it official (+30% sales, +0.2 player score), or let it be (+10%).
 - **More stores later**: adding a store scales the PC share of weekly sales by the new reach over the old and moves the share kept accordingly.
 
+## Industry pressure (3.34.8)
+
+Stacked on legacy/trust (3.34.7) + talent wars tip. One module (`IndustryPressure.kt`) extends Team / crunch / AfterLaunch / Release / Storefronts / Platform / News / Feed / Events.
+
+- **Contract labour.** `hireTemps` / `endContract` fill talent-wars `contractUntil` hooks. Temps boost Games output (more under crunch) but cut quality / focus; permanents lose morale when stacked or cut loose. Scandal / press scale with era (`contractPressScale`). Team shows **Contract labour** hire levers and **Temps & contractors** exits (fair / quiet / cut).
+- **Streaming / Let’s Play.** Era-gated (`streamEraStrength`: 0 before 2007, full from ~2015). `courtStreamer` on After launch; weekly organic streams; `StreamerEmbargo` / `StreamerNoise` events for drama and review-bomb-adjacent noise. Creator standing lives on `IndustryBook.creators`.
+- **Platform holder politics.** Cert schedule on console projects (`certClearWeek`); **Chase cert** / **Store featuring** (era-gated) / **Logo on the box** on Studio → Platforms. Tradeoffs: sales lift vs keep/margin and cert backlog. Shadow-drops clear cert (holder already waved you through).
+- **Saves.** `IndustryBook`, `certClearWeek = -1`, `industryLift = 0` defaults — old saves load.
+
 ## Legacy / trust pack (3.34.7)
 
 Six systems stacked on the talent-wars tip (3.34.5). Extends OwnedStudios / Buying / AfterLaunch / Marketing / Shows / Feed / News / IPO / LaneSales / Hall — no duplicate lanes.
@@ -671,7 +680,7 @@ Extends the long tail in `AfterLaunch.kt` (no second post-launch sim). After lau
 
 ## Music and game names (3.34)
 
-Finished in **3.34.1** (era names landed with 3.34.0 WIP; soundtrack takes / true crossfades / mute complete the band). **3.34.5** stacks talent wars, critic personalities, and the mod scene on that tip. **3.34.7** adds the legacy / trust pack on that stack (rebase onto industry-pressure 3.34.6 when present).
+Finished in **3.34.1** (era names landed with 3.34.0 WIP; soundtrack takes / true crossfades / mute complete the band). **3.34.5** stacks talent wars, critic personalities, and the mod scene on that tip. **3.34.7** adds the legacy / trust pack. **3.34.8** adds industry pressure (contract labour, streaming, platform politics) on that full stack.
 
 **Game names** (`Titles.kt`). Each topic belongs to one of six themes (fantasy, sci-fi, grim, light, sporty, modern), each with its own adjectives, places, word endings for made-up names (Emberfall, Pulsecore), sequel subtitles and expansion names. A title is built from the topic's nouns through the genre's templates. Given the year, about a third of names use that year's templates instead: arcade names before 1986 (Ember Attack, Signaltron), nineties ones to 1999 (Ember Quest, Ember Deluxe), subtitled ones to 2009 (Ember: Heart of Winter, Ember Online) and indie ones after (Emberfall, A Hollow Crown, Ember Survivors from 2020). Titles that repeat a word or run past 30 characters are drawn again, and no place name ends in a number, so a sequel number is never mistaken for part of a name. Sims use a short word for the topic (Pet Shop Tycoon, AI Simulator). Your own suggestions, rivals' games, subsidiaries' pitches and indie pitches all pass the year in.
 

@@ -95,6 +95,7 @@ internal fun GameState.applyPressures(lane: Lane, mods: LaneModifiers) {
         mods.output *= p.output
     }
     if (hybrid) mods.output *= 0.97
+    applyTempLabourMods(lane, mods)
 }
 
 /** Rivals watch, warm up, and make their moves. Pressures run down. */

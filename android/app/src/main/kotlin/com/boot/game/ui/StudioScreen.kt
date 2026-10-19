@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -71,6 +72,20 @@ import com.boot.core.expectedEngineStandard
 import com.boot.core.LaunchForecast
 import com.boot.core.gameForecast
 import com.boot.core.launchGame
+import com.boot.core.launchCertBlocker
+import com.boot.core.chaseCert
+import com.boot.core.chaseCertBlocker
+import com.boot.core.chaseCertCost
+import com.boot.core.courtAbleHolders
+import com.boot.core.chaseFeaturing
+import com.boot.core.featuringBlocker
+import com.boot.core.featuringCost
+import com.boot.core.featuringEraStrength
+import com.boot.core.signLogoDeal
+import com.boot.core.logoDealBlocker
+import com.boot.core.logoDealCost
+import com.boot.core.holderFavor
+import com.boot.core.holderOf
 import com.boot.core.platformPlayers
 import com.boot.core.platformsOnSale
 import com.boot.core.playtestGame
@@ -326,15 +341,27 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                     else -> null
                 }
                 warning?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.warn) }
+                state.launchCertBlocker(team)?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.warn) }
             }
             Hint(
                 (if (p.reveals > 0) "${Format.count(p.wishlists)} people have it wishlisted" else "Not announced yet: a trailer at a show starts the wishlists") + ". " +
                     (p.releaseWeek?.let { "It launches ${GameClock.label(it)}, in ${Format.weeks(it - state.week)}, by itself if it's finished." } ?: "No release date set.") +
-                    (if (p.delays > 0) " Delayed ${if (p.delays == 1) "once" else "${p.delays} times"}." else ""),
+                    (if (p.delays > 0) " Delayed ${if (p.delays == 1) "once" else "${p.delays} times"}." else "") +
+                    (if (p.certClearWeek > state.week) " Platform cert clears ${GameClock.label(p.certClearWeek)}." else ""),
                 if (p.releaseWeek != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (p.concept.platforms.any { it != Platform.PC && it.fee > 0 }) {
+                val certBlock = state.chaseCertBlocker(team)
+                ActionRow(
+                    "Chase platform cert",
+                    certBlock ?: "${Format.money(state.chaseCertCost(team))}. Pull the cert date forward — visibility vs waiting on the holder.",
+                    "Chase",
+                    enabled = certBlock == null,
+                ) { store.perform { chaseCert(team) } }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                PrimaryButton("Release ${p.title}", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady)
+                val certOk = state.launchCertBlocker(team) == null
+                PrimaryButton("Release ${p.title}", { store.perform { launchGame(team) } }, Modifier.weight(1f), enabled = p.isReady && certOk)
                 TonalButton("Calendar", { store.openCalendar(team) })
                 if (p.deal == null) {
                     var confirming by remember { mutableStateOf(false) }
@@ -743,20 +770,24 @@ private fun PlatformsSection(store: GameStore, state: GameState) {
     val total = onSale.sumOf { state.platformPlayers(it) * it.spend }.coerceAtLeast(1.0)
     val now = state.timelineWeek
     val upcoming = Platform.entries.filter { it.launch > now && it.launch <= now + 78 && it != Platform.OWN_CONSOLE }
+    val holders = state.courtAbleHolders()
     GroupedSection(
         "Platforms",
         footer = "A platform's development licence is paid once and kept for good. " +
+            "Court holders for cert speed, store featuring, and logo-on-the-box deals — visibility vs margin and control. " +
             (upcoming.takeIf { it.isNotEmpty() }?.let { list -> "Coming soon: " + list.joinToString { it.title } + "." } ?: ""),
     ) {
         onSale.sortedByDescending { state.platformPlayers(it) * it.spend }.forEachIndexed { i, p ->
             if (i > 0) RowDivider()
             val players = state.platformPlayers(p)
             val leaving = p.retire - now in 1..104
+            val favor = state.holderFavor(p.maker)
             ListRow(
                 p.title,
                 subtitle = "${p.makerIn(state.calendarYear)} · ${String.format(Locale.US, "%.0f", players)}M players" +
                     (if (p in held) " · licensed" else if (p.fee > 0) " · ${Format.money(p.fee)} licence" else " · no licence fee") +
-                    (if (leaving) " · being retired" else ""),
+                    (if (leaving) " · being retired" else "") +
+                    String.format(Locale.US, " · standing %+.0f", favor * 100),
                 value = Format.percent(players * p.spend / total),
                 valueDetail = "of sales",
                 trailing = if (p !in held && p.fee > 0) {
@@ -765,6 +796,50 @@ private fun PlatformsSection(store: GameStore, state: GameState) {
                     null
                 },
             )
+        }
+        if (holders.isNotEmpty()) {
+            RowDivider()
+            ListRow(
+                "Store featuring",
+                subtitle = if (state.featuringEraStrength() <= 0) {
+                    "Digital store featuring arrives with modern storefronts."
+                } else {
+                    "Front-page slot: more discovery, thinner cut. Era is on."
+                },
+            ) {
+                Spacer(Modifier.width(8.dp))
+                MenuButton(
+                    "Chase…",
+                    holders,
+                    { h ->
+                        val block = state.featuringBlocker(h)
+                        h + if (block != null) " · can't" else " · ${Format.money(state.featuringCost(h))}"
+                    },
+                    enabled = state.featuringEraStrength() > 0 && holders.any { state.featuringBlocker(it) == null },
+                ) { h -> store.perform { chaseFeaturing(h) } }
+            }
+            RowDivider()
+            ListRow(
+                "Logo on the box",
+                subtitle = "First-party-friendly deal: favor and visibility, lasting margin cut and a cert backlog bump.",
+            ) {
+                Spacer(Modifier.width(8.dp))
+                MenuButton(
+                    "Sign…",
+                    holders,
+                    { h ->
+                        val block = state.logoDealBlocker(h)
+                        val stand = state.holderOf(h)
+                        val active = stand?.logoUntil?.let { it >= state.week } == true
+                        h + when {
+                            active -> " · active"
+                            block != null -> " · can't"
+                            else -> " · ${Format.money(state.logoDealCost(h))}"
+                        }
+                    },
+                    enabled = holders.any { state.logoDealBlocker(it) == null },
+                ) { h -> store.perform { signLogoDeal(h) } }
+            }
         }
     }
 }

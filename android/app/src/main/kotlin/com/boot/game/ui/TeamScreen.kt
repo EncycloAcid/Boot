@@ -70,6 +70,14 @@ import com.boot.core.temps
 import com.boot.core.train
 import com.boot.core.trainingBlocker
 import com.boot.core.trainingCost
+import com.boot.core.TempKind
+import com.boot.core.ContractExit
+import com.boot.core.hireTemps
+import com.boot.core.tempHireBlocker
+import com.boot.core.tempHireCost
+import com.boot.core.endContract
+import com.boot.core.endContractCost
+import com.boot.core.endContractBlocker
 import com.boot.game.GameStore
 import java.util.Locale
 
@@ -86,7 +94,7 @@ fun TeamScreen(store: GameStore, state: GameState) {
                 "${state.staff.size + 1} people$tempBit · ${state.payroll.perWeek()} payroll$moraleBit",
             )
         }
-        // Extension point: Industry Pressure pack fills temps via Employee.contractUntil.
+        item { ContractLabourSection(store, state) }
         if (temps.isNotEmpty()) item { TempSection(store, state, temps) }
         item { TeamSection(store, state) }
         if (state.stories.isNotEmpty()) item { StoriesSection(state) }
@@ -98,34 +106,57 @@ fun TeamScreen(store: GameStore, state: GameState) {
     }
 }
 
-/** Contract / temp labour — shown when anyone has an active [Employee.contractUntil]. */
+/** Hire temp artists / QA for crunch — sits beside stars, not instead of them. */
+@Composable
+private fun ContractLabourSection(store: GameStore, state: GameState) {
+    val abuse = state.industry.tempAbuse
+    GroupedSection(
+        "Contract labour",
+        footer = "Temps take desks and speed crunch / coverage, but quality slips and permanents notice. Scandal risk climbs if you overuse or mistreat them" +
+            if (abuse > 0.15) String.format(Locale.US, " · abuse meter %.0f%%", abuse * 100) else "",
+    ) {
+        TempKind.entries.forEachIndexed { i, kind ->
+            if (i > 0) RowDivider()
+            val weeks = 8
+            val count = 2
+            val block = state.tempHireBlocker(kind, count, weeks)
+            ActionRow(
+                "Hire ${kind.title.lowercase()}",
+                block ?: "${Format.money(state.tempHireCost(kind, count, weeks))} for $count · ${Format.weeks(weeks)}. ${kind.blurb}",
+                "Hire",
+                enabled = block == null,
+            ) { store.perform { hireTemps(kind, count, weeks) } }
+        }
+    }
+}
+
+/** Active temps — end fairly, quietly, or cut loose. */
 @Composable
 private fun TempSection(store: GameStore, state: GameState, temps: List<Employee>) {
-    var firing by remember { mutableStateOf<Employee?>(null) }
     GroupedSection(
         "Temps & contractors",
-        footer = "Fixed-term people. Industry events can hire and expire them; they still take a desk.",
+        footer = "Fixed-term people. Contracts expire on their own; ending early has tradeoffs.",
     ) {
         temps.forEachIndexed { i, e ->
             if (i > 0) RowDivider(if (LocalCompact.current) 58.dp else 78.dp)
-            EmployeeRow(
-                e, state.lanes, week = state.week,
-                onAssign = { lane -> store.perform { assign(e.id, lane) } },
-                onFire = { firing = e },
-                onTrain = null,
-                pressure = e.offerLine(),
-            )
+            ListRow(
+                e.name,
+                subtitle = "${e.role.title} · skill ${e.skill} · ends ${Format.weeks(e.contractUntil - state.week)}" +
+                    (e.offerLine()?.let { " · $it" } ?: ""),
+                leading = { Pill("Temp", gameColors.warn) },
+            ) {
+                Spacer(Modifier.width(8.dp))
+                MenuButton(
+                    "End…",
+                    ContractExit.entries,
+                    { mode ->
+                        val cost = state.endContractCost(e.id, mode)
+                        mode.title + if (cost > 0) " · ${Format.money(cost)}" else " · free"
+                    },
+                    enabled = state.endContractBlocker(e.id) == null,
+                ) { mode -> store.perform { endContract(e.id, mode) } }
+            }
         }
-    }
-    firing?.let { e ->
-        ConfirmDialog(
-            title = "End ${e.name}'s contract?",
-            text = "Uses the usual let-go path for now (${Format.money(e.salary * 4)}). Industry Pressure can specialise temp exits.",
-            confirm = "End contract",
-            destructive = true,
-            onConfirm = { store.perform { fire(e.id) } },
-            onDismiss = { firing = null },
-        )
     }
 }
 

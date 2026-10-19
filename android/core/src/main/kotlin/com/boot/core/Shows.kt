@@ -238,6 +238,8 @@ internal fun GameState.shadowDrop(team: Int, stage: String) {
     val p = games?.projectOf(team) ?: return
     if (!p.isReady) return
     p.hype = min(100.0, p.hype + 20.0)
+    // On-stage drop means the holder already waved you through — clear cert backlog.
+    if (p.certClearWeek > week) p.certClearWeek = week
     stats.shadowDrops += 1
     addLog("${p.title} shadow-dropped during $stage. It's out now.", LogTone.GOOD, Lane.GAMES)
     publish(

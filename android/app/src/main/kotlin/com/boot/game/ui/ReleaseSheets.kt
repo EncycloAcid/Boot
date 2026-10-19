@@ -61,6 +61,7 @@ import com.boot.core.storeName
 import com.boot.core.storesOf
 import com.boot.core.storesOpen
 import com.boot.core.Platform
+import com.boot.core.calendarYear
 import com.boot.core.releaseModTools
 import com.boot.core.modToolsCost
 import com.boot.core.modToolsBlocker
@@ -83,6 +84,10 @@ import com.boot.core.fixBrokenMods
 import com.boot.core.fixBrokenModsBlocker
 import com.boot.core.modEraStrength
 import com.boot.core.moddable
+import com.boot.core.streamEraStrength
+import com.boot.core.streamCourtBlocker
+import com.boot.core.streamCourtCost
+import com.boot.core.courtStreamer
 import com.boot.core.releaseUpdate
 import com.boot.core.updateCost
 import com.boot.core.updateBlocker
@@ -354,6 +359,10 @@ private fun AfterLaunch(store: GameStore, state: GameState, r: GameRelease) {
         }
         RowDivider()
         PortRow(store, state, r)
+        if (state.streamEraStrength() > 0 || state.calendarYear >= 2005) {
+            RowDivider()
+            StreamerRow(store, state, r)
+        }
         if (r.moddable() || r.modTools || r.hasModScene) {
             RowDivider()
             ModCommunityRow(store, state, r)
@@ -410,6 +419,25 @@ private fun PriceRow(store: GameStore, state: GameState, r: GameRelease) {
             "${Format.percent(d)} off · +${Format.percent(o.lift - 1)} now, −${Format.percent(o.pull)} later"
         }, enabled = sale == null) { d -> store.perform { runSale(r.id, d) } }
     }
+}
+
+/** Court creators / streamers — era-gated Let's Play leverage. */
+@Composable
+private fun StreamerRow(store: GameStore, state: GameState, r: GameRelease) {
+    val era = state.streamEraStrength()
+    val block = state.streamCourtBlocker(r.id)
+    val warm = state.industry.creators.count { it.favor > 0.2 }
+    ActionRow(
+        "Court a streamer",
+        when {
+            era <= 0 -> "Creators aren't a launch force yet — wait for the late 2000s."
+            block != null -> block
+            else -> "${Format.money(state.streamCourtCost(r.id))}. Hype and sales if they like you; embargo drama or clip noise if they don't." +
+                if (warm > 0) " · $warm warm creator${if (warm == 1) "" else "s"}" else ""
+        },
+        "Court",
+        enabled = era > 0 && block == null,
+    ) { store.perform { courtStreamer(r.id) } }
 }
 
 /** Mod tools, workshop culture, and how you treat the community. */

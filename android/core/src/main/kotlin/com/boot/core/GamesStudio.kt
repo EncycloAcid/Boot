@@ -146,6 +146,11 @@ data class GameProject(
     var collectors: Int = 0,
     /** The stores it'll be sold on; null for the usual ones. */
     var stores: Set<Storefront>? = null,
+    /**
+     * Week platform cert clears for console SKUs (−1 = none / PC-only / not seeded yet).
+     * Old saves default −1 so they load; Industry Pressure seeds this when a project starts.
+     */
+    var certClearWeek: Int = -1,
     /** Accessibility pass invested during development. Old saves: false. */
     var accessibilityBet: Boolean = false,
     /** Regions localised during development. Old saves: empty. */
@@ -306,6 +311,11 @@ data class GameRelease(
     var boxesSold: Int = 0,
     var collectors: Int = 0,
     var collectorsSold: Int = 0,
+    /**
+     * Extra weekly retention from streaming / platform featuring (set each week by the host).
+     * Old saves default 0.
+     */
+    var industryLift: Double = 0.0,
     /** Shipped with an accessibility pass. Old saves: false. */
     var accessibility: Boolean = false,
     /** Regions this release was localised for. Old saves: empty. */
@@ -703,7 +713,8 @@ class GamesStudio {
             r.saleFatigue *= 0.97
             if (r.salesHistory.size > 52) r.salesHistory.removeAt(0)
             r.weeklySales *= salesDecay(age, if (age < 6) r.score else r.wordOfMouth) *
-                (if (r.patched) 1.01 else 1.0) * (1.0 + r.modSalesLift()) * r.accessLocalLift() *
+                (if (r.patched) 1.01 else 1.0) * (1.0 + r.modSalesLift()) * (1.0 + r.industryLift) *
+                r.accessLocalLift() *
                 (if (r.concept.antiqueIp != null) 1.0 + (dormantIp(r.concept.antiqueIp)?.qualityMemory ?: 0.0) * 0.04 else 1.0)
             if (r.weeklySales < 40) {
                 r.weeklySales = 0.0
