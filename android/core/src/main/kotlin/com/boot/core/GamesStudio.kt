@@ -164,6 +164,11 @@ data class GameProject(
     var techDemoPromise: Double = 0.0,
     /** Tech demos shown at shows for this project. */
     var techDemos: Int = 0,
+    /**
+     * Active co-dev partner terms on this project. Null = solo (old saves).
+     * LARGE / AAA only; see [CoDevPartners].
+     */
+    var coDev: CoDevTerms? = null,
 ) {
     /** How much the leads add to this week's work. Worked out each week before the team gets going. */
     @kotlinx.serialization.Transient
@@ -316,6 +321,10 @@ data class GameRelease(
      * Old saves default 0.
      */
     var industryLift: Double = 0.0,
+    /** Co-dev partner on this release, if any. Old saves: null. */
+    var coDevPartner: String? = null,
+    /** Partner royalty share of net (0…1). Old saves: 0. */
+    var coDevRoyalty: Double = 0.0,
     /** Shipped with an accessibility pass. Old saves: false. */
     var accessibility: Boolean = false,
     /** Regions this release was localised for. Old saves: empty. */
@@ -423,6 +432,8 @@ class GamesStudio {
     val busy: Boolean get() = project != null || contract != null || expansion != null || engineBuild != null
     val contractOffers = mutableListOf<GameContract>()
     val dealOffers = mutableListOf<PublisherDeal>()
+    /** Pending co-dev proposals (outgoing or incoming). Old saves: empty. */
+    val coDevOffers = mutableListOf<CoDevOffer>()
     val releases = mutableListOf<GameRelease>()
     var fans = 0.0
 
@@ -759,7 +770,8 @@ class GamesStudio {
             p.matchSum += min(1.0, focusMatch(p.concept, stage, alloc) + ctx.mods.focus) * paced
             p.matchWork += paced
             val wasStage = stage
-            p.progress += paced
+            val partnerBoost = p.coDevWorkBoost(paced)
+            p.progress += paced + partnerBoost
             if (p.isReady) {
                 repeat(ctx.mods.insights) { grantStageInsight(p, wasStage, report) }
                 report.log("${p.title} is content complete. Fix bugs and polish, or ship it now.", LogTone.GOOD)
@@ -777,7 +789,9 @@ class GamesStudio {
             p.lastBugs = -fixed
         }
         p.hype *= 0.99
-        val budget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0) * (if (p.concept.live) 1.25 else 1.0) * p.concept.production.cost
+        val fullBudget = p.concept.size.weeklyBudget * ctx.mods.cost * (if (p.deal != null) 0.5 else 1.0) * (if (p.concept.live) 1.25 else 1.0) * p.concept.production.cost
+        p.coDevRecordCost(fullBudget)
+        val budget = fullBudget * p.coDevBudgetFactor()
         p.spent += budget
         report.expenses += budget
     }
@@ -1051,10 +1065,14 @@ class GamesStudio {
                 Platform.PC -> pcKeep
                 else -> 0.7
             }
-        } / c.platforms.size * (p.deal?.share ?: 1.0)
+        } / c.platforms.size * (p.deal?.share ?: 1.0) * p.coDevRoyaltyKeep()
 
         // The game report: what this release taught you.
         val lines = mutableListOf<String>()
+        p.activeCoDev()?.let { cd ->
+            lines += "Co-dev with ${cd.partner}: they covered ${Format.percent(cd.costShare)} of burn and " +
+                "${Format.percent(cd.workShare)} of workload; they take ${Format.percent(cd.royaltyShare)} of net."
+        }
         fun learn(key: String, fit: Fit) {
             knownFits[key] = fit
         }

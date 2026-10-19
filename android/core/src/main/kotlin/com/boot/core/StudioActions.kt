@@ -262,6 +262,8 @@ fun GameState.setStageFocus(stage: Int, allocation: List<Double>, team: Int = 1)
 fun GameState.cancelGame(team: Int = 1) {
     val g = studio()
     val p = g.projectOf(team) ?: throw invalid("Nothing in development.")
+    coDevOnCancel(p)
+    g.coDevOffers.removeAll { it.team == team }
     g.setProject(team, null)
     addLog("Cancelled ${p.title} after ${p.weeksInDev} weeks.", LogTone.BAD, Lane.GAMES)
 }
@@ -323,6 +325,7 @@ fun GameState.launchGame(team: Int = 1) {
         resolveAntiqueShip(r)
         applyAccessLocalShip(r, p)
         museumOnShip(r)
+        coDevOnLaunch(p, r)
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)
         val outlet = rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon"))
         val words = flavour("${r.title} headline")

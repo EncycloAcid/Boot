@@ -170,4 +170,5 @@ internal fun GameState.resolveSlip(k: ReleaseSlip, choice: Int) {
             tag = NewsTag.DELAY, quote = "It'll be out when it's ready, and not a day before.", quoteBy = founder.name, cover = p.newsCover(),
         )
     }
+    coDevOnDelay(p)
 }

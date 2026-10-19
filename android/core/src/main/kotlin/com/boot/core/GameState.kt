@@ -141,6 +141,9 @@ class GameState internal constructor(val seed: Long, val startingLane: Lane) {
      */
     var industry = IndustryBook()
 
+    /** Co-dev partner standings. Old saves default empty. */
+    var coDev = CoDevBook()
+
     /** Regional offices, alliances, and Venture Arm holdings. */
     var strategy = StrategyBook()
 

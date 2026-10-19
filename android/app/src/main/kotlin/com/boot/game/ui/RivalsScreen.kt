@@ -23,7 +23,11 @@ import com.boot.core.calendarYear
 import com.boot.core.counter
 import com.boot.core.counterBlocker
 import com.boot.core.counterCost
+import com.boot.core.defaultCoDevSplit
+import com.boot.core.CoDevKind
 import com.boot.core.gameRivals
+import com.boot.core.proposeCoDev
+import com.boot.core.proposeCoDevBlocker
 import com.boot.core.stance
 import com.boot.core.strugglingRivalBlocker
 import com.boot.core.strugglingRivalPrice
@@ -137,6 +141,30 @@ private fun RivalCard(store: GameStore, state: GameState, r: Rival, showBuyout: 
                     action = "Go",
                     enabled = blocker == null,
                 ) { store.perform { counter(r.name, m) } }
+            }
+        }
+        if (r.lane == Lane.GAMES && !quiet && !faded) {
+            RowDivider()
+            val team = listOf(1, 2).firstOrNull { t ->
+                state.proposeCoDevBlocker(t, r.name) == null
+            }
+            val split = defaultCoDevSplit(CoDevKind.RIVAL)
+            val block = when {
+                team == null -> state.games?.project?.let { state.proposeCoDevBlocker(1, r.name) }
+                    ?: "Start a large or AAA project to propose co-dev."
+                else -> null
+            }
+            ActionRow(
+                title = "Propose co-dev",
+                detail = block
+                    ?: "Split cost, workload, credit and royalties on your mega-project. Shared glory — and shared blame.",
+                action = "Propose",
+                enabled = block == null && team != null,
+            ) {
+                val t = team ?: return@ActionRow
+                store.perform {
+                    proposeCoDev(t, r.name, split.cost, split.work, split.credit, split.royalty)
+                }
             }
         }
         if (showBuyout && !r.absorbed) {

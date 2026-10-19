@@ -97,6 +97,14 @@ import com.boot.core.teamSize
 import com.boot.core.setTeamSplit
 import com.boot.core.takeGameContract
 import com.boot.core.transparencyLabel
+import com.boot.core.CoDevPhase
+import com.boot.core.coDevCandidates
+import com.boot.core.coDevFavor
+import com.boot.core.defaultCoDevSplit
+import com.boot.core.isCoDevEligible
+import com.boot.core.proposeCoDev
+import com.boot.core.proposeCoDevBlocker
+import com.boot.core.withdrawCoDevOffer
 import com.boot.game.GameStore
 import com.boot.game.StudioPage
 import java.util.Locale
@@ -350,6 +358,7 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                     (if (p.certClearWeek > state.week) " Platform cert clears ${GameClock.label(p.certClearWeek)}." else ""),
                 if (p.releaseWeek != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            CoDevSection(store, state, p, team)
             if (p.concept.platforms.any { it != Platform.PC && it.fee > 0 }) {
                 val certBlock = state.chaseCertBlocker(team)
                 ActionRow(
@@ -456,6 +465,77 @@ private fun DevelopmentSection(store: GameStore, state: GameState, p: GameProjec
                     else if (lift < 1.0) "Off-season for ${c.genre.lower}. Wait for ${GameSeason.entries.first { it.featuredGenre == c.genre || it.runnerUpGenre == c.genre }.title}, or ship anyway."
                     else season.marketTip,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CoDevSection(store: GameStore, state: GameState, p: GameProject, team: Int) {
+    val colors = gameColors
+    val cd = p.coDev
+    val pending = state.games?.coDevOffers?.firstOrNull { it.team == team }
+    if (cd != null && cd.phase == CoDevPhase.ACTIVE) {
+        RowDivider()
+        Text("Co-dev · ${cd.partner}", style = MaterialTheme.typography.titleSmall)
+        Hint(
+            "${cd.kind.title}: ${Format.percent(cd.costShare)} cost · ${Format.percent(cd.workShare)} work · " +
+                "${Format.percent(cd.creditShare)} credit · ${Format.percent(cd.royaltyShare)} royalties. " +
+                "Shared glory on hits, shared blame on slips.",
+        )
+        Meter(
+            "Partner contribution",
+            (cd.contribution / p.work.coerceAtLeast(1.0)).coerceIn(0.0, 1.0),
+            colors.tech,
+            caption = "${Format.count(cd.contribution)} work · ${Format.money(cd.costPaid)} covered · ${Format.weeks(cd.weeksActive)} in",
+        )
+        Hint("Favor with ${cd.partner}: ${Format.percent((state.coDevFavor(cd.partner) + 1) / 2)}")
+        return
+    }
+    if (cd != null && (cd.phase == CoDevPhase.QUIT || cd.phase == CoDevPhase.SUED)) {
+        RowDivider()
+        Hint(
+            "Co-dev with ${cd.partner} ${if (cd.phase == CoDevPhase.QUIT) "quit" else "ended in a suit"}. " +
+                "You're finishing solo.",
+            colors.bad,
+        )
+        return
+    }
+    if (pending != null) {
+        RowDivider()
+        Text(
+            if (pending.incoming) "${pending.partner} wants to co-dev" else "Waiting on ${pending.partner}",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Hint(
+            "${pending.kind.title} · ${Format.percent(pending.costShare)} cost · ${Format.percent(pending.workShare)} work · " +
+                "${Format.percent(pending.royaltyShare)} royalties. Expires ${GameClock.label(pending.expiresWeek)}.",
+        )
+        if (!pending.incoming) {
+            PlainButton("Withdraw pitch", { store.perform { withdrawCoDevOffer(pending.id) } }, color = colors.warn)
+        } else {
+            Hint("Answer when the event pops — accept or decline.")
+        }
+        return
+    }
+    if (!p.isCoDevEligible()) return
+    val candidates = state.coDevCandidates(team).take(6)
+    if (candidates.isEmpty()) return
+    RowDivider()
+    Text("Co-dev partners", style = MaterialTheme.typography.titleSmall)
+    Hint("Split a large / AAA project: cost, workload, credit, royalties. Hits boost both brands; delays and flops hit both.")
+    candidates.forEach { c ->
+        val split = defaultCoDevSplit(c.kind)
+        val block = state.proposeCoDevBlocker(team, c.name, split.cost, split.work, split.credit, split.royalty)
+        ActionRow(
+            title = "${c.name} · ${c.kind.title}",
+            detail = block ?: "${c.note} Default split ${Format.percent(split.cost)}/${Format.percent(split.work)}/${Format.percent(split.royalty)}.",
+            action = "Propose",
+            enabled = block == null,
+            leading = { CompanyLogo(c.name, size = 28.dp) },
+        ) {
+            store.perform {
+                proposeCoDev(team, c.name, split.cost, split.work, split.credit, split.royalty)
             }
         }
     }

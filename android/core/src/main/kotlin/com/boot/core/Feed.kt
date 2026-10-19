@@ -272,6 +272,34 @@ internal fun GameState.feedOnMod(title: String, kind: String) {
     }
 }
 
+/** Co-dev partner beats: propose, glory, blame, disputes. */
+internal fun GameState.feedOnCoDev(kind: String, partner: String?, title: String?) {
+    val rng = flavour("codev $kind ${partner ?: ""} ${title ?: ""} $week")
+    when (kind) {
+        "propose" -> say(rng, Poster.INSIDER, listOf("$companyName pitched a co-dev to $partner on {t}", "Co-dev talks: $companyName × $partner"), title, LogTone.NEUTRAL, 0.8)
+        "accept" -> {
+            say(rng, Poster.PRESS, listOf("$companyName and $partner lock a co-dev on {t}.", "Split studio: {t} is a joint project."), title, LogTone.GOOD, 1.2)
+            say(rng, Poster.FAN, listOf("$partner on {t}? Take my money", "Co-dev arc for {t} {tag}"), title, LogTone.GOOD, 1.0)
+        }
+        "decline" -> say(rng, Poster.INSIDER, listOf("$partner passed on co-dev with $companyName", "No deal: $partner / $companyName"), title, LogTone.NEUTRAL, 0.6)
+        "glory" -> {
+            say(rng, Poster.PRESS, listOf("{t} is a shared win for $companyName and $partner.", "Both logos on the victory lap for {t}."), title, LogTone.GOOD, 1.4)
+            say(rng, Poster.FAN, listOf("{t} co-dev W {tag}", "$partner and $companyName ate on {t}"), title, LogTone.GOOD, 1.2)
+        }
+        "blame", "delay" -> {
+            say(rng, Poster.PRESS, listOf("{t} mess sticks to $companyName and $partner.", "Shared blame on the {t} co-dev."), title, LogTone.BAD, 1.2)
+            say(rng, Poster.MEME, listOf("co-dev of pain: {t}", "$partner discovering $companyName calendars"), title, LogTone.BAD, 1.0)
+        }
+        "ship" -> say(rng, Poster.INSIDER, listOf("$companyName × $partner ships {t}", "{t} lands with both logos"), title, LogTone.NEUTRAL, 0.9)
+        "quit" -> say(rng, Poster.PRESS, listOf("$partner walks from the {t} co-dev.", "Partnership fracture on {t}."), title, LogTone.BAD, 1.3)
+        "sue" -> say(rng, Poster.PRESS, listOf("$partner takes $companyName to court over {t}.", "Co-dev lawsuit: {t}."), title, LogTone.BAD, 1.4)
+        "smooth" -> say(rng, Poster.INSIDER, listOf("$companyName papered over the $partner co-dev spat", "Peace talks on {t}"), title, LogTone.NEUTRAL, 0.7)
+        "credit_fight" -> say(rng, Poster.PLAYER, listOf("$partner tried to soft-poach {t} credit", "Credit war on {t}: $companyName clapped back"), title, LogTone.NEUTRAL, 1.0)
+        "cancel" -> say(rng, Poster.INSIDER, listOf("{t} cancelled — $partner co-dev dies with it", "Joint project {t} is dead"), title, LogTone.BAD, 0.9)
+        else -> {}
+    }
+}
+
 /** Industry pressure beats: temps, streamers, platform politics. */
 internal fun GameState.feedOnIndustry(kind: String, about: String?, title: String? = null) {
     val rng = flavour("industry $kind ${about ?: ""} ${title ?: ""} $week")

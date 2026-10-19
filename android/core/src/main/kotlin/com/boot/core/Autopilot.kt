@@ -124,6 +124,9 @@ class Autopilot(
             is EventKind.Streamer -> if (s.cash > 50_000) 0 else 1
             is StreamerEmbargo -> if (cashy) 0 else 1
             is StreamerNoise -> if (cashy) 0 else 1
+            is CoDevReply -> 0
+            is CoDevIncoming -> if (cashy) 0 else 1
+            is CoDevDispute -> if (cashy) 0 else 1
             EventKind.LeakedBuild -> 0
             EventKind.GameJam -> if (s.cash > 100_000) 0 else 1
             is EventKind.TaxCredit -> 0

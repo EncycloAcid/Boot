@@ -299,6 +299,7 @@ private fun GameState.studioWeek() {
     studioMarketWeek(g)
     ownedStudioWeek(g)
     publishingWeek()
+    coDevWeek()
     esportsWeek()
     // Pushy stores get noticed.
     if (week % 13 == 0 && g.liveGames.any { it.live!!.monetization == Monetization.AGGRESSIVE && it.live!!.players > 10_000 }) {
