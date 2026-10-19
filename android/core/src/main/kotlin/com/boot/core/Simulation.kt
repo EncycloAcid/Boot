@@ -116,7 +116,10 @@ internal fun GameState.handle(incidents: List<Incident>, lane: Lane?) {
                 }
             }
             is Incident.Reputation -> reputation.adjust(incident.delta)
-            is Incident.Scar -> reputation.scar(incident.kind, incident.severity, week, incident.note)
+            is Incident.Scar -> {
+                reputation.scar(incident.kind, incident.severity, week, incident.note)
+                museumOnScar(incident.kind, incident.note)
+            }
             is Incident.Event -> enqueue(incident.kind)
             is Incident.Inbox -> offer(incident.kind, incident.weeks)
             is Incident.Research -> researchPoints += incident.points
@@ -275,6 +278,7 @@ private fun GameState.studioWeek() {
     exclusiveWeek(g)
     storeWeek(g)
     modWeek(g)
+    transparencyWeek(g)
     screenWeek(g)
     ratingsWeek(g)
     bombWeek(g)

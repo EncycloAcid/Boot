@@ -67,6 +67,7 @@ internal fun GameState.list() {
         NewsDesk.YOU, businessOutlet(), "$companyName shares open at \$$price in market debut",
         "${l.ticker} is valued at ${money(l.marketCap)}. The offering raised ${money(raise)}.", LogTone.GOOD, lead = true,
     )
+    museumBeat(LegacyBeatKind.TRIUMPH, "IPO: ${l.ticker}", "Opened at \$$price · raised ${money(raise)}.")
 }
 
 /** What your stake is worth today. */

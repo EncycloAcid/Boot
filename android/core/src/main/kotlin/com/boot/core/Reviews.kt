@@ -162,6 +162,11 @@ internal data class ReviewInputs(
     val publisher: String? = null,
     /** Lasting critic favor per outlet (−1…1). Empty = no grudges/pets yet. */
     val criticFavor: Map<Outlet, Double> = emptyMap(),
+    /**
+     * Hype "promised" by tech demos / roadmap dumps. When the game undersells it,
+     * player scores take an extra hit. Old call sites default to 0.
+     */
+    val techDemoPromise: Double = 0.0,
 )
 
 internal data class ReviewResult(
@@ -299,6 +304,12 @@ internal fun writeReviews(i: ReviewInputs, rng: SeededRNG): ReviewResult {
     var user = average + (aspects.getValue(ReviewAspect.GAMEPLAY) - average) * 0.4 +
         (aspects.getValue(ReviewAspect.POLISH) - average) * 0.3 + (i.fanTrust - 1) * 1.5
     if (i.hype > 60 && average < 7) user -= 1.0
+    // Tech demo / roadmap flex: the higher the promise vs the score, the harder the backlash.
+    if (i.techDemoPromise > 15 && average < 7.5) {
+        val gap = (i.techDemoPromise / 12.0 - average).coerceAtLeast(0.0)
+        user -= gap * 0.55
+        if (gap > 1.5) user -= 0.4
+    }
     if (i.bugPenalty < 0.9) user -= 0.8
     if (i.worthySequel) user += 0.3
     if (i.price == PriceTier.PREMIUM && average < 7.5) user -= 0.6

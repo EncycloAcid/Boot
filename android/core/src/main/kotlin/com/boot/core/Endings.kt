@@ -63,6 +63,17 @@ class Stats {
     var modScenes = 0
     var modOfYear = 0
 
+    /** Antique IP archaeology: brands bought, hits, meme flops. */
+    var antiqueIps = 0
+    var antiqueHits = 0
+    var memeFlops = 0
+
+    /** Dev diaries published; accessibility / localisation bets placed; tech demos flexed. */
+    var devDiaries = 0
+    var accessibilityBets = 0
+    var localisationBets = 0
+    var techDemos = 0
+
     /** Stakes bought in studios. */
     var stakes = 0
     var weeksInRed = 0

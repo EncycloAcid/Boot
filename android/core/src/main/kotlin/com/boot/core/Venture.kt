@@ -64,10 +64,15 @@ internal fun GameState.nextLead(): String {
     return pool[Math.floorMod(seed + venture.rounds.size * 7919L, pool.size.toLong()).toInt()]
 }
 
-/** Things a nervous board insists on. */
+/** Things a nervous board insists on. Post-IPO, activist investors push live ops or selling a lane. */
 @Serializable
 enum class BoardDemand {
-    LAYOFFS, MONETIZE, CRUNCH, GROWTH_HIRES;
+    LAYOFFS, MONETIZE, CRUNCH, GROWTH_HIRES,
+    /** Chase live-service / seasonal revenue on a shipped title. */
+    LIVE_OPS,
+    /** Divest a lane to "unlock shareholder value". */
+    SELL_LANE,
+    ;
 
     val title: String
         get() = when (this) {
@@ -75,6 +80,8 @@ enum class BoardDemand {
             MONETIZE -> "The board wants you to squeeze harder"
             CRUNCH -> "The board wants it shipped, now"
             GROWTH_HIRES -> "The board wants a sales blitz"
+            LIVE_OPS -> "Activist investors want live ops"
+            SELL_LANE -> "The board wants you to sell a lane"
         }
 
     val body: String
@@ -83,7 +90,12 @@ enum class BoardDemand {
             MONETIZE -> "They see users, not revenue. They want ad load and monetization turned up across the board."
             CRUNCH -> "Missed targets mean the next launch has to land sooner. They want the whole company in crunch mode."
             GROWTH_HIRES -> "They want four marketers hired this week to juice the top line, whatever it does to burn."
+            LIVE_OPS -> "A hedge fund is circling. They want seasons, battle passes, or live-service monetisation on a title you already shipped — recurring revenue, not one-and-done launches."
+            SELL_LANE -> "Activists say you're stretched thin. They want one business sold to a buyer this quarter to juice the share price — or they'll campaign for a new CEO."
         }
+
+    /** True for post-listing activist pressure. */
+    val activist: Boolean get() = this == LIVE_OPS || this == SELL_LANE
 }
 
 const val IPO_VALUATION = 500_000_000.0
@@ -162,6 +174,12 @@ internal fun GameState.boardReview() {
 }
 
 private fun GameState.pickBoardDemand(): BoardDemand {
+    // After listing, activists push live ops or selling a lane when growth misses.
+    if (listing != null) {
+        val sellable = lanes.filter { sellLaneBlocker(it) == null }
+        if (sellable.isNotEmpty() && (rng.chance(0.45) || lanes.size >= 3)) return BoardDemand.SELL_LANE
+        if (games != null && (games!!.releases.any { it.score >= 6.5 } || games!!.project != null)) return BoardDemand.LIVE_OPS
+    }
     if (runwayWeeks < 20 && staff.size >= 5) return BoardDemand.LAYOFFS
     if (social != null || apps != null || crossover(Combo.APPS_GAMES)?.built == true) return BoardDemand.MONETIZE
     if (games?.project != null || games?.project2 != null || hardware?.design != null) return BoardDemand.CRUNCH
@@ -193,5 +211,60 @@ internal fun GameState.applyBoardDemand(d: BoardDemand) {
             repeat(4) { hireDirect(makeCandidate(Role.MARKETER)) }
             addLog("Four new marketers start Monday.")
         }
+        BoardDemand.LIVE_OPS -> applyLiveOpsDemand()
+        BoardDemand.SELL_LANE -> applySellLaneDemand()
     }
 }
+
+/** Force live-ops pressure: aggressive monetisation on a live title, or mark the next ship as live. */
+private fun GameState.applyLiveOpsDemand() {
+    val g = games
+    val live = g?.releases?.firstOrNull { it.live != null && it.live!!.players > 0 }
+    if (live?.live != null) {
+        live.live!!.monetization = Monetization.AGGRESSIVE
+        g.fanTrust = max(0.3, g.fanTrust - 0.04)
+        addLog(
+            "You folded to activists: ${live.title} pushes live-ops monetisation hard. Fans notice.",
+            LogTone.BAD, Lane.GAMES,
+        )
+        publish(
+            NewsDesk.YOU, "Bloomberg",
+            "$companyName doubles down on live service for ${live.title}",
+            "Shareholders cheer. Players less so.",
+            LogTone.NEUTRAL, Lane.GAMES, tag = NewsTag.MONEY,
+        )
+        museumBeat(LegacyBeatKind.MILESTONE, "Live-ops mandate", live.title)
+        return
+    }
+    val project = g?.project ?: g?.project2
+    if (project != null && !project.concept.live && project.concept.size != GameSize.SMALL) {
+        // Can't mutate val concept — flag via quality note / crunch toward seasons after ship.
+        crunch = true
+        listing?.sentiment = min(2.0, listing!!.sentiment * 1.04)
+        addLog(
+            "Activists want ${project.title} as a live-service bet. Crunch is on; the market likes the story.",
+            LogTone.NEUTRAL, Lane.GAMES,
+        )
+        museumBeat(LegacyBeatKind.MILESTONE, "Live-ops pressure", project.title)
+        return
+    }
+    listing?.sentiment = min(2.0, (listing?.sentiment ?: 1.0) * 1.03)
+    addLog("You promised the board a live-ops roadmap. Sentiment ticks up — delivery still owed.", LogTone.NEUTRAL)
+}
+
+/** Sell the weakest (or only sellable) lane to satisfy activists. */
+private fun GameState.applySellLaneDemand() {
+    val target = lanes.filter { sellLaneBlocker(it) == null }
+        .minByOrNull { trailingProfit(it, 13) }
+    if (target == null) {
+        listing?.sentiment = max(0.4, (listing?.sentiment ?: 1.0) * 0.97)
+        addLog("Nowhere to sell. Activists simmer; the stock wobbles.", LogTone.BAD)
+        return
+    }
+    val price = laneSalePrice(target)
+    sellLane(target)
+    listing?.sentiment = min(2.0, (listing?.sentiment ?: 1.0) * 1.06)
+    addLog("Board mandate: sold ${target.businessName.lowercase()} for ${money(price)}. Activists cheer.", LogTone.MILESTONE)
+    museumBeat(LegacyBeatKind.MILESTONE, "Forced lane sale", "${target.title} for ${money(price)}")
+}
+

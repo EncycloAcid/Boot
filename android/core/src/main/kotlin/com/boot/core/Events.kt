@@ -177,8 +177,15 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is EventKind.BoardDemandEvent -> Description(
         kind.demand.title, kind.demand.body,
         listOf(
-            choice("Comply", "Confidence recovers."),
-            choice("Push back", "Confidence drops. Too low and they replace you."),
+            choice("Comply", if (kind.demand.activist) "Do what the activists want. Confidence and the stock recover." else "Confidence recovers."),
+            choice(
+                "Push back",
+                if (kind.demand.activist) {
+                    "Fight the activists. Confidence drops harder; the stock wobbles. Too low and they replace you."
+                } else {
+                    "Confidence drops. Too low and they replace you."
+                },
+            ),
         ),
     )
     is EventKind.Recall -> {
@@ -471,11 +478,25 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
                     it.demandsMet += 1
                 }
             } else {
+                val hit = if (kind.demand.activist) 0.22 else 0.15
                 b?.let {
-                    it.confidence -= 0.15
+                    it.confidence -= hit
                     it.demandsDefied += 1
                 }
-                addLog("You told the board no.", LogTone.BAD)
+                if (kind.demand.activist) {
+                    listing?.sentiment = max(0.4, (listing?.sentiment ?: 1.0) * 0.92)
+                    reputation.adjust(-2.0)
+                    addLog("You fought the activists. The stock wobbles; the board is furious.", LogTone.BAD)
+                    publish(
+                        NewsDesk.YOU, "Bloomberg",
+                        "$companyName rebuffs activist ${if (kind.demand == BoardDemand.SELL_LANE) "break-up" else "live-ops"} push",
+                        "Investors restive. Management digs in.",
+                        LogTone.BAD, tag = NewsTag.MONEY,
+                    )
+                    museumBeat(LegacyBeatKind.MILESTONE, "Defied activists", kind.demand.title)
+                } else {
+                    addLog("You told the board no.", LogTone.BAD)
+                }
                 if (b != null && b.confidence <= 0.05) end(EndingKind.OUSTED)
             }
         }

@@ -102,6 +102,13 @@ fun GameState.conceptBlocker(
             return "A remaster keeps the original's topic, genre and size."
         }
     }
+    c.antiqueIp?.let { id ->
+        if (g.ownedIps.none { it.id == id }) return "You don't own that brand."
+        val ip = dormantIp(id) ?: return "No such brand."
+        if (calendarYear <= ip.diedYear) return "${ip.brand} isn't available to revive yet."
+        if (c.ipPath == null) return "Pick a remake or a reboot."
+        if (c.topic != ip.topic || c.genre != ip.genre) return "An antique revival keeps ${ip.brand}'s topic and genre."
+    }
     if (c.live) {
         if (Research.LIVE_SERVICE !in researched) return "Research live service games first."
         if (c.size == GameSize.SMALL) return "Live games need to be medium or bigger."
@@ -173,6 +180,11 @@ fun GameState.startGame(
         hype += minOf(30.0, loved * 6.0 + if (original.score >= 8) 8.0 else 3.0)
     }
     concept.remasterOf?.let { g.release(it) }?.let { hype += if (it.score >= 8) 15.0 else 8.0 }
+    concept.antiqueIp?.let { id ->
+        dormantIp(id)?.let { ip ->
+            hype += (concept.ipPath?.hype ?: 10.0) * (0.5 + ip.qualityMemory * 0.7)
+        }
+    }
     val promised = g.promisedSequel?.let { g.release(it) }
     if (original != null && promised != null && g.seriesRoot(promised).id == g.seriesRoot(original).id) {
         hype += 20.0
@@ -305,6 +317,9 @@ fun GameState.launchGame(team: Int = 1) {
     if (exclusive != null) g.releases.firstOrNull()?.let { afterExclusiveLaunch(exclusive, held, it) }
     g.releases.firstOrNull()?.let { r ->
         applyCriticRelations(r)
+        resolveAntiqueShip(r)
+        applyAccessLocalShip(r, p)
+        museumOnShip(r)
         val sc = String.format(java.util.Locale.US, "%.1f", r.score)
         val outlet = rng.pick(listOf("IGN", "GameSpot", "Kotaku", "Polygon"))
         val words = flavour("${r.title} headline")
