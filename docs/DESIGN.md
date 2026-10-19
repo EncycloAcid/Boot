@@ -626,10 +626,10 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Content updates**: up to 3, 26 weeks apart, within 3 years, for 8 weeks of the size's budget. +25% weekly sales, +0.3 player score (capped at the critics' score + 1.5), +10% live players, fans +1% of copies sold.
 - **Ports**: sales = the old burst × platform crowd (players × spend, against the original platforms', clamped 0.25–2) × genre fit × quality (outsourced 0.85, enhanced 1.15) × 0.6 if older than two years and not enhanced. Outsourced costs 0.6×, adds bugs and −0.15 player score; enhanced costs 1.8×, takes 1.5× as long, +0.1 player score.
 - **Expansions**: small DLC (12% of the game's work, attach ×0.8, 20% price), expansion (30%, ×1, 40%), standalone (50%, ×1, 60%, plus a quarter of a launch's sales from new players). Up to three per game.
-- **Mod tools** (PC, from 1993; sims, strategy, sandbox, RPGs, shooters or a mod-support hook): weekly decay ×1.008. From 8 weeks on, 0.6% a week a mod takes off: hire its maker (a skill 6–8 game designer), make it official (+30% sales, +0.2 player score), or let it be (+10%).
+- **Mod tools** (PC, from 1993; sims, strategy, sandbox, RPGs, shooters or a mod-support hook): weekly decay ×1.008 until a scene forms. From 8 weeks on, hit mods can take off: hire its maker (a skill 6–8 game designer), make it official (+30% sales, +0.2 player score), or let it be (+10%).
 - **More stores later**: adding a store scales the PC share of weekly sales by the new reach over the old and moves the share kept accordingly.
 
-## Talent wars (3.34.3)
+## Talent wars (3.34.3 → 3.34.5 stack)
 
 `TalentWars.kt`, extending `Employee` / `Candidate`, hire, soft `EventKind.Poach`, `CounterMove.POACH_STAR`, `TALENT_RAID`, specialists and Team / person-card UI.
 
@@ -640,13 +640,26 @@ Runs set in the past used to follow history's eras but nothing happened on a giv
 - **Hits** on ship credit the games team (`creditCareerOnShip`). Specialising adds the specialty person title to the arc.
 - **UI:** Team row shows chapter pill, career line, wanted-by, loyalty bar; person card shows titles, hits, pressure, loyalty. News/feed beats stay secondary.
 
-## Critic personalities (3.34.2)
+## Critic personalities (3.34.2 → 3.34.5 stack)
 
 Named review outlets (IGN, GameSpot, Eurogamer, Edge, PC Gamer, Game Informer, and era magazines) carry **personalities**: favoured / disliked genres, publisher pets and grudges, and harshness. Scores still flow through `writeReviews` / `bias()` — publisher lean and lasting **favor** nudge the classic outlet taste. Ship their wheelhouse and they can become a **pet** (warmer future scores, soft news); snub their taste, ship hated genres, or take a public spat and they hold a **grudge** (cooler scores, spicy headlines). Standing lives on `GamesStudio.criticStanding` with defaults so old saves load. News → Press lists the era's desks; review rows show Pet/Grudge chips.
 
+## Mod / community scene (3.34.4 → 3.34.5 stack)
+
+Extends the long tail in `AfterLaunch.kt` (no second post-launch sim). After launch on PC, a **mod/community scene** can form: workshop buzz, total conversions, cosmetics, fix packs.
+
+- **Era.** Strength 0 before 1993, ~0.28 through the nineties, ~0.55 to 2005, ~0.85 to 2011, 1.0 from 2012 (workshop culture). Console-only titles never form a scene.
+- **Formation.** Shipping mod tools usually sparks one immediately; without tools, a beloved PC title (score 7.5+, 26+ weeks old, from 1998) can grow an organic scene more slowly.
+- **State on each release** (defaults so old saves load): `modBuzz`, `modHealth`, `modPolicy` (ignore / support / official / clamp / partner), `modSceneWeek` (−1 = none), `modKit`, `modPartner`, `brokenMods`.
+- **Sales lift.** With a scene: `0.003 + buzz × health × 0.018` (capped at 0.03) on weekly retention. Tools alone still give ×1.008 until a scene forms.
+- **Player levers.** Support tools & docs; official mod kit (needs tools, from 1998); partner a big mod team (buzz ≥ 0.25); crack down / ban; leave alone; clean broken storefront mods.
+- **Positive path.** Healthy buzz → sticky fans, hit-mod events, December **Mod of the Year** news (+15% sales, fans, trust).
+- **Negative path.** Abandoned tools, toxic community, or broken workshop junk → `ModCrisis` events; ignore or clamp too hard can nick user score, fan trust, or leave a scandal scar. Broken mods on your own store slow its growth slightly.
+- **Feed / news.** Scene formation, kit, clamp, partner, and Mod of the Year post to the feed; clamp and MotY also hit the games desk.
+
 ## Music and game names (3.34)
 
-Finished in **3.34.1** (era names landed with 3.34.0 WIP; soundtrack takes / true crossfades / mute complete the band). **3.34.3+** stacks talent wars and critic personalities on that tip.
+Finished in **3.34.1** (era names landed with 3.34.0 WIP; soundtrack takes / true crossfades / mute complete the band). **3.34.5** stacks talent wars, critic personalities, and the mod scene on that tip.
 
 **Game names** (`Titles.kt`). Each topic belongs to one of six themes (fantasy, sci-fi, grim, light, sporty, modern), each with its own adjectives, places, word endings for made-up names (Emberfall, Pulsecore), sequel subtitles and expansion names. A title is built from the topic's nouns through the genre's templates. Given the year, about a third of names use that year's templates instead: arcade names before 1986 (Ember Attack, Signaltron), nineties ones to 1999 (Ember Quest, Ember Deluxe), subtitled ones to 2009 (Ember: Heart of Winter, Ember Online) and indie ones after (Emberfall, A Hollow Crown, Ember Survivors from 2020). Titles that repeat a word or run past 30 characters are drawn again, and no place name ends in a number, so a sequel number is never mistaken for part of a name. Sims use a short word for the topic (Pet Shop Tycoon, AI Simulator). Your own suggestions, rivals' games, subsidiaries' pitches and indie pitches all pass the year in.
 

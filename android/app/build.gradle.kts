@@ -11,8 +11,8 @@ android {
         applicationId = "com.boot.game"
         minSdk = 26
         targetSdk = 36
-        versionCode = 71
-        versionName = "3.34.3"
+        versionCode = 73
+        versionName = "3.34.5"
     }
 
     buildTypes {

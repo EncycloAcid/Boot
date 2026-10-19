@@ -42,6 +42,7 @@ import com.boot.core.buyLicence
 import com.boot.core.adaptableSeries
 import com.boot.core.planStage
 import com.boot.core.GameClock
+import com.boot.core.hasModScene
 import com.boot.core.Campaign
 import com.boot.core.calendarYear
 import com.boot.core.timelineWeek
@@ -606,6 +607,7 @@ private fun ReleasesSection(store: GameStore, g: GamesStudio) {
                     (if (r.chartRank > 0) " · #${r.chartRank} this week" else "") +
                     (if (r.expansions.isNotEmpty()) " · ${r.expansions.size} expansion${if (r.expansions.size > 1) "s" else ""}" else "") +
                     (if (r.patched) " · patched" else "") +
+                    (if (r.hasModScene) " · mod scene" else if (r.modTools) " · mod tools" else "") +
                     (r.live?.let { if (it.closed) " · servers off" else " · live, ${Format.count(it.players)} players" } ?: ""),
                 leading = { CoverWithScore(r.concept, r.score) },
                 value = if (r.onSale) (r.weeklySales * r.netShare).perWeek() else Format.money(r.lifetimeSales),

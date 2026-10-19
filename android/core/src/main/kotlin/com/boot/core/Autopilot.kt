@@ -97,6 +97,11 @@ class Autopilot(
             is ExperimentResult -> if (k.better) 0 else 1
             is ModelReady -> 0
             is ModHit -> if (cashy) 1 else 2
+            is ModCrisis -> when (k.kind) {
+                ModCrisisKind.TOXIC -> if (cashy) 0 else 1
+                ModCrisisKind.ABANDONED -> if (cashy) 0 else 1
+                ModCrisisKind.BROKEN_STORE -> 0
+            }
             is HistoryChoice -> if (k.event == HistoryEvent.CHATGPT && !cashy) 1 else 0
             is EraMoment -> if (cashy && s.cash > 200_000) 0 else e.choices.lastIndex
             is ScenarioOver -> 0

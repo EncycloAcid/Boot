@@ -136,6 +136,7 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
     is EraMoment -> describeMoment(kind)
     is HistoryChoice -> describeHistory(kind)
     is ModHit -> describeModHit(kind)
+    is ModCrisis -> describeModCrisis(kind)
     is ScenarioOver -> describeScenario(kind)
     is MarketEvent -> describeMarket(kind)
     is EventKind.Poach -> {
@@ -437,6 +438,7 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         is EraMoment -> resolveMoment(kind, choice)
         is HistoryChoice -> resolveHistory(kind, choice)
         is ModHit -> resolveModHit(kind, choice)
+        is ModCrisis -> resolveModCrisis(kind, choice)
         is ScenarioOver -> resolveScenario(kind, choice)
         is MarketEvent -> resolveMarket(kind, choice)
         is EventKind.Poach -> {
