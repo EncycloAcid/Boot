@@ -356,6 +356,8 @@ class GameFlowTest {
         val s = store.state!!
         assertTrue(s.goalsDone.isNotEmpty())
         assertTrue(s.games!!.market.games.isNotEmpty())
+        // Floating shell only shows Goals inside Today; inbox may be empty after a long autopilot.
+        today()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Goals ·", substring = true, ignoreCase = true))
         compose.waitForIdle()
         screen("26-office-goals")
