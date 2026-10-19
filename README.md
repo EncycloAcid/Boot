@@ -6,6 +6,12 @@ The full design is in [docs/DESIGN.md](docs/DESIGN.md).
 
 **New in 1.3 (Android):** esports. Research esports and your competitive hits (action or strategy games that scored 7.5+, on an engine with multiplayer) can get a pro league. Sponsors pay for every viewer, watching keeps people buying and playing, and twice a year there's a championship with a prize pool you choose: big pools win big audiences, but only pay off on big games. Watch for match-fixing. Two new achievements, and stat tiles now shrink long numbers to fit instead of cutting them off.
 
+**New in 3.34.3 (Android):** talent wars — star hires with visible career arcs.
+
+- **Career chapters.** Staff show Rising / Peak / Fading / Legend on the Team screen and person card, with past titles, hit credits, loyalty, and “wanted by” offer pressure — not only a news line.
+- **Poaching.** Rivals (including the real-world games roster) circle your stars; you can counter-offer or let them go. Poach their stars from Rivals, or market stars from Hiring with a signing bonus. Loyalty, reputation and chapter change the cost and who walks.
+- **Specialists stay the hook.** Becoming a specialist adds a career title; shipping hits grows fame and past hits. Old saves load with defaults.
+
 **New in 3.34 / 3.34.1 (Android):** music and game names (finished).
 
 - **Game names from their time.** Suggested names, rivals' games and pitches sound like the year they come out: Ember Attack in 1981, Ember Quest in 1994, Ember: Heart of Winter in 2005, Emberfall or Ember Survivors in 2022. Every topic has a theme (fantasy, sci-fi, grim, cosy, sporty, modern) with its own words, places and made-up names, and no more "Neon Neon" or "Desert island Tycoon".

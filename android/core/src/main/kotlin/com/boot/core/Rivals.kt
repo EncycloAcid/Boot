@@ -152,7 +152,8 @@ private fun GameState.hasProduct(lane: Lane): Boolean = when (lane) {
 }
 
 private fun GameState.raidTargets(lane: Lane): List<Int> =
-    staff.filter { it.lane == lane && it.skill >= 6 && it.trait != Trait.LOYAL }.sortedByDescending { it.skill }
+    staff.filter { it.lane == lane && it.skill >= 6 && it.effectiveLoyalty < 0.98 }
+        .sortedWith(compareByDescending<Employee> { it.isStar }.thenByDescending { it.reputation }.thenByDescending { it.skill })
         .take(if (Research.STOCK_OPTIONS in researched) 1 else 2).map { it.id }
 
 /** What a rival does, weighted by what suits the market. */
@@ -234,13 +235,16 @@ internal fun GameState.describeRival(k: RivalEvent): Description? = when (k) {
                     null
                 } else {
                     val names = people.joinToString(" and ") { it.name }
+                    val arcs = people.joinToString("; ") {
+                        "${it.name} (${it.chapter.title.lowercase()}, loyalty ${Format.percent(it.effectiveLoyalty)})"
+                    }
                     Description(
                         "$r is after your best people",
-                        "$r's recruiters have made offers to $names: 30% more money and a big title.",
+                        "$r's recruiters have made offers to $names: 30% more money and a big title. $arcs.",
                         listOf(
-                            choice("Match their offers", "30% raises all round."),
+                            choice("Match their offers", "30% raises all round. Loyalty recovers."),
                             choice("Offer equity", "${Format.percent(0.004 * people.size)} of the company. They stay and they're thrilled."),
-                            choice("Let them go", "$r gets stronger."),
+                            choice("Let them go", "$r gets stronger. Career arcs walk out the door."),
                         ),
                         k.lane,
                     )
@@ -335,15 +339,25 @@ internal fun GameState.resolveRival(k: RivalEvent, choice: Int) {
                         0 -> for (e in people) {
                             e.salary *= 1.3
                             e.lastRaiseWeek = week
+                            e.loyalty = (e.loyalty + 0.12).clamped(0.0, 1.0)
+                            e.offerPressure = 0.0
+                            e.wantedBy = e.wantedBy.filterNot { it == k.rival }
                         }
                         1 -> {
                             venture.founderEquity = max(0.0, venture.founderEquity - 0.004 * people.size)
-                            for (e in people) e.morale = 1.0
+                            for (e in people) {
+                                e.morale = 1.0
+                                e.loyalty = (e.loyalty + 0.22).clamped(0.0, 1.0)
+                                e.offerPressure = 0.0
+                                e.wantedBy = emptyList()
+                            }
                         }
                         else -> {
+                            val fame = people.sumOf { it.reputation }
                             staff = staff - people.toSet()
-                            r?.let { it.strength = min(1.0, it.strength + 0.04 * people.size) }
+                            r?.let { it.strength = min(1.0, it.strength + 0.04 * people.size + 0.03 * fame) }
                             addLog("${people.joinToString(" and ") { it.name }} left for ${k.rival}.", LogTone.BAD, k.lane)
+                            for (gone in people) feedOnRivalBeat(k.rival, "poach_win", gone.name)
                         }
                     }
                 }
@@ -412,7 +426,7 @@ internal fun GameState.settleLawsuit(c: Consequence.Verdict) {
 /** What a counter-move against [r] costs. */
 fun GameState.counterCost(r: Rival, move: CounterMove): Double = when (move) {
     CounterMove.UNDERCUT -> 0.0
-    CounterMove.POACH_STAR -> max(40_000.0, stake(r.lane) * 2)
+    CounterMove.POACH_STAR -> poachStarCost(r)
     CounterMove.ATTACK_ADS -> max(50_000.0, stake(r.lane) * 3)
 }
 
@@ -445,12 +459,17 @@ fun GameState.counter(rivalName: String, move: CounterMove) {
             publish(NewsDesk.INDUSTRY, techOutlet(r.lane, rng), "$companyName undercuts ${r.name}", lane = r.lane)
         }
         CounterMove.POACH_STAR -> {
-            val c = makeCandidate(star = true)
-            val e = hireDirect(c.copy(askingSalary = c.askingSalary * 1.25, contestedBy = null), r.lane)
-            r.strength = max(0.05, r.strength - 0.03)
-            r.heat = min(1.0, r.heat + 0.15)
-            addLog("You hired ${e.name} away from ${r.name}.", LogTone.GOOD, r.lane)
-            publish(NewsDesk.INDUSTRY, techOutlet(r.lane, rng), "${r.name} loses ${e.name} to $companyName", lane = r.lane)
+            val e = hireRivalStar(r)
+            r.strength = max(0.05, r.strength - 0.03 - 0.02 * e.reputation)
+            r.heat = min(1.0, r.heat + 0.15 + 0.05 * e.reputation)
+            addLog("You hired ${e.name} away from ${r.name} (${e.chapter.title.lowercase()}).", LogTone.GOOD, r.lane)
+            publish(
+                NewsDesk.INDUSTRY, techOutlet(r.lane, rng),
+                "${r.name} loses ${e.name} to $companyName",
+                e.careerLine(),
+                LogTone.GOOD, r.lane, tag = NewsTag.NEWS,
+            )
+            feedOnRivalBeat(r.name, "poach_win", e.name)
         }
         CounterMove.ATTACK_ADS -> {
             world.pressures += Pressure(r.lane, "Your campaign against ${r.name}", 1.05, 8, mine = true, rival = r.name)

@@ -102,6 +102,22 @@ data class Employee(
     /** What they're best at making, if anything. */
     var specialty: Specialty? = null,
     var specializedWeek: Int = -1_000,
+    /** 0…1 personal fame in the industry. Old saves default to 0. */
+    var reputation: Double = 0.0,
+    /** 0…1 how hard they are to poach (Loyal trait overrides to 1). */
+    var loyalty: Double = 0.55,
+    /** Visible career chapter — rising / peak / fading / legend. */
+    var chapter: CareerChapter = CareerChapter.RISING,
+    /** Past job titles and credits that show on their card. */
+    var pastTitles: List<String> = emptyList(),
+    /** Hit games (or products) they shipped on. */
+    var pastHits: List<String> = emptyList(),
+    /** Rivals currently circling them. */
+    var wantedBy: List<String> = emptyList(),
+    /** 0…1 how hard the market is leaning on them this month. */
+    var offerPressure: Double = 0.0,
+    /** Hired as a star / notable — identity beyond a random desk fill. */
+    val notable: Boolean = false,
 ) {
     internal val moraleFactor: Double get() = 0.5 + 0.5 * morale
 
@@ -132,6 +148,12 @@ data class Candidate(
     val research: Int = roleResearch(role, skill),
     val trait: Trait? = null,
     val specialty: Specialty? = null,
+    val reputation: Double = 0.0,
+    val loyalty: Double = 0.55,
+    val chapter: CareerChapter = CareerChapter.RISING,
+    val pastTitles: List<String> = emptyList(),
+    val pastHits: List<String> = emptyList(),
+    val notable: Boolean = false,
 )
 
 @Serializable

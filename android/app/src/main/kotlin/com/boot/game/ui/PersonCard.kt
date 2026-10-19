@@ -32,6 +32,10 @@ import com.boot.core.Employee
 import com.boot.core.Format
 import com.boot.core.GameState
 import com.boot.core.Lane
+import com.boot.core.careerLine
+import com.boot.core.effectiveLoyalty
+import com.boot.core.isStar
+import com.boot.core.offerLine
 
 /*
  * Tap someone in the office and their card pops up beside them: who they are, what they're good
@@ -85,6 +89,32 @@ internal fun PersonCard(state: GameState, key: Int, onManage: (() -> Unit)?, onC
 @Composable
 private fun EmployeeDetails(state: GameState, e: Employee) {
     val colors = gameColors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Pill(e.chapter.title, if (e.isStar) colors.warn else colors.milestone)
+        Text(e.chapter.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Text(e.careerLine(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (e.pastTitles.isNotEmpty()) {
+        Text(
+            "Titles: ${e.pastTitles.take(3).joinToString(" · ")}",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (e.pastHits.isNotEmpty()) {
+        Text(
+            "Hits: ${e.pastHits.take(3).joinToString(" · ")}",
+            style = MaterialTheme.typography.bodySmall, color = colors.good,
+        )
+    }
+    e.offerLine()?.let { line ->
+        Text(line, style = MaterialTheme.typography.bodySmall, color = colors.warn)
+    }
+    e.specialty?.let { s ->
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SpecialtyPill(s)
+            Text("Best at ${s.areas.joinToString(" and ") { it.lower }}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
     e.trait?.let { t ->
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill(t.title, colors.milestone)
@@ -104,6 +134,7 @@ private fun EmployeeDetails(state: GameState, e: Employee) {
         Figure("Research", "${e.research}", colors.milestone, Modifier.weight(1f))
     }
     Bar("Morale", e.morale, if (e.morale < 0.35) colors.bad else colors.good, Format.percent(e.morale))
+    Bar("Loyalty", e.effectiveLoyalty, if (e.effectiveLoyalty < 0.35) colors.bad else colors.good, Format.percent(e.effectiveLoyalty))
     Bar(if (e.maxLevel) "Max level" else "Experience", if (e.maxLevel) 1.0 else e.xp / e.xpToNext, colors.milestone, if (e.maxLevel) "" else "to level ${e.level + 1}")
     Text(
         "Skill ${e.skill} · ${Format.money(e.salary)}/wk · " +

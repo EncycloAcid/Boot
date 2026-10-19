@@ -143,12 +143,20 @@ internal fun GameState.describe(kind: EventKind): Description? = when (kind) {
         if (e == null) {
             null
         } else {
+            val raise = poachRetainCost(e)
+            val arc = buildString {
+                append("${e.chapter.title} ${e.role.title.lowercase()}, skill ${e.skill}")
+                append(", loyalty ${Format.percent(e.effectiveLoyalty)}")
+                if (e.pastHits.isNotEmpty()) append(". Hits: ${e.pastHits.take(2).joinToString(", ")}")
+                else if (e.pastTitles.isNotEmpty()) append(". ${e.pastTitles.first()}")
+                e.offerLine()?.let { append(". $it") }
+            }
             Description(
                 "${kind.rival} is poaching ${e.name}",
-                "They've offered your ${e.role.title.lowercase()} ${e.name} (skill ${e.skill}) about 40% more than you pay.",
+                "$arc. ${kind.rival} has put real money on the table.",
                 listOf(
-                    choice("Counter-offer", "Raise to ${money(e.salary * 1.4)}/week."),
-                    choice("Let them go", "${kind.rival} gets stronger."),
+                    choice("Counter-offer", "Raise to ${money(raise)}/week. Loyalty goes up."),
+                    choice("Let them go", "${kind.rival} gets stronger. Your other stars notice."),
                 ),
                 e.lane,
             )
@@ -434,13 +442,11 @@ internal fun GameState.resolve(kind: EventKind, choice: Int) {
         is EventKind.Poach -> {
             val e = staff.firstOrNull { it.id == kind.employeeId } ?: return
             if (choice == 0) {
-                e.salary *= 1.4
-                e.morale = min(1.0, e.morale + 0.15)
-                addLog("${e.name} stays, at a price.")
+                e.salary = poachRetainCost(e)
+                e.lastRaiseWeek = week
+                resolvePoachOutcome(e, kind.rival, kept = true)
             } else {
-                staff = staff - e
-                strengthenRival(kind.rival, 0.03)
-                addLog("${e.name} left for ${kind.rival}.", LogTone.BAD)
+                resolvePoachOutcome(e, kind.rival, kept = false)
             }
         }
 

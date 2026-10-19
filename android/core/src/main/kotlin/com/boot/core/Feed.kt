@@ -245,7 +245,26 @@ internal fun GameState.feedOnRivalBeat(studio: String, kind: String, about: Stri
         "poach" -> {
             say(rng, Poster.INSIDER, listOf("$studio is circling $companyName talent again.", "Heard $studio made an offer. Names withheld."), about, LogTone.BAD, 1.0)
         }
+        "poach_win" -> {
+            say(rng, Poster.INSIDER, listOf("$studio landed {t} — big get.", "Talent war: {t} walks to $studio."), about, LogTone.BAD, 1.1)
+            say(rng, Poster.PRESS, listOf("{t} joins $studio.", "$studio wins a hiring fight over {t}."), about, LogTone.NEUTRAL, 0.9)
+        }
+        "poach_fail" -> {
+            say(rng, Poster.INSIDER, listOf("$studio's offer for {t} didn't stick.", "{t} stays put. $studio walks away empty."), about, LogTone.GOOD, 1.0)
+        }
     }
+}
+
+/** A star enters a new career chapter — secondary to the Team card, but worth a feed beat. */
+internal fun GameState.feedOnCareerChapter(name: String, chapter: CareerChapter) {
+    val rng = flavour("career $name ${chapter.name} $week")
+    val lines = when (chapter) {
+        CareerChapter.RISING -> listOf("{t} is one to watch.", "Quiet buzz around {t}.")
+        CareerChapter.PEAK -> listOf("{t} is at the top of their game.", "Everyone wants a piece of {t} right now.")
+        CareerChapter.FADING -> listOf("Is {t}'s best work behind them?", "{t} isn't the hot hire they used to be.")
+        CareerChapter.LEGEND -> listOf("{t} is a legend. Full stop.", "They'll be teaching {t}'s games in schools.")
+    }
+    say(rng, Poster.PRESS, lines, name, if (chapter == CareerChapter.FADING) LogTone.NEUTRAL else LogTone.GOOD, 1.0)
 }
 
 /** Week to week: chatter about what you're making and what's out. */
